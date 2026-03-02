@@ -7,8 +7,7 @@
  *
  * Protection layers:
  * - Layer 1: Caddy responds 404 before traffic reaches the app
- * - Layer 2: Next.js middleware blocks proxied /api/internal* requests
- * - Layer 3: Route handlers use timing-safe secret comparison
+ * - Layer 2: Route handlers use timing-safe secret comparison
  *
  * These tests hit the REAL staging server via its public URL.
  * No mocks, no interception — pure network requests to verify the block.

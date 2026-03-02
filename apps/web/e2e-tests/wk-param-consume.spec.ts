@@ -21,9 +21,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isWorkspaceStorageValue(value: unknown): value is WorkspaceStorageValue {
   if (!isRecord(value)) return false
-  const state = value["state"]
+  const state = value.state
   if (!isRecord(state)) return false
-  const currentWorkspace = state["currentWorkspace"]
+  const currentWorkspace = state.currentWorkspace
   return typeof currentWorkspace === "string" || currentWorkspace === null
 }
 

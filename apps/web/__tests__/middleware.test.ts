@@ -160,41 +160,13 @@ describe("security headers", () => {
   })
 })
 
-describe("internal API blocking (#310)", () => {
-  const internalPaths = [
-    "/api/internal/automation/trigger",
-    "/api/internal-tools/read-logs",
-    "/api/internal-tools/switch-serve-mode",
-  ]
-
-  for (const path of internalPaths) {
-    it(`blocks proxied request to ${path} with 404`, async () => {
-      // Simulate external request that went through Caddy (has X-Forwarded-For)
-      const req = buildRequest(`http://localhost${path}`, {
-        "x-forwarded-for": "203.0.113.42",
-      })
-      const res = middleware(req)
-
-      expect(res.status).toBe(404)
-      expect(await res.text()).toBe("Not Found")
-    })
-
-    it(`allows direct localhost request to ${path}`, () => {
-      // Simulate internal request from worker/MCP tools (no X-Forwarded-For)
-      const req = buildRequest(`http://localhost${path}`)
-      const res = middleware(req)
-
-      // Should pass through to route handler (200 from NextResponse.next())
-      expect(res.status).toBe(200)
-    })
-  }
-
-  it("does not block non-internal API routes with X-Forwarded-For", () => {
-    const req = buildRequest("http://localhost/api/templates", {
-      "x-forwarded-for": "203.0.113.42",
-    })
+describe("internal API routes (#310)", () => {
+  it("internal routes are not blocked at middleware level (Caddy + route-level auth handle security)", () => {
+    // Internal routes pass through middleware — security is enforced by:
+    // Layer 1: Caddy blocks external access with 404
+    // Layer 2: Route handlers verify X-Internal-Secret via timing-safe comparison
+    const req = buildRequest("http://localhost/api/internal/automation/trigger")
     const res = middleware(req)
-
     expect(res.status).toBe(200)
   })
 })
