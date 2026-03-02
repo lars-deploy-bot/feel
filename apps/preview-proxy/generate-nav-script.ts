@@ -73,7 +73,10 @@ const script = `<script>
     window.parent.postMessage({ type: '${NAV_START}' }, '*');
   }
   function sendPath() {
-    window.parent.postMessage({ type: '${NAV}', path: location.pathname }, '*');
+    var p = new URLSearchParams(location.search);
+    p.delete('preview_token');
+    var qs = p.toString();
+    window.parent.postMessage({ type: '${NAV}', path: location.pathname + (qs ? '?' + qs : '') + location.hash }, '*');
   }
   sendPath();
   var origPush = history.pushState, origReplace = history.replaceState;

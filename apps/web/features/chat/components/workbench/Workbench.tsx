@@ -39,7 +39,7 @@ export function Workbench() {
 
   // Only fetch preview token when not on home view
   const isPreviewActive = workbench.view !== "home"
-  const { setIframeRef, path, isLoading, previewToken, previewUrl, refresh, navigateTo } = usePreviewEngine({
+  const { setIframeRef, path, isLoading, previewToken, refresh, navigateTo } = usePreviewEngine({
     workspace,
     skipTokenFetch: isSuperadminWorkspace || !isPreviewActive,
     onNavigate: handleNavigate,
@@ -210,7 +210,6 @@ export function Workbench() {
             {previewToken && (
               <iframe
                 ref={setIframeRef}
-                src={previewUrl}
                 className="w-full h-full border-0"
                 title={`Preview: ${workspace}`}
                 referrerPolicy="no-referrer-when-downgrade"

@@ -18,22 +18,54 @@ interface UsePreviewEngineOptions {
  *
  * Handles: token management, iframe loading state via postMessage,
  * path tracking, element selection (alive-tagger), and selector sync.
+ *
+ * Iframe src is managed imperatively (not via React props) to prevent:
+ * - Double page loads from NAVIGATION postMessage feeding back into src (#297)
+ * - Token rotation (every 4 min) triggering iframe reloads (#297)
+ * - Refresh navigating to stale path (#297)
  */
 export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UsePreviewEngineOptions) {
   const { setSelectedElement, selectorActive, deactivateSelector } = useWorkbenchContext()
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const [path, setPath] = useState("/")
+  // displayPath: what the URL bar shows, updated on every in-page navigation.
+  // This is the source of truth for "what page is the iframe currently showing".
+  const [displayPath, setDisplayPath] = useState("/")
   const [isLoading, setIsLoading] = useState(true)
   const [previewToken, setPreviewToken] = useState<string | null>(null)
   const tokenFetchRef = useRef<AbortController | null>(null)
+
+  // Refs for imperative access without stale closures or re-renders.
+  // These are read by setIframeRef, refresh(), and navigateTo() which
+  // must always use the latest values without being recreated on every change.
+  const previewTokenRef = useRef<string | null>(null)
+  const displayPathRef = useRef("/")
+  const workspaceRef = useRef(workspace)
+  workspaceRef.current = workspace
+  displayPathRef.current = displayPath
 
   // Ref for onNavigate to avoid re-registering the message listener
   const onNavigateRef = useRef(onNavigate)
   onNavigateRef.current = onNavigate
 
-  // Preview URL with token for iframe (bypasses third-party cookie blocking)
-  const previewUrl = workspace ? getPreviewUrl(workspace, { path, token: previewToken ?? undefined }) : ""
+  // Reset path state and navigate iframe when workspace changes.
+  // Without this, the existing iframe DOM node keeps showing the old workspace URL.
+  const isFirstMount = useRef(true)
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false
+      return
+    }
+    setDisplayPath("/")
+    displayPathRef.current = "/"
+    setIsLoading(true)
+    if (iframeRef.current && workspace && previewTokenRef.current) {
+      iframeRef.current.src = getPreviewUrl(workspace, {
+        path: "/",
+        token: previewTokenRef.current,
+      })
+    }
+  }, [workspace])
 
   // --- Token management ---
 
@@ -47,6 +79,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
       })
       if (response.ok) {
         const data = await response.json()
+        previewTokenRef.current = data.token
         setPreviewToken(data.token)
       }
     } catch (error) {
@@ -63,7 +96,8 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
     return () => tokenFetchRef.current?.abort()
   }, [workspace, skipTokenFetch, fetchPreviewToken])
 
-  // Refresh token every 4 minutes (tokens expire in 5 minutes)
+  // Refresh token every 4 minutes (tokens expire in 5 minutes).
+  // Only updates the ref — does NOT trigger iframe reload.
   useEffect(() => {
     if (!workspace || skipTokenFetch) return
     const interval = setInterval(fetchPreviewToken, 4 * 60 * 1000)
@@ -72,9 +106,17 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
 
   // --- Iframe ref ---
 
-  // Callback ref (load event is unreliable for cross-origin iframes)
+  // Callback ref: sets initial iframe src imperatively on mount.
+  // Using refs (not state) avoids stale closures while keeping the callback stable.
+  // Fires on mount (new element) and unmount (null) only, since identity is stable.
   const setIframeRef = useCallback((iframe: HTMLIFrameElement | null) => {
     iframeRef.current = iframe
+    if (iframe && workspaceRef.current && previewTokenRef.current) {
+      iframe.src = getPreviewUrl(workspaceRef.current, {
+        path: displayPathRef.current,
+        token: previewTokenRef.current,
+      })
+    }
   }, [])
 
   // --- Selector sync ---
@@ -140,13 +182,15 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
         return
       }
 
-      // Navigation completed - update path and clear loading
+      // Navigation completed - update URL bar display and clear loading.
       // This is the definitive "iframe content loaded" signal: the injected script
       // executed sendPath(), which means the page is rendered and running JS.
+      // IMPORTANT: Only update displayPath here. Iframe src is NOT reactive —
+      // it's set imperatively by setIframeRef/navigateTo/refresh only. (#297)
       if (event.data?.type === PREVIEW_MESSAGES.NAVIGATION && typeof event.data.path === "string") {
         clearLoadingTimeout()
         const newPath = event.data.path || "/"
-        setPath(newPath)
+        setDisplayPath(newPath)
         setIsLoading(false)
         onNavigateRef.current?.(newPath)
         return
@@ -173,32 +217,35 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
 
   // --- Actions ---
 
+  /** Reload the current page (displayPath) with a fresh token */
   const refresh = useCallback(() => {
-    if (iframeRef.current) {
+    if (iframeRef.current && workspaceRef.current) {
       setIsLoading(true)
-      iframeRef.current.src = previewUrl
+      iframeRef.current.src = getPreviewUrl(workspaceRef.current, {
+        path: displayPathRef.current,
+        token: previewTokenRef.current ?? undefined,
+      })
     }
-  }, [previewUrl])
+  }, [])
 
-  /** Navigate the iframe to a new path */
-  const navigateTo = useCallback(
-    (newPath: string) => {
-      setPath(newPath)
-      if (iframeRef.current && workspace) {
-        setIsLoading(true)
-        iframeRef.current.src = getPreviewUrl(workspace, { path: newPath, token: previewToken ?? undefined })
-      }
-    },
-    [workspace, previewToken],
-  )
+  /** Navigate the iframe to a new path (explicit user action: Enter key, programmatic) */
+  const navigateTo = useCallback((newPath: string) => {
+    setDisplayPath(newPath)
+    if (iframeRef.current && workspaceRef.current) {
+      setIsLoading(true)
+      iframeRef.current.src = getPreviewUrl(workspaceRef.current, {
+        path: newPath,
+        token: previewTokenRef.current ?? undefined,
+      })
+    }
+  }, [])
 
   return {
     setIframeRef,
     iframeRef,
-    path,
+    path: displayPath,
     isLoading,
     previewToken,
-    previewUrl,
     refresh,
     navigateTo,
   }

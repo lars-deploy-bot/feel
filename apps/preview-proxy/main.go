@@ -250,6 +250,14 @@ func (h *previewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// Strip Accept-Encoding so upstream sends uncompressed responses.
 			// We inject a nav script into HTML — compressed bodies would be corrupted.
 			pr.Out.Header.Del("Accept-Encoding")
+			// Strip Origin on Vite HMR WebSocket upgrades so Vite's shouldHandle
+			// doesn't enter the token verification branch and reject with 400. (#93)
+			// Scoped to vite-hmr subprotocol to avoid breaking user app WebSockets
+			// that may validate Origin for security.
+			if strings.EqualFold(pr.In.Header.Get("Upgrade"), "websocket") &&
+				hasWebSocketProtocol(pr.In.Header.Get("Sec-WebSocket-Protocol"), "vite-hmr") {
+				pr.Out.Header.Del("Origin")
+			}
 		},
 		Transport: h.transport,
 		ModifyResponse: func(resp *http.Response) error {
@@ -549,6 +557,18 @@ func captureMessage(level sentry.Level, message string, args ...any) {
 		scope.SetLevel(level)
 		sentry.CaptureMessage(msg)
 	})
+}
+
+// hasWebSocketProtocol checks if a Sec-WebSocket-Protocol header value contains
+// the given protocol. Per RFC 6455 §4.2.1, the header is a comma-separated list
+// of tokens. Comparison is case-insensitive per RFC 6455 §11.3.4.
+func hasWebSocketProtocol(header, protocol string) bool {
+	for _, p := range strings.Split(header, ",") {
+		if strings.EqualFold(strings.TrimSpace(p), protocol) {
+			return true
+		}
+	}
+	return false
 }
 
 func writeHTTPError(w http.ResponseWriter, statusCode int, body string, context string) {

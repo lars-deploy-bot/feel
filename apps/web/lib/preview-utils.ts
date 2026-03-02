@@ -112,6 +112,11 @@ export function getPreviewUrl(workspace: string, options?: { path?: string; toke
   const label = domainToPreviewLabel(workspace)
   const path = options?.path ?? "/"
   const normalizedPath = path.startsWith("/") ? path : `/${path}`
-  const tokenParam = options?.token ? `?preview_token=${encodeURIComponent(options.token)}` : ""
-  return `https://${PREVIEW_PREFIX}${label}.${WILDCARD_DOMAIN}${normalizedPath}${tokenParam}`
+  const base = `https://${PREVIEW_PREFIX}${label}.${WILDCARD_DOMAIN}${normalizedPath}`
+  if (!options?.token) return base
+  // Use URL API to correctly handle paths with existing query params or hashes.
+  // Naive concat would produce double "?" or place the token after "#" (not sent to server).
+  const url = new URL(base)
+  url.searchParams.set("preview_token", options.token)
+  return url.toString()
 }
