@@ -16,6 +16,26 @@ Stages:
 
 ---
 
+## Cost Estimation
+
+Estimated AI token usage and cost for the full pipeline (start to finish):
+
+| Stage | Turns | Input Tokens | Output Tokens | Best Model | Cost (Opus) | Cost (Smart Mix) |
+|-------|-------|-------------|---------------|------------|-------------|------------------|
+| 1. Import & Strip | ~12 | 580K | 30K | Haiku/Sonnet | $4 | $2 |
+| 2. Localize & Serve | ~49 | 2.97M | 155K | Opus/Sonnet | $19 | $13 |
+| 3. Rebuild as Components | ~102 | 6.25M | 470K | Opus/Sonnet | $43 | $29 |
+| **Total** | **~163** | **~9.8M** | **~655K** | | **~$65** | **~$43** |
+
+**Model recommendations per task type:**
+- **Opus**: Rewrite scripts, edge case debugging, analysis, navbar, hero, carousels, animations
+- **Sonnet**: Component building, boilerplate setup, straightforward sections, responsive testing
+- **Haiku**: File operations, verification commands, cleanup, systemd config
+
+**Key insight**: ~60% of cost is Stage 3 (rebuild to components). If the static serve works and you don't need to modify content, skip Stage 3 and save ~$40. Stages 1-2 alone cost ~$20 (Opus) or ~$13 (smart mix).
+
+---
+
 ## Critical Rules
 
 1. **NEVER rely on external CDNs.** All assets served locally.
