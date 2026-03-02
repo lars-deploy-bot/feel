@@ -110,6 +110,16 @@ for pkg in packages/*/; do rm -f "$pkg/$(basename "$pkg")" 2>/dev/null || true; 
 # =============================================================================
 # Phase 4: Build
 # =============================================================================
+
+# Source env file so Next.js page-data collection sees runtime env vars
+WEB_ENV_FILE="$PROJECT_ROOT/apps/web/.env.$ENV"
+if [ -f "$WEB_ENV_FILE" ]; then
+    set -a
+    source "$WEB_ENV_FILE"
+    set +a
+    log_step "Loaded env from .env.$ENV"
+fi
+
 log_step "Building web app..."
 BUILD_START=$(date +%s)
 
