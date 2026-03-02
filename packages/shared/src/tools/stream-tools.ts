@@ -394,7 +394,7 @@ export const STREAM_PERMISSION_MODE = "default" as const
 /**
  * Default settings sources for Stream.
  */
-export const STREAM_SETTINGS_SOURCES = ["project", "user"] as const
+export const STREAM_SETTINGS_SOURCES = ["project"] as const
 
 // =============================================================================
 // SHELL HEAVY COMMAND SAFEGUARDS

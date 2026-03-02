@@ -9,6 +9,7 @@ import {
   resolveLocalAliveRoot,
   resolveTemplatePath,
   SECURITY,
+  SENTRY,
   SUPERADMIN,
 } from "../config"
 
@@ -193,6 +194,25 @@ describe("config values in test environment", () => {
       expect(SECURITY.ALLOWED_WORKSPACE_BASES.length).toBeGreaterThan(0)
     } else {
       expect(SECURITY.ALLOWED_WORKSPACE_BASES).toEqual([])
+    }
+  })
+})
+
+describe("SENTRY config", () => {
+  const hasServerConfig = !!process.env.SERVER_CONFIG_PATH
+
+  it("has empty strings when SERVER_CONFIG_PATH is unset, populated when set", () => {
+    if (hasServerConfig) {
+      expect(SENTRY.DSN).toBeTruthy()
+      expect(SENTRY.URL).toBeTruthy()
+      expect(SENTRY.HOST).toBeTruthy()
+      expect(SENTRY.PROJECT_ID).toBeTruthy()
+      expect(typeof SENTRY.ORG).toBe("string")
+      expect(typeof SENTRY.PROJECT).toBe("string")
+    } else {
+      expect(SENTRY.DSN).toBe("")
+      expect(SENTRY.URL).toBe("")
+      expect(SENTRY.HOST).toBe("")
     }
   })
 })

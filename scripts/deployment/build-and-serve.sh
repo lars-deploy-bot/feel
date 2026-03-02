@@ -51,6 +51,68 @@ cd "$PROJECT_ROOT"
 timer_start
 
 # =============================================================================
+# Runtime Temp Directory
+# =============================================================================
+configure_runtime_tmpdir() {
+    local preferred_tmp="${TMPDIR:-/tmp}"
+    local target_tmp="$preferred_tmp/alive-deploy-$ENV"
+
+    mkdir -p "$target_tmp" 2>/dev/null || true
+    if [ ! -d "$target_tmp" ] || [ ! -w "$target_tmp" ]; then
+        target_tmp="/tmp/alive-deploy-$ENV"
+        mkdir -p "$target_tmp" || {
+            log_error "Failed to create writable temp dir: $target_tmp"
+            exit 1
+        }
+    fi
+
+    local probe_file="$target_tmp/.tmp-write-probe.$$"
+    if ! touch "$probe_file" 2>/dev/null; then
+        log_error "Temp dir is not writable: $target_tmp"
+        exit 1
+    fi
+    rm -f "$probe_file"
+
+    export TMPDIR="$target_tmp"
+    export TMP="$target_tmp"
+    export TEMP="$target_tmp"
+}
+
+configure_runtime_cache_dirs() {
+    local fallback_bun_cache="$PROJECT_ROOT/.cache/bun-install"
+    local fallback_xdg_cache="$PROJECT_ROOT/.cache/xdg-cache"
+    local current_bun_install="${BUN_INSTALL:-$HOME/.bun}"
+    local current_xdg_cache="${XDG_CACHE_HOME:-$HOME/.cache}"
+    local selected_bun_cache="$current_bun_install"
+    local selected_xdg_cache="$current_xdg_cache"
+
+    mkdir -p "$fallback_bun_cache/install/cache" "$fallback_xdg_cache" || {
+        log_error "Failed to create fallback runtime cache directories"
+        exit 1
+    }
+
+    local bun_probe="$current_bun_install/.write-probe.$$"
+    local xdg_probe="$current_xdg_cache/.write-probe.$$"
+
+    mkdir -p "$current_bun_install/install/cache" 2>/dev/null || true
+    if ! touch "$bun_probe" 2>/dev/null; then
+        selected_bun_cache="$fallback_bun_cache"
+    fi
+
+    mkdir -p "$current_xdg_cache" 2>/dev/null || true
+    if ! touch "$xdg_probe" 2>/dev/null; then
+        selected_xdg_cache="$fallback_xdg_cache"
+    fi
+    rm -f "$bun_probe" "$xdg_probe"
+
+    export BUN_INSTALL="$selected_bun_cache"
+    export XDG_CACHE_HOME="$selected_xdg_cache"
+}
+
+configure_runtime_tmpdir
+configure_runtime_cache_dirs
+
+# =============================================================================
 # Lock Verification
 # =============================================================================
 lock_require_or_exit() {
@@ -148,12 +210,32 @@ else
     phase_start "Installing dependencies"
 
     set +e
-    bun install 2>&1 | grep -E "(error|warn|installed)" || true
+    bun install 2>&1 | grep -E "(error|warn|installed)"
     BUN_EXIT=${PIPESTATUS[0]}
     set -e
 
     [ $BUN_EXIT -ne 0 ] && { phase_end error "bun install failed"; exit 1; }
     phase_end ok "Dependencies installed"
+
+    phase_start "Building workspace libraries"
+
+    LIB_BUILD_LOG="/tmp/build-libs-$ENV.log"
+    set +e
+    bun run build:libs > "$LIB_BUILD_LOG" 2>&1
+    LIB_BUILD_EXIT=$?
+    set -e
+
+    if [ $LIB_BUILD_EXIT -ne 0 ]; then
+        phase_end error "Workspace library build failed"
+        echo ""
+        banner_error "WORKSPACE LIB BUILD FAILED"
+        echo -e "  ${RED}Log: $LIB_BUILD_LOG${NC}"
+        echo ""
+        tail -30 "$LIB_BUILD_LOG"
+        echo ""
+        exit 1
+    fi
+    phase_end ok "Workspace libraries built (log: $LIB_BUILD_LOG)"
 
     # Static analysis: type-check + lint (silent — output in /tmp/static-check-$ENV.log)
     phase_start "Type-checking & linting"
@@ -358,8 +440,31 @@ else
         exit 1
     fi
 
+    E2E_PLAYWRIGHT_PATH="${PLAYWRIGHT_BROWSERS_PATH:-}"
+    if [ -z "$E2E_PLAYWRIGHT_PATH" ] || [ ! -d "$E2E_PLAYWRIGHT_PATH" ]; then
+        if [ -d "$HOME/.cache/ms-playwright" ]; then
+            E2E_PLAYWRIGHT_PATH="$HOME/.cache/ms-playwright"
+        elif [ -d "$XDG_CACHE_HOME/ms-playwright" ]; then
+            E2E_PLAYWRIGHT_PATH="$XDG_CACHE_HOME/ms-playwright"
+        fi
+    fi
+
+    if [ -n "$E2E_PLAYWRIGHT_PATH" ]; then
+        log_step "Using Playwright browsers from: $E2E_PLAYWRIGHT_PATH"
+    fi
+
     set +e
-    (cd apps/web && ENV_FILE=".env.$ENV" E2E_TEST_SECRET="$E2E_SECRET" bun run test:e2e)
+    if [ -n "$E2E_PLAYWRIGHT_PATH" ]; then
+        (
+            cd apps/web &&
+            ENV_FILE=".env.$ENV" \
+            E2E_TEST_SECRET="$E2E_SECRET" \
+            PLAYWRIGHT_BROWSERS_PATH="$E2E_PLAYWRIGHT_PATH" \
+            bun run test:e2e
+        )
+    else
+        (cd apps/web && ENV_FILE=".env.$ENV" E2E_TEST_SECRET="$E2E_SECRET" bun run test:e2e)
+    fi
     E2E_EXIT=$?
     set -e
 

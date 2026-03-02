@@ -24,6 +24,36 @@ LOCK_FILE="/tmp/alive-deploy.lock"
 # Current lock state
 _LOCK_ACQUIRED=false
 
+cleanup_orphan_deployment_processes() {
+    local current_pid="$1"
+    local parent_pid="$2"
+    local pattern="ship.sh|build-and-serve.sh|build-atomic.sh|turbo.*build|turbo.*type-check|next build"
+    local candidates=()
+    local kill_list=()
+    local pid
+
+    mapfile -t candidates < <(pgrep -f "$pattern" 2>/dev/null || true)
+
+    for pid in "${candidates[@]}"; do
+        if [ -z "$pid" ]; then
+            continue
+        fi
+
+        # Never kill the current lock owner shell or its direct parent.
+        if [ "$pid" = "$current_pid" ] || [ "$pid" = "$parent_pid" ]; then
+            continue
+        fi
+
+        kill_list+=("$pid")
+    done
+
+    if [ "${#kill_list[@]}" -gt 0 ]; then
+        echo -e "${YELLOW}Killing orphaned deployment processes...${NC}"
+        kill -9 "${kill_list[@]}" 2>/dev/null || true
+        sleep 1
+    fi
+}
+
 lock_acquire() {
     local target="$1"
     local now
@@ -37,8 +67,15 @@ lock_acquire() {
         lock_target=$(echo "$lock_content" | cut -d'|' -f3)
         lock_phase=$(echo "$lock_content" | cut -d'|' -f4)
 
-        # Check if process is still running
-        if [ -n "$lock_pid" ] && ps -p "$lock_pid" > /dev/null 2>&1; then
+        # Check if process is still running.
+        local lock_running=false
+        if [ -n "$lock_pid" ]; then
+            if ps -p "$lock_pid" > /dev/null 2>&1; then
+                lock_running=true
+            fi
+        fi
+
+        if [ "$lock_running" = true ]; then
             echo ""
             echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
             echo -e "${RED}${BOLD}DEPLOYMENT BLOCKED${NC}"
@@ -58,15 +95,8 @@ lock_acquire() {
             return 1
         else
             echo -e "${YELLOW}Removing stale lock (PID $lock_pid no longer running)${NC}"
-            # Kill any orphaned deployment processes from the dead parent
-            # These are child processes that survived SIGKILL of the parent
-            local orphans
-            orphans=$(pgrep -f "ship.sh|build-and-serve.sh|build-atomic.sh|turbo.*build|turbo.*type-check|next build" 2>/dev/null | grep -v "^$$\$" || true)
-            if [ -n "$orphans" ]; then
-                echo -e "${YELLOW}Killing orphaned deployment processes...${NC}"
-                echo "$orphans" | xargs -r kill -9 2>/dev/null || true
-                sleep 1
-            fi
+            # Kill orphaned deployment processes from dead parent runs.
+            cleanup_orphan_deployment_processes "$$" "$PPID"
             rm -f "$LOCK_FILE"
         fi
     fi
@@ -124,19 +154,19 @@ lock_status() {
     target=$(echo "$content" | cut -d'|' -f3)
     phase=$(echo "$content" | cut -d'|' -f4)
 
-    if [ -n "$pid" ] && ps -p "$pid" > /dev/null 2>&1; then
+    local lock_running=false
+    if [ -n "$pid" ]; then
+        if ps -p "$pid" > /dev/null 2>&1; then
+            lock_running=true
+        fi
+    fi
+
+    if [ "$lock_running" = true ]; then
         echo "Deployment running: $target (phase: $phase, started: $time, PID: $pid)"
         return 0
     else
         echo "Stale lock found (PID $pid not running) - auto-cleaning..."
-        # Kill any orphaned deployment processes
-        local orphans
-        orphans=$(pgrep -f "ship.sh|build-and-serve.sh|build-atomic.sh|turbo.*build|turbo.*type-check|next build" 2>/dev/null | grep -v "^$$\$" || true)
-        if [ -n "$orphans" ]; then
-            echo "Killing orphaned processes..."
-            echo "$orphans" | xargs -r kill -9 2>/dev/null || true
-            sleep 1
-        fi
+        cleanup_orphan_deployment_processes "$$" "$PPID"
         rm -f "$LOCK_FILE"
         echo "Cleaned. No deployment running."
         return 1

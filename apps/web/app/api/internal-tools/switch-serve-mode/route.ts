@@ -4,7 +4,9 @@ import { basename, dirname, join } from "node:path"
 import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { structuredErrorResponse } from "@/lib/api/responses"
 import { verifyInternalSecret } from "@/lib/auth/timing-safe"
+import { ErrorCodes } from "@/lib/error-codes"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
 import { detectServeMode, runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
 import { restartSystemdService } from "@/lib/workspace-execution/systemd-restart"
@@ -301,14 +303,11 @@ ExecStart=${execStart}
           requestId,
         })
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
         console.error(`[switch-serve-mode ${requestId}] Error:`, error)
         Sentry.captureException(error)
-
-        return NextResponse.json({
-          ok: false,
-          message: errorMessage,
-          requestId,
+        return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, {
+          status: 500,
+          details: { requestId },
         })
       }
     },

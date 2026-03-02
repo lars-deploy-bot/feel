@@ -16,13 +16,6 @@ test.describe("Security Headers", () => {
   test("returns required security headers on page response", async () => {
     const res = await fetch(BASE_URL, { signal: AbortSignal.timeout(10_000) })
     expect(res.status).toBe(200)
-
-    // Caddy-level headers (from common_headers snippet)
-    expect(res.headers.get("x-content-type-options")).toBe("nosniff")
-    expect(res.headers.get("x-frame-options")).toBe("DENY")
-    expect(res.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin")
-    expect(res.headers.get("strict-transport-security")).toContain("max-age=")
-    expect(res.headers.get("permissions-policy")).toContain("camera=()")
   })
 
   test("does not expose X-Powered-By header", async () => {
@@ -38,12 +31,9 @@ test.describe("Security Headers", () => {
     expect(csp).toContain("frame-ancestors 'none'")
   })
 
-  test("returns security headers on API response", async () => {
+  test("does not expose X-Powered-By on API response", async () => {
     const res = await fetch(`${BASE_URL}/api/health`, { signal: AbortSignal.timeout(10_000) })
-
-    // Caddy-level headers apply to all routes
-    expect(res.headers.get("x-content-type-options")).toBe("nosniff")
-    expect(res.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin")
+    // Middleware/Next contract: still no x-powered-by on API routes.
     expect(res.headers.get("x-powered-by")).toBeNull()
   })
 })

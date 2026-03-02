@@ -57,17 +57,52 @@ try {
 // Read server-config.json for build-time values (avoids hardcoding domains).
 // next.config.js is pure JS and can't import @webalive/shared, so we read directly.
 // In production, SERVER_CONFIG_PATH is always set and the file always exists.
-// In local dev, these stay empty — Sentry won't init and contact email is blank.
-let sentryDsn = ""
-let sentryUrl = ""
+// In local dev, these stay null/empty — Sentry won't init and contact email is blank.
+let sentryConfig = null
 let contactEmail = ""
+const SENTRY_HOSTNAME_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i
+
+function readRequiredString(obj, key, context) {
+  const value = obj?.[key]
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`FATAL: ${context}.${key} is missing or empty in server-config.json`)
+  }
+  return value
+}
+
+function normalizeSentryConfig(rawSentry) {
+  const dsn = readRequiredString(rawSentry, "dsn", "sentry")
+  const org = readRequiredString(rawSentry, "org", "sentry")
+  const project = readRequiredString(rawSentry, "project", "sentry")
+
+  const rawUrl = rawSentry?.url
+  const rawHost = rawSentry?.host
+  let url = ""
+
+  if (typeof rawUrl === "string" && rawUrl.trim() !== "") {
+    try {
+      url = new URL(rawUrl).toString()
+    } catch {
+      throw new Error("FATAL: sentry.url must be a valid URL in server-config.json")
+    }
+  } else if (typeof rawHost === "string" && rawHost.trim() !== "") {
+    if (!SENTRY_HOSTNAME_RE.test(rawHost)) {
+      throw new Error("FATAL: sentry.host must be a bare hostname (e.g. sentry.example.com)")
+    }
+    url = `https://${rawHost}`
+  } else {
+    throw new Error("FATAL: sentry.url is required (or provide legacy sentry.host) in server-config.json")
+  }
+
+  return { dsn, org, project, url }
+}
+
 {
   const configPath = process.env.SERVER_CONFIG_PATH
-  if (configPath) {
-    const serverConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"))
-    sentryDsn = serverConfig.sentry.dsn
-    sentryUrl = serverConfig.sentry.url
-    contactEmail = serverConfig.contactEmail
+  if (configPath && fs.existsSync(configPath)) {
+    const serverCfg = JSON.parse(fs.readFileSync(configPath, "utf-8"))
+    contactEmail = readRequiredString(serverCfg, "contactEmail", "root")
+    if (serverCfg.sentry) sentryConfig = normalizeSentryConfig(serverCfg.sentry)
   }
 }
 
@@ -104,7 +139,7 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_SENTRY_RELEASE: sentryRelease,
-    NEXT_PUBLIC_SENTRY_DSN: sentryDsn,
+    ...(sentryConfig ? { NEXT_PUBLIC_SENTRY_DSN: sentryConfig.dsn } : {}),
     NEXT_PUBLIC_CONTACT_EMAIL: contactEmail,
   },
   experimental: {
@@ -179,10 +214,8 @@ export default withSentryConfig(nextConfig, {
   // Don't widen the tracing for build-time (keeps builds fast)
   webpack: { treeshake: { removeDebugLogging: true } },
 
-  // Use the org/project from our self-hosted Sentry
-  org: "sentry",
-  project: "alive",
-
-  // Self-hosted Sentry URL (from server-config.json)
-  sentryUrl: sentryUrl || undefined,
+  // Sentry build config from server-config.json (undefined = disabled)
+  org: sentryConfig?.org,
+  project: sentryConfig?.project,
+  sentryUrl: sentryConfig?.url,
 })
