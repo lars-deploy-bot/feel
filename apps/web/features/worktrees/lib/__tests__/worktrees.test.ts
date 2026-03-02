@@ -61,6 +61,19 @@ function setupRepo(): TestRepo {
   const baseWorkspacePath = path.join(siteRoot, "user")
   fs.mkdirSync(baseWorkspacePath, { recursive: true })
 
+  // Site metadata is required by bootstrapBaseRepo (validated by Zod)
+  fs.writeFileSync(
+    path.join(siteRoot, ".site-metadata.json"),
+    JSON.stringify({
+      slug: "test",
+      domain: "test.alive.best",
+      workspace: "test.alive.best",
+      email: "test@example.com",
+      siteIdeas: "",
+      createdAt: Date.now(),
+    }),
+  )
+
   runGit(baseWorkspacePath, ["init", "-b", "main"])
   runGit(baseWorkspacePath, ["config", "user.email", "test@example.com"])
   runGit(baseWorkspacePath, ["config", "user.name", "Test User"])

@@ -45,10 +45,8 @@ export function syncDexieTabsToLocalStorage(
     // Skip if tab already exists locally
     if (existingTabIds.has(dexieTab.id as TabId)) continue
 
-    // Skip closed tabs (they'll be re-synced if reopened)
-    if (dexieTab.closedAt != null) continue
-
-    // Convert DbTab to localStorage Tab format
+    // Convert DbTab to localStorage Tab format (including closed tabs, so they
+    // appear in the "reopen" dropdown — previously they were skipped and lost)
     const tab: Tab = {
       id: dexieTab.id as TabId,
       tabGroupId: dexieTab.conversationId as TabGroupId,

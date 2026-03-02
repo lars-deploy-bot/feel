@@ -35,7 +35,7 @@ import {
   unarchiveConversation as syncUnarchiveConversation,
   unshareConversation as syncUnshareConversation,
 } from "./conversationSync"
-import { extractTitle, toDbMessageContent, toDbMessageType } from "./messageAdapters"
+import { extractTitle, toDbMessage, toDbMessageContent } from "./messageAdapters"
 import { CURRENT_MESSAGE_VERSION, type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
 import { safeDb } from "./safeDb"
 
@@ -511,19 +511,11 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       const now = Date.now()
       const seq = await getNextSeq(db, targetTabId)
 
-      const dbMessage: DbMessage = {
-        id: message.id,
-        tabId: targetTabId,
-        type: toDbMessageType(message.type),
-        content: toDbMessageContent(message),
-        createdAt: now,
-        updatedAt: now,
-        version: CURRENT_MESSAGE_VERSION,
+      const dbMessage = toDbMessage(message, targetTabId, seq, {
         status: "complete",
         origin: "local",
-        seq,
         pendingSync: true,
-      }
+      })
 
       await safeDb(() => db.messages.put(dbMessage))
 

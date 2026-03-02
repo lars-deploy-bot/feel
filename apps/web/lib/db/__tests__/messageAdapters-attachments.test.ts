@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import type {
   Attachment,
   LibraryImageAttachment,
+  SkillAttachment,
+  SuperTemplateAttachment,
   UploadedFileAttachment,
 } from "@/features/chat/components/ChatInput/types"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
@@ -111,6 +113,120 @@ describe("Attachment Persistence", () => {
 
     const restoredMessage = toUIMessage(dbMessage)
     expect(restoredMessage.attachments).toBeUndefined()
+  })
+
+  it("should persist attachments when called with addMessage-style options", () => {
+    // This test covers the exact code path used by dexieMessageStore.addMessage()
+    // which was previously constructing DbMessage manually (missing attachments)
+    const imageAttachment: LibraryImageAttachment = {
+      kind: "library-image",
+      id: "img-add-msg",
+      photobookKey: "domain.com/photo123",
+      preview: "data:image/webp;base64,abc",
+      mode: "website",
+    }
+
+    const fileAttachment: UploadedFileAttachment = {
+      kind: "uploaded-file",
+      id: "file-add-msg",
+      workspacePath: ".uploads/photo.jpg",
+      originalName: "photo.jpg",
+      mimeType: "image/jpeg",
+      size: 204800,
+      preview: "data:image/jpeg;base64,xyz",
+    }
+
+    const userMessage: UIMessage = {
+      id: "msg-addmsg",
+      type: "user",
+      content: "Here are my photos",
+      timestamp: new Date(),
+      attachments: [imageAttachment, fileAttachment],
+    }
+
+    // Use the same options addMessage passes
+    const dbMessage = toDbMessage(userMessage, "tab-1", 5, {
+      status: "complete",
+      origin: "local",
+      pendingSync: true,
+    })
+
+    // Verify metadata options are applied
+    expect(dbMessage.status).toBe("complete")
+    expect(dbMessage.origin).toBe("local")
+    expect(dbMessage.pendingSync).toBe(true)
+
+    // Verify attachments survive the conversion
+    expect(dbMessage.attachments).toBeDefined()
+    expect(dbMessage.attachments).toHaveLength(2)
+    expect(dbMessage.attachments?.[0]).toMatchObject({
+      kind: "library-image",
+      id: "img-add-msg",
+      photobookKey: "domain.com/photo123",
+    })
+    expect(dbMessage.attachments?.[1]).toMatchObject({
+      kind: "uploaded-file",
+      id: "file-add-msg",
+      workspacePath: ".uploads/photo.jpg",
+      originalName: "photo.jpg",
+    })
+
+    // Verify round-trip back to UI
+    const restored = toUIMessage(dbMessage)
+    expect(restored.attachments).toHaveLength(2)
+    expect(restored.attachments?.[0]).toMatchObject({ kind: "library-image", id: "img-add-msg" })
+    expect(restored.attachments?.[1]).toMatchObject({ kind: "uploaded-file", id: "file-add-msg" })
+  })
+
+  it("should persist all attachment kinds through round-trip", () => {
+    const attachments: Attachment[] = [
+      {
+        kind: "library-image",
+        id: "img-1",
+        photobookKey: "domain.com/abc",
+        preview: "data:image/webp;base64,",
+        mode: "analyze",
+      } satisfies LibraryImageAttachment,
+      {
+        kind: "supertemplate",
+        id: "tmpl-1",
+        templateId: "carousel-v1",
+        name: "Carousel",
+        preview: "https://example.com/preview.png",
+      } satisfies SuperTemplateAttachment,
+      {
+        kind: "skill",
+        id: "skill-1",
+        skillId: "revise-code",
+        displayName: "Revise Code",
+        description: "Review code quality",
+        prompt: "Please review...",
+        source: "superadmin",
+      } satisfies SkillAttachment,
+      {
+        kind: "uploaded-file",
+        id: "file-1",
+        workspacePath: ".uploads/doc.pdf",
+        originalName: "doc.pdf",
+        mimeType: "application/pdf",
+        size: 50000,
+      } satisfies UploadedFileAttachment,
+    ]
+
+    const userMessage: UIMessage = {
+      id: "msg-all-kinds",
+      type: "user",
+      content: "All attachment types",
+      timestamp: new Date(),
+      attachments,
+    }
+
+    const dbMessage = toDbMessage(userMessage, "tab-1", 6)
+    expect(dbMessage.attachments).toHaveLength(4)
+
+    const restored = toUIMessage(dbMessage)
+    expect(restored.attachments).toHaveLength(4)
+    expect(restored.attachments?.map(a => a.kind)).toEqual(["library-image", "supertemplate", "skill", "uploaded-file"])
   })
 
   it("should drop transient fields like uploadProgress and error", () => {
