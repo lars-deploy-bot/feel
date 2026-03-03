@@ -865,6 +865,14 @@ async function handleQuery(ipc, requestId, payload) {
       const claudeExecutable = isBunRuntime ? "bun" : "node"
       const claudeExecutableArgs = isBunRuntime ? ["--no-env-file"] : []
 
+      // SECURITY (defense-in-depth): Build explicit env for the Claude subprocess.
+      // Even though createWorkerSpawnEnv() already strips secrets at spawn time,
+      // this ensures the SDK subprocess never inherits anything unexpected.
+      const sdkEnv = {}
+      for (const [key, value] of Object.entries(process.env)) {
+        if (value !== undefined) sdkEnv[key] = value
+      }
+
       const agentQuery = query({
         prompt: payload.message,
         options: {
@@ -886,6 +894,7 @@ async function handleQuery(ipc, requestId, payload) {
           abortSignal: signal,
           stderr: stderrHandler,
           strictMcpConfig: true,
+          env: sdkEnv,
         },
       })
 

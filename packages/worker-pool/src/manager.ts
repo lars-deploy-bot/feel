@@ -14,6 +14,7 @@ import { setTimeout as sleep } from "node:timers/promises"
 import { promisify } from "node:util"
 import { isPathWithinWorkspace, PATHS, SUPERADMIN } from "@webalive/shared"
 import { createConfig } from "./config.js"
+import { createWorkerSpawnEnv } from "./env-isolation.js"
 import { createIpcServer, type IpcServer, isWorkerMessage } from "./ipc.js"
 import type {
   ParentToWorkerMessage,
@@ -1132,15 +1133,19 @@ export class WorkerPoolManager extends EventEmitter {
 
     let child: ChildProcess
     try {
+      // SECURITY: Allowlist env vars for worker subprocess.
+      // The parent process has secrets (SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, JWT_SECRET, etc.)
+      // that must NEVER leak to workspace users. createWorkerSpawnEnv() only passes safe vars.
+      const workerEnv = createWorkerSpawnEnv({
+        TARGET_UID: String(uid),
+        TARGET_GID: String(gid),
+        TARGET_CWD: cwd,
+        WORKER_SOCKET_PATH: socketPath,
+        WORKER_WORKSPACE_KEY: workspaceKey,
+      })
+
       child = spawn(process.execPath, [this.config.workerEntryPath], {
-        env: {
-          ...process.env,
-          TARGET_UID: String(uid),
-          TARGET_GID: String(gid),
-          TARGET_CWD: cwd,
-          WORKER_SOCKET_PATH: socketPath,
-          WORKER_WORKSPACE_KEY: workspaceKey,
-        },
+        env: workerEnv,
         stdio: ["ignore", "inherit", "pipe"],
         // Detached ensures each worker owns a process group so we can terminate the full tree with -pid.
         detached: true,

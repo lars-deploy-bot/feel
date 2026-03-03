@@ -19,7 +19,11 @@ export const httpsUrl = z
   .url()
   .regex(/^https:\/\//, "Must use HTTPS")
 
-export const jwt = z.string().regex(/^eyJ/, "Must be valid JWT")
+export const supabasePublishableKey = z
+  .string()
+  .regex(/^(eyJ|sb_publishable_)/, "Must be valid Supabase publishable key")
+
+export const supabaseSecretKey = z.string().regex(/^(eyJ|sb_secret_)/, "Must be valid Supabase secret key")
 
 export const anthropicApiKey = z.string().regex(/^sk-ant-/, "Must be valid Anthropic API key")
 
@@ -48,8 +52,8 @@ export const serverSchema = {
 
   // Supabase (server-side)
   SUPABASE_URL: httpsUrl,
-  SUPABASE_ANON_KEY: jwt,
-  SUPABASE_SERVICE_ROLE_KEY: jwt.optional(),
+  SUPABASE_ANON_KEY: supabasePublishableKey,
+  SUPABASE_SERVICE_ROLE_KEY: supabaseSecretKey.optional(),
   SUPABASE_ACCESS_TOKEN: z.string().optional(),
   SUPABASE_PROJECT_ID: z.string().optional(),
 
@@ -155,7 +159,7 @@ export const serverSchema = {
  */
 export const clientSchema = {
   NEXT_PUBLIC_SUPABASE_URL: httpsUrl,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: jwt,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: supabasePublishableKey,
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_PREVIEW_BASE: z.string().optional().default(""),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),

@@ -165,9 +165,29 @@ if [ ! -f "$STREAM_ROUTE" ]; then
 fi
 log_step "Build verified: $CHUNK_COUNT chunks, stream route present"
 
+# Build size report
+STANDALONE_SIZE=$(du -sm "$WEB_NEXT_DIR/standalone" 2>/dev/null | cut -f1)
+NODE_MODULES_SIZE=$(du -sm "$WEB_NEXT_DIR/standalone/node_modules" 2>/dev/null | cut -f1)
+PACKAGES_SIZE=$(du -sm "$WEB_NEXT_DIR/standalone/packages" 2>/dev/null | cut -f1)
+TOTAL_SIZE=$(du -sm "$WEB_NEXT_DIR" 2>/dev/null | cut -f1)
+log_step "Build size: ${TOTAL_SIZE}MB total (standalone: ${STANDALONE_SIZE}MB, node_modules: ${NODE_MODULES_SIZE}MB, packages: ${PACKAGES_SIZE}MB)"
+
+# Flag unexpected bloat (thresholds based on known-good builds)
+if [ "${STANDALONE_SIZE:-0}" -gt 500 ]; then
+    log_warn "Standalone size ${STANDALONE_SIZE}MB exceeds 500MB — check for leaked .tmp dirs or duplicate deps"
+    log_step "Top node_modules:"
+    du -sm "$WEB_NEXT_DIR/standalone/node_modules"/* 2>/dev/null | sort -rn | head -5 | while read size dir; do
+        log_step "  ${size}MB  $(basename "$dir")"
+    done
+fi
+
 # =============================================================================
 # Phase 6: Move to .builds
 # =============================================================================
+# Remove dev server artifacts — the running dev server (alive-dev) recreates
+# .next/dev/ during builds. Without this, 700+MB of dev cache leaks into every build.
+rm -rf "$WEB_NEXT_DIR/dev" 2>/dev/null || true
+
 log_step "Moving build to .builds..."
 mv "$WEB_NEXT_DIR" "$TEMP_BUILD_DIR"
 

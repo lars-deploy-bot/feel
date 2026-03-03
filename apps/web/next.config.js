@@ -164,19 +164,32 @@ const nextConfig = {
     ],
   },
   outputFileTracingExcludes: {
-    // TypeScript is pulled in by Next's server trace but is not required for runtime.
-    // Keep it out of standalone to shrink final artifact size.
-    "/*": ["../../node_modules/typescript/**"],
-
-    // Exclude nested workspace node_modules symlinks from standalone tracing.
-    // They can conflict with traced copies and break chunk loading at runtime.
-    "/api/claude/stream/route": [
+    // Workspace packages: only dist/ and package.json are needed at runtime.
+    // Exclude build caches, tests, and nested node_modules (which duplicate top-level).
+    "/**/*": [
       "../../packages/**/node_modules/**",
       "../../packages/**/.tmp/**",
       "../../packages/**/.turbo/**",
       "../../packages/**/test/**",
       "../../packages/**/docs/**",
       "../../packages/**/__tests__/**",
+      "../../packages/**/migrations/**",
+      "../../packages/**/scripts/**",
+    ],
+
+    // Stream route: heaviest route (~77MB duplicated deps).
+    // Patterns must use /**/* (not /**) to match files — Next.js file tracing
+    // uses picomatch which treats /** as directory-only.
+    // Paths must use symlink path (node_modules/@webalive/worker), not resolved
+    // target (apps/worker), because the tracer doesn't resolve symlinks.
+    "/api/claude/stream/route": [
+      // @webalive/worker has its own node_modules with duplicate @anthropic-ai (72MB).
+      "../../node_modules/@webalive/worker/node_modules/**/*",
+      // @webalive/api has its own node_modules too.
+      "../../node_modules/@webalive/api/node_modules/**/*",
+      // chromium-bidi — puppeteer transport, was hoisted from google-scraper (now removed).
+      // Keep exclude in case it returns as a transitive dep.
+      "../../node_modules/chromium-bidi/**/*",
       // Claude SDK bundles ripgrep binaries for all platforms.
       // Only keep the current build target to reduce standalone size.
       ...ripgrepExcludes,

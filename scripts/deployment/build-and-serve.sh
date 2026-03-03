@@ -209,12 +209,22 @@ if [ -n "$PROMOTE_FROM" ]; then
 else
     phase_start "Installing dependencies"
 
+    INSTALL_LOG="/tmp/bun-install-$ENV.log"
     set +e
-    bun install 2>&1 | grep -E "(error|warn|installed)"
-    BUN_EXIT=${PIPESTATUS[0]}
+    bun install > "$INSTALL_LOG" 2>&1
+    BUN_EXIT=$?
     set -e
 
-    [ $BUN_EXIT -ne 0 ] && { phase_end error "bun install failed"; exit 1; }
+    if [ $BUN_EXIT -ne 0 ]; then
+        phase_end error "bun install failed (exit $BUN_EXIT)"
+        echo ""
+        banner_error "BUN INSTALL FAILED"
+        echo -e "  ${RED}Log: $INSTALL_LOG${NC}"
+        echo ""
+        grep -E "error|ERR_|ENOENT|EACCES|ENOSPC|resolution|not found" "$INSTALL_LOG" | head -20
+        echo ""
+        exit 1
+    fi
     phase_end ok "Dependencies installed"
 
     phase_start "Building workspace libraries"
@@ -226,12 +236,16 @@ else
     set -e
 
     if [ $LIB_BUILD_EXIT -ne 0 ]; then
-        phase_end error "Workspace library build failed"
+        phase_end error "Workspace library build failed (exit $LIB_BUILD_EXIT)"
         echo ""
         banner_error "WORKSPACE LIB BUILD FAILED"
         echo -e "  ${RED}Log: $LIB_BUILD_LOG${NC}"
         echo ""
-        tail -30 "$LIB_BUILD_LOG"
+        echo -e "${BOLD}Errors:${NC}"
+        grep -E "error TS|Error:|FAIL|Cannot find|Module not found" "$LIB_BUILD_LOG" | head -20
+        echo ""
+        echo -e "${BOLD}Last 20 lines:${NC}"
+        tail -20 "$LIB_BUILD_LOG"
         echo ""
         exit 1
     fi
@@ -247,12 +261,16 @@ else
     set -e
 
     if [ $STATIC_EXIT -ne 0 ]; then
-        phase_end error "Static checks failed"
+        phase_end error "Static checks failed (exit $STATIC_EXIT)"
         echo ""
         banner_error "STATIC CHECKS FAILED"
         echo -e "  ${RED}Log: $STATIC_LOG${NC}"
         echo ""
-        tail -30 "$STATIC_LOG"
+        echo -e "${BOLD}Errors:${NC}"
+        grep -E "error TS|Error:|error\[|FAIL|Cannot find" "$STATIC_LOG" | head -20
+        echo ""
+        echo -e "${BOLD}Last 20 lines:${NC}"
+        tail -20 "$STATIC_LOG"
         echo ""
         exit 1
     fi
@@ -268,12 +286,16 @@ else
     set -e
 
     if [ $TEST_EXIT -ne 0 ]; then
-        phase_end error "Unit tests failed"
+        phase_end error "Unit tests failed (exit $TEST_EXIT)"
         echo ""
         banner_error "UNIT TESTS FAILED"
         echo -e "  ${RED}Log: $TEST_LOG${NC}"
         echo ""
-        tail -30 "$TEST_LOG"
+        echo -e "${BOLD}Failed tests:${NC}"
+        grep -E "FAIL|✗|×|AssertionError|Expected|Received" "$TEST_LOG" | head -20
+        echo ""
+        echo -e "${BOLD}Last 20 lines:${NC}"
+        tail -20 "$TEST_LOG"
         echo ""
         exit 1
     fi
@@ -370,13 +392,20 @@ else
     set -e
 
     if [ $BUILD_EXIT -ne 0 ]; then
-        phase_end error "Build failed"
+        phase_end error "Build failed (exit $BUILD_EXIT)"
         echo ""
         banner_error "BUILD FAILED"
         echo -e "  ${RED}Log: $BUILD_LOG${NC}"
         echo ""
-        grep -E "Error:|error TS|error:|failed" "$BUILD_LOG" | head -30
+        echo -e "${BOLD}Errors:${NC}"
+        grep -E "Error:|error TS|error:|FATAL|Cannot find|Module not found|ENOSPC|ENOMEM" "$BUILD_LOG" | head -20
         echo ""
+        echo -e "${BOLD}Last 15 lines:${NC}"
+        tail -15 "$BUILD_LOG"
+        echo ""
+        # Show disk space if that might be the issue
+        AVAIL=$(df -BM "$PROJECT_ROOT" | tail -1 | awk '{print $4}')
+        echo -e "${DIM}Disk available: $AVAIL${NC}"
         exit 1
     fi
 
@@ -410,15 +439,33 @@ log_step "Restarting $SERVICE..."
 SERVICE_WAIT=20
 if ! service_force_restart "$SERVICE" "$SERVICE_WAIT"; then
     phase_end error "Failed to restart (service not active after ${SERVICE_WAIT}s)"
-    log_error "Service status:"
+    echo ""
+    echo -e "${BOLD}Service status:${NC}"
     systemctl status "$SERVICE" --no-pager 2>&1 | head -20 || true
+    echo ""
+    echo -e "${BOLD}Recent logs (crash reason):${NC}"
+    journalctl -u "$SERVICE" -n 30 --no-pager 2>/dev/null || true
+    echo ""
+    echo -e "${BOLD}Build being served:${NC}"
+    readlink "$BUILDS_DIR/current" 2>/dev/null || echo "  No current symlink"
+    echo ""
     rollback "service failed to start"
     exit 1
 fi
 
 log_step "Waiting for health check (max ${MAX_WAIT}s)..."
 if ! health_check "http://localhost:$PORT/" "$MAX_WAIT" 1; then
-    phase_end error "Health check failed"
+    phase_end error "Health check failed after ${MAX_WAIT}s"
+    echo ""
+    echo -e "${BOLD}Service status:${NC}"
+    systemctl status "$SERVICE" --no-pager 2>&1 | head -15 || true
+    echo ""
+    echo -e "${BOLD}Recent logs:${NC}"
+    journalctl -u "$SERVICE" -n 20 --no-pager 2>/dev/null || true
+    echo ""
+    echo -e "${BOLD}Port $PORT:${NC}"
+    lsof -Pi :$PORT -sTCP:LISTEN 2>/dev/null || echo "  Nothing listening on port $PORT"
+    echo ""
     rollback "health check timeout"
     exit 1
 fi
@@ -469,7 +516,10 @@ else
     set -e
 
     if [ $E2E_EXIT -ne 0 ]; then
-        phase_end error "E2E tests failed"
+        phase_end error "E2E tests failed (exit $E2E_EXIT)"
+        echo ""
+        echo -e "${BOLD}Hint:${NC} Check apps/web/test-results/ for screenshots and traces"
+        echo ""
         rollback "E2E failure"
         exit 1
     fi

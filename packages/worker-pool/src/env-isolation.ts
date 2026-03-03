@@ -1,9 +1,13 @@
 /**
- * Request-scoped environment isolation.
+ * Environment isolation for worker processes.
  *
- * Prevents credential/secret leakage between requests handled by the same
- * long-lived worker process.  Extracted from worker-entry.mjs so the
- * security invariants can be tested behaviourally.
+ * Two layers of protection:
+ *  1. SPAWN: createWorkerSpawnEnv() — allowlist of env vars passed to worker on spawn
+ *  2. REQUEST: prepareRequestEnv() — per-request auth isolation within worker
+ *
+ * SECURITY CRITICAL: The parent process (Next.js) has secrets that must NEVER
+ * leak to workspace users. Without the spawn allowlist, running `env` in Bash
+ * exposes SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, JWT_SECRET, and ~30 more.
  *
  * OAuth token flow: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md § "Token Flow Through the System"
  */
@@ -11,6 +15,73 @@ import { RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 
 const RESERVED_USER_ENV_KEY_SET = new Set<string>(RESERVED_USER_ENV_KEYS)
 const VALID_USER_ENV_KEY_PATTERN = /^[A-Z][A-Z0-9_]*$/
+
+/**
+ * Env vars safe to pass from the parent process to worker processes.
+ *
+ * ADDING TO THIS LIST? Ask: "Would it be a security incident if a user
+ * ran `echo $THIS_VAR` in their workspace?" If yes, don't add it.
+ */
+const WORKER_SPAWN_ALLOWED_ENV_KEYS = [
+  // System essentials — needed for binaries to run
+  "PATH",
+  "HOME",
+  "LANG",
+  "LC_ALL",
+  "NODE_ENV",
+
+  // Temp directories — processes need a writable temp dir
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+
+  // Bun runtime — needed for bun to find its install and modules
+  "BUN_INSTALL",
+
+  // Claude SDK config — needed for SDK to find credentials/config
+  "CLAUDE_CONFIG_DIR",
+  "CLAUDECODE",
+
+  // MCP tool API callbacks — tools call back to Alive via localhost
+  "PORT",
+  "BRIDGE_API_PORT",
+  "INTERNAL_TOOLS_SECRET",
+
+  // Workspace config — worker needs to know workspace boundaries
+  "WORKSPACE_BASE",
+  "STREAM_ENV",
+  "SERVER_CONFIG_PATH",
+] as const
+
+/**
+ * Build a sandboxed env for worker subprocess spawn.
+ *
+ * Uses an ALLOWLIST — only explicitly listed vars pass through.
+ * Everything else (database creds, API keys, OAuth secrets, JWT_SECRET,
+ * SUPABASE_SERVICE_ROLE_KEY, etc.) is excluded.
+ *
+ * Called by WorkerPoolManager.spawnWorker().
+ */
+export function createWorkerSpawnEnv(extras: Record<string, string>): Record<string, string> {
+  const env: Record<string, string> = {}
+
+  for (const key of WORKER_SPAWN_ALLOWED_ENV_KEYS) {
+    const val = process.env[key]
+    if (val !== undefined) {
+      env[key] = val
+    }
+  }
+
+  // Ensure temp dirs default to /tmp (safe, world-writable)
+  env.TMPDIR ??= "/tmp"
+  env.TMP ??= "/tmp"
+  env.TEMP ??= "/tmp"
+
+  // Merge caller-provided extras (worker-specific vars like TARGET_UID etc.)
+  Object.assign(env, extras)
+
+  return env
+}
 
 /** Subset of the IPC payload that affects process.env */
 export interface EnvPayload {

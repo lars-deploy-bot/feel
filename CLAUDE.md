@@ -61,6 +61,12 @@ Use the `/roadmap` skill to manage issues, milestones, and the project board. Th
     - **Zod schemas**: Derive with `z.enum(AppConstants.app.Enums.<name>)`, never hand-write the values
     - Source file: `packages/database/src/automation-enums.ts`, derived from auto-generated `AppConstants`
 
+## E2B Sandbox Migration (ACTIVE)
+
+We are moving to **E2B sandboxes** for site execution. Self-hosted E2B at `e2b.sonno.tech`. This will be aggressive — not a gentle migration with compatibility layers. The codebase will split between the current systemd approach and the new E2B approach as we figure out what needs to change.
+
+**Experiment:** `apps/experimental/e2b-test/` — basic smoke test validating sandbox creation, commands, and file I/O.
+
 ## Learn from OpenClaw (IMPORTANT)
 
 **OpenClaw** (formerly ClawdBot) is installed at `/opt/services/clawdbot/`. It's a well-architected open-source AI assistant with battle-tested patterns.
