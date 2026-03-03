@@ -85,49 +85,6 @@ export type OAuthMcpProviderRegistry = Record<string, OAuthMcpProviderConfig>
  * 3. That's it! Token fetching, MCP config, and tool permissions work automatically
  */
 export const OAUTH_MCP_PROVIDERS = {
-  github: {
-    url: "https://api.githubcopilot.com/mcp/",
-    oauthKey: "github",
-    friendlyName: "GitHub",
-    defaultScopes: "repo user",
-    envPrefix: "GITHUB",
-    /**
-     * GitHub integration supports classic Personal Access Tokens (PAT).
-     * Users can connect by providing their PAT directly instead of going through OAuth.
-     */
-    supportsPat: true,
-    /**
-     * GitHub also supports full OAuth 2.0 flow.
-     * Users can choose between OAuth (automatic) or PAT (manual).
-     */
-    supportsOAuth: true,
-    knownTools: [
-      // Repository operations
-      "mcp__github__list_repos",
-      "mcp__github__get_repo",
-      "mcp__github__create_repo",
-      // Branch operations
-      "mcp__github__list_branches",
-      "mcp__github__get_branch",
-      // File operations
-      "mcp__github__get_file_contents",
-      "mcp__github__create_or_update_file",
-      // Issue operations
-      "mcp__github__list_issues",
-      "mcp__github__get_issue",
-      "mcp__github__create_issue",
-      "mcp__github__update_issue",
-      // Pull request operations
-      "mcp__github__list_pull_requests",
-      "mcp__github__get_pull_request",
-      "mcp__github__create_pull_request",
-      // Commit operations
-      "mcp__github__list_commits",
-      "mcp__github__get_commit",
-      // User operations
-      "mcp__github__get_authenticated_user",
-    ],
-  },
   stripe: {
     url: "https://mcp.stripe.com",
     oauthKey: "stripe",
@@ -353,7 +310,10 @@ export function getOAuthMcpProviderKeys(): OAuthMcpProviderKey[] {
 export function providerSupportsPat(providerKey: string): boolean {
   if (providerKey in OAUTH_MCP_PROVIDERS) {
     const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
-    // Use 'in' operator to safely check for optional property
+    return "supportsPat" in config && config.supportsPat === true
+  }
+  if (providerKey in OAUTH_ONLY_PROVIDERS) {
+    const config = OAUTH_ONLY_PROVIDERS[providerKey as OAuthOnlyProviderKey]
     return "supportsPat" in config && config.supportsPat === true
   }
   return false
@@ -368,12 +328,12 @@ export function providerSupportsPat(providerKey: string): boolean {
 export function providerSupportsOAuth(providerKey: string): boolean {
   if (providerKey in OAUTH_MCP_PROVIDERS) {
     const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
-    // Use 'in' operator to safely check for optional property
     return "supportsOAuth" in config && config.supportsOAuth === true
   }
-  // OAuth-only providers always support OAuth
   if (providerKey in OAUTH_ONLY_PROVIDERS) {
-    return true
+    const config = OAUTH_ONLY_PROVIDERS[providerKey as OAuthOnlyProviderKey]
+    // Explicit supportsOAuth flag if set, otherwise OAuth-only providers default to true
+    return "supportsOAuth" in config ? config.supportsOAuth === true : true
   }
   return false
 }
@@ -530,6 +490,14 @@ export interface OAuthOnlyProviderConfig {
    * Environment variable prefix for credentials (e.g., "GOOGLE" for GOOGLE_CLIENT_ID)
    */
   envPrefix: string
+  /**
+   * Whether this provider supports Personal Access Tokens (PAT) as an alternative to OAuth.
+   */
+  supportsPat?: boolean
+  /**
+   * Whether this provider supports OAuth flow.
+   */
+  supportsOAuth?: boolean
 }
 
 /**
@@ -546,6 +514,13 @@ export type OAuthOnlyProviderRegistry = Record<string, OAuthOnlyProviderConfig>
  * NOTE: Google is the OAuth provider for Gmail MCP. Gmail MCP uses google's OAuth tokens.
  */
 export const OAUTH_ONLY_PROVIDERS = {
+  github: {
+    friendlyName: "GitHub",
+    defaultScopes: "repo user",
+    envPrefix: "GITHUB",
+    supportsPat: true,
+    supportsOAuth: true,
+  },
   google: {
     friendlyName: "Google",
     defaultScopes: [

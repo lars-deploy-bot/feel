@@ -125,6 +125,46 @@ describe("outlook auth support flags", () => {
   })
 })
 
+describe("GitHub is OAuth-only (no MCP server)", () => {
+  it("github is NOT in OAUTH_MCP_PROVIDERS", () => {
+    expect(OAUTH_MCP_PROVIDERS).not.toHaveProperty("github")
+  })
+
+  it("github IS in OAUTH_ONLY_PROVIDERS", () => {
+    expect(OAUTH_ONLY_PROVIDERS).toHaveProperty("github")
+    expect(OAUTH_ONLY_PROVIDERS.github.friendlyName).toBe("GitHub")
+    expect(OAUTH_ONLY_PROVIDERS.github.envPrefix).toBe("GITHUB")
+  })
+
+  it("isValidOAuthMcpProviderKey rejects github", () => {
+    expect(isValidOAuthMcpProviderKey("github")).toBe(false)
+  })
+
+  it("isValidOAuthProviderKey still accepts github", () => {
+    expect(isValidOAuthProviderKey("github")).toBe(true)
+  })
+
+  it("getAllOAuthProviderKeys still includes github", () => {
+    expect(getAllOAuthProviderKeys()).toContain("github")
+  })
+
+  it("getOAuthKeyForProvider returns github for github", () => {
+    expect(getOAuthKeyForProvider("github")).toBe("github")
+  })
+
+  it("providerSupportsPat returns true for github", () => {
+    expect(providerSupportsPat("github")).toBe(true)
+  })
+
+  it("providerSupportsOAuth returns true for github", () => {
+    expect(providerSupportsOAuth("github")).toBe(true)
+  })
+
+  it("mcp__github__ tools are NOT recognized as valid MCP tools", () => {
+    expect(isOAuthMcpTool("mcp__github__list_repos", new Set(["github"]))).toBe(false)
+  })
+})
+
 describe("existing providers unchanged", () => {
   it("gmail still maps to google", () => {
     expect(OAUTH_MCP_PROVIDERS.gmail.oauthKey).toBe("google")
