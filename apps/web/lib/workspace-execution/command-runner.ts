@@ -27,6 +27,8 @@ interface CommandOptions {
   args: string[]
   workspaceRoot: string
   timeout?: number
+  /** Extra env vars merged into the child process (on top of sandbox env). Use for per-invocation secrets like GIT_TOKEN. */
+  env?: Record<string, string>
 }
 
 interface CommandResult {
@@ -117,7 +119,7 @@ export function shouldUseWorkspaceUser(workspacePath: string): boolean {
  * }
  */
 export async function runAsWorkspaceUser(options: CommandOptions): Promise<CommandResult> {
-  const { command, args, workspaceRoot, timeout = 60000 } = options
+  const { command, args, workspaceRoot, timeout = 60000, env: extraEnv } = options
   const { uid, gid } = getWorkspaceCredentials(workspaceRoot)
   const runnerPath = resolve(process.cwd(), "scripts/run-workspace-command.mjs")
 
@@ -134,6 +136,9 @@ export async function runAsWorkspaceUser(options: CommandOptions): Promise<Comma
         TARGET_UID: String(uid),
         TARGET_GID: String(gid),
         TARGET_CWD: workspaceRoot,
+        // Per-invocation env vars (e.g. GIT_ASKPASS, GIT_TOKEN)
+        // These are NOT in the sandbox allowlist — they exist only for this child process
+        ...extraEnv,
       },
       stdio: ["pipe", "pipe", "pipe"],
     })

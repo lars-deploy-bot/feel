@@ -61,7 +61,8 @@ function setupRepo(): TestRepo {
   const baseWorkspacePath = path.join(siteRoot, "user")
   fs.mkdirSync(baseWorkspacePath, { recursive: true })
 
-  // Site metadata is required by bootstrapBaseRepo (validated by Zod)
+  // Site metadata is optional — bootstrapBaseRepo skips origin setup when absent.
+  // Most tests write it to match production defaults, but the "without metadata" test omits it.
   fs.writeFileSync(
     path.join(siteRoot, ".site-metadata.json"),
     JSON.stringify({
@@ -293,6 +294,23 @@ describe("worktrees service", () => {
       env: sanitizedGitEnv(),
     })
     expect(headCheck.status).toBe(0)
+  })
+
+  it("bootstraps git without metadata (pre-metadata sites)", async () => {
+    if (!repo) throw new Error("missing repo")
+
+    // Remove .git and metadata to simulate a pre-metadata site
+    const gitDir = path.join(repo.baseWorkspacePath, ".git")
+    if (fs.existsSync(gitDir)) {
+      fs.rmSync(gitDir, { recursive: true, force: true })
+    }
+    const metadataPath = path.join(repo.siteRoot, ".site-metadata.json")
+    if (fs.existsSync(metadataPath)) {
+      fs.unlinkSync(metadataPath)
+    }
+
+    await expect(listWorktrees(repo.baseWorkspacePath)).resolves.toEqual([])
+    expect(fs.existsSync(gitDir)).toBe(true)
   })
 
   it("rejects worktree creation when base path is itself a worktree", async () => {
