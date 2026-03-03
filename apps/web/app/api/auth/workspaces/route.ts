@@ -6,6 +6,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, hasSessionScope } from "@/features/auth/lib/auth"
 import { SESSION_SCOPES } from "@/features/auth/lib/jwt"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { filterLocalDomains } from "@/lib/domains"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -17,9 +18,9 @@ export async function GET(req: NextRequest) {
   const requestId = randomUUID()
 
   try {
-    // Get optional org filter from query params
-    const { searchParams } = new URL(req.url)
-    const orgId = searchParams.get("org_id")
+    const query = await handleQuery("auth/workspaces", req, { cors: origin })
+    if (isHandleBodyError(query)) return query
+    const { org_id: orgId } = query
 
     const user = await getSessionUser()
     if (!user) {

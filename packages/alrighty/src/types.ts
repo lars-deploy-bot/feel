@@ -16,6 +16,10 @@ export interface EndpointSchema {
    * - key: "automations/trigger", path left undefined, call-site passes dynamic pathOverride
    */
   path?: string
+  /** Validates URL path params (e.g., `z.object({ id: z.string() })`) */
+  params?: z.ZodTypeAny
+  /** Validates URL query/search params (e.g., `z.object({ limit: z.coerce.number() })`) */
+  query?: z.ZodTypeAny
   req?: z.ZodTypeAny
   res: z.ZodTypeAny
 }
@@ -65,6 +69,22 @@ export type Req<T extends SchemaRegistry, E extends Endpoint<T>> = T[E]["req"] e
  * Extract response type for an endpoint (validated output)
  */
 export type Res<T extends SchemaRegistry, E extends Endpoint<T>> = z.infer<T[E]["res"]>
+
+/**
+ * Extract params type for an endpoint.
+ * Returns `never` if no params schema defined.
+ */
+export type Params<T extends SchemaRegistry, E extends Endpoint<T>> = T[E]["params"] extends z.ZodTypeAny
+  ? z.infer<T[E]["params"]>
+  : never
+
+/**
+ * Extract query type for an endpoint.
+ * Returns `never` if no query schema defined.
+ */
+export type Query<T extends SchemaRegistry, E extends Endpoint<T>> = T[E]["query"] extends z.ZodTypeAny
+  ? z.infer<T[E]["query"]>
+  : never
 
 /**
  * Response payload type for an endpoint — what callers actually pass.

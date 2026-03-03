@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       })
     }
 
-    const parsed = await handleBody("rename-site", request as never)
+    const parsed = await handleBody("rename-site", request)
     if (isHandleBodyError(parsed)) return parsed
 
     const { oldDomain, newDomain } = parsed

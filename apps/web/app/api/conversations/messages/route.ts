@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
 
@@ -21,14 +22,9 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
-    const { searchParams } = new URL(request.url)
-    const tabId = searchParams.get("tabId")
-    const cursor = searchParams.get("cursor") // ISO timestamp for pagination
-    const limit = parseInt(searchParams.get("limit") || "100", 10)
-
-    if (!tabId) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, { status: 400, details: { field: "tabId" } })
-    }
+    const query = await handleQuery("conversations/messages", request)
+    if (isHandleBodyError(query)) return query
+    const { tabId, cursor, limit } = query
 
     const supabase = await createRLSAppClient()
 
@@ -50,7 +46,7 @@ export async function GET(request: NextRequest) {
     // If no row is visible, the request is treated as not found.
 
     // Fetch messages
-    let query = supabase
+    let dbQuery = supabase
       .from("messages")
       .select("*")
       .eq("tab_id", tabId)
@@ -58,10 +54,10 @@ export async function GET(request: NextRequest) {
       .limit(limit + 1) // Fetch one extra to check if there are more
 
     if (cursor) {
-      query = query.gt("created_at", cursor)
+      dbQuery = dbQuery.gt("created_at", cursor)
     }
 
-    const { data: messages, error: msgError } = await query
+    const { data: messages, error: msgError } = await dbQuery
 
     if (msgError) {
       console.error("[messages] Failed to fetch messages:", msgError)

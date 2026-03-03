@@ -9,14 +9,15 @@ import * as Sentry from "@sentry/nextjs"
 import { isAliveWorkspace, SUPERADMIN } from "@webalive/shared"
 import { protectedRoute } from "@/features/auth/lib/protectedRoute"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { alrighty } from "@/lib/api/server"
+import { alrighty, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient, createRLSIamClient } from "@/lib/supabase/server-rls"
 import { createServiceAppClient } from "@/lib/supabase/service"
 
 export const GET = protectedRoute(async ({ user, req }) => {
-  const { searchParams } = new URL(req.url)
-  const orgId = searchParams.get("org_id")
+  const query = await handleQuery("sites", req)
+  if (isHandleBodyError(query)) return query
+  const { org_id: orgId } = query
 
   // Get user's org memberships
   const iam = await createRLSIamClient()

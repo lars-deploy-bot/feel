@@ -11,7 +11,7 @@ import {
   WorktreeError,
 } from "@/features/worktrees/lib/worktrees"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleBody, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
 
@@ -118,8 +118,9 @@ export async function GET(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.NO_SESSION, { status: 401, details: { requestId } })
     }
 
-    const { searchParams } = new URL(req.url)
-    workspace = (searchParams.get("workspace") || "").trim()
+    const query = await handleQuery("worktrees", req)
+    if (isHandleBodyError(query)) return query
+    workspace = (query.workspace ?? "").trim()
 
     if (!workspace) {
       return structuredErrorResponse(ErrorCodes.WORKSPACE_MISSING, { status: 400, details: { requestId } })
@@ -258,10 +259,11 @@ export async function DELETE(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.NO_SESSION, { status: 401, details: { requestId } })
     }
 
-    const { searchParams } = new URL(req.url)
-    workspace = (searchParams.get("workspace") || "").trim()
-    slug = (searchParams.get("slug") || "").trim()
-    const deleteBranch = searchParams.get("deleteBranch") === "true"
+    const query = await handleQuery("worktrees/delete", req)
+    if (isHandleBodyError(query)) return query
+    workspace = (query.workspace ?? "").trim()
+    slug = (query.slug ?? "").trim()
+    const deleteBranch = query.deleteBranch ?? false
 
     if (!workspace) {
       return structuredErrorResponse(ErrorCodes.WORKSPACE_MISSING, { status: 400, details: { requestId } })

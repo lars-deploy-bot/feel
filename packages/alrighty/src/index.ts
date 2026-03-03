@@ -6,6 +6,8 @@ export type {
   EndpointSchema,
   Method,
   MutationEndpoint,
+  Params,
+  Query,
   ReadEndpoint,
   Req,
   Res,

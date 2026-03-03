@@ -5,10 +5,10 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { isRunStatus } from "@webalive/database"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty, handleParams, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
 
@@ -37,7 +37,14 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const { id: jobId } = await context.params
+    const parsedParams = await handleParams("automations/runs", { params: context.params })
+    if (isHandleBodyError(parsedParams)) return parsedParams
+    const { id: jobId } = parsedParams
+
+    const parsedQuery = await handleQuery("automations/runs", req)
+    if (isHandleBodyError(parsedQuery)) return parsedQuery
+    const { limit, offset, status: statusFilter } = parsedQuery
+
     const supabase = await createRLSAppClient()
 
     // Verify job ownership first
@@ -55,12 +62,6 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.FORBIDDEN, { status: 403 })
     }
 
-    // Parse query params
-    const searchParams = req.nextUrl.searchParams
-    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100)
-    const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10), 0)
-    const statusFilter = searchParams.get("status")
-
     // Build query
     let query = supabase
       .from("automation_runs")
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
       .order("started_at", { ascending: false })
       .range(offset, offset + limit - 1)
 
-    if (statusFilter && isRunStatus(statusFilter)) {
+    if (statusFilter) {
       query = query.eq("status", statusFilter)
     }
 
@@ -83,11 +84,11 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
 
-    return NextResponse.json({
+    return alrighty("automations/runs", {
       runs: runs ?? [],
       job: {
         id: jobId,
-        name: jobRow.name,
+        name: jobRow.name ?? "",
       },
       pagination: {
         limit,

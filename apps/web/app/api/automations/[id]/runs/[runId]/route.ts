@@ -6,9 +6,10 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { readMessagesFromUri } from "@webalive/automation-engine"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty, handleParams, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
 
@@ -31,7 +32,14 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const { id: jobId, runId } = await context.params
+    const parsedParams = await handleParams("automations/run", { params: context.params })
+    if (isHandleBodyError(parsedParams)) return parsedParams
+    const { id: jobId, runId } = parsedParams
+
+    const parsedQuery = await handleQuery("automations/run", req)
+    if (isHandleBodyError(parsedQuery)) return parsedQuery
+    const { includeMessages } = parsedQuery
+
     const supabase = await createRLSAppClient()
 
     // Verify job ownership first
@@ -63,8 +71,6 @@ export async function GET(req: NextRequest, context: RouteContext) {
       })
     }
 
-    const includeMessages = req.nextUrl.searchParams.get("includeMessages") !== "false"
-
     // Load messages from file storage if available, fall back to inline DB blob.
     // Polling calls this endpoint with includeMessages=false to avoid large payloads.
     let messages: unknown[] = []
@@ -76,7 +82,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
       }
     }
 
-    return NextResponse.json({
+    return alrighty("automations/run", {
       run: {
         id: run.id,
         job_id: run.job_id,

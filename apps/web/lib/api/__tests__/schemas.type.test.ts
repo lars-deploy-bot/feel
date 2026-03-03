@@ -9,7 +9,7 @@
 
 import { describe, expectTypeOf, it } from "vitest"
 import type { ApiError } from "../api-client"
-import type { Endpoint, Req, Res } from "../schemas"
+import type { Endpoint, Params, Query, Req, Res } from "../schemas"
 
 describe("API Schema Type System", () => {
   describe("Endpoint type", () => {
@@ -39,10 +39,12 @@ describe("API Schema Type System", () => {
         | "import-repo"
         | "automations"
         | "automations/create"
+        | "automations/get-by-id"
         | "automations/delete"
         | "automations/trigger"
         | "automations/update"
         | "automations/runs"
+        | "automations/run"
         | "sessions/send"
         | "sites"
         | "worktrees"
@@ -68,6 +70,15 @@ describe("API Schema Type System", () => {
         | "auth/sessions"
         | "auth/sessions/revoke"
         | "auth/sessions/revoke-others"
+        | "sessions/list"
+        | "sessions/history"
+        | "linear/issues"
+        | "sites/check-availability"
+        | "sites/metadata"
+        | "referrals/history"
+        | "conversations/list"
+        | "conversations/messages"
+        | "images/list"
       >()
     })
 
@@ -154,6 +165,50 @@ describe("API Schema Type System", () => {
       expectTypeOf<FeedbackRes>().toHaveProperty("ok")
       expectTypeOf<FeedbackRes>().toHaveProperty("id")
       expectTypeOf<FeedbackRes>().toHaveProperty("timestamp")
+    })
+  })
+
+  describe("Params types (Params<E>)", () => {
+    it("extracts params for dynamic automation endpoints", () => {
+      expectTypeOf<Params<"automations/update">>().toEqualTypeOf<{ id: string }>()
+      expectTypeOf<Params<"automations/get-by-id">>().toEqualTypeOf<{ id: string }>()
+      expectTypeOf<Params<"automations/delete">>().toEqualTypeOf<{ id: string }>()
+      expectTypeOf<Params<"automations/trigger">>().toEqualTypeOf<{ id: string }>()
+      expectTypeOf<Params<"automations/runs">>().toEqualTypeOf<{ id: string }>()
+      expectTypeOf<Params<"automations/run">>().toEqualTypeOf<{ id: string; runId: string }>()
+    })
+
+    it("extracts params for provider integration endpoints", () => {
+      expectTypeOf<Params<"integrations/connect">>().toEqualTypeOf<{ provider: string }>()
+      expectTypeOf<Params<"integrations/disconnect">>().toEqualTypeOf<{ provider: string }>()
+    })
+
+    it("returns never for endpoints without params schema", () => {
+      expectTypeOf<Params<"login">>().toEqualTypeOf<never>()
+      expectTypeOf<Params<"templates">>().toEqualTypeOf<never>()
+    })
+  })
+
+  describe("Query types (Query<E>)", () => {
+    it("extracts query params for list/detail endpoints", () => {
+      expectTypeOf<Query<"automations">>().toEqualTypeOf<{
+        org_id?: string
+        site_id?: string
+        limit: number
+      }>()
+      expectTypeOf<Query<"automations/runs">>().toEqualTypeOf<{
+        limit: number
+        offset: number
+        status?: "success" | "failure" | "pending" | "running" | "skipped"
+      }>()
+      expectTypeOf<Query<"automations/run">>().toEqualTypeOf<{
+        includeMessages: boolean
+      }>()
+    })
+
+    it("returns never for endpoints without query schema", () => {
+      expectTypeOf<Query<"login">>().toEqualTypeOf<never>()
+      expectTypeOf<Query<"automations/update">>().toEqualTypeOf<never>()
     })
   })
 

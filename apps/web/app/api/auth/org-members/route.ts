@@ -3,7 +3,7 @@ import { isOrgRole } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, invalidateUserAuthzCache } from "@/features/auth/lib/auth"
 import { createCorsErrorResponse } from "@/lib/api/responses"
-import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleBody, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 import { canInviteMembers, canRemoveMember } from "@/lib/permissions/org-permissions"
@@ -25,12 +25,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { searchParams } = new URL(req.url)
-    const orgId = searchParams.get("orgId")
-
-    if (!orgId) {
-      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
-    }
+    const query = await handleQuery("auth/org-members", req, { cors: origin })
+    if (isHandleBodyError(query)) return query
+    const { orgId } = query
 
     const iam = await createIamClient("service")
 

@@ -14,7 +14,7 @@ import { getServerId, isAliveWorkspace } from "@webalive/shared"
 import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { alrighty } from "@/lib/api/server"
+import { alrighty, handleParams, isHandleBodyError } from "@/lib/api/server"
 import { pokeCronService } from "@/lib/automation/cron-service"
 import { executeJob } from "@/lib/automation/execute"
 import { getAutomationExecutionGate } from "@/lib/automation/execution-guard"
@@ -51,7 +51,9 @@ export async function POST(_req: NextRequest, context: RouteContext) {
       })
     }
 
-    const { id } = await context.params
+    const parsedParams = await handleParams("automations/trigger", { params: context.params })
+    if (isHandleBodyError(parsedParams)) return parsedParams
+    const { id } = parsedParams
     const supabase = createServiceAppClient()
 
     // Get the job with site info

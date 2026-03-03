@@ -12,6 +12,7 @@ import type { SessionMessage } from "@webalive/tools"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
@@ -25,18 +26,9 @@ export async function GET(req: NextRequest) {
 
     const userId = user.id
 
-    const { searchParams } = new URL(req.url)
-    const sessionKey = searchParams.get("sessionKey")
-    const _limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100)
-    const _includeTools = searchParams.get("includeTools") === "true"
-    const _after = searchParams.get("after")
-
-    if (!sessionKey) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-        status: 400,
-        details: { field: "sessionKey" },
-      })
-    }
+    const query = await handleQuery("sessions/history", req)
+    if (isHandleBodyError(query)) return query
+    const { sessionKey, includeTools: _includeTools, after: _after } = query
 
     // Parse session key
     const parts = sessionKey.split("::")

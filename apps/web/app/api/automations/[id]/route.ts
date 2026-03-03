@@ -6,11 +6,11 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { isValidClaudeModel } from "@webalive/shared"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { isScheduleTrigger, type TriggerType } from "@/lib/api/schemas"
-import { handleBody, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleParams, handleRoute, isHandleBodyError } from "@/lib/api/server"
 import { pokeCronService } from "@/lib/automation/cron-service"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
@@ -40,7 +40,10 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const { id } = await context.params
+    const parsedParams = await handleParams("automations/get-by-id", { params: context.params })
+    if (isHandleBodyError(parsedParams)) return parsedParams
+    const { id } = parsedParams
+
     const supabase = await createRLSAppClient()
 
     const { data, error } = await supabase
@@ -69,7 +72,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.FORBIDDEN, { status: 403 })
     }
 
-    return NextResponse.json({
+    return alrighty("automations/get-by-id", {
       automation: {
         ...data,
         hostname: row.domains?.hostname,
@@ -92,10 +95,12 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const { id } = await context.params
-
-    const parsed = await handleBody("automations/update", req)
-    if (isHandleBodyError(parsed)) return parsed
+    const parsedRoute = await handleRoute("automations/update", req, { params: context.params })
+    if (isHandleBodyError(parsedRoute)) return parsedRoute
+    const {
+      params: { id },
+      body: parsed,
+    } = parsedRoute
 
     const supabase = createServiceAppClient()
 
@@ -273,7 +278,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     // Poke CronService so it picks up schedule changes immediately
     pokeCronService()
 
-    return NextResponse.json({ automation: data, nextRunsPreview: nextRunsDisplay })
+    return alrighty("automations/update", { automation: data, nextRunsPreview: nextRunsDisplay })
   } catch (error) {
     console.error("[Automations API] PATCH error:", error)
     Sentry.captureException(error)
@@ -291,7 +296,10 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const { id } = await context.params
+    const parsedParams = await handleParams("automations/delete", { params: context.params })
+    if (isHandleBodyError(parsedParams)) return parsedParams
+    const { id } = parsedParams
+
     const supabase = createServiceAppClient()
 
     // Check ownership first
@@ -315,7 +323,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
 
-    return NextResponse.json({ ok: true })
+    return alrighty("automations/delete", {})
   } catch (error) {
     console.error("[Automations API] DELETE error:", error)
     Sentry.captureException(error)

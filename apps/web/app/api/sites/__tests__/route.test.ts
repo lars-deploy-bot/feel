@@ -52,6 +52,10 @@ vi.mock("@/features/auth/lib/protectedRoute", () => ({
 }))
 
 vi.mock("@/lib/api/server", () => ({
+  handleQuery: vi.fn(async (_endpoint: string, req: Request) => ({
+    org_id: new URL(req.url).searchParams.get("org_id") ?? undefined,
+  })),
+  isHandleBodyError: (value: unknown): value is Response => value instanceof Response,
   alrighty: vi.fn((_route: string, payload: Record<string, unknown>) => {
     return new Response(JSON.stringify({ ok: true, ...payload }), {
       status: 200,
