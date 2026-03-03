@@ -22,10 +22,14 @@ vi.mock("node:fs", () => ({
   statSync: () => ({ uid: 1000, gid: 1000 }),
 }))
 
-vi.mock("@webalive/shared", () => ({
-  DEFAULTS: { CLAUDE_MAX_TURNS: 10 },
-  WORKER_POOL: { ENABLED: true },
-}))
+vi.mock("@webalive/shared", async importOriginal => {
+  const actual = await importOriginal<typeof import("@webalive/shared")>()
+  return {
+    ...actual,
+    DEFAULTS: { CLAUDE_MAX_TURNS: 10 },
+    WORKER_POOL: { ENABLED: true },
+  }
+})
 
 vi.mock("@/lib/claude/agent-constants.mjs", () => ({
   getAllowedTools: () => ["Read", "Write"],

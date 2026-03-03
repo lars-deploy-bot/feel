@@ -41,8 +41,9 @@ export {
   domainName,
   flowgladSecretKey,
   httpsUrl,
-  jwt,
   runtimeEnv,
   SERVER_ENV_KEYS,
   serverSchema,
+  supabasePublishableKey,
+  supabaseSecretKey,
 } from "./schema"
