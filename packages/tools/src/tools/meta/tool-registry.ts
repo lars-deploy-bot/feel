@@ -567,6 +567,28 @@ const INTERNAL_TOOL_METADATA: Array<Omit<ToolMetadata, "enabled">> = [
   },
 
   {
+    name: "git_push",
+    category: "workspace",
+    description:
+      "Push committed changes to the remote GitHub repository. Requires the user to have GitHub connected via OAuth. The remote is automatically configured from the site's source repository metadata if not already set up.",
+    contextCost: "low",
+    parameters: [
+      {
+        name: "branch",
+        type: "string",
+        required: false,
+        description: "Branch to push. If omitted, pushes the current branch.",
+      },
+      {
+        name: "remote",
+        type: "string",
+        required: false,
+        description: 'Remote name (default: "origin"). Auto-configured from site metadata if not set.',
+      },
+    ],
+  },
+
+  {
     name: "browser",
     category: "workspace",
     description:

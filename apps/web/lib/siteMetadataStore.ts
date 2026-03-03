@@ -1,54 +1,21 @@
 import path from "node:path"
-import { isPathWithinWorkspace } from "@webalive/shared"
-import { z } from "zod"
+import { isPathWithinWorkspace, parseSiteMetadata, SITE_METADATA_FILENAME, type SiteMetadata } from "@webalive/shared"
 import { buildSubdomain, WORKSPACE_BASE } from "./config"
 import { ensureDirectory, readJsonFile, writeJsonFile } from "./utils/fs-helpers"
 
-// --- Schema ---
-
-export const SiteMetadataSchema = z
-  .object({
-    slug: z
-      .string()
-      .min(1)
-      .regex(/^[a-z0-9][a-z0-9-]*$/, "Slug must be lowercase alphanumeric with hyphens"),
-    domain: z.string().min(1).includes("."),
-    workspace: z.string().min(1).includes("."),
-    email: z.string().email(),
-    siteIdeas: z.string(),
-    createdAt: z.number().int().positive(),
-    templateId: z.string().min(1).optional(),
-    source: z.literal("github-import").optional(),
-    sourceRepo: z.string().min(1).optional(),
-  })
-  .refine(data => data.source !== "github-import" || (data.sourceRepo && data.sourceRepo.length > 0), {
-    message: "sourceRepo is required when source is github-import",
-    path: ["sourceRepo"],
-  })
-
-export type SiteMetadata = z.infer<typeof SiteMetadataSchema>
+// Re-export schema/type from the package so existing consumers don't break.
+export { parseSiteMetadata, SITE_METADATA_FILENAME, type SiteMetadata, SiteMetadataSchema } from "@webalive/shared"
 
 // --- Store ---
 
-const METADATA_FILENAME = ".site-metadata.json"
-
 function getMetadataPath(workspace: string): string {
-  return path.join(workspace, METADATA_FILENAME)
+  return path.join(workspace, SITE_METADATA_FILENAME)
 }
 
 function assertWithinWorkspace(resolvedPath: string): void {
   if (!isPathWithinWorkspace(resolvedPath, WORKSPACE_BASE)) {
     throw new Error(`Path traversal blocked: ${resolvedPath} is outside workspace root`)
   }
-}
-
-function parseSiteMetadata(raw: unknown, context: string): SiteMetadata {
-  const result = SiteMetadataSchema.safeParse(raw)
-  if (!result.success) {
-    const issues = result.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join(", ")
-    throw new Error(`Invalid site metadata (${context}): ${issues}`)
-  }
-  return result.data
 }
 
 export const siteMetadataStore = {

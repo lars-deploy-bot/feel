@@ -20,6 +20,7 @@ import { checkCodebaseTool } from "./tools/workspace/check-codebase.js"
 import { copySharedAssetTool } from "./tools/workspace/copy-shared-asset.js"
 import { createWebsiteTool } from "./tools/workspace/create-website.js"
 import { deleteFileTool } from "./tools/workspace/delete-file.js"
+import { gitPushTool } from "./tools/workspace/git-push.js"
 import { installPackageTool } from "./tools/workspace/install-package.js"
 import { restartServerTool } from "./tools/workspace/restart-server.js"
 import { switchServeModeTool } from "./tools/workspace/switch-serve-mode.js"
@@ -93,6 +94,7 @@ export const workspaceInternalMcp = createSdkMcpServer({
     switchServeModeTool,
     copySharedAssetTool,
     createWebsiteTool,
+    gitPushTool,
     browserTool,
   ],
 })

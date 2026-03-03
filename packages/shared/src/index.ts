@@ -215,6 +215,12 @@ export {
 } from "./retry.js"
 export { parseServerConfig, type ServerConfig, serverConfigSchema } from "./server-config-schema.js"
 export {
+  parseSiteMetadata,
+  SITE_METADATA_FILENAME,
+  type SiteMetadata,
+  SiteMetadataSchema,
+} from "./site-metadata.js"
+export {
   // Stream protocol events
   type BaseStreamEvent,
   ERROR_CODES,

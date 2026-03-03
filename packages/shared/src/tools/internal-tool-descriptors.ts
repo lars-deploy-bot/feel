@@ -178,6 +178,14 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     planMode: "block",
   },
   {
+    name: "git_push",
+    mcpServer: "alive-workspace",
+    enabled: true,
+    reason: "Git push mutates remote repository and is site-workspace only.",
+    workspaceKinds: ["site"],
+    planMode: "block",
+  },
+  {
     name: "browser",
     mcpServer: "alive-workspace",
     enabled: true,

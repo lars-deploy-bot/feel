@@ -240,11 +240,9 @@ async function bootstrapBaseRepo(baseWorkspacePath: string) {
   }
 
   // Set origin from GitHub import metadata so #230 (push flow) has a remote.
+  // Metadata may be absent for sites created before it was mandatory — skip gracefully.
   const metadata = await getSiteMetadataByWorkspace(getSiteRoot(baseWorkspacePath))
-  if (!metadata) {
-    throw new Error(`Site metadata missing for ${baseWorkspacePath}`)
-  }
-  if (metadata.source === "github-import") {
+  if (metadata?.source === "github-import") {
     if (!metadata.sourceRepo) {
       throw new Error(`GitHub import metadata missing sourceRepo for ${baseWorkspacePath}`)
     }
