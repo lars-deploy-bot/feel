@@ -34,7 +34,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { ensurePathWithinWorkspace } from "@/features/workspace/lib/workspace-secure"
-import { parseGithubRepo } from "@/lib/deployment/github-import"
+import { tryParseGithubRepoWithUrls } from "@/lib/git/github-repo-url"
 import { getSiteMetadataByWorkspace } from "@/lib/siteMetadataStore"
 import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
 
@@ -171,12 +171,13 @@ function assertValidSlug(slug: string) {
   }
 }
 
-async function runGit(baseWorkspacePath: string, args: string[], timeout?: number) {
+async function runGit(baseWorkspacePath: string, args: string[], timeout?: number, env?: Record<string, string>) {
   const result = await runAsWorkspaceUser({
     command: "git",
     args: ["-C", baseWorkspacePath, ...args],
     workspaceRoot: baseWorkspacePath,
     timeout,
+    env,
   })
 
   if (!result.success) {
@@ -226,7 +227,52 @@ function inferBootstrapEmail(baseWorkspacePath: string): string {
   return sanitizedDomain.length > 0 ? `site@${sanitizedDomain}` : "site@alive.local"
 }
 
-async function bootstrapBaseRepo(baseWorkspacePath: string) {
+async function readSiteMetadataSafe(baseWorkspacePath: string) {
+  try {
+    return await getSiteMetadataByWorkspace(getSiteRoot(baseWorkspacePath))
+  } catch (error) {
+    console.warn(
+      `[worktrees] Ignoring invalid site metadata for ${baseWorkspacePath}:`,
+      error instanceof Error ? error.message : error,
+    )
+    return null
+  }
+}
+
+function normalizeSourceRepoRemoteUrl(sourceRepo: string): string | null {
+  const trimmed = sourceRepo.trim()
+  if (!trimmed) return null
+
+  const parsedRepo = tryParseGithubRepoWithUrls(trimmed)
+  return parsedRepo?.remoteUrl ?? null
+}
+
+function normalizeSourceBranch(sourceBranch?: string): string | null {
+  const trimmed = sourceBranch?.trim() ?? ""
+  return trimmed.length > 0 ? trimmed : null
+}
+
+async function resolvePreferredSourceBaseRef(
+  baseWorkspacePath: string,
+  gitEnv?: Record<string, string>,
+): Promise<string | null> {
+  const metadata = await readSiteMetadataSafe(baseWorkspacePath)
+  const sourceBranch = normalizeSourceBranch(metadata?.sourceBranch)
+  if (!sourceBranch) {
+    return null
+  }
+
+  const resolved = await resolveLatestOriginBaseRef(baseWorkspacePath, sourceBranch, gitEnv)
+  if (await gitRefExists(baseWorkspacePath, resolved)) {
+    return resolved
+  }
+  if (await gitRefExists(baseWorkspacePath, sourceBranch)) {
+    return sourceBranch
+  }
+  return null
+}
+
+async function bootstrapBaseRepo(baseWorkspacePath: string, gitEnv?: Record<string, string>) {
   // Prefer setting main directly, but fall back for older Git versions.
   try {
     await runGit(baseWorkspacePath, ["init", "--initial-branch=main"], 20000)
@@ -239,23 +285,25 @@ async function bootstrapBaseRepo(baseWorkspacePath: string) {
     }
   }
 
-  // Set origin from GitHub import metadata so #230 (push flow) has a remote.
-  // Metadata may be absent for sites created before it was mandatory — skip gracefully.
-  const metadata = await getSiteMetadataByWorkspace(getSiteRoot(baseWorkspacePath))
-  if (metadata?.source === "github-import") {
-    if (!metadata.sourceRepo) {
-      throw new Error(`GitHub import metadata missing sourceRepo for ${baseWorkspacePath}`)
-    }
-    const { owner, repo } = parseGithubRepo(metadata.sourceRepo)
+  // Set origin from metadata so push/fetch work with a remote.
+  // Only apply when sourceRepo is a valid GitHub reference.
+  const metadata = await readSiteMetadataSafe(baseWorkspacePath)
+  const remoteUrl = metadata?.sourceRepo ? normalizeSourceRepoRemoteUrl(metadata.sourceRepo) : null
+  if (remoteUrl) {
     try {
-      await runGit(baseWorkspacePath, ["remote", "add", "origin", `https://github.com/${owner}/${repo}.git`], 15000)
+      await runGit(baseWorkspacePath, ["remote", "add", "origin", remoteUrl], 15000, gitEnv)
     } catch (error) {
       const isAlreadyExists =
         error instanceof WorktreeError &&
         error.code === "WORKTREE_GIT_FAILED" &&
         error.gitDiagnostics?.stderrTail.includes("remote origin already exists")
       if (!isAlreadyExists) throw error
-      // Remote already exists from a prior bootstrap — safe to ignore.
+      // Remote already exists — update URL in case it changed.
+      try {
+        await runGit(baseWorkspacePath, ["remote", "set-url", "origin", remoteUrl], 15000, gitEnv)
+      } catch {
+        // Best-effort URL update.
+      }
     }
   }
 
@@ -292,7 +340,7 @@ async function bootstrapBaseRepo(baseWorkspacePath: string) {
   )
 }
 
-async function assertBaseRepo(baseWorkspacePath: string) {
+async function assertBaseRepo(baseWorkspacePath: string, gitEnv?: Record<string, string>) {
   const gitDir = path.join(baseWorkspacePath, ".git")
   let stat: fs.Stats | null = null
 
@@ -303,7 +351,7 @@ async function assertBaseRepo(baseWorkspacePath: string) {
   }
 
   if (!stat) {
-    await bootstrapBaseRepo(baseWorkspacePath)
+    await bootstrapBaseRepo(baseWorkspacePath, gitEnv)
     try {
       stat = fs.statSync(gitDir)
     } catch {
@@ -384,13 +432,17 @@ function toRemoteShortRef(ref: string): string {
   return ref.startsWith(prefix) ? ref.slice(prefix.length) : ref
 }
 
-async function resolveLatestOriginBaseRef(baseWorkspacePath: string, baseRef: string): Promise<string> {
+async function resolveLatestOriginBaseRef(
+  baseWorkspacePath: string,
+  baseRef: string,
+  gitEnv?: Record<string, string>,
+): Promise<string> {
   const trackingRef = toOriginTrackingRef(baseRef)
   if (!trackingRef) return baseRef
 
   try {
     // Best-effort refresh; fallback to local ref when origin is unavailable.
-    await runGit(baseWorkspacePath, ["fetch", "--prune", "origin"], 45000)
+    await runGit(baseWorkspacePath, ["fetch", "--prune", "origin"], 45000, gitEnv)
   } catch {
     return baseRef
   }
@@ -601,6 +653,7 @@ export interface CreateWorktreeInput {
   slug?: string
   branch?: string
   from?: string
+  gitEnv?: Record<string, string>
 }
 
 export interface CreateWorktreeResult {
@@ -614,8 +667,9 @@ export async function createWorktree({
   slug,
   branch,
   from,
+  gitEnv,
 }: CreateWorktreeInput): Promise<CreateWorktreeResult> {
-  await assertBaseRepo(baseWorkspacePath)
+  await assertBaseRepo(baseWorkspacePath, gitEnv)
 
   const worktreeRoot = ensureWorktreeRoot(baseWorkspacePath)
 
@@ -623,11 +677,14 @@ export async function createWorktree({
   assertValidSlug(normalizedSlug)
 
   const normalizedFrom = from?.trim() ? from.trim() : undefined
-  const requestedBaseRef = normalizedFrom ?? (await runGit(baseWorkspacePath, ["rev-parse", "--abbrev-ref", "HEAD"]))
   if (normalizedFrom) {
     await assertFromRef(baseWorkspacePath, normalizedFrom)
   }
-  const baseRef = await resolveLatestOriginBaseRef(baseWorkspacePath, requestedBaseRef)
+  const preferredSourceBaseRef = normalizedFrom ? null : await resolvePreferredSourceBaseRef(baseWorkspacePath, gitEnv)
+  const requestedBaseRef =
+    normalizedFrom ?? preferredSourceBaseRef ?? (await runGit(baseWorkspacePath, ["rev-parse", "--abbrev-ref", "HEAD"]))
+  const baseRef =
+    preferredSourceBaseRef ?? (await resolveLatestOriginBaseRef(baseWorkspacePath, requestedBaseRef, gitEnv))
 
   const defaultBranch = `worktree/${normalizedSlug}`
   const requestedBranch = branch?.trim() || defaultBranch

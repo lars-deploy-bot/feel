@@ -27,6 +27,7 @@ export const SiteMetadataSchema = z
     templateId: z.string().min(1).optional(),
     source: z.literal("github-import").optional(),
     sourceRepo: z.string().min(1).optional(),
+    sourceBranch: z.string().min(1).optional(),
   })
   .refine(data => data.source !== "github-import" || (data.sourceRepo && data.sourceRepo.length > 0), {
     message: "sourceRepo is required when source is github-import",

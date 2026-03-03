@@ -79,18 +79,6 @@ export function createStandaloneWorkspace(name: string): string {
 }
 
 /**
- * Ensure the standalone workspace base directory exists
- * Called during setup
- */
-export function ensureStandaloneWorkspaceBase(): string {
-  const base = getStandaloneWorkspaceBase()
-  if (!existsSync(base)) {
-    mkdirSync(base, { recursive: true })
-  }
-  return base
-}
-
-/**
  * Create a default workspace if none exist
  */
 export function ensureDefaultWorkspace(): void {
