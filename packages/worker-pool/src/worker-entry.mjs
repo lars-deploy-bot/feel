@@ -19,7 +19,7 @@
 import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, statSync } from "node:fs"
 import { createConnection } from "node:net"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, resolve as resolvePath } from "node:path"
 import process from "node:process"
 
 // Base directory for stable session storage
@@ -733,22 +733,65 @@ async function handleQuery(ipc, requestId, payload) {
     const canUseTool = async (toolName, input, options) => {
       if (disallowedTools.includes(toolName)) {
         console.error(`[worker] SECURITY: Blocked disallowed tool: ${toolName}`)
+        return {
+          behavior: "deny",
+          message: `Tool "${toolName}" is not allowed in this workspace.`,
+        }
       }
 
-      // Protect shared compute from expensive monorepo-wide shell commands.
-      // Superadmins retain unrestricted execution.
-      if (toolName === "Bash" && !agentConfig.isSuperadmin) {
-        const command = typeof input?.command === "string" ? input.command : ""
-        if (isHeavyBashCommand(command)) {
-          console.error("[worker] SECURITY: Blocked heavy Bash command for non-superadmin")
-          return {
-            behavior: "deny",
-            message:
-              "This Bash command is blocked because it is too heavy for shared capacity. " +
-              "Use narrower commands (single package/file) or ask a superadmin to run full builds/checks.",
+      // SECURITY: Enforce workspace path boundaries for file-accessing tools.
+      // Superadmins are exempt (they operate on the platform repo itself).
+      if (!agentConfig.isSuperadmin) {
+        const workspaceCwd = process.cwd()
+
+        // Tools that use file_path or notebook_path
+        if (["Read", "Write", "Edit", "NotebookEdit"].includes(toolName)) {
+          const filePath = toolName === "NotebookEdit" ? input?.notebook_path : input?.file_path
+          if (typeof filePath === "string") {
+            const resolved = resolvePath(filePath)
+            if (!resolved.startsWith(`${workspaceCwd}/`) && resolved !== workspaceCwd) {
+              console.error(
+                `[worker] SECURITY: Blocked ${toolName} outside workspace: ${resolved} (workspace: ${workspaceCwd})`,
+              )
+              return {
+                behavior: "deny",
+                message: `Cannot access files outside your workspace. Path must be within ${workspaceCwd}`,
+              }
+            }
+          }
+        }
+
+        // Tools that use path parameter (Glob, Grep)
+        if (["Glob", "Grep"].includes(toolName) && typeof input?.path === "string") {
+          const resolved = resolvePath(input.path)
+          if (!resolved.startsWith(`${workspaceCwd}/`) && resolved !== workspaceCwd) {
+            console.error(
+              `[worker] SECURITY: Blocked ${toolName} outside workspace: ${resolved} (workspace: ${workspaceCwd})`,
+            )
+            return {
+              behavior: "deny",
+              message: `Cannot search outside your workspace. Path must be within ${workspaceCwd}`,
+            }
+          }
+        }
+
+        // Bash: validate command doesn't reference paths outside workspace
+        if (toolName === "Bash") {
+          const command = typeof input?.command === "string" ? input.command : ""
+
+          // Block heavy commands (computational cost)
+          if (isHeavyBashCommand(command)) {
+            console.error("[worker] SECURITY: Blocked heavy Bash command for non-superadmin")
+            return {
+              behavior: "deny",
+              message:
+                "This Bash command is blocked because it is too heavy for shared capacity. " +
+                "Use narrower commands (single package/file) or ask a superadmin to run full builds/checks.",
+            }
           }
         }
       }
+      // Superadmins bypass all path restrictions (they operate on the platform repo)
 
       const result = await baseCanUseTool(toolName, input, options)
       if (result.behavior === "deny") {
@@ -942,8 +985,13 @@ async function handleQuery(ipc, requestId, payload) {
     // The agent SDK sometimes exits with code 1 AFTER yielding all messages including the result
     // In this case, treat it as success since we have the complete response
     if (queryResult && queryResult.subtype === "success") {
-      console.error("[worker] Query completed with result before error - treating as success")
-      console.error("[worker] (Suppressed error:", error?.message || String(error), ")")
+      const stderrSnippet = stderrBuffer.length > 0 ? stderrBuffer.slice(-5).join("\n") : ""
+      console.error(
+        "[worker] Query completed with result before error - treating as success\n" +
+          `  Suppressed error: ${error?.message || String(error)}\n` +
+          `  Messages received: ${messageCount}` +
+          (stderrSnippet ? `\n  Stderr (last 5 lines):\n${stderrSnippet}` : ""),
+      )
 
       // Send completion with the result we already have
       ipc.send({

@@ -6,6 +6,7 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   ALIVE_PASSCODE: z.string().min(1),
+  E2B_API_KEY: z.string().regex(/^e2b_/, "Must be valid E2B API key (e2b_*)"),
   POSTHOG_API_KEY: z.string().min(1).optional(),
   POSTHOG_HOST: z.string().url().optional(),
   POSTHOG_PROJECT_ID: z.coerce.number().int().positive().optional(),

@@ -402,13 +402,21 @@ function captureAssistantSdkErrorTelemetry(
   }
 
   console.error(
-    `[NDJSON Stream ${requestId}] SDK assistant error '${sdkErrorType}' (workspace=${workspace}, model=${model})`,
+    `[NDJSON Stream ${requestId}] SDK assistant error '${sdkErrorType}' (workspace=${workspace}, model=${model})\n` +
+      `  Content: ${rawContentPreview}` +
+      (assistantTextPreview ? `\n  Text: ${assistantTextPreview}` : ""),
   )
 
+  // Transient upstream errors (Anthropic API 500s, overloads, rate limits) are expected
+  // and not actionable — log as warning, not error, to avoid Sentry noise.
+  const transientErrorTypes = new Set(["unknown", "overloaded", "rate_limit", "api_error"])
+  const isTransient = transientErrorTypes.has(sdkErrorType)
+
   Sentry.withScope(scope => {
-    scope.setLevel("error")
+    scope.setLevel(isTransient ? "warning" : "error")
     scope.setTag("error_source", "claude_agent_sdk_assistant_message")
     scope.setTag("sdk_error_type", sdkErrorType)
+    scope.setTag("sdk_error_transient", isTransient ? "true" : "false")
     scope.setTag("workspace", workspace)
     scope.setTag("model", model)
     scope.setTag("token_source", tokenSource)
@@ -424,9 +432,16 @@ function captureAssistantSdkErrorTelemetry(
       assistantTextPreview: assistantTextPreview ?? "",
       rawContentPreview,
     })
-    Sentry.captureException(
-      new Error(`[SDK_ASSISTANT_ERROR] type=${sdkErrorType} source=assistant_message.error requestId=${requestId}`),
-    )
+    if (isTransient) {
+      Sentry.captureMessage(
+        `[SDK_UPSTREAM] type=${sdkErrorType} workspace=${workspace} requestId=${requestId}`,
+        "warning",
+      )
+    } else {
+      Sentry.captureException(
+        new Error(`[SDK_ASSISTANT_ERROR] type=${sdkErrorType} source=assistant_message.error requestId=${requestId}`),
+      )
+    }
   })
 }
 

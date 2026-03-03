@@ -316,5 +316,20 @@ export function getFlowgladSecretKey(): string | undefined {
   return secretKey
 }
 
+/**
+ * Get E2B API key — required in all environments, no fallbacks.
+ *
+ * @throws Error if E2B_API_KEY is not set
+ */
+export function getE2bApiKey(): string {
+  const key = env.E2B_API_KEY
+
+  if (!key) {
+    throw new Error("E2B_API_KEY is required. Set the E2B_API_KEY environment variable (e2b_*).")
+  }
+
+  return key
+}
+
 // Re-export schema types for convenience
 export type { clientSchema, serverSchema } from "./schema"
