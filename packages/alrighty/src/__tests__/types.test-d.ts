@@ -4,6 +4,8 @@ import {
   createClient,
   type Endpoint,
   type MutationEndpoint,
+  type Params,
+  type Query,
   type ReadEndpoint,
   type Req,
   type Res,
@@ -74,6 +76,72 @@ describe("Type Tests", () => {
     it("handles optional fields in response", () => {
       type LoginRes = Res<TestSchemas, "login">
       expectTypeOf<LoginRes>().toEqualTypeOf<{ ok: boolean; token?: string }>()
+    })
+  })
+
+  describe("Params type", () => {
+    const paramsSchemas = {
+      "items/update": {
+        params: z.object({ id: z.string() }),
+        req: z.object({ name: z.string() }),
+        res: z.object({ ok: z.boolean() }),
+      },
+      "items/list": {
+        res: z.object({ items: z.array(z.string()) }),
+      },
+    } satisfies SchemaRegistry
+
+    it("extracts params type when schema has params", () => {
+      expectTypeOf<Params<typeof paramsSchemas, "items/update">>().toEqualTypeOf<{ id: string }>()
+    })
+
+    it("returns never when schema has no params", () => {
+      expectTypeOf<Params<typeof paramsSchemas, "items/list">>().toEqualTypeOf<never>()
+    })
+
+    it("returns never for schemas from the main test registry (no params)", () => {
+      expectTypeOf<Params<TestSchemas, "user">>().toEqualTypeOf<never>()
+      expectTypeOf<Params<TestSchemas, "login">>().toEqualTypeOf<never>()
+    })
+  })
+
+  describe("Query type", () => {
+    const querySchemas = {
+      "items/list": {
+        query: z.object({ limit: z.coerce.number().int().min(1).max(100).default(20), cursor: z.string().optional() }),
+        res: z.object({ items: z.array(z.string()) }),
+      },
+      "items/get": {
+        params: z.object({ id: z.string() }),
+        res: z.object({ item: z.string() }),
+      },
+    } satisfies SchemaRegistry
+
+    it("extracts query type when schema has query", () => {
+      expectTypeOf<Query<typeof querySchemas, "items/list">>().toEqualTypeOf<{ limit: number; cursor?: string }>()
+    })
+
+    it("returns never when schema has no query", () => {
+      expectTypeOf<Query<typeof querySchemas, "items/get">>().toEqualTypeOf<never>()
+      expectTypeOf<Query<TestSchemas, "user">>().toEqualTypeOf<never>()
+    })
+  })
+
+  describe("EndpointSchema allows params to be optional", () => {
+    it("accepts schemas with and without params", () => {
+      const mixed = {
+        noParams: { res: z.object({ ok: z.boolean() }) },
+        withParams: {
+          params: z.object({ id: z.string() }),
+          res: z.object({ ok: z.boolean() }),
+        },
+        withQuery: {
+          query: z.object({ limit: z.coerce.number() }),
+          res: z.object({ ok: z.boolean() }),
+        },
+      } satisfies SchemaRegistry
+
+      assertType<SchemaRegistry>(mixed)
     })
   })
 

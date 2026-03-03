@@ -224,8 +224,7 @@ describe("POST /api/login", () => {
         body: "invalid-json{",
       })
       const response = await POST(req)
-      // handleBody catches SyntaxError and returns 500 (HANDLE_BODY_ERROR)
-      expect(response.status).toBe(500)
+      expect(response.status).toBe(400)
     })
   })
 

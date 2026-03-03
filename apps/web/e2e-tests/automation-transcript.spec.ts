@@ -178,7 +178,9 @@ test.describe("Automation Transcript Read-Only UX", () => {
   test("toggles between read-only and editable when switching conversations", async ({
     authenticatedPage,
     workerTenant,
-  }) => {
+  }, testInfo) => {
+    // This test has many UI interactions with sidebar navigation — needs extra time in remote env
+    testInfo.setTimeout(120_000)
     const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
     const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
     const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)

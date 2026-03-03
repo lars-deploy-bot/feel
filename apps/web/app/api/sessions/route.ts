@@ -11,7 +11,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { isConversationLocked, type TabSessionKey } from "@/features/auth/types/session"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { handleBody, isHandleBodyError } from "@/lib/api/server"
+import { handleBody, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
@@ -33,29 +33,28 @@ export async function GET(req: NextRequest) {
 
     const userId = user.id
 
-    const { searchParams } = new URL(req.url)
-    const workspace = searchParams.get("workspace")
-    const activeMinutes = searchParams.get("activeMinutes")
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100)
+    const query = await handleQuery("sessions/list", req)
+    if (isHandleBodyError(query)) return query
+    const { workspace, activeMinutes, limit } = query
 
     // Build query
     const iam = await createIamClient("service")
-    let query = iam
+    let dbQuery = iam
       .from("sessions")
       .select("user_id, domain_id, tab_id, sdk_session_id, last_activity, expires_at")
       .order("last_activity", { ascending: false })
       .limit(limit)
 
     // Filter by user (for now, only own sessions - A2A policy checked in tool)
-    query = query.eq("user_id", userId)
+    dbQuery = dbQuery.eq("user_id", userId)
 
     // Filter by active time
-    if (activeMinutes) {
-      const cutoff = new Date(Date.now() - parseInt(activeMinutes, 10) * 60 * 1000)
-      query = query.gte("last_activity", cutoff.toISOString())
+    if (activeMinutes !== undefined) {
+      const cutoff = new Date(Date.now() - activeMinutes * 60 * 1000)
+      dbQuery = dbQuery.gte("last_activity", cutoff.toISOString())
     }
 
-    const { data: sessions, error } = await query
+    const { data: sessions, error } = await dbQuery
 
     if (error) {
       console.error("[Sessions API] Query error:", error)

@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/nextjs"
 import type { NextRequest } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
+import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
 import { imageStorage } from "@/lib/storage"
@@ -39,9 +40,9 @@ export async function GET(request: NextRequest) {
 
     // 2. Build workspace body from query params
     const host = request.headers.get("host") || ""
-    const searchParams = request.nextUrl.searchParams
-    const workspaceParam = searchParams.get("workspace")
-    const worktreeParam = searchParams.get("worktree")
+    const query = await handleQuery("images/list", request)
+    if (isHandleBodyError(query)) return query
+    const { workspace: workspaceParam, worktree: worktreeParam } = query
 
     const body =
       workspaceParam && worktreeParam

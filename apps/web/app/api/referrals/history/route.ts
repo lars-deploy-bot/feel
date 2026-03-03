@@ -3,11 +3,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
-
-const DEFAULT_LIMIT = 50
-const MAX_LIMIT = 100
 
 export async function GET(request: NextRequest) {
   const user = await getSessionUser()
@@ -17,9 +15,9 @@ export async function GET(request: NextRequest) {
   const userId = user.id
 
   // Parse pagination params
-  const { searchParams } = new URL(request.url)
-  const limit = Math.min(Math.max(1, Number(searchParams.get("limit")) || DEFAULT_LIMIT), MAX_LIMIT)
-  const offset = Math.max(0, Number(searchParams.get("offset")) || 0)
+  const query = await handleQuery("referrals/history", request)
+  if (isHandleBodyError(query)) return query
+  const { limit, offset } = query
 
   const iam = await createIamClient("service")
 

@@ -1,4 +1,11 @@
-import type { EndpointSchema, Req as PkgReq, Res as PkgRes, ResPayload as PkgResPayload } from "@alive-brug/alrighty"
+import type {
+  EndpointSchema,
+  Params as PkgParams,
+  Query as PkgQuery,
+  Req as PkgReq,
+  Res as PkgRes,
+  ResPayload as PkgResPayload,
+} from "@alive-brug/alrighty"
 import { AppConstants, type TriggerType } from "@webalive/database"
 import { CLAUDE_MODELS, ORG_ROLES, RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 import { z } from "zod"
@@ -409,6 +416,9 @@ export const apiSchemas = {
    * Get workspaces for a specific org
    */
   "auth/workspaces": {
+    query: z.object({
+      org_id: z.string().min(1).optional(),
+    }),
     req: z.undefined().brand<"AuthWorkspacesRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -421,6 +431,9 @@ export const apiSchemas = {
    * Get members of an organization
    */
   "auth/org-members": {
+    query: z.object({
+      orgId: z.string().min(1),
+    }),
     req: z.undefined().brand<"AuthOrgMembersRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -667,6 +680,11 @@ export const apiSchemas = {
    * List automation jobs
    */
   automations: {
+    query: z.object({
+      org_id: z.string().min(1).optional(),
+      site_id: z.string().min(1).optional(),
+      limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+    }),
     req: z.undefined().brand<"AutomationsRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -755,12 +773,26 @@ export const apiSchemas = {
   },
 
   /**
+   * GET /api/automations/[id]
+   * Get a single automation job by ID
+   */
+  "automations/get-by-id": {
+    params: z.object({ id: z.string().min(1) }),
+    req: z.undefined().brand<"AutomationsGetByIdRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      automation: z.record(z.string(), z.unknown()),
+    }),
+  },
+
+  /**
    * PATCH /api/automations/[id]
    * Update an existing automation job
    */
   "automations/update": {
     // Dynamic route: /api/automations/[id].
     // Callers must pass pathOverride with the concrete automation ID.
+    params: z.object({ id: z.string().min(1) }),
     req: z
       .object({
         name: z.string().min(1).optional(),
@@ -788,6 +820,9 @@ export const apiSchemas = {
    * List sites for user's organizations
    */
   sites: {
+    query: z.object({
+      org_id: z.string().min(1).optional(),
+    }),
     req: z.undefined().brand<"SitesRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -806,6 +841,9 @@ export const apiSchemas = {
    * List worktrees for a workspace
    */
   worktrees: {
+    query: z.object({
+      workspace: z.string().optional(),
+    }),
     req: z.undefined().brand<"WorktreesRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -851,6 +889,14 @@ export const apiSchemas = {
     // Schema key is a lookup identifier; actual route is /api/worktrees.
     // Note: callers still pass query params (workspace/slug) via pathOverride.
     path: "worktrees",
+    query: z.object({
+      workspace: z.string().optional(),
+      slug: z.string().optional(),
+      deleteBranch: z
+        .enum(["true", "false"])
+        .optional()
+        .transform(v => v === "true"),
+    }),
     req: z.undefined().brand<"WorktreesDeleteRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -862,6 +908,7 @@ export const apiSchemas = {
    * Delete an automation job
    */
   "automations/delete": {
+    params: z.object({ id: z.string().min(1) }),
     req: z.undefined().brand<"AutomationsDeleteRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -875,7 +922,8 @@ export const apiSchemas = {
   "automations/trigger": {
     // Dynamic route: /api/automations/[id]/trigger.
     // Callers must pass pathOverride with the concrete automation ID.
-    req: z.object({}).brand<"AutomationsTriggerRequest">(),
+    params: z.object({ id: z.string().min(1) }),
+    req: z.undefined().brand<"AutomationsTriggerRequest">(),
     res: z.object({
       ok: z.literal(true),
       status: z.enum(["queued"]),
@@ -894,8 +942,15 @@ export const apiSchemas = {
   "automations/runs": {
     // Dynamic route: /api/automations/[id]/runs.
     // Callers must pass pathOverride with the concrete automation ID.
+    params: z.object({ id: z.string().min(1) }),
+    query: z.object({
+      limit: z.coerce.number().int().min(1).max(100).default(20),
+      offset: z.coerce.number().int().min(0).default(0),
+      status: AutomationRunStatusSchema.optional(),
+    }),
     req: z.undefined().brand<"AutomationsRunsRequest">(),
     res: z.object({
+      ok: z.literal(true),
       runs: z.array(
         z.object({
           id: z.string(),
@@ -920,6 +975,38 @@ export const apiSchemas = {
         limit: z.number(),
         offset: z.number(),
         total: z.number(),
+      }),
+    }),
+  },
+
+  /**
+   * GET /api/automations/[id]/runs/[runId]
+   * Get details for a single automation run
+   */
+  "automations/run": {
+    params: z.object({ id: z.string().min(1), runId: z.string().min(1) }),
+    query: z.object({
+      includeMessages: z
+        .enum(["true", "false"])
+        .optional()
+        .default("true")
+        .transform(value => value === "true"),
+    }),
+    req: z.undefined().brand<"AutomationsRunRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      run: z.object({
+        id: z.string(),
+        job_id: z.string(),
+        started_at: z.string(),
+        completed_at: z.string().nullable(),
+        duration_ms: z.number().nullable(),
+        status: AutomationRunStatusSchema,
+        error: z.string().nullable(),
+        result: z.record(z.string(), z.unknown()).nullable(),
+        triggered_by: z.string().nullable(),
+        changes_made: z.array(z.string()).nullable(),
+        messages: z.array(z.unknown()),
       }),
     }),
   },
@@ -1026,6 +1113,7 @@ export const apiSchemas = {
   "integrations/disconnect": {
     // Dynamic route: /api/integrations/[provider].
     // Callers must pass pathOverride with the concrete provider key.
+    params: z.object({ provider: z.string().min(1) }),
     req: z.undefined().brand<"IntegrationsDisconnectRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -1041,6 +1129,7 @@ export const apiSchemas = {
   "integrations/connect": {
     // Dynamic route: /api/integrations/[provider].
     // Callers must pass pathOverride with the concrete provider key.
+    params: z.object({ provider: z.string().min(1) }),
     req: z
       .object({
         token: z.string().min(1),
@@ -1396,6 +1485,180 @@ export const apiSchemas = {
       revokedCount: z.number(),
     }),
   },
+
+  // ============================================================================
+  // GET QUERY SCHEMAS — validated via handleQuery()
+  // ============================================================================
+
+  /**
+   * GET /api/sessions?workspace=xxx&activeMinutes=xxx&limit=xxx
+   * List sessions (A2A communication)
+   */
+  "sessions/list": {
+    path: "sessions",
+    query: z.object({
+      workspace: z.string().optional(),
+      activeMinutes: z.coerce.number().int().positive().optional(),
+      limit: z.coerce.number().int().min(1).max(100).default(50),
+    }),
+    res: z.object({
+      count: z.number(),
+      sessions: z.array(z.unknown()),
+    }),
+  },
+
+  /**
+   * GET /api/sessions/history?sessionKey=xxx&limit=xxx&includeTools=xxx&after=xxx
+   * Fetch conversation history from a session
+   */
+  "sessions/history": {
+    query: z.object({
+      sessionKey: z
+        .string()
+        .regex(
+          /^[^:]+::[^:]+(?:::wt\/[^:]+)?::[^:]+::[^:]+$/,
+          "Invalid session key format (expected userId::workspace[::wt/slug]::tabGroupId::tabId)",
+        ),
+      limit: z.coerce.number().int().min(1).max(100).default(50),
+      includeTools: z
+        .enum(["true", "false"])
+        .optional()
+        .default("false")
+        .transform(value => value === "true"),
+      after: z.string().optional(),
+    }),
+    res: z.object({
+      sessionKey: z.string(),
+      messages: z.array(z.unknown()),
+      count: z.number(),
+    }),
+  },
+
+  /**
+   * GET /api/linear/issues?limit=xxx&includeCompleted=xxx
+   * Fetch Linear issues assigned to current user
+   */
+  "linear/issues": {
+    query: z.object({
+      limit: z.coerce.number().int().min(1).max(50).default(25),
+      includeCompleted: z
+        .enum(["true", "false"])
+        .optional()
+        .default("false")
+        .transform(value => value === "true"),
+    }),
+    res: z.object({
+      ok: z.literal(true),
+      issues: z.array(z.unknown()),
+      totalCount: z.number(),
+    }),
+  },
+
+  /**
+   * GET /api/sites/check-availability?slug=xxx
+   * Check if a slug is available for deployment
+   */
+  "sites/check-availability": {
+    query: z.object({
+      slug: z
+        .string()
+        .min(1)
+        .transform(s => s.toLowerCase()),
+    }),
+    res: z.object({
+      available: z.boolean(),
+      slug: z.string().optional(),
+    }),
+  },
+
+  /**
+   * GET /api/sites/metadata?slug=xxx
+   * Fetch metadata for a site by slug
+   */
+  "sites/metadata": {
+    query: z.object({
+      slug: z.string().min(1),
+    }),
+    res: z.object({
+      ok: z.literal(true),
+      metadata: z.unknown(),
+    }),
+  },
+
+  /**
+   * GET /api/referrals/history?limit=xxx&offset=xxx
+   * Fetch referral history with pagination
+   */
+  "referrals/history": {
+    query: z.object({
+      limit: z.coerce
+        .number()
+        .int()
+        .default(50)
+        .transform(n => Math.min(Math.max(n, 1), 100)),
+      offset: z.coerce
+        .number()
+        .int()
+        .default(0)
+        .transform(n => Math.max(n, 0)),
+    }),
+    res: z.object({
+      ok: z.literal(true),
+      data: z.object({
+        referrals: z.array(z.unknown()),
+        total: z.number(),
+        hasMore: z.boolean(),
+      }),
+    }),
+  },
+
+  /**
+   * GET /api/conversations?workspace=xxx
+   * Fetch user's conversations for a workspace
+   */
+  "conversations/list": {
+    path: "conversations",
+    query: z.object({
+      workspace: z.string().min(1),
+    }),
+    res: z.object({
+      own: z.array(z.unknown()),
+      shared: z.array(z.unknown()),
+    }),
+  },
+
+  /**
+   * GET /api/conversations/messages?tabId=xxx&cursor=xxx&limit=xxx
+   * Fetch messages for a tab (lazy loading)
+   */
+  "conversations/messages": {
+    query: z.object({
+      tabId: z.string().min(1),
+      cursor: z.string().optional(),
+      limit: z.coerce.number().int().min(1).max(500).default(100),
+    }),
+    res: z.object({
+      messages: z.array(z.unknown()),
+      hasMore: z.boolean(),
+      nextCursor: z.string().nullable(),
+    }),
+  },
+
+  /**
+   * GET /api/images/list?workspace=xxx&worktree=xxx
+   * List images for a workspace
+   */
+  "images/list": {
+    query: z.object({
+      workspace: z.string().optional(),
+      worktree: z.string().optional(),
+    }),
+    res: z.object({
+      ok: z.literal(true),
+      images: z.array(z.unknown()),
+      count: z.number(),
+    }),
+  },
 } as const
 
 // ============================================================================
@@ -1407,6 +1670,10 @@ export type Req<E extends Endpoint> = PkgReq<typeof apiSchemas, E>
 export type Res<E extends Endpoint> = PkgRes<typeof apiSchemas, E>
 /** What callers pass to alrighty — `ok` is auto-injected */
 export type ResPayload<E extends Endpoint> = PkgResPayload<typeof apiSchemas, E>
+/** Validated URL path params for an endpoint (e.g., `{ id: string }`) */
+export type Params<E extends Endpoint> = PkgParams<typeof apiSchemas, E>
+/** Validated URL query params for an endpoint (e.g., `{ limit: number }`) */
+export type Query<E extends Endpoint> = PkgQuery<typeof apiSchemas, E>
 
 // ============================================================================
 // VALIDATION HELPER

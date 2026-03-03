@@ -3,6 +3,7 @@ import path from "node:path"
 import { type NextRequest, NextResponse } from "next/server"
 import { validateSlug } from "@/features/deployment/lib/slug-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { buildSubdomain, WORKSPACE_BASE } from "@/lib/config"
 import { ErrorCodes } from "@/lib/error-codes"
 
@@ -13,11 +14,9 @@ interface AvailabilityResponse {
 }
 
 export async function GET(req: NextRequest) {
-  const slug = req.nextUrl.searchParams.get("slug")?.toLowerCase()
-
-  if (!slug) {
-    return structuredErrorResponse(ErrorCodes.MISSING_SLUG, { status: 400 })
-  }
+  const query = await handleQuery("sites/check-availability", req)
+  if (isHandleBodyError(query)) return query
+  const { slug } = query
 
   const validation = validateSlug(slug)
   if (!validation.valid) {

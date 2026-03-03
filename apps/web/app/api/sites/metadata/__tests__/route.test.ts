@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { SessionUser } from "@/features/auth/lib/auth"
 import type { SiteMetadata } from "@/lib/siteMetadataStore"
@@ -53,7 +53,7 @@ vi.mock("@/lib/siteMetadataStore", () => ({
 
 vi.mock("@/lib/error-codes", () => ({
   ErrorCodes: {
-    MISSING_SLUG: "MISSING_SLUG",
+    INVALID_REQUEST: "INVALID_REQUEST",
     INVALID_SLUG: "INVALID_SLUG",
     SITE_NOT_FOUND: "SITE_NOT_FOUND",
     UNAUTHORIZED: "UNAUTHORIZED",
@@ -63,10 +63,12 @@ vi.mock("@/lib/error-codes", () => ({
 
 vi.mock("@/lib/api/responses", () => ({
   structuredErrorResponse: vi.fn((code: string, opts?: { status?: number; details?: Record<string, unknown> }) => {
-    return new Response(JSON.stringify({ ok: false, error: code, details: opts?.details }), {
-      status: opts?.status ?? 500,
-      headers: { "Content-Type": "application/json" },
-    })
+    return NextResponse.json(
+      { ok: false, error: code, details: opts?.details },
+      {
+        status: opts?.status ?? 500,
+      },
+    )
   }),
 }))
 
@@ -106,7 +108,8 @@ describe("GET /api/sites/metadata", () => {
     const data = await res.json()
 
     expect(res.status).toBe(400)
-    expect(data.error).toBe("MISSING_SLUG")
+    expect(data.error).toBe("INVALID_REQUEST")
+    expect(data.details.input).toBe("query")
   })
 
   it("returns 400 when slug is invalid", async () => {

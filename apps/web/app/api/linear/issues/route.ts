@@ -9,6 +9,7 @@ import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getLinearOAuth } from "@/lib/oauth/oauth-instances"
 
@@ -78,9 +79,9 @@ export async function GET(req: Request): Promise<NextResponse> {
   }
 
   // 3. Parse query params
-  const url = new URL(req.url)
-  const limit = Math.min(Number(url.searchParams.get("limit")) || 25, 50)
-  const includeCompleted = url.searchParams.get("includeCompleted") === "true"
+  const query = await handleQuery("linear/issues", req)
+  if (isHandleBodyError(query)) return query
+  const { limit, includeCompleted } = query
 
   // 4. Fetch issues from Linear GraphQL API
   try {

@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { AuthenticationError, isWorkspaceAuthenticated, requireSessionUser } from "@/features/auth/lib/auth"
 import { isValidSlug } from "@/features/deployment/lib/slug-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
 
@@ -16,12 +17,9 @@ export async function GET(request: NextRequest) {
     throw error
   }
 
-  const url = new URL(request.url)
-  const slug = url.searchParams.get("slug")
-
-  if (!slug) {
-    return structuredErrorResponse(ErrorCodes.MISSING_SLUG, { status: 400 })
-  }
+  const query = await handleQuery("sites/metadata", request)
+  if (isHandleBodyError(query)) return query
+  const { slug } = query
 
   // Validate slug format
   if (!isValidSlug(slug)) {

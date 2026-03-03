@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { normalizeConversationSourcePayload } from "@/lib/conversations/source"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
@@ -24,12 +25,9 @@ export async function GET(request: NextRequest) {
     }
     const userId = user.id
 
-    const { searchParams } = new URL(request.url)
-    const workspace = searchParams.get("workspace")
-
-    if (!workspace) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, { status: 400, details: { field: "workspace" } })
-    }
+    const query = await handleQuery("conversations/list", request)
+    if (isHandleBodyError(query)) return query
+    const { workspace } = query
 
     const supabase = await createRLSAppClient()
 

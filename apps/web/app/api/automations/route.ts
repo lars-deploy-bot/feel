@@ -9,14 +9,37 @@ import { computeNextRunAtMs } from "@webalive/automation"
 import { isAliveWorkspace, isValidClaudeModel } from "@webalive/shared"
 import { protectedRoute } from "@/features/auth/lib/protectedRoute"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import type { Res } from "@/lib/api/schemas"
-import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleBody, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { pokeCronService } from "@/lib/automation/cron-service"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
 import { createServiceAppClient } from "@/lib/supabase/service"
 
-type AutomationJob = Res<"automations">["automations"][number]
+type AutomationListRow = {
+  id: string
+  site_id: string
+  name: string
+  description: string | null
+  trigger_type: string
+  cron_schedule: string | null
+  cron_timezone: string | null
+  run_at: string | null
+  action_type: string
+  action_prompt: string | null
+  action_source: unknown
+  action_target_page: string | null
+  action_model: string | null
+  action_timeout_seconds: number | null
+  skills: string[] | null
+  email_address: string | null
+  is_active: boolean
+  status: string
+  last_run_at: string | null
+  last_run_status: string | null
+  next_run_at: string | null
+  created_at: string
+  domains?: { hostname: string } | null
+}
 
 /**
  * GET /api/automations - List automations for user's organizations
@@ -27,15 +50,15 @@ type AutomationJob = Res<"automations">["automations"][number]
  * - limit: Max results (default 50)
  */
 export const GET = protectedRoute(async ({ user, req }) => {
-  const { searchParams } = new URL(req.url)
-  const orgId = searchParams.get("org_id")
-  const siteId = searchParams.get("site_id")
-  const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100)
+  const parsedQuery = await handleQuery("automations", req)
+  if (isHandleBodyError(parsedQuery)) return parsedQuery
+
+  const { org_id: orgId, site_id: siteId, limit } = parsedQuery
 
   const supabase = await createRLSAppClient()
 
   // Build query - join with domains to get hostname
-  let query = supabase
+  let jobsQuery = supabase
     .from("automation_jobs")
     .select(
       `
@@ -69,14 +92,14 @@ export const GET = protectedRoute(async ({ user, req }) => {
     .limit(limit)
 
   if (orgId) {
-    query = query.eq("org_id", orgId)
+    jobsQuery = jobsQuery.eq("org_id", orgId)
   }
 
   if (siteId) {
-    query = query.eq("site_id", siteId)
+    jobsQuery = jobsQuery.eq("site_id", siteId)
   }
 
-  const { data, error } = await query
+  const { data, error } = await jobsQuery.returns<AutomationListRow[]>()
 
   if (error) {
     console.error("[Automations API] Query error:", error)
@@ -90,7 +113,7 @@ export const GET = protectedRoute(async ({ user, req }) => {
   }
 
   // Flatten the joined data
-  const automations: AutomationJob[] = data.map(row => ({
+  const automations = data.map(row => ({
     id: row.id,
     site_id: row.site_id,
     name: row.name,

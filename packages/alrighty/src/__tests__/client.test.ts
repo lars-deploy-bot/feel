@@ -12,6 +12,12 @@ const schemas = {
   "users/search": {
     res: z.object({ users: z.array(z.object({ id: z.string() })) }),
   },
+  // GET endpoint with params/query metadata - client should ignore these metadata fields
+  "jobs/get": {
+    params: z.object({ id: z.string() }),
+    query: z.object({ includeHistory: z.coerce.boolean().default(false) }),
+    res: z.object({ job: z.object({ id: z.string() }) }),
+  },
   // POST endpoint - has req with validation
   login: {
     req: z.object({ email: z.string().email(), password: z.string().min(1) }),
@@ -119,6 +125,20 @@ describe("createClient", () => {
       await getty("users/search")
 
       expect(mockFetch).toHaveBeenCalledWith("/api/users/search", expect.anything())
+    })
+
+    it("ignores params/query metadata on client side (still just path + method)", async () => {
+      mockFetch.mockReturnValue(mockResponse({ job: { id: "job_1" } }))
+
+      const { getty } = createClient(schemas)
+      await getty("jobs/get")
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/jobs/get",
+        expect.objectContaining({
+          method: "GET",
+        }),
+      )
     })
 
     it("normalizes double slashes", async () => {

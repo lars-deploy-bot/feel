@@ -100,7 +100,7 @@ describe("POST /api/outlook/draft", () => {
       body: "not json",
     })
     const res = await POST(req)
-    // handleBody catches SyntaxError and returns 500 (HANDLE_BODY_ERROR)
+    // handleBody returns a structured 400 on malformed JSON
     expect(res.status).toBeGreaterThanOrEqual(400)
   })
 
