@@ -46,7 +46,6 @@ export interface IntegrationUIConfig {
  * TypeScript will enforce that all providers are covered.
  */
 export const INTEGRATION_UI_REGISTRY = {
-  github: null, // GitHub operations via GitHub MCP tools - supports PAT tokens
   stripe: null, // No UI component yet - just shows connection status
   linear: null, // Issues viewable via Linear MCP tools, not settings panel
   gmail: null, // Email operations via Gmail MCP tools
