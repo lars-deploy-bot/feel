@@ -85,18 +85,6 @@ export function detectServeMode(workspacePath: string): ServeMode {
 }
 
 /**
- * Check if workspace needs user switching (not owned by root).
- */
-export function shouldUseWorkspaceUser(workspacePath: string): boolean {
-  try {
-    const st = statSync(workspacePath)
-    return st.uid !== 0 && st.gid !== 0
-  } catch {
-    return false
-  }
-}
-
-/**
  * Run a command as the workspace user.
  *
  * This spawns a child process that:

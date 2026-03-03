@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
 import * as Sentry from "@sentry/nextjs"
 import { getOAuthKeyForProvider, SITE_METADATA_FILENAME } from "@webalive/shared"
 import { NextResponse } from "next/server"
@@ -7,12 +6,12 @@ import { z } from "zod"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
+import { buildGitAuthEnv } from "@/lib/git/auth-env"
+import { resolveMetadataPath } from "@/lib/git/resolve-metadata-path"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
 import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
 import { redactTokens } from "./redact-tokens"
-
-const GIT_ASKPASS_PATH = "/usr/local/lib/alive/git-askpass.sh"
 
 const GitPushSchema = z.object({
   workspaceRoot: z.string(),
@@ -20,13 +19,9 @@ const GitPushSchema = z.object({
   remote: z.string().optional(),
 })
 
-/**
- * Read sourceRepo from .site-metadata.json in the workspace.
- * Returns null if metadata doesn't exist or has no sourceRepo.
- */
 function readSourceRepo(workspaceRoot: string): string | null {
   try {
-    const metadataPath = resolve(workspaceRoot, SITE_METADATA_FILENAME)
+    const metadataPath = resolveMetadataPath(workspaceRoot)
     const raw = JSON.parse(readFileSync(metadataPath, "utf-8"))
     return typeof raw.sourceRepo === "string" ? raw.sourceRepo : null
   } catch (_err) {
@@ -116,10 +111,7 @@ export async function POST(req: Request) {
         pushArgs.push(branch)
       }
 
-      // 5. Run git push with GIT_ASKPASS token injection
-      //    - GIT_ASKPASS: points to our generic script that echoes GIT_TOKEN
-      //    - GIT_TOKEN: the OAuth token (only in this child process's env)
-      //    - GIT_TERMINAL_PROMPT=0: prevent git from prompting on tty
+      // 5. Run git push with inline credential helper (no scripts on disk)
       console.log(`[git-push ${requestId}] Pushing: git ${pushArgs.join(" ")}`)
 
       const pushResult = await runAsWorkspaceUser({
@@ -127,11 +119,7 @@ export async function POST(req: Request) {
         args: pushArgs,
         workspaceRoot,
         timeout: 120000, // 2 minutes for large repos
-        env: {
-          GIT_ASKPASS: GIT_ASKPASS_PATH,
-          GIT_TOKEN: githubToken,
-          GIT_TERMINAL_PROMPT: "0",
-        },
+        env: buildGitAuthEnv(githubToken),
       })
 
       if (!pushResult.success) {

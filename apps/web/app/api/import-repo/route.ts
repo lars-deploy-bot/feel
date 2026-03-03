@@ -11,18 +11,20 @@ import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { buildSubdomain } from "@/lib/config"
 import { runStrictDeployment } from "@/lib/deployment/deploy-pipeline"
 import { DomainRegistrationError } from "@/lib/deployment/domain-registry"
-import { cleanupImportDir, importGithubRepo, parseGithubRepo } from "@/lib/deployment/github-import"
+import { cleanupImportDir, importGithubRepo } from "@/lib/deployment/github-import"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
 import { getUserQuota } from "@/lib/deployment/user-quotas"
 import { ErrorCodes } from "@/lib/error-codes"
 import { errorLogger } from "@/lib/error-logger"
+import { parseGithubRepoWithUrls } from "@/lib/git/github-repo-url"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 
 export async function POST(request: NextRequest) {
   let cleanupDir: string | null = null
+  let parsedRepo: ReturnType<typeof parseGithubRepoWithUrls> | null = null
 
   try {
     // Require authenticated session (no anonymous GitHub imports)
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     // Validate repo URL format before anything else
     try {
-      parseGithubRepo(repoUrl)
+      parsedRepo = parseGithubRepoWithUrls(repoUrl)
     } catch (error) {
       return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {
         status: 400,
@@ -133,7 +135,8 @@ export async function POST(request: NextRequest) {
       email: sessionUser.email,
       siteIdeas,
       source: "github-import",
-      sourceRepo: repoUrl,
+      sourceRepo: parsedRepo ? parsedRepo.canonicalUrl : repoUrl,
+      sourceBranch: branch?.trim() ? branch.trim() : undefined,
       createdAt: Date.now(),
     })
 

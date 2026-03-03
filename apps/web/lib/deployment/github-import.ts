@@ -112,7 +112,7 @@ export function parseGithubRepo(repoUrl: string): ParsedRepo {
  * @returns Path to the extracted repo directory
  * @throws Error if download or extraction fails
  */
-export async function downloadGithubRepo(repoUrl: string, githubToken?: string, branch?: string): Promise<string> {
+async function downloadGithubRepo(repoUrl: string, githubToken?: string, branch?: string): Promise<string> {
   const { owner, repo } = parseGithubRepo(repoUrl)
   const ref = branch || ""
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${ref}`

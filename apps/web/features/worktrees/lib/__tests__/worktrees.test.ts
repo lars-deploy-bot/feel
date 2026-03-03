@@ -313,6 +313,105 @@ describe("worktrees service", () => {
     expect(fs.existsSync(gitDir)).toBe(true)
   })
 
+  it("bootstraps git when sourceRepo is non-GitHub", async () => {
+    if (!repo) throw new Error("missing repo")
+
+    const gitDir = path.join(repo.baseWorkspacePath, ".git")
+    if (fs.existsSync(gitDir)) {
+      fs.rmSync(gitDir, { recursive: true, force: true })
+    }
+
+    const metadataPath = path.join(repo.siteRoot, ".site-metadata.json")
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8")) as Record<string, unknown>
+    metadata.sourceRepo = "https://gitlab.com/example/repo.git"
+    fs.writeFileSync(metadataPath, JSON.stringify(metadata), "utf8")
+
+    await expect(listWorktrees(repo.baseWorkspacePath)).resolves.toEqual([])
+    expect(fs.existsSync(gitDir)).toBe(true)
+  })
+
+  it("ignores invalid site metadata during bootstrap", async () => {
+    if (!repo) throw new Error("missing repo")
+
+    const gitDir = path.join(repo.baseWorkspacePath, ".git")
+    if (fs.existsSync(gitDir)) {
+      fs.rmSync(gitDir, { recursive: true, force: true })
+    }
+
+    const metadataPath = path.join(repo.siteRoot, ".site-metadata.json")
+    fs.writeFileSync(
+      metadataPath,
+      JSON.stringify({
+        sourceRepo: "https://github.com/acme/repo",
+      }),
+      "utf8",
+    )
+
+    await expect(listWorktrees(repo.baseWorkspacePath)).resolves.toEqual([])
+    expect(fs.existsSync(gitDir)).toBe(true)
+  })
+
+  it("prefers sourceBranch metadata when creating worktrees", async () => {
+    if (!repo) throw new Error("missing repo")
+
+    const originPath = path.join(repo.siteRoot, "origin.git")
+    runGit(repo.siteRoot, ["init", "--bare", originPath])
+    runGit(repo.baseWorkspacePath, ["remote", "add", "origin", originPath])
+    runGit(repo.baseWorkspacePath, ["push", "-u", "origin", "main"])
+
+    runGit(repo.baseWorkspacePath, ["checkout", "-b", "dev"])
+    fs.writeFileSync(path.join(repo.baseWorkspacePath, "DEV.md"), "dev-v1")
+    runGit(repo.baseWorkspacePath, ["add", "DEV.md"])
+    runGit(repo.baseWorkspacePath, ["commit", "-m", "dev v1"])
+    runGit(repo.baseWorkspacePath, ["push", "-u", "origin", "dev"])
+    runGit(repo.baseWorkspacePath, ["checkout", "main"])
+
+    const upstreamClone = path.join(repo.siteRoot, "upstream-dev")
+    runGit(repo.siteRoot, ["clone", "--branch", "dev", originPath, upstreamClone])
+    runGit(upstreamClone, ["config", "user.email", "upstream@example.com"])
+    runGit(upstreamClone, ["config", "user.name", "Upstream User"])
+    fs.writeFileSync(path.join(upstreamClone, "DEV2.md"), "dev-v2")
+    runGit(upstreamClone, ["add", "DEV2.md"])
+    runGit(upstreamClone, ["commit", "-m", "dev v2"])
+    const remoteDevHead = runGit(upstreamClone, ["rev-parse", "HEAD"])
+    runGit(upstreamClone, ["push", "origin", "HEAD:dev"])
+
+    const metadataPath = path.join(repo.siteRoot, ".site-metadata.json")
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8")) as Record<string, unknown>
+    metadata.sourceBranch = "dev"
+    fs.writeFileSync(metadataPath, JSON.stringify(metadata), "utf8")
+
+    const localMainHead = runGit(repo.baseWorkspacePath, ["rev-parse", "main"])
+    expect(localMainHead).not.toBe(remoteDevHead)
+
+    const created = await createWorktree({
+      baseWorkspacePath: repo.baseWorkspacePath,
+      slug: "from-source-branch",
+    })
+
+    const worktreeHead = runGit(created.worktreePath, ["rev-parse", "HEAD"])
+    expect(worktreeHead).toBe(remoteDevHead)
+    expect(fs.existsSync(path.join(created.worktreePath, "DEV2.md"))).toBe(true)
+  })
+
+  it("falls back to current HEAD when sourceBranch metadata cannot be resolved", async () => {
+    if (!repo) throw new Error("missing repo")
+
+    const baseHead = runGit(repo.baseWorkspacePath, ["rev-parse", "HEAD"])
+    const metadataPath = path.join(repo.siteRoot, ".site-metadata.json")
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8")) as Record<string, unknown>
+    metadata.sourceBranch = "missing-branch"
+    fs.writeFileSync(metadataPath, JSON.stringify(metadata), "utf8")
+
+    const created = await createWorktree({
+      baseWorkspacePath: repo.baseWorkspacePath,
+      slug: "fallback-source-branch",
+    })
+
+    const worktreeHead = runGit(created.worktreePath, ["rev-parse", "HEAD"])
+    expect(worktreeHead).toBe(baseHead)
+  })
+
   it("rejects worktree creation when base path is itself a worktree", async () => {
     if (!repo) throw new Error("missing repo")
 

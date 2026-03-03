@@ -1,5 +1,6 @@
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { getOAuthKeyForProvider } from "@webalive/shared"
 import type { NextRequest } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
@@ -13,6 +14,8 @@ import {
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty, handleBody, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
+import { buildGitAuthEnv } from "@/lib/git/auth-env"
+import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 import { getRequestId } from "@/lib/request-id"
 
 function safeGitFailureDetails(
@@ -208,11 +211,27 @@ export async function POST(req: NextRequest) {
       return workspaceResult.response
     }
 
+    // Best-effort GitHub auth — enables fetch from private repos.
+    // If user hasn't connected GitHub, we proceed without auth (public repos only).
+    let gitEnv: Record<string, string> | undefined
+    try {
+      const oauthKey = getOAuthKeyForProvider("github")
+      const token = await getOAuthInstance(oauthKey).getAccessToken(user.id, oauthKey)
+      gitEnv = buildGitAuthEnv(token)
+    } catch (error) {
+      // No GitHub token — public repos still work, private repos fall back to local refs.
+      console.warn(
+        `[Worktrees ${requestId}] GitHub auth unavailable for remote refresh; continuing without token`,
+        error instanceof Error ? error.message : error,
+      )
+    }
+
     const result = await createWorktree({
       baseWorkspacePath: workspaceResult.workspace,
       slug: body.slug,
       branch: body.branch,
       from: body.from,
+      gitEnv,
     })
 
     const worktreeRoot = path.join(path.dirname(workspaceResult.workspace), "worktrees")

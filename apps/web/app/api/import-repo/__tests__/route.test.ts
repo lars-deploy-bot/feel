@@ -11,6 +11,8 @@ const cleanupImportDirMock = vi.fn()
 const getAccessTokenMock = vi.fn()
 const runStrictDeploymentMock = vi.fn()
 const siteMetadataExistsMock = vi.fn((_slug: string) => false)
+const siteMetadataSetSiteMock = vi.fn<(slug: string, metadata: unknown) => Promise<void>>()
+const handleBodyMock = vi.fn()
 
 vi.mock("@/features/auth/lib/auth", () => ({
   getSessionUser: () => getSessionUserMock(),
@@ -32,12 +34,7 @@ vi.mock("next/headers", () => ({
 }))
 
 vi.mock("@/lib/api/server", () => ({
-  handleBody: vi.fn(() => ({
-    slug: "testsite",
-    repoUrl: "https://github.com/example/repo",
-    orgId: "org-1",
-    siteIdeas: "imported site",
-  })),
+  handleBody: (...args: unknown[]) => handleBodyMock(...args),
   isHandleBodyError: vi.fn(() => false),
   alrighty: vi.fn((_endpoint: string, payload: Record<string, unknown>) => {
     const response = new Response(JSON.stringify(payload), { status: 200 })
@@ -92,7 +89,7 @@ vi.mock("@/lib/error-logger", () => ({
 vi.mock("@/lib/siteMetadataStore", () => ({
   siteMetadataStore: {
     exists: (slug: string) => siteMetadataExistsMock(slug),
-    setSite: vi.fn(() => Promise.resolve()),
+    setSite: (slug: string, metadata: unknown) => siteMetadataSetSiteMock(slug, metadata),
   },
 }))
 
@@ -136,6 +133,12 @@ describe("POST /api/import-repo", () => {
       currentSites: 1,
     })
     getAccessTokenMock.mockResolvedValue("github-token")
+    handleBodyMock.mockResolvedValue({
+      slug: "testsite",
+      repoUrl: "https://github.com/example/repo",
+      orgId: "org-1",
+      siteIdeas: "imported site",
+    })
     siteMetadataExistsMock.mockReturnValue(false)
     parseGithubRepoMock.mockReturnValue({ owner: "example", repo: "repo" })
     importGithubRepoMock.mockResolvedValue({
@@ -147,6 +150,7 @@ describe("POST /api/import-repo", () => {
       port: 3700,
       serviceName: "site@testsite-alive-best.service",
     })
+    siteMetadataSetSiteMock.mockResolvedValue(undefined)
   })
 
   it("requires authentication", async () => {
@@ -292,5 +296,35 @@ describe("POST /api/import-repo", () => {
 
     expect(response.status).toBe(200)
     expect(importGithubRepoMock).toHaveBeenCalledWith("https://github.com/example/repo", "github-token-123", undefined)
+  })
+
+  it("stores canonical sourceRepo and sourceBranch metadata", async () => {
+    parseGithubRepoMock.mockReturnValueOnce({ owner: "Acme", repo: "Toolkit" })
+    handleBodyMock.mockResolvedValueOnce({
+      slug: "testsite",
+      repoUrl: "Acme/Toolkit.git",
+      branch: "release/v2",
+      orgId: "org-1",
+      siteIdeas: "imported site",
+    })
+
+    const response = await POST(
+      createRequest({
+        slug: "testsite",
+        repoUrl: "Acme/Toolkit.git",
+        branch: "release/v2",
+        orgId: "org-1",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(siteMetadataSetSiteMock).toHaveBeenCalledWith(
+      "testsite",
+      expect.objectContaining({
+        source: "github-import",
+        sourceRepo: "https://github.com/Acme/Toolkit",
+        sourceBranch: "release/v2",
+      }),
+    )
   })
 })
