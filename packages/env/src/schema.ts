@@ -23,6 +23,8 @@ export const jwt = z.string().regex(/^eyJ/, "Must be valid JWT")
 
 export const anthropicApiKey = z.string().regex(/^sk-ant-/, "Must be valid Anthropic API key")
 
+export const e2bApiKey = z.string().regex(/^e2b_/, "Must be valid E2B API key (e2b_*)")
+
 export const flowgladSecretKey = z
   .string()
   .regex(/^sk_(test|live)_/, "Must be valid Flowglad secret key (sk_test_* or sk_live_*)")
@@ -139,6 +141,9 @@ export const serverSchema = {
   // Signup access code (required to create new accounts)
   SIGNUP_ACCESS_CODE: z.string().min(1),
 
+  // E2B Sandbox
+  E2B_API_KEY: e2bApiKey,
+
   // E2E Testing (optional - only needed for E2E tests)
   E2E_TEST_SECRET: z.string().optional(),
   E2E_RUN_ID: z.string().optional(),
@@ -216,6 +221,7 @@ export const runtimeEnv = {
   REDIS_URL: process.env.REDIS_URL,
   NODE_ENV: process.env.NODE_ENV,
   SIGNUP_ACCESS_CODE: process.env.SIGNUP_ACCESS_CODE,
+  E2B_API_KEY: process.env.E2B_API_KEY,
   E2E_TEST_SECRET: process.env.E2E_TEST_SECRET,
   E2E_RUN_ID: process.env.E2E_RUN_ID,
   SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,

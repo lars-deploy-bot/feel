@@ -55,7 +55,8 @@
         "IMAGES_SIGNATURE_SECRET",
         "IMAGES_STORAGE_PATH",
         "FLOWGLAD_SECRET_KEY",
-        "SERVER_CONFIG_PATH"
+        "SERVER_CONFIG_PATH",
+        "E2B_API_KEY"
       ]
     },
     "start": {

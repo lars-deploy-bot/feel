@@ -1,0 +1,11 @@
+{
+  "name": "e2b-test",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "test": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "e2b": "^2.13.0"
+  }
+}
