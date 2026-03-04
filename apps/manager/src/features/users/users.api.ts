@@ -55,6 +55,8 @@ export const usersApi = {
     api.get<UserEventsResponse>(`/manager/users/${userId}/events?limit=${limit}`).then(r => r.data),
   updateModels: (userId: string, enabledModels: ClaudeModel[]) =>
     api.patch(`/manager/users/${userId}/models`, { enabled_models: enabledModels }),
-  issuePasswordResetToken: (userId: string) =>
-    api.post<PasswordResetTokenResponse>(`/manager/users/${userId}/password-reset-token`).then(r => r.data),
+  issuePasswordResetToken: async (userId: string) => {
+    const response = await api.post<PasswordResetTokenResponse>(`/manager/users/${userId}/password-reset-token`)
+    return response.data
+  },
 }

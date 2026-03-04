@@ -11,7 +11,7 @@ CREATE TABLE iam.password_reset_tokens (
   issued_by text NOT NULL DEFAULT 'manager'
 );
 
-CREATE INDEX idx_password_reset_tokens_user_active
+CREATE UNIQUE INDEX idx_password_reset_tokens_user_active
   ON iam.password_reset_tokens(user_id)
   WHERE used_at IS NULL;
 
@@ -80,6 +80,8 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION iam.issue_password_reset_token(text, text, timestamptz) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION iam.consume_password_reset_token(text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION iam.issue_password_reset_token(text, text, timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION iam.consume_password_reset_token(text, text) TO service_role;
 GRANT ALL ON iam.password_reset_tokens TO service_role;

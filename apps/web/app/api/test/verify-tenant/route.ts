@@ -9,6 +9,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import type { ExecutionMode, SandboxStatus } from "@webalive/database"
 import { env } from "@webalive/env/server"
 import { PATHS, TEST_CONFIG } from "@webalive/shared"
 import { structuredErrorResponse } from "@/lib/api/responses"
@@ -23,20 +24,10 @@ interface PostgrestErrorLike {
   message?: string
 }
 
-type DomainExecutionMode = "systemd" | "e2b"
-type DomainSandboxStatus = "creating" | "running" | "dead" | null
-
-interface DomainRecord {
-  hostname: string
-  execution_mode: DomainExecutionMode
-  sandbox_id: string | null
-  sandbox_status: DomainSandboxStatus
-}
-
 interface ReadySandboxState {
-  executionMode: DomainExecutionMode
+  executionMode: ExecutionMode
   sandboxId: string | null
-  sandboxStatus: DomainSandboxStatus
+  sandboxStatus: SandboxStatus | null
 }
 
 function asPostgrestError(error: unknown): PostgrestErrorLike | null {
@@ -155,7 +146,7 @@ export async function GET(req: Request) {
         return Response.json({ ready: false, missing: "domain" })
       }
 
-      const domain = domains[0] as DomainRecord
+      const [domain] = domains
       sandboxState = {
         executionMode: domain.execution_mode,
         sandboxId: domain.sandbox_id,

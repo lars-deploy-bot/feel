@@ -39,12 +39,16 @@ async function waitForSandboxState(
   let lastState: SandboxState | null = null
 
   while (Date.now() < deadline) {
-    const state = await getTenantSandboxState(baseUrl, email)
-    if (state) {
-      lastState = state
-      if (predicate(state)) {
-        return state
+    try {
+      const state = await getTenantSandboxState(baseUrl, email)
+      if (state) {
+        lastState = state
+        if (predicate(state)) {
+          return state
+        }
       }
+    } catch {
+      // transient error; retry until deadline
     }
     await new Promise(resolve => setTimeout(resolve, SANDBOX_WAIT_INTERVAL_MS))
   }

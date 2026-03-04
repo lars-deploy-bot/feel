@@ -54,5 +54,7 @@ usersRoutes.get("/:id/events", async c => {
 usersRoutes.post("/:id/password-reset-token", async c => {
   const userId = c.req.param("id")
   const token = await createPasswordResetToken(userId)
-  return c.json({ ok: true, data: token })
+  c.header("Cache-Control", "no-store")
+  c.header("Pragma", "no-cache")
+  return c.json({ ok: true, data: token }, 201)
 })
