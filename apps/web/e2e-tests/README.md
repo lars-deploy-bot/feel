@@ -197,6 +197,12 @@ TEST_CONFIG.DEFAULT_CREDITS // 1000
 Validation coverage:
 - `sandbox-lifecycle-live.spec.ts` verifies sandbox creation/reuse on worker tenants.
 
+Build/publish command:
+
+```bash
+./scripts/e2b/build-e2e-minimal-template.sh
+```
+
 ## Debugging
 
 ### View Worker's Tenant
