@@ -1,8 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/Badge"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
 import { cn } from "@/lib/cn"
 import { useRoute } from "@/lib/useRoute"
-import type { UserDevice, UserLocation } from "../users.api"
+import type { PasswordResetToken, UserDevice, UserLocation } from "../users.api"
 import { usersApi } from "../users.api"
 import type { User } from "../users.types"
 import { avatarColor, formatDate, relativeTime, roleBadgeVariant, statusVariant } from "../users.utils"
@@ -45,12 +48,49 @@ export function UserDetail({ user }: UserDetailProps) {
   const displayName = user.display_name ?? user.email ?? "Unknown"
   const { navigate } = useRoute()
   const queryClient = useQueryClient()
+  const [resetToken, setResetToken] = useState<PasswordResetToken | null>(null)
+  const [isIssuingToken, setIsIssuingToken] = useState(false)
+  const [tokenError, setTokenError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    setResetToken(null)
+    setTokenError(null)
+    setCopied(false)
+  }, [user.user_id])
 
   const { data: profile } = useQuery({
     queryKey: ["users", user.user_id, "profile"],
     queryFn: () => usersApi.profile(user.user_id),
     staleTime: 120_000,
   })
+
+  async function handleIssuePasswordResetToken() {
+    setIsIssuingToken(true)
+    setTokenError(null)
+    setCopied(false)
+
+    try {
+      const token = await usersApi.issuePasswordResetToken(user.user_id)
+      setResetToken(token)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to issue reset token"
+      setTokenError(message)
+    } finally {
+      setIsIssuingToken(false)
+    }
+  }
+
+  async function handleCopyResetToken() {
+    if (!resetToken) return
+
+    try {
+      await navigator.clipboard.writeText(resetToken.token)
+      setCopied(true)
+    } catch {
+      setTokenError("Clipboard copy failed")
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -151,6 +191,31 @@ export function UserDetail({ user }: UserDetailProps) {
         enabledModels={user.enabled_models}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["users"] })}
       />
+
+      {/* Password Reset */}
+      <div>
+        <SectionHeader label="Password Reset" />
+        <div className="space-y-2">
+          <Button onClick={handleIssuePasswordResetToken} loading={isIssuingToken} size="sm">
+            Generate Reset Token
+          </Button>
+
+          {resetToken && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Input value={resetToken.token} readOnly className="font-mono text-[11px]" />
+                <Button variant="secondary" size="sm" onClick={handleCopyResetToken}>
+                  {copied ? "Copied" : "Copy"}
+                </Button>
+              </div>
+              <p className="text-[11px] text-text-tertiary">Expires {formatDate(resetToken.expires_at)}</p>
+              <p className="text-[11px] text-text-tertiary">One-time token. Share it privately with the user.</p>
+            </div>
+          )}
+
+          {tokenError && <p className="text-[11px] text-danger">{tokenError}</p>}
+        </div>
+      </div>
 
       {/* Organizations */}
       <div>
