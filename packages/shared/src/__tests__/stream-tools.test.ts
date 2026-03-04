@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest"
 import { SUPERADMIN } from "../config"
 import {
   buildStreamToolRuntimeConfig,
+  createStreamCanUseTool,
   createStreamToolContext,
+  filterToolsForPlanMode,
   getStreamAllowedTools,
   getStreamDisallowedTools,
   getStreamToolDecision,
@@ -10,6 +12,8 @@ import {
   getToolDetail,
   isHeavyBashCommand,
   isStreamClientVisibleTool,
+  isStreamInitVisibleTool,
+  isStreamPolicyTool,
 } from "../tools/stream-tools"
 import { getWorkspacePath } from "../tools/stream-tools-server"
 
@@ -194,6 +198,10 @@ describe("stream tool role policy", () => {
     expect(isStreamClientVisibleTool("TodoWrite")).toBe(false)
   })
 
+  it("treats external MCP tools as policy tools via MCP bridge policy inheritance", () => {
+    expect(isStreamPolicyTool("mcp__context7__resolve-library-id")).toBe(true)
+  })
+
   it("allows AskUserQuestion for all roles", () => {
     const member = getStreamToolDecision("AskUserQuestion", createStreamToolContext())
     const admin = getStreamToolDecision("AskUserQuestion", createStreamToolContext({ isAdmin: true }))
@@ -240,9 +248,51 @@ describe("stream tool role policy", () => {
     expect(runtime.allowedTools).not.toContain("Write")
     expect(runtime.allowedTools).not.toContain("Edit")
     expect(runtime.allowedTools).not.toContain("Bash")
+    expect(runtime.allowedTools).not.toContain("mcp__context7__resolve-library-id")
     expect(runtime.allowedTools).toContain("mcp__alive-workspace__browser")
     expect(runtime.disallowedTools).toContain("Write")
     expect(runtime.disallowedTools).toContain("Edit")
+  })
+
+  it("blocks external MCP tool invocations in plan mode even with connected providers", async () => {
+    const context = createStreamToolContext({ isPlanMode: true, connectedProviders: ["outlook"] })
+    const canUseTool = createStreamCanUseTool(context, [])
+    const result = await canUseTool(
+      "mcp__outlook__search_emails",
+      {},
+      { signal: new AbortController().signal, toolUseID: "tool-use-1" },
+    )
+
+    expect(result.behavior).toBe("deny")
+  })
+
+  it("keeps OAuth external MCP invocations available outside plan mode when provider is connected", async () => {
+    const context = createStreamToolContext({ connectedProviders: ["outlook"] })
+    const canUseTool = createStreamCanUseTool(context, [])
+    const result = await canUseTool(
+      "mcp__outlook__search_emails",
+      {},
+      { signal: new AbortController().signal, toolUseID: "tool-use-2" },
+    )
+
+    expect(result.behavior).toBe("allow")
+  })
+
+  it("filterToolsForPlanMode removes global MCP tools by inheriting MCP bridge policy", () => {
+    const filtered = filterToolsForPlanMode(["Read", "mcp__context7__resolve-library-id"], true)
+    expect(filtered).toEqual(["Read"])
+  })
+
+  it("hides OAuth MCP tools from init payload in plan mode even when connected", () => {
+    const context = createStreamToolContext({ isPlanMode: true, connectedProviders: ["outlook"] })
+    const visible = isStreamInitVisibleTool("mcp__outlook__search_emails", context, [])
+    expect(visible).toBe(false)
+  })
+
+  it("keeps OAuth MCP tools visible in init payload outside plan mode when connected", () => {
+    const context = createStreamToolContext({ connectedProviders: ["outlook"] })
+    const visible = isStreamInitVisibleTool("mcp__outlook__search_emails", context, [])
+    expect(visible).toBe(true)
   })
 
   it("fails closed for internal tools that have no policy entry", () => {

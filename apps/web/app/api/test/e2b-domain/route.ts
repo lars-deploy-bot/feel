@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
+import { getWorkerPool } from "@webalive/worker-pool"
 import { Sandbox } from "e2b"
 import { z } from "zod"
 import { structuredErrorResponse } from "@/lib/api/responses"
@@ -23,6 +24,7 @@ const UpdateBodySchema = z.object({
   sandboxId: z.string().nullable().optional(),
   killSandbox: z.boolean().optional().default(false),
   resetSandboxFields: z.boolean().optional().default(false),
+  restartWorkspaceWorkers: z.boolean().optional().default(false),
 })
 
 function hasTestAccess(req: Request): boolean {
@@ -69,6 +71,41 @@ async function killSandboxIfRequested(
     console.warn(`[Test E2B Domain] sandbox kill failed for ${domain.hostname}/${domain.sandbox_id}: ${message}`)
     return { killed: false }
   }
+}
+
+async function restartWorkspaceWorkersIfRequested(
+  workspace: string,
+  shouldRestart: boolean,
+): Promise<{ requested: boolean; matched: number; restarted: number }> {
+  if (!shouldRestart) return { requested: false, matched: 0, restarted: 0 }
+
+  const pool = getWorkerPool()
+  const workers = pool
+    .getWorkerInfo()
+    .filter(
+      worker =>
+        worker.workspaceKey === workspace ||
+        worker.workspaceKey.startsWith(`${workspace}:`) ||
+        worker.workspaceKey.startsWith(`${workspace}::`),
+    )
+  if (workers.length === 0) {
+    return { requested: true, matched: 0, restarted: 0 }
+  }
+
+  const shutdowns = await Promise.allSettled(
+    workers.map(worker => pool.shutdownWorker(worker.workspaceKey, "test_e2b_domain_runtime_reset")),
+  )
+
+  const restarted = shutdowns.filter(result => result.status === "fulfilled").length
+  const failed = shutdowns.filter(result => result.status === "rejected")
+
+  if (failed.length > 0) {
+    throw new Error(
+      `Failed restarting workspace workers for ${workspace}: ${failed.length}/${workers.length} shutdown attempts failed`,
+    )
+  }
+
+  return { requested: true, matched: workers.length, restarted }
 }
 
 export async function GET(req: Request) {
@@ -137,6 +174,7 @@ export async function POST(req: Request) {
     }
 
     const killResult = await killSandboxIfRequested(current, body.killSandbox)
+    const workerRestartResult = await restartWorkspaceWorkersIfRequested(body.workspace, body.restartWorkspaceWorkers)
 
     const nextSandboxId = body.resetSandboxFields ? null : (body.sandboxId ?? current.sandbox_id)
     const nextSandboxStatus = body.resetSandboxFields ? null : (body.sandboxStatus ?? current.sandbox_status)
@@ -161,6 +199,7 @@ export async function POST(req: Request) {
       ok: true,
       domain: RuntimeResponseSchema.parse(data),
       kill: killResult,
+      workerRestart: workerRestartResult,
     })
   } catch (error) {
     console.error("[Test E2B Domain] POST failed:", error)

@@ -527,14 +527,42 @@ function getPolicyForTool(toolName: string): StreamToolPolicy | undefined {
   return prefixMatch?.policy
 }
 
+function isExternalMcpTool(toolName: string): boolean {
+  return toolName.startsWith("mcp__") && !isInternalPolicyTool(toolName)
+}
+
+function getEffectivePolicyForTool(toolName: string): { policy: StreamToolPolicy; policyToolName: string } | null {
+  const directPolicy = getPolicyForTool(toolName)
+  if (directPolicy) {
+    return {
+      policy: directPolicy,
+      policyToolName: toolName,
+    }
+  }
+
+  // External MCP tools inherit MCP bridge policy so plan-mode and role/workspace
+  // checks stay consistent with SDK_TOOL.MCP behavior.
+  if (isExternalMcpTool(toolName)) {
+    const mcpBridgePolicy = getPolicyForTool(SDK_TOOL.MCP)
+    if (mcpBridgePolicy) {
+      return {
+        policy: mcpBridgePolicy,
+        policyToolName: SDK_TOOL.MCP,
+      }
+    }
+  }
+
+  return null
+}
+
 export function isStreamPolicyTool(toolName: string): boolean {
-  return !!getPolicyForTool(toolName)
+  return getEffectivePolicyForTool(toolName) !== null
 }
 
 export function isStreamClientVisibleTool(toolName: string): boolean {
-  const policy = getPolicyForTool(toolName)
-  if (policy) {
-    return policy.visibility === "visible"
+  const effectivePolicy = getEffectivePolicyForTool(toolName)
+  if (effectivePolicy) {
+    return effectivePolicy.policy.visibility === "visible"
   }
   // Internal tools without explicit policy fail closed.
   if (isInternalPolicyTool(toolName)) {
@@ -544,9 +572,9 @@ export function isStreamClientVisibleTool(toolName: string): boolean {
 }
 
 export function getStreamToolDecision(toolName: string, context: StreamToolContext): StreamToolDecision {
-  const policy = getPolicyForTool(toolName)
+  const effectivePolicy = getEffectivePolicyForTool(toolName)
 
-  if (!policy) {
+  if (!effectivePolicy) {
     // Internal tools must always have a policy entry (fail closed).
     if (isInternalPolicyTool(toolName)) {
       return {
@@ -557,7 +585,7 @@ export function getStreamToolDecision(toolName: string, context: StreamToolConte
       }
     }
 
-    // External MCP tools are controlled by allowedTools + OAuth checks.
+    // Non-policy tools are allowed by default.
     return {
       executable: true,
       visibleToClient: true,
@@ -565,6 +593,7 @@ export function getStreamToolDecision(toolName: string, context: StreamToolConte
     }
   }
 
+  const { policy, policyToolName } = effectivePolicy
   const visibleToClient = policy.visibility === "visible"
 
   if (policy.requiresUserApproval) {
@@ -595,11 +624,12 @@ export function getStreamToolDecision(toolName: string, context: StreamToolConte
   }
 
   if (context.isPlanMode && policy.planMode === "block") {
+    const viaSource = policyToolName !== toolName ? ` via "${policyToolName}" policy` : ""
     return {
       executable: false,
       visibleToClient,
       policyFound: true,
-      reason: `Tool "${toolName}" is blocked in plan mode. ${policy.reason}`,
+      reason: `Tool "${toolName}" is blocked in plan mode${viaSource}. ${policy.reason}`,
     }
   }
 
@@ -641,9 +671,9 @@ export function buildStreamToolRuntimeConfig(
 
   const allowedInternalMcpTools = internalMcpTools.filter(tool => getStreamToolDecision(tool, context).executable)
 
-  const globalMcpTools = getGlobalMcpToolNames()
+  const allowedGlobalMcpTools = getGlobalMcpToolNames().filter(tool => getStreamToolDecision(tool, context).executable)
 
-  const allowedTools = dedupeStrings([...allowedSdkTools, ...allowedInternalMcpTools, ...globalMcpTools])
+  const allowedTools = dedupeStrings([...allowedSdkTools, ...allowedInternalMcpTools, ...allowedGlobalMcpTools])
   const visibleTools = allowedTools.filter(tool => getStreamToolDecision(tool, context).visibleToClient)
 
   return {
@@ -766,6 +796,27 @@ export function createStreamCanUseTool(
   }
 }
 
+/**
+ * Determine whether a tool should be shown in the client init payload.
+ * Uses the same policy decision path as execution checks.
+ */
+export function isStreamInitVisibleTool(
+  toolName: string,
+  context: StreamToolContext,
+  allowedTools: readonly string[],
+): boolean {
+  const decision = getStreamToolDecision(toolName, context)
+  if (!decision.visibleToClient) {
+    return false
+  }
+
+  if (allowedTools.includes(toolName)) {
+    return true
+  }
+
+  return isOAuthMcpTool(toolName, context.connectedProviders) && decision.executable
+}
+
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
@@ -818,10 +869,9 @@ export function filterToolsForPlanMode(allowedTools: string[], isPlanMode: boole
   if (!isPlanMode) return allowedTools
 
   return allowedTools.filter(tool => {
-    const toolPolicy = STREAM_TOOL_POLICY_REGISTRY[tool]
-    // If no registry entry (e.g. external MCP tool), keep it
-    if (!toolPolicy) return true
-    return toolPolicy.planMode !== "block"
+    const effectivePolicy = getEffectivePolicyForTool(tool)
+    if (!effectivePolicy) return true
+    return effectivePolicy.policy.planMode !== "block"
   })
 }
 
