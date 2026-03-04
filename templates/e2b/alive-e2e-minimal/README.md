@@ -2,10 +2,13 @@
 
 Minimal sandbox image for live E2E lifecycle tests.
 
-## Included
-- `/home/user/project` writable workspace
-- `bash`
-- GNU `coreutils`
+This Dockerfile is mirrored from infra `templates/alive-minimal/Dockerfile` and intentionally keeps only:
+
+- `FROM e2bdev/base:latest`
+- `RUN mkdir -p /home/user/project`
+- `WORKDIR /home/user/project`
+
+For the full development image, see `templates/e2b/alive/e2b.Dockerfile`.
 
 ## Build & publish
 
