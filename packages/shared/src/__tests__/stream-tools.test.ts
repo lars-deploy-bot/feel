@@ -139,7 +139,9 @@ describe("stream tool role policy", () => {
     expect(disallowed).toContain("TaskStop")
     expect(disallowed).toContain("Task")
     expect(disallowed).toContain("WebSearch")
-    expect(disallowed).toContain("ExitPlanMode")
+    // ExitPlanMode is in allowedTools (so SDK registers it) but denied by canUseTool
+    expect(disallowed).not.toContain("ExitPlanMode")
+    expect(allowed).toContain("ExitPlanMode")
     expect(disallowed).not.toContain("ListMcpResources")
     expect(disallowed).not.toContain("ReadMcpResource")
   })
@@ -153,7 +155,9 @@ describe("stream tool role policy", () => {
     expect(allowed).not.toContain("ReadMcpResource")
     expect(disallowed).toContain("Task")
     expect(disallowed).toContain("WebSearch")
-    expect(disallowed).toContain("ExitPlanMode")
+    // ExitPlanMode is in allowedTools (so SDK registers it) but denied by canUseTool
+    expect(disallowed).not.toContain("ExitPlanMode")
+    expect(allowed).toContain("ExitPlanMode")
   })
 
   it("gives superadmin Task/WebSearch but still hides member-only MCP resource tools", () => {
@@ -166,7 +170,9 @@ describe("stream tool role policy", () => {
     expect(allowed).toContain("AskUserQuestion")
     expect(allowed).not.toContain("ListMcpResources")
     expect(allowed).not.toContain("ReadMcpResource")
-    expect(disallowed).toContain("ExitPlanMode")
+    // ExitPlanMode is in allowedTools (so SDK registers it) but denied by canUseTool
+    expect(disallowed).not.toContain("ExitPlanMode")
+    expect(allowed).toContain("ExitPlanMode")
     expect(disallowed).not.toContain("Task")
     expect(disallowed).not.toContain("WebSearch")
   })

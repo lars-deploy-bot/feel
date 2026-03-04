@@ -35,6 +35,7 @@ import {
   E2B_DEFAULT_TEMPLATE,
   E2B_DISABLED_SDK_TOOLS,
   E2B_MCP_TOOLS,
+  E2B_TEMPLATES,
   EXECUTION_MODES,
   SANDBOX_STATUSES,
   SANDBOX_WORKSPACE_ROOT,
@@ -61,11 +62,13 @@ if (SENTRY.DSN) {
   })
 }
 
-// Singleton sandbox manager — created lazily on first E2B request.
+// Singleton managers keyed by template.
 // Persists sandbox state via PostgREST (Supabase REST API).
-let sandboxManager = null
-function getSandboxManager() {
-  if (sandboxManager) return sandboxManager
+const sandboxManagers = new Map()
+function getSandboxManager(template) {
+  const templateName = template || E2B_DEFAULT_TEMPLATE
+  const cached = sandboxManagers.get(templateName)
+  if (cached) return cached
 
   // FAIL FAST: All E2B env vars must be present. If any are missing, the worker
   // was spawned without them (check WORKER_SPAWN_ALLOWED_ENV_KEYS in env-isolation.ts).
@@ -85,9 +88,9 @@ function getSandboxManager() {
     )
   }
 
-  sandboxManager = new SandboxManager({
+  const manager = new SandboxManager({
     domain: e2bDomain,
-    template: E2B_DEFAULT_TEMPLATE,
+    template: templateName,
     persistence: {
       async updateSandbox(domainId, sandboxId, status) {
         const response = await fetch(`${supabaseUrl}/rest/v1/domains?domain_id=eq.${domainId}`, {
@@ -118,7 +121,9 @@ function getSandboxManager() {
       },
     },
   })
-  return sandboxManager
+
+  sandboxManagers.set(templateName, manager)
+  return manager
 }
 
 // Global unhandled rejection handler - smart handling based on error type
@@ -757,6 +762,9 @@ async function handleQuery(ipc, requestId, payload) {
       if (domain.sandbox_status !== null && !SANDBOX_STATUSES.has(domain.sandbox_status)) {
         validationErrors.push("sandboxDomain.sandbox_status must be 'creating'|'running'|'dead'|null")
       }
+      if (domain.is_test_env !== undefined && typeof domain.is_test_env !== "boolean") {
+        validationErrors.push("sandboxDomain.is_test_env must be boolean|undefined")
+      }
     }
   }
 
@@ -950,7 +958,9 @@ async function handleQuery(ipc, requestId, payload) {
     // in the system prompt and all file ops go through the sandbox MCP.
     if (payload.executionMode === "e2b" && payload.sandboxDomain) {
       try {
-        const manager = getSandboxManager()
+        const isTestSandboxDomain = payload.sandboxDomain.is_test_env === true
+        const selectedTemplate = isTestSandboxDomain ? E2B_TEMPLATES.ALIVE_E2E_MINIMAL : E2B_DEFAULT_TEMPLATE
+        const manager = getSandboxManager(selectedTemplate)
         const hostWorkspacePath = process.cwd()
         const sandbox = await manager.getOrCreate(payload.sandboxDomain, hostWorkspacePath)
         mcpServers.e2b = createE2bMcp(sandbox, (error, context) => {
@@ -964,7 +974,7 @@ async function handleQuery(ipc, requestId, payload) {
         disallowedTools.push(...E2B_DISABLED_SDK_TOOLS)
         allowedTools.push(...E2B_MCP_TOOLS)
         console.error(
-          `[worker] E2B mode: sandbox ${sandbox.sandboxId} for ${payload.sandboxDomain.hostname}, workspace at ${SANDBOX_WORKSPACE_ROOT}`,
+          `[worker] E2B mode: sandbox ${sandbox.sandboxId} for ${payload.sandboxDomain.hostname}, template=${selectedTemplate}, workspace at ${SANDBOX_WORKSPACE_ROOT}`,
         )
       } catch (e2bError) {
         const ctx = payload.sandboxDomain
