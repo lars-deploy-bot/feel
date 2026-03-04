@@ -128,10 +128,10 @@ export {
 } from "./external-content.js"
 export { generateInviteCode } from "./invite-code.js"
 export type {
+  ManagerPasswordResetToken,
   // Manager API response types - shared contract between apps/api and apps/manager
   ManagerUser,
   ManagerUserEvent,
-  ManagerPasswordResetToken,
   ManagerUserOrg,
   ManagerUserSession,
 } from "./manager-types.js"
