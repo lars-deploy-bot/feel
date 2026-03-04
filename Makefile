@@ -10,7 +10,15 @@
 #
 # =============================================================================
 
-.PHONY: help ship ship-fast staging staging-fast production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager
+.PHONY: all clean test help ship ship-fast staging staging-fast production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager
+
+all: help
+
+clean:
+	@echo "No clean target defined"
+
+test:
+	@bun run test:core
 
 # Load environment variables
 ifneq (,$(wildcard .env))
