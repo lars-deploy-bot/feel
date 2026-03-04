@@ -1,5 +1,8 @@
+import * as fs from "node:fs/promises"
+import * as path from "node:path"
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
+import { getWorkspacePath } from "@webalive/shared"
 import { getWorkerPool } from "@webalive/worker-pool"
 import { Sandbox } from "e2b"
 import { z } from "zod"
@@ -17,6 +20,13 @@ const RuntimeResponseSchema = z.object({
   sandbox_status: z.enum(["creating", "running", "dead"]).nullable(),
 })
 
+const SeedFileSchema = z.object({
+  /** Relative path within workspace user dir (e.g. "vite.config.ts") */
+  path: z.string().min(1),
+  /** File content (text) */
+  content: z.string(),
+})
+
 const UpdateBodySchema = z.object({
   workspace: z.string().min(1),
   executionMode: z.enum(["systemd", "e2b"]),
@@ -25,6 +35,10 @@ const UpdateBodySchema = z.object({
   killSandbox: z.boolean().optional().default(false),
   resetSandboxFields: z.boolean().optional().default(false),
   restartWorkspaceWorkers: z.boolean().optional().default(false),
+  /** Write test files to the host workspace (for testing sync behavior). */
+  seedHostFiles: z.array(SeedFileSchema).optional(),
+  /** Remove files from the host workspace (cleanup after seeding). */
+  cleanHostFiles: z.array(z.string().min(1)).optional(),
 })
 
 function hasTestAccess(req: Request): boolean {
@@ -108,6 +122,46 @@ async function restartWorkspaceWorkersIfRequested(
   return { requested: true, matched: workers.length, restarted }
 }
 
+async function seedHostFilesIfRequested(
+  workspace: string,
+  files?: Array<{ path: string; content: string }>,
+): Promise<string[]> {
+  if (!files || files.length === 0) return []
+  const workspaceDir = getWorkspacePath(workspace)
+  const written: string[] = []
+
+  for (const file of files) {
+    const fullPath = path.join(workspaceDir, file.path)
+    const resolved = path.resolve(fullPath)
+    if (!resolved.startsWith(`${workspaceDir}/`) && resolved !== workspaceDir) {
+      throw new Error(`[seedHostFiles] Path traversal blocked: ${file.path}`)
+    }
+    await fs.mkdir(path.dirname(resolved), { recursive: true })
+    await fs.writeFile(resolved, file.content)
+    written.push(file.path)
+  }
+  return written
+}
+
+async function cleanHostFilesIfRequested(workspace: string, files?: string[]): Promise<string[]> {
+  if (!files || files.length === 0) return []
+  const workspaceDir = getWorkspacePath(workspace)
+  const cleaned: string[] = []
+
+  for (const file of files) {
+    const fullPath = path.join(workspaceDir, file)
+    const resolved = path.resolve(fullPath)
+    if (!resolved.startsWith(`${workspaceDir}/`) && resolved !== workspaceDir) continue
+    try {
+      await fs.unlink(resolved)
+      cleaned.push(file)
+    } catch (_err) {
+      // File may not exist, ignore
+    }
+  }
+  return cleaned
+}
+
 export async function GET(req: Request) {
   if (!hasTestAccess(req)) {
     return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 404 })
@@ -175,6 +229,8 @@ export async function POST(req: Request) {
 
     const killResult = await killSandboxIfRequested(current, body.killSandbox)
     const workerRestartResult = await restartWorkspaceWorkersIfRequested(body.workspace, body.restartWorkspaceWorkers)
+    const seededFiles = await seedHostFilesIfRequested(body.workspace, body.seedHostFiles)
+    const cleanedFiles = await cleanHostFilesIfRequested(body.workspace, body.cleanHostFiles)
 
     const nextSandboxId = body.resetSandboxFields ? null : (body.sandboxId ?? current.sandbox_id)
     const nextSandboxStatus = body.resetSandboxFields ? null : (body.sandboxStatus ?? current.sandbox_status)
@@ -200,6 +256,8 @@ export async function POST(req: Request) {
       domain: RuntimeResponseSchema.parse(data),
       kill: killResult,
       workerRestart: workerRestartResult,
+      seededFiles,
+      cleanedFiles,
     })
   } catch (error) {
     console.error("[Test E2B Domain] POST failed:", error)
