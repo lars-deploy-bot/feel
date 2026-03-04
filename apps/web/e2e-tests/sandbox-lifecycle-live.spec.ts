@@ -9,8 +9,8 @@
 import { expect, type Page, test } from "@playwright/test"
 import { isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
-import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
 import { getLiveStagingUser, getProjectBaseUrl, getTenantSandboxState, loginLiveStaging } from "./lib/live-tenant"
+import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
 
 interface SandboxState {
   executionMode: "systemd" | "e2b"
