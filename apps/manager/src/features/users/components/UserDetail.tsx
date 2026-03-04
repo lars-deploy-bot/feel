@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -52,8 +52,10 @@ export function UserDetail({ user }: UserDetailProps) {
   const [isIssuingToken, setIsIssuingToken] = useState(false)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const issueRequestIdRef = useRef(0)
 
   useEffect(() => {
+    issueRequestIdRef.current += 1
     setResetToken(null)
     setTokenError(null)
     setCopied(false)
@@ -66,18 +68,23 @@ export function UserDetail({ user }: UserDetailProps) {
   })
 
   async function handleIssuePasswordResetToken() {
+    const requestId = ++issueRequestIdRef.current
     setIsIssuingToken(true)
     setTokenError(null)
     setCopied(false)
 
     try {
       const token = await usersApi.issuePasswordResetToken(user.user_id)
+      if (issueRequestIdRef.current !== requestId) return
       setResetToken(token)
     } catch (error) {
+      if (issueRequestIdRef.current !== requestId) return
       const message = error instanceof Error ? error.message : "Failed to issue reset token"
       setTokenError(message)
     } finally {
-      setIsIssuingToken(false)
+      if (issueRequestIdRef.current === requestId) {
+        setIsIssuingToken(false)
+      }
     }
   }
 
@@ -86,6 +93,7 @@ export function UserDetail({ user }: UserDetailProps) {
 
     try {
       await navigator.clipboard.writeText(resetToken.token)
+      setTokenError(null)
       setCopied(true)
     } catch {
       setTokenError("Clipboard copy failed")

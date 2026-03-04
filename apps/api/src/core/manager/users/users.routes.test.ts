@@ -59,7 +59,9 @@ describe("usersRoutes password reset token", () => {
       method: "POST",
     })
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(201)
+    expect(response.headers.get("Cache-Control")).toBe("no-store")
+    expect(response.headers.get("Pragma")).toBe("no-cache")
     const body = successSchema.parse(await response.json())
     expect(body.ok).toBe(true)
     expect(body.data.token).toContain("prt_")

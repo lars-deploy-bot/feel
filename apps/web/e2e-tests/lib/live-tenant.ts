@@ -93,7 +93,7 @@ export async function getLiveStagingUser(workerIndex: number, baseUrl: string): 
     throw new Error(`bootstrap-tenant returned non-JSON response: ${contentType || "unknown"}`)
   }
 
-  const payload = (await response.json()) as BootstrapTenantResponse
+  const payload: BootstrapTenantResponse = await response.json()
   if (!payload.ok) {
     throw new Error("bootstrap-tenant returned ok=false")
   }
@@ -119,7 +119,7 @@ export async function loginLiveStaging(page: Page, user: LiveStagingUser): Promi
     throw new Error("Workspace storage missing after login")
   }
 
-  const parsed = JSON.parse(storageValue) as WorkspaceStorageValue
+  const parsed: WorkspaceStorageValue = JSON.parse(storageValue)
   expect(parsed.state.currentWorkspace).toBe(user.workspace)
   expect(parsed.state.selectedOrgId).toBe(user.orgId)
 
@@ -138,10 +138,13 @@ export async function getTenantSandboxState(baseUrl: string, email: string): Pro
     throw new Error(`verify-tenant failed (${response.status})`)
   }
 
-  const payload = (await response.json()) as VerifyTenantResponse
+  const payload: VerifyTenantResponse = await response.json()
   if (!payload.ready) {
     throw new Error("verify-tenant returned ready=false while checking sandbox state")
   }
 
+  if (!payload.sandbox) {
+    throw new Error("verify-tenant response missing sandbox payload")
+  }
   return payload.sandbox
 }

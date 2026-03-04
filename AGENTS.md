@@ -595,7 +595,7 @@ make rollback    # Interactive rollback (if needed)
 
 ### Deploying from Chat
 
-See **Core Rules 12-14** at the top of this file. Summary: clean orphans, check `make deploy-status`, deploy with `nohup`.
+See **Core Rules 10-12** at the top of this file. Summary: clean orphans, check `make deploy-status`, deploy with `nohup`.
 
 ### Site Deployment (Different)
 
@@ -655,7 +655,7 @@ if (!isPathWithinWorkspace(resolvedPath, workspacePath)) {
 **Solution**: Check session key format and storage
 ```typescript
 import { tabKey } from '@/features/auth/lib/sessionStore'
-const key = tabKey({ userId, workspace, tabId })
+const key = tabKey({ userId, workspace, tabGroupId, tabId })
 const sessionId = await sessionStore.get(key)
 ```
 

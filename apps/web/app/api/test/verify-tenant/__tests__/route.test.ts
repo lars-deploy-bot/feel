@@ -110,7 +110,7 @@ function createMockAppClient(options: AppMockOptions = {}) {
     data: [
       {
         hostname: "e2e-w0.alive.local",
-        execution_mode: "e2b" as const,
+        execution_mode: "e2b",
         sandbox_id: null,
         sandbox_status: null,
       },
