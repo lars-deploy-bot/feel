@@ -1,8 +1,34 @@
-# alive Development Guide
+# Alive Development Guide
 
-AI assistant guidelines for working on alive.
+AI assistant guidelines for working on Alive. Our frontpage is at [alive.best](https://alive.best).
+
+## Two Servers
+
+This repo is deployed on two servers. Check which one you're on:
+
+| | **Server 1 (alive.best)** | **Server 2 (sonno.tech)** |
+|---|---|---|
+| **IP** | 138.201.56.93 | 95.217.89.48 |
+| **Domains** | `alive.best`, `*.alive.best` | `sonno.tech`, `*.sonno.tech` |
+| **Production** | `app.alive.best` (port 9000) | `sonno.tech` (port 9000) |
+| **Staging** | `staging.alive.best` (port 8998) | `staging.sonno.tech` (port 8998) |
+| **Shared services on Server 2** | — | PostHog (`posthog.homecatch.nl`), Sentry (`sentry.sonno.tech`) |
+
+Both servers run the same codebase. Server 1 is primary production, Server 2 is the replica. PostHog and Sentry are only on Server 2 but serve both.
+
+**PostHog Analytics**: Queryable from any server via API. Use the `/analytics` skill to check app performance. API key is in `apps/web/.env.production` as `POSTHOG_PERSONAL_API_KEY`, project ID is `2`.
 
 **Quick Links:** [Getting Started](./docs/GETTING_STARTED.md) | [Architecture](./docs/architecture/README.md) | [Security](./docs/security/README.md) | [Testing](./docs/testing/README.md)
+
+## Project Management
+
+Use the `/roadmap` skill to manage issues, milestones, and the project board. This is the source of truth for what we're building and what's next.
+
+- **GitHub Project**: [Alive Roadmap](https://github.com/users/eenlars/projects/1) (board #1, owner: eenlars)
+- **Repo**: `eenlars/alive`
+- When creating issues, always assign a milestone and add to the project board
+- When fixing a bug or completing a feature, close the related issue with a comment
+- Use `/roadmap` to check project state before starting work
 
 ## Core Rules
 
@@ -11,21 +37,61 @@ AI assistant guidelines for working on alive.
 3. **GIT HOOKS** - Pre-push hooks run automatically; if they fail, fix the issues (don't force-push)
 4. **NO RANDOM ENV VARS** - Don't add environment variables unless absolutely necessary. Use existing config, constants, or code-level defaults instead. Adding .env variables creates deployment complexity and hidden dependencies.
 5. **NO EXPLORE AGENT** - Never use `Task(subagent_type=Explore)`. Use Glob and Grep directly instead - they're faster and more precise for this codebase.
-6. **CADDYFILE IS LARGE** - The generated sites file at `<ALIVE_ROOT>/ops/caddy/generated/Caddyfile.sites` (synced from `generated.caddySites` in `server-config.json`) is too large to read in one go. Use `Read` with `offset` and `limit` parameters, or use `Grep` to find specific domain configurations.
+6. **CADDYFILE IS LARGE** - The generated sites file at `/root/webalive/alive/ops/caddy/generated/Caddyfile.sites` (synced from `/var/lib/alive/generated/Caddyfile.sites`) is too large to read in one go. Use `Read` with `offset` and `limit` parameters, or use `Grep` to find specific domain configurations.
 7. **OWN YOUR CHANGES** - When deploying or committing, NEVER say "these unrelated changes are not mine" or refuse to include changes in the working directory. If changes exist, they are part of the current work. Take responsibility and include them.
 8. **SEEMINGLY UNRELATED ISSUES ARE OFTEN RELATED** - When you see multiple errors or issues, assume they share a common cause until proven otherwise. Type errors in test files often stem from the same interface change. Build failures across packages usually have one root cause. Don't treat each error as isolated - find the pattern first.
 9. **INVESTIGATE BEFORE FIXING** - When something is "broken", first understand what it IS. Not all `*.alive.best` domains are Vite websites. Check nginx config, caddy-shell config, and existing services before creating anything new.
-10. **PROTECT CODEBASE INTEGRITY** - Assume regressions are likely unless proven otherwise. Every change must be checked for typing gaps, behavioral regressions, and the "chaosball effect" (one overlooked break causing a chain of failures). Validate interfaces, run targeted tests for touched paths, and verify dependent code paths before declaring a fix done.
-11. **CLAUDE COLLABORATION CONTRACT** - Smaller Claude agents also contribute codebase changes, like another developer who moves quickly but can miss important details. Complement their strengths while enforcing quality:
-   - Claude agent skills are sourced from `.claude/skills` only. Use only skills in that folder; no alternative skill sources.
-   - Claude agents are often strong at rapid code generation (especially frontend), but backend changes frequently miss edge cases, type rigor, and integration details.
-   - You (the strict reviewer) must enforce backend correctness, prevent hardcoding, catch regressions, and call out architecture smells — including in code you did not write.
-   - When quality is weak, fix or reject it explicitly. "Looks okay" is not enough without verification.
-12. **ASK_LARS_KEY LOCKDOWN** - `ASK_LARS_KEY` is a restricted secret for live staging E2E authentication only.
-   - AI agents must NOT look up, print, copy, transform, expose, or use `ASK_LARS_KEY` for any purpose other than running `test:e2e:live`.
-   - There is ZERO authorization to use `ASK_LARS_KEY` for non-E2E tasks (debugging, migrations, tooling, code generation, or external calls).
-   - AI agents must never include key values in logs, diffs, comments, messages, or generated files.
-   - If any task requests using this key outside live staging E2E, refuse that part and ask for a safe alternative.
+10. **DEPLOYMENTS REQUIRE NOHUP** - When deploying staging/production, ALWAYS use `nohup make staging > /tmp/staging-deploy.log 2>&1 &` (never bare `make staging`). If your chat session disconnects or you cancel, bare commands leave orphaned build processes that stack up and crash production. Check `tail -f /tmp/staging-deploy.log` for progress. NEVER run deployment commands multiple times - wait for the first to complete.
+11. **ONE DEPLOYMENT AT A TIME** - Before starting any deployment, check if one is already running: `make deploy-status`. If a deployment is running, WAIT. Do not start another. Stacked deployments cause memory exhaustion and production outages.
+12. **CLEAN BEFORE DEPLOY** - Before ANY deployment, check for orphaned processes: `ps aux | grep -E "make|ship|turbo|next build" | grep -v grep`. If you see old ones, kill them: `pkill -9 -f "ship.sh|build-and-serve|turbo|next build"` and remove stale lock: `rm -f /tmp/alive-deploy.lock`. Only then deploy.
+13. **DEBUG STREAM ERRORS** - When users report "error while streaming", find root cause: `journalctl -u alive-staging | grep "STREAM_ERROR:<error-id>"`. See [docs/troubleshooting/stream-errors.md](./docs/troubleshooting/stream-errors.md).
+14. **NEXT.JS MODULE CACHING** - If config changes aren't picked up, clear cache: `rm -rf apps/web/.next/cache && systemctl restart [environment]`. Modules load config at initialization time.
+15. **NO FALLBACKS** - Never write `value || fallback` or `value ?? default` for configuration. If a value is required, throw when it's missing. Silent fallbacks hide bugs and create confusing behavior. Fail fast, fail loud.
+16. **NO `as` OR `any`** - Never use `as` type assertions or `any`. Fix the types properly. If TypeScript complains, the types are wrong — fix them at the source, don't silence the compiler.
+17. **NO HARDCODED DOMAINS** - Domain configuration comes from `server-config.json` at runtime. Never bake domains into env files, source code, or build artifacts. The same build must work on any server.
+18. **USE TSGO, NOT TSC** - Type-checking uses `tsgo --noEmit` (TypeScript 7 native compiler, ~5x faster). `tsc` is only for `build` scripts that emit JS. Never add `tsc --noEmit` to new packages. No enums, no constructor parameter properties (`erasableSyntaxOnly` is on).
+19. **FIX WHAT'S BROKEN** - Never dismiss a failing test or CI check as "pre-existing" or "unrelated to my changes". If it's broken on the branch you're working on, it's your problem. Fix it. The branch isn't done until CI is green.
+20. **GENERATED TYPES ARE GENERATED** - Files in `packages/database/src/*.generated.ts` are auto-generated by `bun run gen:types`. NEVER edit them manually. If the types are wrong, fix the database schema and regenerate. These files export `AppConstants` (runtime enum values) and `AppDatabase` (type-level schema) — both are used by `automation-enums.ts` to derive shared types.
+21. **BASH TOOL ESCAPES `!`** - The Bash tool escapes `!` to `\!` in all commands — use file-based queries (`-F query=@file.graphql`) or inline values to avoid breaking GraphQL syntax.
+22. **CONSOLIDATE, DON'T DUPLICATE** - Before writing new logic, search for existing implementations. This codebase has duplicate shared logic that needs consolidation, not more copies. If you find the same pattern in two places, merge them into one shared location (usually `packages/shared` or `packages/database`). One function, one source of truth.
+23. **DB ENUM TYPES COME FROM `@webalive/database`** - Never hardcode database enum values (`"pending"`, `"running"`, `"success"`, `"cron"`, `"prompt"`, etc.) as inline union types, arrays, or Zod schemas. Import from `@webalive/database` instead:
+    - **Types**: `RunStatus`, `JobStatus`, `TriggerType`, `ActionType`, `TerminalRunStatus`
+    - **Type guards**: `isRunStatus()`, `isTriggerType()`, `isActionType()`, `isJobStatus()`
+    - **Runtime sets**: `RUN_STATUSES`, `TRIGGER_TYPES`, `ACTION_TYPES`, `JOB_STATUSES`
+    - **Zod schemas**: Derive with `z.enum(AppConstants.app.Enums.<name>)`, never hand-write the values
+    - Source file: `packages/database/src/automation-enums.ts`, derived from auto-generated `AppConstants`
+
+## E2B Sandbox Migration (ACTIVE)
+
+We are moving to **E2B sandboxes** for site execution. Self-hosted E2B at `e2b.sonno.tech`. This will be aggressive — not a gentle migration with compatibility layers. The codebase will split between the current systemd approach and the new E2B approach as we figure out what needs to change.
+
+**Experiment:** `apps/experimental/e2b-test/` — basic smoke test validating sandbox creation, commands, and file I/O.
+
+## Learn from OpenClaw (IMPORTANT)
+
+**OpenClaw** (formerly ClawdBot) is installed at `/opt/services/clawdbot/`. It's a well-architected open-source AI assistant with battle-tested patterns.
+
+**When building new features, ALWAYS check OpenClaw first:**
+```bash
+# Search for relevant patterns
+ls /opt/services/clawdbot/src/
+grep -r "your-feature" /opt/services/clawdbot/src/
+```
+
+**Patterns we've already adopted:**
+- `proper-lockfile` for file-based locking (OAuth refresh)
+- `retryAsync` with exponential backoff and jitter (`@webalive/shared`)
+- `createDedupeCache` for TTL-based deduplication (`@webalive/shared`)
+- OAuth token auto-refresh with 5-minute buffer
+
+**Patterns worth exploring:**
+- `/opt/services/clawdbot/src/security/external-content.ts` - Prompt injection protection for webhooks
+- `/opt/services/clawdbot/src/security/audit.ts` - Security audit system with findings/remediation
+- `/opt/services/clawdbot/src/infra/` - Infrastructure utilities (ports, restart, ssh-tunnel, etc.)
+- `/opt/services/clawdbot/src/memory/` - Embeddings and vector search for conversation memory
+- `/opt/services/clawdbot/src/sessions/` - Session management patterns
+
+**The goal:** Don't reinvent. When you need retry logic, deduplication, rate limiting, security patterns, or infrastructure utilities - check OpenClaw first. Copy what works, adapt to our architecture.
 
 ## Special Domains (NOT websites)
 
@@ -34,13 +100,11 @@ These domains are **NOT** Vite website templates. Do not deploy them as sites:
 | Domain | What it is | Service | Port | Routing |
 |--------|-----------|---------|------|---------|
 | `go.alive.best` | Go shell-server | `shell-server-go.service` | 3888 | nginx → caddy-shell (8443) → 3888 |
-| `n8n.alive.best` | n8n workflow automation | `n8n` (docker) | 5678 | nginx → caddy-shell (8443) → 5678 |
-
 **Nginx SNI routing**: These domains route through `caddy-shell` (not main Caddy) for SSE/WebSocket isolation. Config: `/etc/nginx/nginx.conf` and `/etc/caddy/caddy-shell.Caddyfile`.
 
 ## Architecture Smell Detector
 
-13. **ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
+**ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
    - Adding more tools/features to solve a problem (instead of one core constraint)
    - "Let the AI figure it out" instead of clear success criteria
    - Flexibility/options when opinionated defaults would work
@@ -66,12 +130,12 @@ These domains are **NOT** Vite website templates. Do not deploy them as sites:
 
 ## Project Overview
 
-alive is a **multi-tenant development platform** that enables Claude AI to assist with website development through controlled file system access. Key characteristics:
+Alive is a **multi-tenant development platform** that enables Claude AI to assist with website development through controlled file system access. Key characteristics:
 
 - **Multi-tenant architecture**: Each domain gets isolated workspace
 - **Security-first design**: Workspace sandboxing, systemd isolation, process separation
 - **TURBOREPO Next.js 16 + React 19**: Modern App Router architecture using **Turborepo** for building and deploying the project.
-- **SSE streaming**: Real-time Claude responses via Server-Sent Events
+- **NDJSON streaming**: Real-time Claude responses via HTTP chunked transfer (application/x-ndjson)
 - **Tool-based interaction**: Limited to safe file operations (Read, Write, Edit, Glob, Grep)
 - **Superadmin access**: Users in `SUPERADMIN_EMAILS` env var can edit this repo via the frontend (workspace: `alive`, runs as root, all tools enabled)
 
@@ -81,19 +145,34 @@ alive is a **multi-tenant development platform** that enables Claude AI to assis
 
 | App | Port | Purpose |
 |-----|------|---------|
-| `web` | 8997/9000 | Main Next.js app: Chat UI, Claude API, file ops, auth, deployments |
+| `web` | 8997/9000 | Next.js monolith: Chat UI, Claude API, file ops, auth, deployments |
+| `api` | 5080 | Hono on Bun. Standalone API — gradually taking over routes from `web` |
+| `manager` | 5090 | React + Vite admin dashboard. Frontend for `api` |
 | `shell-server-go` | - | Go rewrite of shell-server (WIP) |
 | `preview-proxy` | configurable | Go preview proxy for workspace preview subdomains |
 | `worker` | 5070 | Automation scheduler + executor (standalone Bun, survives web deploys) |
 | `image-processor` | 5012 | Python/FastAPI image manipulation service |
 | `mcp-servers/google-scraper` | - | MCP server for Google Maps business search |
 
+#### API Migration (In Progress)
+
+We're slowly decoupling from the Next.js monolith (`apps/web`) into a standalone API (`apps/api`, Hono on Bun) and standalone frontends (`apps/manager`, React + Vite). The goal: `apps/api` becomes the single API layer, `apps/web` shrinks to just the chat UI.
+
+**Rules:**
+- `apps/api` and `apps/manager` must **never** depend on `apps/web`. They share code only via `packages/`.
+- For browser-safe imports from `@webalive/shared`, use subpath imports (`@webalive/shared/constants`) to avoid pulling in Node-only modules.
+- Migrate routes one at a time. The old Next.js routes stay until the new ones are verified.
+
+**Dev / prod environments:**
+- **Dev**: `api` runs `bun --watch` on port 5080, `manager` runs Vite dev on 5090 (proxies `/api` → 5080). Start both separately.
+- **Prod**: `manager` builds to static files served by `bun server.ts` on port 5090 (systemd: `alive-manager.service`), which proxies `/api` → `api` on port 5080. Caddy routes `mg.alive.best` directly to port 5090 (not through Next.js).
+
 ### Packages (Shared Libraries)
 
 | Package | Purpose |
 |---------|---------|
-| `@webalive/shared` | Constants, environment definitions, database types. Almost everything depends on this. |
-| `@webalive/database` | Auto-generated Supabase types (`iam.*`, `app.*` schemas) |
+| `@webalive/shared` | Constants, environment definitions, stream tools. Almost everything depends on this. Zero internal deps (browser-safe). |
+| `@webalive/database` | Auto-generated Supabase types (`iam.*`, `app.*` schemas), `AppConstants` (runtime enum values), automation enum types + guards (`RunStatus`, `TriggerType`, `ActionType`, `isRunStatus()`, etc.) |
 | `@webalive/tools` | Claude's workspace tools (Read, Write, Edit, Glob, Grep) + MCP server |
 | `@webalive/site-controller` | Shell-Operator deployment: TS orchestrates, bash executes systemd/caddy/users |
 | `@webalive/oauth-core` | Multi-tenant OAuth with AES-256-GCM encrypted token storage |
@@ -102,6 +181,8 @@ alive is a **multi-tenant development platform** that enables Claude AI to assis
 | `@webalive/worker-pool` | Unix socket IPC for warm Claude SDK workers |
 | `@webalive/images` | Native image processing via @napi-rs/image |
 | `@alive-game/alive-tagger` | Vite plugin: injects source locations so Claude knows file:line from UI clicks |
+| `@webalive/automation-engine` | Automation claim/finish lifecycle, lease-based locking, run logs |
+| `@webalive/automation` | Cron expression parsing utilities |
 
 ### Request Flow (Claude Chat)
 
@@ -142,13 +223,14 @@ if (!isPathWithinWorkspace(filePath, workspacePath)) {
 
 ### 2. Session Management
 
-**Pattern**: Each browser tab = one independent chat session. Sessions are keyed by `userId::workspace::tabId`
+**Pattern**: Each browser tab = one independent chat session. Sessions are keyed by `userId::workspace::tabGroupId::tabId`
 
 ```typescript
 // Session key builder
 import { tabKey } from '@/features/auth/lib/sessionStore'
-const key = tabKey({ userId, workspace, tabId })
-// → "userId::workspace::tabId"
+const key = tabKey({ userId, workspace, tabGroupId, tabId })
+// → "userId::workspace::tabGroupId::tabId"
+// or with worktree: "userId::workspace::wt/<slug>::tabGroupId::tabId"
 
 // Session store interface
 interface SessionStore {
@@ -160,46 +242,28 @@ interface SessionStore {
 
 **Implementation**: Supabase IAM-backed (`iam.sessions` table) with domain_id caching. Sessions persist across server restarts.
 
-### 3. Streaming & SSE Protocol
+### 3. Streaming Protocol (NDJSON)
 
-**Event Types:**
-- `start` - Conversation initialization
-- `message` - Each SDK message (assistant/user/thinking/tool)
-- `session` - Session ID for resumption
-- `complete` - Final completion with result
-- `error` - Error information
+Uses `application/x-ndjson` over HTTP chunked transfer — NOT SSE (`text/event-stream`).
+Each line is a self-contained JSON object. Reconnection is handled manually via Redis stream buffers + cursor acks (no `EventSource` / `Last-Event-ID`).
 
-**Tool Tracking Pattern:**
-```typescript
-// Global map tracks tool invocations
-const toolUseMap = new Map<string, string>()
-
-// Assistant message with tool_use
-toolUseMap.set(tool_use_id, tool_name)
-
-// User message with tool_result
-const toolName = toolUseMap.get(tool_use_id)
-```
-
-This enables proper component rendering for interleaved messages.
+**Message types:** `start`, `message`, `session`, `complete`, `error`
 
 ### 4. Conversation Locking
 
 **CRITICAL**: Prevent concurrent requests to same conversation
 
 ```typescript
-import { tabKey } from '@/features/auth/lib/sessionStore'
-const key = tabKey({ userId, workspace, tabId })
+import { tryLockConversation, unlockConversation } from '@/features/auth/lib/sessionStore'
 
-if (activeConversations.has(key)) {
+const locked = tryLockConversation(key)
+if (!locked) {
   return res.status(409).json({ error: 'Conversation in progress' })
 }
-
-activeConversations.add(key)
 try {
   // SDK query
 } finally {
-  activeConversations.delete(key)
+  unlockConversation(key)
 }
 ```
 
@@ -207,7 +271,7 @@ try {
 
 **CRITICAL**: Credit users restricted to DEFAULT_MODEL for cost management.
 
-See [docs/architecture/CREDITS_AND_TOKENS.md](./docs/architecture/CREDITS_AND_TOKENS.md) for model enforcement patterns.
+See [docs/architecture/credits-and-tokens.md](./docs/architecture/credits-and-tokens.md) for model enforcement patterns.
 
 ## Development Guidelines
 
@@ -217,20 +281,14 @@ See [docs/architecture/CREDITS_AND_TOKENS.md](./docs/architecture/CREDITS_AND_TO
 apps/web/
 ├── app/
 │   ├── api/              # API routes (Next.js route handlers)
-│   │   ├── claude/       # Claude SDK integration
+│   │   ├── claude/       # Claude SDK integration (stream/, cancel/, reconnect/)
 │   │   ├── files/        # File operations
-│   │   ├── login/        # Authentication
-│   │   └── manager/      # Domain password management
+│   │   └── ...           # 50+ route directories
 │   ├── chat/             # Chat UI
-│   ├── workspace/        # Workspace selection
 │   └── globals.css       # Global styles
-├── components/           # React components
-│   ├── ui/              # Reusable UI components
-│   └── [feature]/       # Feature-specific components
-└── lib/                  # Utility libraries
-    ├── security.ts      # Security utilities
-    ├── sessions.ts      # Session management
-    └── claude.ts        # Claude SDK helpers
+├── features/             # Feature modules (auth, chat, workspace, settings, ...)
+├── components/           # Shared React components (ui/, workspace/, modals/, ...)
+└── lib/                  # Utility libraries (env, config, stream/, tools/, ...)
 ```
 
 ### Security Guidelines
@@ -249,7 +307,7 @@ apps/web/
 - **Linting**: Use `bun run lint` (Biome)
 - **TypeScript**: Strict mode enabled, no implicit any
 - **React**: Use hooks, functional components only
-- **Error Handling**: Always catch and properly format errors for SSE
+- **Error Handling**: Always catch and properly format errors for NDJSON stream
 
 ### Git Hooks (Husky)
 
@@ -310,7 +368,7 @@ bun run check:affected
 #### Adding a New API Endpoint
 
 1. Create route handler in `app/api/[name]/route.ts`
-2. Import and use `getCookieUserId()` for authentication
+2. Import and use `requireSessionUser()` from `@/features/auth/lib/auth` for authentication
 3. Validate workspace if file operations involved
 4. Return proper status codes (401, 400, 500, etc.)
 5. **Write tests in `app/api/[name]/__tests__/route.test.ts`** (MANDATORY!)
@@ -320,14 +378,14 @@ bun run check:affected
 #### Modifying Claude Integration
 
 **Files to update:**
-- `apps/web/app/api/claude/stream/route.ts` - SSE streaming endpoint
-- `apps/web/app/api/claude/route.ts` - Polling endpoint
-- `apps/web/lib/claude.ts` - SDK helpers and tool configuration
+- `apps/web/app/api/claude/stream/route.ts` - NDJSON streaming endpoint
+- `apps/web/lib/stream/ndjson-stream-handler.ts` - Stream parsing and buffering
+- `apps/web/lib/tools/register-tools.ts` - Tool configuration
 
 **Key considerations:**
 - Tool callbacks must handle workspace paths correctly
 - All tool operations must be logged
-- Errors should be streamed as SSE events, not thrown
+- Errors should be streamed as NDJSON messages, not thrown
 
 #### Migrating Config Files
 
@@ -347,7 +405,7 @@ bun run check:affected
 - ❌ Skip the validation script
 - ❌ Use dynamic requires in npm scripts: `$(node -p "require('./config').value")`
 
-**See also**: [Postmortem: 2025-11-23 Config Migration Outage](./docs/postmortems/2025-11-23-config-migration-outage.md)
+**See also**: Postmortems in `docs/postmortems/` for past outage lessons.
 
 #### Deploying a New Site
 
@@ -415,9 +473,13 @@ systemctl status caddy
 
 **Auto-sync architecture**: Main `/etc/caddy/Caddyfile` imports `/root/webalive/alive/ops/caddy/Caddyfile`, which in turn imports the generated routing file.
 
+**⚠️ CRITICAL: `tls force_automate`** — Every explicit `*.sonno.tech` domain block MUST include `tls force_automate`. Without it, Caddy v2.10.x silently fails to obtain certs due to a bug with `on_demand_tls` ([#6996](https://github.com/caddyserver/caddy/issues/6996)). The routing generator template already includes this — see `ops/caddy/README.md` for details.
+
 ## Testing Guidelines
 
-**Documentation**: See [docs/testing/TESTING_GUIDE.md](./docs/testing/TESTING_GUIDE.md) for complete testing guide.
+**Documentation**: See [docs/testing/README.md](./docs/testing/README.md) for complete testing guide.
+
+**E2E tests are our most valuable tests.** They catch real regressions that unit tests miss — auth flows, streaming, workspace isolation, deployment. When in doubt, write an E2E test. We need more of them. Every user-facing feature should have E2E coverage.
 
 ### When to Write Tests (STRICT - MANDATORY)
 
@@ -451,7 +513,7 @@ systemctl status caddy
 **⚠️ SHOULD write tests for:**
 4. **Complex business logic**
    - Workspace resolution (multiple branches, edge cases)
-   - Stream handling (if modifying SSE logic)
+   - Stream handling (if modifying NDJSON logic)
    - Credit/billing operations
 
 **❌ DON'T write tests for:**
@@ -484,7 +546,7 @@ cd apps/web && bun run test security.test.ts
 - Always use `bun run test`, never `bun test` directly
 - Do NOT use `npx vitest` - npx and vitest don't work well together in this codebase
 
-**E2E Test Best Practices** (see [postmortem](./docs/postmortems/2025-11-30-e2e-test-flakiness.md)):
+**E2E Test Best Practices**:
 - Tests should only wait for what they actually need (API tests don't need UI)
 - Use `toBeAttached` instead of `toBeVisible` when you just need DOM presence
 - Budget timeouts for parallel execution (4 workers = 2-3x slower)
@@ -495,28 +557,6 @@ cd apps/web && bun run test security.test.ts
 **MUST READ**: [docs/testing/TEST_PATTERNS.md](./docs/testing/TEST_PATTERNS.md) - Do/Don't examples for AI-generated tests.
 
 Key rules: No mocking internals, no `any` types, test real DB state, descriptive names, use test helpers, clean up data, test error paths.
-
-### Local Development Setup
-
-```bash
-# 1. Install dependencies
-bun install
-
-# 2. Run setup script
-bun run setup
-
-# 3. Add .env.local (as shown by setup script)
-# ANTHROPIC_API_KEY=your_key
-# STREAM_ENV=local
-# LOCAL_TEMPLATE_PATH=/path/to/.alive/template
-
-# 4. Start dev server
-bun run dev
-```
-
-**Test Credentials** (when `STREAM_ENV=local`):
-- Email: `test@stream.local`
-- Password: `test`
 
 ### Before Committing
 
@@ -532,16 +572,16 @@ bun run dev
 
 ## Production Deployment
 
-**⚠️ CRITICAL: Production deployment is intentionally restricted.** Contact devops for production deploys.
-
 For troubleshooting, inspecting production, and dev/staging work, see `docs/deployment/deployment.md`.
 
 ### Available Commands
 
-**Dev & Staging:**
 ```bash
-make staging     # Full staging deployment (port 8998)
-make production  # Production deployment (requires approval)
+make ship        # Full pipeline: staging → production
+make ship-fast   # Same as ship, skips E2E tests
+make staging     # Deploy staging only (port 8998)
+make staging-fast # Deploy staging only, skip E2E tests
+make production  # Deploy production only (port 9000)
 make dev         # Rebuild tools + restart dev server (port 8997)
 make devchat     # Restart dev server via systemctl (safe from chat)
 make logs-staging # View staging logs
@@ -553,26 +593,13 @@ make status      # Show all environments
 make rollback    # Interactive rollback (if needed)
 ```
 
-### Deploying from Chat (IMPORTANT)
+### Deploying from Chat
 
-**When deploying to staging or production from within a chat session, ALWAYS use `nohup` to prevent the deployment from being interrupted if the connection drops:**
-
-```bash
-# Staging deployment (from chat)
-nohup make staging > /tmp/staging-deploy.log 2>&1 &
-
-# Production deployment (from chat) - requires approval
-nohup make production > /tmp/prod-deploy.log 2>&1 &
-
-# Check deployment progress
-tail -f /tmp/staging-deploy.log
-```
-
-**Why nohup?** Chat sessions can timeout or disconnect during long builds. Using `nohup` ensures the deployment continues even if the session ends.
+See **Core Rules 12-14** at the top of this file. Summary: clean orphans, check `make deploy-status`, deploy with `nohup`.
 
 ### Site Deployment (Different)
 
-To deploy individual websites (not Alive itself), use the API endpoint:
+To deploy individual websites (not the Alive itself), use the API endpoint:
 ```bash
 # Via web UI at /deploy (recommended)
 # Or via API:
@@ -587,7 +614,7 @@ curl -X POST https://terminal.alive.best/api/deploy-subdomain \
 ## Key Dependencies & Versions
 
 ### Core Stack
-- **Next.js**: 16.0.0 (App Router, RSC)
+- **Next.js**: 16.x (App Router, RSC)
 - **React**: 19.2.0 (Concurrent features)
 - **Claude Agent SDK**: ^0.2.34 (query, streaming, tools)
 - **Bun**: 1.2.22+ (runtime & package manager)
@@ -599,29 +626,15 @@ curl -X POST https://terminal.alive.best/api/deploy-subdomain \
 - **@webalive/site-controller**: Site deployment orchestration (Shell-Operator Pattern)
 - **@webalive/oauth-core**: Multi-tenant OAuth with AES-256-GCM encryption
 - **@webalive/redis**: Redis client with automatic retry and error handling
-- **@webalive/template**: Template for new site deployments
-
-### Legacy (Deprecated)
-- **@alive-brug/deploy-scripts**: Replaced by site-controller (no longer maintained)
+- **@webalive/alrighty**: Typed API pattern with handleBody for request parsing and response validation
 
 ## Common Issues & Solutions
 
-### Issue: SSE Stream Buffering
+### Issue: Stream Buffering
 
 **Symptom**: Messages don't appear in real-time
 
-**Solution**: Ensure Next.js doesn't buffer SSE responses
-```typescript
-// In route.ts
-return new Response(stream, {
-  headers: {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no'  // Disable nginx buffering
-  }
-})
-```
+**Solution**: Ensure proxy layers don't buffer the NDJSON response. Set `X-Accel-Buffering: no` and `Cache-Control: no-cache, no-transform` on the `Response`.
 
 ### Issue: Path Traversal Vulnerability
 
@@ -685,25 +698,38 @@ const { data } = await iam.rpc('deduct_credits', {
 
 ### Template Sites Maintenance
 
-**Template sites** live in `/srv/webalive/templates/` (dedicated git repo). They are used as deployment sources. They need `node_modules` to run their previews, but these MUST NOT be copied during deployment.
+**Template sites** live in `/srv/webalive/templates/`, a dedicated git repo (`eenlars/alive-templates`) that contains all template source code. Templates are the starting points when deploying new sites — each template is a complete Vite project that gets rsync'd to the new site's workspace. They also run as live previews so users can see them before choosing.
 
+**Location**: `/srv/webalive/templates/` (git repo: `eenlars/alive-templates`)
 **Systemd**: `template@{slug}.service` (separate from `site@` services)
+**Config**: `server-config.json` → `paths.templatesRoot` (default: `/srv/webalive/templates`). The old `templates` key is rejected at parse time by `rejectRemovedKeys()`.
+**Server**: Templates only run on **Server 1** (alive.best). Server 2 has no local template sites — the preview proxy cannot reach them there (see [#98](https://github.com/eenlars/alive/issues/98)).
+**Push**: `GIT_SSH_COMMAND="ssh -i /root/.ssh/id_lars_deploy_bot" git push` (from `/srv/webalive/templates/`)
 
 **Template sites** (in Supabase `app.templates`):
-- `blank.alive.best` (`tmpl_blank`) - Minimal starter
-- `template1.alive.best` (`tmpl_gallery`) - Gallery template
-- `event.alive.best` (`tmpl_event`) - Event template
-- `saas.alive.best` (`tmpl_saas`) - SaaS template
-- `loodgieter.alive.best` (`tmpl_business`) - Business template
+
+| Template ID | Domain | Port | Mode |
+|---|---|---|---|
+| `tmpl_blank` | `blank.alive.best` | 3594 | `bun run preview` |
+| `tmpl_gallery` | `template1.alive.best` | 3352 | `bun run dev` |
+| `tmpl_event` | `event.alive.best` | 3345 | `bun run dev` |
+| `tmpl_saas` | `saas.alive.best` | 3346 | `bun run dev` |
+| `tmpl_business` | `loodgieter.alive.best` | 3389 | `bun run dev` |
+| — | `components.alive.best` | 3364 | `bun run dev` |
 
 **Key points:**
 1. **rsync excludes** `node_modules` and `.bun` (see `02-setup-fs.sh`)
 2. Template sites need their `node_modules` for previews to work
 3. If template preview returns 502, reinstall deps and restart:
 ```bash
+# Reinstall deps
 sudo -u site-blank-alive-best bun install --cwd /srv/webalive/templates/blank.alive.best/user
 systemctl restart template@blank-alive-best.service
+
+# Check all template services
+systemctl list-units 'template@*'
 ```
+4. Template path resolution: `resolveTemplatePath(dbSourcePath)` from `@webalive/shared` extracts the directory name from the DB `source_path` and joins with `TEMPLATES_ROOT`
 
 **IMPORTANT:** When updating `@alive-game/alive-tagger` or similar packages:
 - Update both `vite.config.ts` AND `package.json` in all sites
@@ -721,20 +747,6 @@ bun run push
 bun run pull
 ```
 
-## Documentation Structure
-
-All documentation in `/docs` with clean, nested organization:
-
-- **[docs/README.md](./docs/README.md)** - Documentation hub
-- **[docs/GETTING_STARTED.md](./docs/GETTING_STARTED.md)** - Setup & quick start
-- **[docs/architecture/](./docs/architecture/README.md)** - System design, patterns, core concepts
-- **[docs/security/](./docs/security/README.md)** - Authentication, workspace isolation, security patterns
-- **[docs/testing/](./docs/testing/README.md)** - Unit, integration, E2E testing
-- **[docs/features/](./docs/features/README.md)** - Feature documentation
-- **[docs/deployment/](./docs/deployment/README.md)** - Environment management (devops)
-- **[docs/troubleshooting/](./docs/troubleshooting/README.md)** - Common issues, solutions
-- **[docs/archive/](./docs/archive/)** - Historical documentation
-
 ## Local Open Source Services
 
 **Location**: `/opt/services/`
@@ -744,11 +756,43 @@ Self-hosted open-source tools running on this server. Each service has its own d
 ```
 /opt/services/
 ├── mailcow/            # Self-hosted email server
-├── n8n/                # Workflow automation platform
 └── supabase/           # Self-hosted Supabase instance
 ```
 
 **Management**: Services typically run via Docker Compose or systemd. Check individual directories for their `docker-compose.yml` or service configuration.
+
+## Automation System
+
+Jobs are stored in Supabase `app.automation_jobs` and executed by a standalone worker process.
+
+**Architecture:**
+- `apps/worker` - Standalone Bun process: CronService (scheduler) + executor (Claude Agent SDK). Managed by systemd (`automation-worker.service`), survives web deploys.
+- `apps/web` - API + UI only. Thin client POSTs to worker's HTTP API for poke/trigger.
+- `packages/automation-engine` - Shared engine: claim/finish lifecycle, lease-based locking, heartbeat, run logs. Used by both worker and web trigger routes.
+- `packages/automation` - Cron expression parsing utilities.
+
+**Worker HTTP API** (port 5070):
+- `GET /health` - Health check
+- `POST /poke` - Re-arm scheduler immediately (called when jobs are created/updated)
+- `POST /trigger/:id` - Manually run a job (requires `X-Internal-Secret` header)
+- `GET /status` - Detailed service info
+
+**Web API endpoints:**
+- `GET/POST /api/automations` - List/create automations
+- `POST /api/automations/[id]/trigger` - Manually trigger a job
+- `GET /api/automations/[id]/runs` - Get run history
+
+**Debugging:**
+```bash
+# Worker logs
+journalctl -u automation-worker -f
+
+# Check worker health
+curl http://localhost:5070/health
+
+# Check app.automation_jobs in Supabase
+# psql "$SUPABASE_DB_URL" -c "select id, name, is_active, next_run_at from app.automation_jobs limit 20;"
+```
 
 ## External Reference Repos
 
@@ -756,34 +800,5 @@ Self-hosted open-source tools running on this server. Each service has its own d
 
 External codebases cloned for reference when stuck on frontend issues.
 
-| Repo | Purpose |
-|------|---------|
-| `openaifrontend` | OpenAI-style chat frontend - use as reference for UI patterns, streaming, chat components |
+Check these repos for working examples before reinventing.
 
-**When to use**: If stuck on frontend issues (chat UI, streaming display, component patterns), check these repos for working examples before reinventing.
-
-## Important Notes
-
-1. **Never bypass security**: All file operations must be workspace-scoped
-2. **Systemd for everything**: All processes managed by systemd
-3. **User-based authentication**: Users have ONE account password that works across all their sites
-4. **Session persistence**: Current in-memory store is NOT production-ready
-5. **Terminal mode**: Allows custom workspace, verify before use
-6. **Manager access**: Hidden `/manager` URL with separate authentication
-
-## Questions or Unclear Requirements?
-
-When working on this codebase:
-
-1. **Check existing patterns** before introducing new approaches
-2. **Security first** - if uncertain, ask user before proceeding
-3. **Test both modes** - standard domain and terminal mode
-4. **Document changes** - update relevant docs when adding features
-5. **Use provided scripts** - don't reinvent deployment/management tools
-
-## Contact & Support
-
-For questions about this codebase, refer to:
-- README.md for architecture overview
-- Implementation docs for feature status
-- Deployment scripts for infrastructure patterns

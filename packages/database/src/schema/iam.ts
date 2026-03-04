@@ -189,6 +189,32 @@ export const authSessions = iamSchema.table(
 )
 
 /**
+ * Password reset tokens - manager-issued one-time reset tokens.
+ */
+export const passwordResetTokens = iamSchema.table(
+  "password_reset_tokens",
+  {
+    resetTokenId: text("reset_token_id").default(sql`gen_prefixed_id('prt_'::text)`).primaryKey().notNull(),
+    userId: text("user_id").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true, mode: "string" }),
+    issuedBy: text("issued_by").default("manager").notNull(),
+  },
+  table => [
+    uniqueIndex("idx_password_reset_tokens_token_hash").on(table.tokenHash),
+    index("idx_password_reset_tokens_user_active").on(table.userId).where(sql`used_at IS NULL`),
+    index("idx_password_reset_tokens_expires_at").on(table.expiresAt),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.userId],
+      name: "password_reset_tokens_user_id_fkey",
+    }).onDelete("cascade"),
+  ],
+)
+
+/**
  * User preferences - User settings and workspace preferences
  */
 export const userPreferences = iamSchema.table(
@@ -312,6 +338,7 @@ export const referrals = iamSchema.table(
 export const usersRelations = relations(users, ({ many, one }) => ({
   orgMemberships: many(orgMemberships),
   sessions: many(sessions),
+  passwordResetTokens: many(passwordResetTokens),
   preferences: one(userPreferences, {
     fields: [users.userId],
     references: [userPreferences.userId],
@@ -383,5 +410,12 @@ export const referralsRelations = relations(referrals, ({ one }) => ({
     fields: [referrals.referredId],
     references: [users.userId],
     relationName: "referred",
+  }),
+}))
+
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [passwordResetTokens.userId],
+    references: [users.userId],
   }),
 }))

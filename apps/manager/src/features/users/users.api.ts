@@ -39,6 +39,15 @@ interface UserProfileResponse {
   data: UserProfile | null
 }
 
+export interface PasswordResetToken {
+  token: string
+  expires_at: string
+}
+
+interface PasswordResetTokenResponse {
+  data: PasswordResetToken
+}
+
 export const usersApi = {
   list: () => api.get<UsersListResponse>("/manager/users").then(r => r.data),
   profile: (userId: string) => api.get<UserProfileResponse>(`/manager/users/${userId}/profile`).then(r => r.data),
@@ -46,4 +55,6 @@ export const usersApi = {
     api.get<UserEventsResponse>(`/manager/users/${userId}/events?limit=${limit}`).then(r => r.data),
   updateModels: (userId: string, enabledModels: ClaudeModel[]) =>
     api.patch(`/manager/users/${userId}/models`, { enabled_models: enabledModels }),
+  issuePasswordResetToken: (userId: string) =>
+    api.post<PasswordResetTokenResponse>(`/manager/users/${userId}/password-reset-token`).then(r => r.data),
 }

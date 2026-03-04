@@ -39,3 +39,8 @@ export interface ManagerUserEvent {
   timestamp: string
   properties: Record<string, unknown>
 }
+
+export interface ManagerPasswordResetToken {
+  token: string
+  expires_at: string
+}

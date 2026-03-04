@@ -131,6 +131,7 @@ export type {
   // Manager API response types - shared contract between apps/api and apps/manager
   ManagerUser,
   ManagerUserEvent,
+  ManagerPasswordResetToken,
   ManagerUserOrg,
   ManagerUserSession,
 } from "./manager-types.js"

@@ -4,8 +4,8 @@ import { AUTH } from "../../config/constants"
 import { UnauthorizedError } from "../../infra/errors"
 import { validate } from "../../shared/validation"
 import type { AppBindings } from "../../types/hono"
-import { loginBodySchema } from "./auth.schemas"
-import { verifyPasscode } from "./auth.service"
+import { loginBodySchema, resetPasswordBodySchema } from "./auth.schemas"
+import { consumePasswordResetToken, verifyPasscode } from "./auth.service"
 
 export const authRoutes = new Hono<AppBindings>()
 
@@ -42,4 +42,10 @@ authRoutes.get("/me", c => {
     throw new UnauthorizedError()
   }
   return c.json({ ok: true })
+})
+
+authRoutes.post("/password-reset", async c => {
+  const body = validate(resetPasswordBodySchema, await c.req.json())
+  const data = await consumePasswordResetToken(body.token, body.newPassword)
+  return c.json({ ok: true, data })
 })
