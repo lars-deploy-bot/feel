@@ -169,6 +169,13 @@ bun run test:e2e:debug org-workspace-selection.spec.ts
    - Deletes all data where `test_run_id = E2E_${timestamp}`
    - Fast indexed cleanup, no orphaned test data
 
+4. **E2B Sandbox Template Routing** (live lane):
+   - Worker tenant hostnames (`e2e-w{N}.alive.local`) use a dedicated minimal sandbox template:
+     - `self-hosted/alive-e2e-minimal`
+   - Non-E2E domains keep using:
+     - `self-hosted/alive`
+   - This keeps live E2E sandbox startup fast while preserving production behavior.
+
 ## Constants
 
 All test config in `@webalive/shared/constants`:
@@ -179,6 +186,16 @@ TEST_CONFIG.BASE_URL        // http://localhost:9547
 TEST_CONFIG.EMAIL_DOMAIN    // alive.local
 TEST_CONFIG.DEFAULT_CREDITS // 1000
 ```
+
+## Minimal E2B Template Contract (live lane)
+
+`self-hosted/alive-e2e-minimal` should include only what lifecycle tests need:
+- writable workspace root at `/home/user/project`
+- POSIX shell + coreutils for basic command execution
+- no heavy toolchain/runtime unless a test explicitly requires it
+
+Validation coverage:
+- `sandbox-lifecycle-live.spec.ts` verifies sandbox creation/reuse on worker tenants.
 
 ## Debugging
 
