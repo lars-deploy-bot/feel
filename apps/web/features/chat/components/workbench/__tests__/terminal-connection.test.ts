@@ -517,7 +517,7 @@ describe("WorkbenchTerminal additional bugs", () => {
       // Simulate: WS from a different path caused "disconnected", user clicks Reconnect
       // before the 3s retry timer fires.
       sm.state = "disconnected"
-      const fetchCountBefore = sm.fetchCallCount
+      const _fetchCountBefore = sm.fetchCallCount
       sm.handleReconnect()
 
       // After handleReconnect, the pending retry timer should be cleared
