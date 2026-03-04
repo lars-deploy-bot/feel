@@ -10,6 +10,7 @@ export const E2B_MCP_TOOLS = ["mcp__e2b__Read", "mcp__e2b__Write", "mcp__e2b__Ed
  */
 export const E2B_TEMPLATES = {
   ALIVE: "self-hosted/alive",
+  ALIVE_E2E_MINIMAL: "self-hosted/alive-e2e-minimal",
 } as const
 
 export type E2bTemplate = (typeof E2B_TEMPLATES)[keyof typeof E2B_TEMPLATES]

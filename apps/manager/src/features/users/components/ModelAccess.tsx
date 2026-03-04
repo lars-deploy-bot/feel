@@ -1,5 +1,6 @@
-import { ALL_CLAUDE_MODELS, type ClaudeModel, getModelDisplayName } from "@webalive/shared/models"
+import { ALL_CLAUDE_MODELS, type ClaudeModel, DEFAULT_CLAUDE_MODEL, getModelDisplayName } from "@webalive/shared/models"
 import { useState } from "react"
+import toast from "react-hot-toast"
 import { Button } from "@/components/ui/Button"
 import { usersApi } from "../users.api"
 import { SectionHeader } from "./UserDetail"
@@ -10,11 +11,17 @@ interface ModelAccessProps {
   onSaved: () => void
 }
 
+/** When nothing is stored, Sonnet is the effective default — show that in the UI */
+function effectiveModels(stored: ClaudeModel[]): ClaudeModel[] {
+  return stored.length === 0 ? [DEFAULT_CLAUDE_MODEL] : stored
+}
+
 export function ModelAccess({ userId, enabledModels, onSaved }: ModelAccessProps) {
-  const [selected, setSelected] = useState<Set<ClaudeModel>>(new Set(enabledModels))
+  const effective = effectiveModels(enabledModels)
+  const [selected, setSelected] = useState<Set<ClaudeModel>>(new Set(effective))
   const [saving, setSaving] = useState(false)
 
-  const dirty = selected.size !== enabledModels.length || enabledModels.some(m => !selected.has(m))
+  const dirty = selected.size !== effective.length || effective.some(m => !selected.has(m))
 
   function toggle(model: ClaudeModel) {
     setSelected(prev => {
@@ -32,7 +39,10 @@ export function ModelAccess({ userId, enabledModels, onSaved }: ModelAccessProps
     setSaving(true)
     try {
       await usersApi.updateModels(userId, [...selected])
+      toast.success("Model access saved")
       onSaved()
+    } catch {
+      toast.error("Failed to save model access")
     } finally {
       setSaving(false)
     }
@@ -50,11 +60,15 @@ export function ModelAccess({ userId, enabledModels, onSaved }: ModelAccessProps
               onChange={() => toggle(model)}
               className="accent-text-primary"
             />
-            <span className="text-[12px] text-text-primary">{getModelDisplayName(model)}</span>
+            <span className="text-[12px] text-text-primary">
+              {getModelDisplayName(model)}
+              {model === DEFAULT_CLAUDE_MODEL && selected.size === 1 && selected.has(model) && (
+                <span className="text-text-tertiary ml-1">(default)</span>
+              )}
+            </span>
           </label>
         ))}
       </div>
-      <p className="text-[11px] text-text-tertiary mt-1.5">When no models are selected, the user gets Sonnet only.</p>
       {dirty && (
         <Button variant="primary" size="sm" loading={saving} onClick={save} className="mt-2">
           Save

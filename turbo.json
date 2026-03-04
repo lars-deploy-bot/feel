@@ -99,10 +99,7 @@
     "@webalive/image-processor#build": {
       "outputs": []
     },
-    "@webalive/mcp-ocr#build": {
-      "outputs": []
-    },
-    "@webalive/worker#start": {
+"@webalive/worker#start": {
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true,

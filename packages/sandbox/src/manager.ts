@@ -22,6 +22,7 @@ export interface SandboxDomain {
   hostname: string
   sandbox_id: string | null
   sandbox_status: SandboxStatus | null
+  is_test_env?: boolean
 }
 
 /** Standard workspace root inside the sandbox. */

@@ -68,13 +68,13 @@ describe("SDK Tools Sync", () => {
     })
 
     it("should have correct tool counts in categories", () => {
-      // 14 SDK allowed + 2 Bridge-only compat tools (Skill + BashOutput) = 16 in ALLOWED_SDK_TOOLS
-      // 4 disallowed for member baseline (Task, WebSearch, ExitPlanMode, TaskStop)
-      // 14 + 4 = 18 SDK total
+      // 14 SDK allowed + 1 requiresUserApproval (ExitPlanMode) + 2 Bridge-only compat tools (Skill + BashOutput) = 17 in ALLOWED_SDK_TOOLS
+      // 3 disallowed for member baseline (Task, WebSearch, TaskStop)
+      // 15 + 3 = 18 SDK total
       const allowedSDKOnly = ALLOWED_SDK_TOOLS.filter(t => !STREAM_ONLY_TOOLS.includes(t))
-      expect(ALLOWED_SDK_TOOLS.length).toBe(16) // 14 SDK + 2 Bridge-only
-      expect(allowedSDKOnly.length).toBe(14) // Pure SDK tools
-      expect(DISALLOWED_SDK_TOOLS.length).toBe(4)
+      expect(ALLOWED_SDK_TOOLS.length).toBe(17) // 15 SDK + 2 Bridge-only
+      expect(allowedSDKOnly.length).toBe(15) // Pure SDK tools (incl. ExitPlanMode for SDK registration)
+      expect(DISALLOWED_SDK_TOOLS.length).toBe(3)
       expect(allowedSDKOnly.length + DISALLOWED_SDK_TOOLS.length).toBe(SDK_TOOL_NAMES.length)
     })
   })
@@ -122,8 +122,9 @@ describe("SDK Tools Sync", () => {
     })
 
     it("should enforce planning/workflow policy", () => {
-      // ExitPlanMode is disallowed - Claude cannot approve its own plan
-      expect(isDisallowed("ExitPlanMode")).toBe(true)
+      // ExitPlanMode is in allowedTools so the SDK registers it, but canUseTool denies it at runtime
+      expect(isAllowed("ExitPlanMode")).toBe(true)
+      expect(isDisallowed("ExitPlanMode")).toBe(false)
       // TodoWrite/AskUserQuestion are allowed in Stream mode
       expect(isAllowed("TodoWrite")).toBe(true)
       expect(isAllowed("AskUserQuestion")).toBe(true)

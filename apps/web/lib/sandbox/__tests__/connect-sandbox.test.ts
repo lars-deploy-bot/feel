@@ -13,6 +13,15 @@ vi.mock("@webalive/sandbox", () => ({
 
 vi.mock("@/lib/domain/resolve-domain-runtime", () => ({}))
 
+const mockEqSandboxStatus = vi.fn().mockResolvedValue({ error: null })
+const mockEqSandboxId = vi.fn().mockReturnValue({ eq: mockEqSandboxStatus })
+const mockEqDomainId = vi.fn().mockReturnValue({ eq: mockEqSandboxId })
+const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqDomainId })
+const mockFrom = vi.fn().mockReturnValue({ update: mockUpdate })
+vi.mock("@/lib/supabase/app", () => ({
+  createAppClient: vi.fn().mockResolvedValue({ from: (...args: unknown[]) => mockFrom(...args) }),
+}))
+
 const { connectSandbox, SandboxNotReadyError } = await import("../connect-sandbox")
 
 function makeDomain(overrides: Record<string, unknown> = {}) {
@@ -29,6 +38,7 @@ function makeDomain(overrides: Record<string, unknown> = {}) {
 describe("connectSandbox", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockEqSandboxStatus.mockResolvedValue({ error: null })
   })
 
   it("connects when sandbox_id exists and status is running", async () => {
@@ -62,6 +72,39 @@ describe("connectSandbox", () => {
   it("throws SandboxNotReadyError when sandbox_status is null", async () => {
     await expect(connectSandbox(makeDomain({ sandbox_status: null }))).rejects.toThrow(SandboxNotReadyError)
     expect(mockConnect).not.toHaveBeenCalled()
+  })
+
+  it("marks sandbox dead in DB when connect returns a not-found error", async () => {
+    mockConnect.mockRejectedValue(new Error("Paused sandbox sbx_abc not found"))
+
+    await expect(connectSandbox(makeDomain())).rejects.toThrow(SandboxNotReadyError)
+
+    expect(mockFrom).toHaveBeenCalledWith("domains")
+    expect(mockUpdate).toHaveBeenCalledWith({ sandbox_status: "dead" })
+    expect(mockEqDomainId).toHaveBeenCalledWith("domain_id", "dom_123")
+    expect(mockEqSandboxId).toHaveBeenCalledWith("sandbox_id", "sbx_abc")
+    expect(mockEqSandboxStatus).toHaveBeenCalledWith("sandbox_status", "running")
+  })
+
+  it("marks sandbox dead in DB when connect returns HTTP 404", async () => {
+    mockConnect.mockRejectedValue({ statusCode: 404, message: "Request failed" })
+
+    await expect(connectSandbox(makeDomain())).rejects.toThrow(SandboxNotReadyError)
+    expect(mockUpdate).toHaveBeenCalledWith({ sandbox_status: "dead" })
+  })
+
+  it("does not mark sandbox dead for transient connect errors", async () => {
+    mockConnect.mockRejectedValue(new Error("ECONNREFUSED"))
+
+    await expect(connectSandbox(makeDomain())).rejects.toThrow(SandboxNotReadyError)
+    expect(mockFrom).not.toHaveBeenCalled()
+  })
+
+  it("still throws SandboxNotReadyError even if dead-mark DB update fails", async () => {
+    mockConnect.mockRejectedValue(new Error("Paused sandbox sbx_abc not found"))
+    mockEqSandboxStatus.mockResolvedValueOnce({ error: { message: "DB down" } })
+
+    await expect(connectSandbox(makeDomain())).rejects.toThrow(SandboxNotReadyError)
   })
 })
 

@@ -353,7 +353,7 @@ export async function POST(req: NextRequest) {
     const app = user.isSuperadmin ? await createAppClient("service") : await createRLSAppClient()
     const { data: domainRecord } = await app
       .from("domains")
-      .select("domain_id, hostname, port, execution_mode, sandbox_id, sandbox_status")
+      .select("domain_id, hostname, port, is_test_env, execution_mode, sandbox_id, sandbox_status")
       .eq("hostname", resolvedWorkspaceName)
       .single()
 
@@ -666,6 +666,7 @@ export async function POST(req: NextRequest) {
                       sandboxDomain: {
                         domain_id: domainRecord.domain_id,
                         hostname: domainRecord.hostname,
+                        is_test_env: domainRecord.is_test_env ?? undefined,
                         sandbox_id: domainRecord.sandbox_id,
                         sandbox_status: domainRecord.sandbox_status,
                       },

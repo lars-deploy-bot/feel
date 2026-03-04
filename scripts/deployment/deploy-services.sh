@@ -1,0 +1,115 @@
+#!/bin/bash
+# =============================================================================
+# Deploy standalone services (API + Manager)
+# =============================================================================
+# Builds and restarts the API (Hono) and Manager (Vite + Bun) services.
+# Fails fast if not on main branch.
+#
+# Usage:
+#   ./deploy-services.sh              # Deploy both
+#   ./deploy-services.sh --api        # API only
+#   ./deploy-services.sh --manager    # Manager only
+# =============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
+
+source "$SCRIPT_DIR/lib/common.sh"
+
+# =============================================================================
+# Parse Arguments
+# =============================================================================
+DEPLOY_API=true
+DEPLOY_MANAGER=true
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --api)
+            DEPLOY_API=true
+            DEPLOY_MANAGER=false
+            shift
+            ;;
+        --manager)
+            DEPLOY_API=false
+            DEPLOY_MANAGER=true
+            shift
+            ;;
+        --help|-h)
+            head -12 "$0" | tail -8
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# =============================================================================
+# Guards
+# =============================================================================
+require_branch "main"
+
+# =============================================================================
+# Deploy API
+# =============================================================================
+if [ "$DEPLOY_API" = true ]; then
+    banner "Deploying API (Hono)"
+
+    log_info "Building @webalive/api..."
+    if ! bun run --filter='@webalive/api' build 2>&1; then
+        log_error "API build failed"
+        exit 1
+    fi
+    log_success "API built"
+
+    log_info "Restarting alive-api..."
+    systemctl daemon-reload
+    systemctl enable --now alive-api
+    sleep 1
+
+    if systemctl is-active --quiet alive-api; then
+        log_success "alive-api running on port 5082"
+    else
+        log_error "alive-api failed to start"
+        log_step "Check logs: journalctl -u alive-api -n 50"
+        exit 1
+    fi
+fi
+
+# =============================================================================
+# Deploy Manager
+# =============================================================================
+if [ "$DEPLOY_MANAGER" = true ]; then
+    banner "Deploying Manager (Vite + Bun)"
+
+    log_info "Building @webalive/manager..."
+    if ! bun run --filter='@webalive/manager' build 2>&1; then
+        log_error "Manager build failed"
+        exit 1
+    fi
+    log_success "Manager built"
+
+    log_info "Restarting alive-manager..."
+    systemctl restart alive-manager
+    sleep 1
+
+    if systemctl is-active --quiet alive-manager; then
+        log_success "alive-manager running on port 5090"
+    else
+        log_error "alive-manager failed to start"
+        log_step "Check logs: journalctl -u alive-manager -n 50"
+        exit 1
+    fi
+fi
+
+# =============================================================================
+# Done
+# =============================================================================
+banner_success "Services deployed"
+[ "$DEPLOY_API" = true ] && echo -e "  API:     ${GREEN}alive-api${NC} (port 5082)"
+[ "$DEPLOY_MANAGER" = true ] && echo -e "  Manager: ${GREEN}alive-manager${NC} (port 5090)"
+echo ""

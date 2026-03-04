@@ -622,11 +622,6 @@ export const GLOBAL_MCP_PROVIDERS = {
     friendlyName: "Google Maps",
     knownTools: ["mcp__google-scraper__search_google_maps"] as const,
   },
-  ocr: {
-    url: "http://localhost:8084/mcp",
-    friendlyName: "OCR",
-    knownTools: ["mcp__ocr__ocr_from_base64", "mcp__ocr__ocr_from_path"] as const,
-  },
 } as const satisfies GlobalMcpProviderRegistry
 
 /**

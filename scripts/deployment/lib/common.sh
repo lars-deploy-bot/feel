@@ -17,6 +17,18 @@ DIM='\033[2m'
 BOLD='\033[1m'
 NC='\033[0m'
 
+# Branch guard — fail fast if not on the expected branch
+# Usage: require_branch "main"
+require_branch() {
+    local expected="${1:-main}"
+    local current
+    current=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    if [ "$current" != "$expected" ]; then
+        echo -e "${RED}[ERROR]${NC} Must be on '${expected}' branch to deploy (currently on '${current}')"
+        exit 1
+    fi
+}
+
 # Timing state
 _DEPLOY_START=0
 _PHASE_START=0

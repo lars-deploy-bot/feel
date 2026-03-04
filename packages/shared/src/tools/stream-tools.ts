@@ -447,14 +447,16 @@ const SDK_TOOL_POLICIES: Record<StreamSdkToolName, StreamToolPolicy> = {
     visibility: "silent",
   }),
   [SDK_TOOL.ASK_USER_QUESTION]: policy({ reason: "Clarification UI questions are allowed for all roles." }),
-  [SDK_TOOL.MCP]: policy({ reason: "MCP bridge invocation is allowed." }),
+  [SDK_TOOL.MCP]: policy({ reason: "MCP bridge invocation is allowed.", planMode: "block" }),
   [SDK_TOOL.LIST_MCP_RESOURCES]: policy({
     reason: "MCP resource listing is member-only by product policy.",
     roles: MEMBER_ONLY,
+    planMode: "block",
   }),
   [SDK_TOOL.READ_MCP_RESOURCE]: policy({
     reason: "MCP resource reading is member-only by product policy.",
     roles: MEMBER_ONLY,
+    planMode: "block",
   }),
   [SDK_TOOL.NOTEBOOK_EDIT]: policy({ reason: "Notebook editing is allowed in normal mode.", planMode: "block" }),
   [SDK_TOOL.WEB_FETCH]: policy({ reason: "Single-page fetch is allowed." }),
@@ -491,6 +493,16 @@ export const STREAM_TOOL_POLICY_REGISTRY: Record<string, StreamToolPolicy> = {
 
 function isInternalPolicyTool(toolName: string): boolean {
   return toolName.startsWith("mcp__alive-")
+}
+
+/**
+ * Tools with requiresUserApproval must be in allowedTools (so the SDK registers them)
+ * but are denied at runtime by canUseTool. Without this, the SDK strips the tool
+ * entirely and returns "No such tool available" instead of the proper deny message.
+ */
+export function isUserApprovalTool(toolName: string): boolean {
+  const p = STREAM_TOOL_POLICY_REGISTRY[toolName]
+  return p?.requiresUserApproval === true
 }
 
 /**
@@ -620,8 +632,12 @@ export function buildStreamToolRuntimeConfig(
   const sdkTools = getSdkToolsForPolicyEvaluation()
   const internalMcpTools = getInternalMcpToolsForPolicyEvaluation(getEnabledMcpToolNames)
 
-  const allowedSdkTools = sdkTools.filter(tool => getStreamToolDecision(tool, context).executable)
-  const disallowedSdkTools = sdkTools.filter(tool => !getStreamToolDecision(tool, context).executable)
+  const allowedSdkTools = sdkTools.filter(
+    tool => getStreamToolDecision(tool, context).executable || isUserApprovalTool(tool),
+  )
+  const disallowedSdkTools = sdkTools.filter(
+    tool => !getStreamToolDecision(tool, context).executable && !isUserApprovalTool(tool),
+  )
 
   const allowedInternalMcpTools = internalMcpTools.filter(tool => getStreamToolDecision(tool, context).executable)
 
@@ -790,7 +806,9 @@ export function getStreamDisallowedTools(
     isSuperadminWorkspace,
     isPlanMode,
   })
-  return getSdkToolsForPolicyEvaluation().filter(tool => !getStreamToolDecision(tool, context).executable)
+  return getSdkToolsForPolicyEvaluation().filter(
+    tool => !getStreamToolDecision(tool, context).executable && !isUserApprovalTool(tool),
+  )
 }
 
 /**
