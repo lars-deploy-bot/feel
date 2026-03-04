@@ -270,6 +270,7 @@ export async function POST(req: Request) {
             hostname: workspace,
             org_id: newOrgId,
             port,
+            execution_mode: "e2b",
             is_test_env: true,
             test_run_id: runId,
           },
@@ -364,6 +365,7 @@ export async function POST(req: Request) {
             hostname: workspace,
             org_id: membership.org_id,
             port,
+            execution_mode: "e2b",
             is_test_env: true,
             test_run_id: runId,
           },
@@ -502,6 +504,7 @@ export async function POST(req: Request) {
       hostname: workspace,
       org_id: orgId,
       port, // Virtual port (validated above)
+      execution_mode: "e2b",
       is_test_env: true,
       test_run_id: runId,
     },
