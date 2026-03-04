@@ -306,7 +306,7 @@ function renderWildcardPreviewBlock(wildcardDomain: string, previewProxyPort?: n
   ].join("\n")
 }
 
-function renderCaddyShell(cfg: ServerConfig): string {
+export function renderCaddyShell(cfg: ServerConfig): string {
   const header = [
     "# GENERATED FILE - DO NOT EDIT",
     `# serverId: ${cfg.serverId}`,
@@ -318,16 +318,34 @@ function renderCaddyShell(cfg: ServerConfig): string {
     return `${header}# No shell domains configured\n`
   }
 
+  const shellConfig = cfg.shell as { domains: string[]; listen: string; upstream: string; e2bUpstream?: string }
+  const e2bUpstream = shellConfig.e2bUpstream ?? cfg.shell.upstream
+
   const blocks = cfg.shell.domains
     .map(d => {
       return [
         `${d}${cfg.shell.listen} {`,
         "    # Keep websocket terminal traffic unbuffered/untransformed through proxy chain.",
+        "    @e2b_ws path /e2b/ws /e2b/ws/*",
+        "    handle @e2b_ws {",
+        '        header Cache-Control "no-cache, no-transform"',
+        "        header X-Accel-Buffering no",
+        `        reverse_proxy ${e2bUpstream} {`,
+        "            stream_close_delay 5m",
+        "        }",
+        "    }",
+        "",
         "    @ws path /ws /ws/*",
         "    handle @ws {",
         '        header Cache-Control "no-cache, no-transform"',
         "        header X-Accel-Buffering no",
         `        reverse_proxy ${cfg.shell.upstream} {`,
+        "            stream_close_delay 5m",
+        "        }",
+        "    }",
+        "",
+        "    handle /e2b/* {",
+        `        reverse_proxy ${e2bUpstream} {`,
         "            stream_close_delay 5m",
         "        }",
         "    }",
@@ -447,41 +465,43 @@ async function run() {
   console.log("  3. Reload:   systemctl reload caddy-shell")
 }
 
-run().catch(e => {
-  const msg = e.message || String(e)
+if (import.meta.main) {
+  run().catch(e => {
+    const msg = e.message || String(e)
 
-  console.error("\n\x1b[31m╔══════════════════════════════════════════════════════════════╗\x1b[0m")
-  console.error("\x1b[31m║                    Generation Failed                         ║\x1b[0m")
-  console.error("\x1b[31m╚══════════════════════════════════════════════════════════════╝\x1b[0m")
-  console.error(`\n\x1b[31mError:\x1b[0m ${msg}\n`)
+    console.error("\n\x1b[31m╔══════════════════════════════════════════════════════════════╗\x1b[0m")
+    console.error("\x1b[31m║                    Generation Failed                         ║\x1b[0m")
+    console.error("\x1b[31m╚══════════════════════════════════════════════════════════════╝\x1b[0m")
+    console.error(`\n\x1b[31mError:\x1b[0m ${msg}\n`)
 
-  // Provide specific help based on error
-  if (msg.includes("SERVER_CONFIG_PATH")) {
-    console.error("\x1b[33mFix:\x1b[0m Set SERVER_CONFIG_PATH env var to point to server-config.json")
-    console.error("     Example: export SERVER_CONFIG_PATH=/var/lib/alive/server-config.json")
-    console.error("     Copy from: ops/server-config.example.json\n")
-  } else if (msg.includes("server-config.json") || msg.includes("ENOENT")) {
-    console.error("\x1b[33mFix:\x1b[0m Ensure server-config.json exists at the SERVER_CONFIG_PATH location")
-    console.error("     Copy from: ops/server-config.example.json")
-    console.error("     Then edit with this server's configuration\n")
-  } else if (msg.includes("SUPABASE_URL")) {
-    console.error("\x1b[33mFix:\x1b[0m Set database credentials:")
-    console.error("     export SUPABASE_URL=https://xxx.supabase.co")
-    console.error("     export SUPABASE_SERVICE_ROLE_KEY=eyJ...\n")
-  } else if (msg.includes("server_id")) {
-    console.error("\x1b[33mFix:\x1b[0m Add server_id column to domains table:")
-    console.error("     ALTER TABLE app.domains ADD COLUMN server_id TEXT;\n")
-  } else if (msg.includes("snippets") || msg.includes("common_headers") || msg.includes("image_serving")) {
-    console.error("\x1b[33mFix:\x1b[0m Ensure Caddy snippets exist in ops/caddy/snippets/")
-    console.error("     Required: common_headers.caddy, image_serving.caddy\n")
-  } else if (msg.includes("environments")) {
-    console.error("\x1b[33mFix:\x1b[0m Ensure packages/shared/environments.json exists")
-    console.error("     Each environment needs: key, port, subdomain\n")
-  } else if (msg.includes("domains.main")) {
-    console.error("\x1b[33mFix:\x1b[0m Add domains.main to server-config.json")
-    console.error('     Example: "domains": { "main": "sonno.tech" }\n')
-  }
+    // Provide specific help based on error
+    if (msg.includes("SERVER_CONFIG_PATH")) {
+      console.error("\x1b[33mFix:\x1b[0m Set SERVER_CONFIG_PATH env var to point to server-config.json")
+      console.error("     Example: export SERVER_CONFIG_PATH=/var/lib/alive/server-config.json")
+      console.error("     Copy from: ops/server-config.example.json\n")
+    } else if (msg.includes("server-config.json") || msg.includes("ENOENT")) {
+      console.error("\x1b[33mFix:\x1b[0m Ensure server-config.json exists at the SERVER_CONFIG_PATH location")
+      console.error("     Copy from: ops/server-config.example.json")
+      console.error("     Then edit with this server's configuration\n")
+    } else if (msg.includes("SUPABASE_URL")) {
+      console.error("\x1b[33mFix:\x1b[0m Set database credentials:")
+      console.error("     export SUPABASE_URL=https://xxx.supabase.co")
+      console.error("     export SUPABASE_SERVICE_ROLE_KEY=eyJ...\n")
+    } else if (msg.includes("server_id")) {
+      console.error("\x1b[33mFix:\x1b[0m Add server_id column to domains table:")
+      console.error("     ALTER TABLE app.domains ADD COLUMN server_id TEXT;\n")
+    } else if (msg.includes("snippets") || msg.includes("common_headers") || msg.includes("image_serving")) {
+      console.error("\x1b[33mFix:\x1b[0m Ensure Caddy snippets exist in ops/caddy/snippets/")
+      console.error("     Required: common_headers.caddy, image_serving.caddy\n")
+    } else if (msg.includes("environments")) {
+      console.error("\x1b[33mFix:\x1b[0m Ensure packages/shared/environments.json exists")
+      console.error("     Each environment needs: key, port, subdomain\n")
+    } else if (msg.includes("domains.main")) {
+      console.error("\x1b[33mFix:\x1b[0m Add domains.main to server-config.json")
+      console.error('     Example: "domains": { "main": "sonno.tech" }\n')
+    }
 
-  console.error("Run \x1b[36mbun run --cwd packages/site-controller setup:validate\x1b[0m for full diagnostics.\n")
-  process.exit(1)
-})
+    console.error("Run \x1b[36mbun run --cwd packages/site-controller setup:validate\x1b[0m for full diagnostics.\n")
+    process.exit(1)
+  })
+}

@@ -285,7 +285,10 @@ export function useDisconnectIntegration(providerKey: string) {
   const queryClient = useQueryClient()
 
   const mutation = useMutation<Res<"integrations/disconnect">, ApiError, void>({
-    mutationFn: () => delly("integrations/disconnect", undefined, `/api/integrations/${providerKey}`),
+    mutationFn: () => {
+      const body = validateRequest("integrations/disconnect")
+      return delly("integrations/disconnect", body, `/api/integrations/${providerKey}`)
+    },
     onSuccess: () => {
       // Invalidate integrations cache to refresh
       queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all })

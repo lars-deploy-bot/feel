@@ -13,6 +13,7 @@
  * Updates in real-time as tool_progress events arrive.
  */
 
+import { getToolActionLabel, getToolDetail, SDK_TOOL_LOWER } from "@webalive/shared"
 import { isStreamClientVisibleTool } from "@webalive/shared/tools"
 import { useEffect, useState } from "react"
 import { type PendingTool, useIsStreamActive, usePendingTools } from "@/lib/stores/streamingStore"
@@ -27,44 +28,25 @@ interface PendingToolsIndicatorProps {
 }
 
 function getToolLabel(tool: PendingTool): string {
-  const name = tool.toolName.toLowerCase()
-  const input = tool.toolInput as Record<string, unknown> | undefined
+  const input = tool.toolInput
+  const lower = tool.toolName.toLowerCase()
 
-  if (name === "bash" && input?.command) {
-    // Truncate long commands
-    const cmd = String(input.command)
-    const firstLine = cmd.split("\n")[0]
+  // Bash is special: show the truncated command line
+  if (lower === SDK_TOOL_LOWER.BASH) {
+    const firstLine = getToolDetail(tool.toolName, input, { bashDetail: "firstLine" })
+    if (!firstLine) return tool.toolName
     return firstLine.length > 60 ? `${firstLine.slice(0, 60)}...` : firstLine
   }
 
-  if ((name === "read" || name === "edit" || name === "write") && input?.file_path) {
-    const filePath = String(input.file_path)
-    return filePath.split("/").pop() || filePath
+  const detail = getToolDetail(tool.toolName, input)
+  if (!detail) return tool.toolName
+
+  // File tools show just the filename; others prefix with action verb
+  if (lower === SDK_TOOL_LOWER.READ || lower === SDK_TOOL_LOWER.EDIT || lower === SDK_TOOL_LOWER.WRITE) {
+    return detail
   }
 
-  if (name === "grep" && input?.pattern) {
-    return `searching: ${input.pattern}`
-  }
-
-  if (name === "glob" && input?.pattern) {
-    return `finding: ${input.pattern}`
-  }
-
-  if (name === "task" && input?.description) {
-    return String(input.description)
-  }
-
-  if (name === "webfetch" && input?.url) {
-    try {
-      const url = new URL(String(input.url))
-      return `fetching: ${url.hostname}`
-    } catch {
-      const urlStr = String(input.url)
-      return `fetching: ${urlStr.length > 30 ? `${urlStr.slice(0, 30)}...` : urlStr}`
-    }
-  }
-
-  return tool.toolName
+  return `${getToolActionLabel(tool.toolName)}: ${detail}`
 }
 
 function formatElapsedTime(seconds: number): string {

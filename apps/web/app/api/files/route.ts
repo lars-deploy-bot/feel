@@ -1,15 +1,15 @@
 import { readdir } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
-import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { hasSessionCookie } from "@/features/auth/types/guards"
+import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { COOKIE_NAMES } from "@/lib/auth/cookies"
+import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
+import { connectSandbox, SANDBOX_WORKSPACE_ROOT, SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
 
 interface FileInfo {
   name: string
@@ -23,20 +23,37 @@ export async function POST(request: NextRequest) {
   const requestId = getRequestId(request)
 
   try {
-    const jar = await cookies()
-    if (!hasSessionCookie(jar.get(COOKIE_NAMES.SESSION))) {
+    // Auth hardening: full user + workspace verification (not just cookie check)
+    const user = await getSessionUser()
+    if (!user) {
       return structuredErrorResponse(ErrorCodes.NO_SESSION, { status: 401, details: { requestId } })
     }
 
     const body = await request.json()
-    const host = request.headers.get("host") || "localhost"
 
+    const authorized = await verifyWorkspaceAccess(user, body, `[Files ${requestId}]`)
+    if (!authorized) {
+      return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, { status: 403, details: { requestId } })
+    }
+
+    const host = request.headers.get("host") || "localhost"
+    const workspaceName = body.workspace as string | undefined
+    const targetPath: string = body.path || ""
+
+    // E2B branch: resolve domain runtime before filesystem checks
+    if (workspaceName) {
+      const domain = await resolveDomainRuntime(workspaceName)
+      if (domain?.execution_mode === "e2b") {
+        return handleE2bList(domain, targetPath, requestId)
+      }
+    }
+
+    // Systemd path: existing getWorkspace() + node:fs logic
     const workspaceResult = await getWorkspace({ host, body, requestId })
     if (!workspaceResult.success) {
       return workspaceResult.response
     }
 
-    const targetPath = body.path || ""
     const fullPath = path.join(workspaceResult.workspace, targetPath)
 
     // Security check: ensure path is within workspace
@@ -46,26 +63,21 @@ export async function POST(request: NextRequest) {
       console.warn(`[Files ${requestId}] Path traversal blocked: ${resolvedPath} outside ${resolvedWorkspace}`)
       return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
         status: 403,
-        details: {
-          requestId,
-        },
+        details: { requestId },
       })
     }
 
     try {
-      // Use withFileTypes to avoid separate stat calls
       const entries = await readdir(fullPath, { withFileTypes: true })
 
-      // Build file list without extra stat calls - we don't need size/modified for tree view
       const files: FileInfo[] = entries.map(entry => ({
         name: entry.name,
         type: entry.isDirectory() ? "directory" : "file",
-        size: 0, // Skip stat call - not needed for tree view
-        modified: "", // Skip stat call - not needed for tree view
+        size: 0,
+        modified: "",
         path: path.join(targetPath, entry.name),
       }))
 
-      // Skip sorting - client handles it for better caching
       return NextResponse.json({
         ok: true,
         path: targetPath,
@@ -92,6 +104,53 @@ export async function POST(request: NextRequest) {
       details: {
         requestId,
         error: error instanceof Error ? error.message : "Unknown error",
+      },
+    })
+  }
+}
+
+async function handleE2bList(domain: ResolvedDomain, targetPath: string, requestId: string): Promise<NextResponse> {
+  // Path traversal check for E2B
+  const normalized = path.normalize(targetPath)
+  if (normalized.startsWith("..") || path.isAbsolute(normalized)) {
+    console.warn(`[Files ${requestId}] E2B path traversal blocked: ${targetPath}`)
+    return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
+      status: 403,
+      details: { requestId },
+    })
+  }
+
+  try {
+    const sandbox = await connectSandbox(domain)
+    const sandboxPath = path.join(SANDBOX_WORKSPACE_ROOT, targetPath)
+    const entries = await sandbox.files.list(sandboxPath)
+
+    const files: FileInfo[] = entries.map(e => ({
+      name: e.name,
+      type: e.type === "dir" ? "directory" : "file",
+      size: 0,
+      modified: "",
+      path: path.join(targetPath, e.name),
+    }))
+
+    return NextResponse.json({
+      ok: true,
+      path: targetPath,
+      workspace: SANDBOX_WORKSPACE_ROOT,
+      files,
+    })
+  } catch (err) {
+    if (err instanceof SandboxNotReadyError) {
+      return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
+    }
+    console.error(`[Files ${requestId}] E2B list error:`, err)
+    Sentry.captureException(err)
+    return structuredErrorResponse(ErrorCodes.FILE_READ_ERROR, {
+      status: 500,
+      details: {
+        requestId,
+        filePath: targetPath,
+        error: err instanceof Error ? err.message : "Unknown error",
       },
     })
   }

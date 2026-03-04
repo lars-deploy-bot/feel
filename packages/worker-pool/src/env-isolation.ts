@@ -17,6 +17,21 @@ const RESERVED_USER_ENV_KEY_SET = new Set<string>(RESERVED_USER_ENV_KEYS)
 const VALID_USER_ENV_KEY_PATTERN = /^[A-Z][A-Z0-9_]*$/
 
 /**
+ * E2B infrastructure env keys — needed by the WORKER process (SandboxManager)
+ * but must be STRIPPED from the SDK subprocess env.
+ *
+ * Single source of truth: used in WORKER_SPAWN_ALLOWED_ENV_KEYS (allow into
+ * worker) and SDK_STRIP_KEYS in worker-entry.mjs (strip from subprocess).
+ */
+export const E2B_INFRASTRUCTURE_ENV_KEYS = [
+  "E2B_API_KEY",
+  "E2B_DOMAIN",
+  "SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+] as const
+
+/**
  * Env vars safe to pass from the parent process to worker processes.
  *
  * ADDING TO THIS LIST? Ask: "Would it be a security incident if a user
@@ -51,6 +66,9 @@ const WORKER_SPAWN_ALLOWED_ENV_KEYS = [
   "WORKSPACE_BASE",
   "STREAM_ENV",
   "SERVER_CONFIG_PATH",
+
+  // E2B sandbox — needed by SandboxManager, stripped from SDK subprocess env.
+  ...E2B_INFRASTRUCTURE_ENV_KEYS,
 ] as const
 
 /**

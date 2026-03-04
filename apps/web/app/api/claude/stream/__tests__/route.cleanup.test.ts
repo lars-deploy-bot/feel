@@ -141,11 +141,15 @@ vi.mock("@/lib/input-logger", () => ({
   logInput: vi.fn(),
 }))
 
-vi.mock("@/lib/models/claude-models", () => ({
-  DEFAULT_MODEL: "model-default",
-  isRetiredModel: vi.fn(() => false),
-  isValidClaudeModel: vi.fn(() => true),
-}))
+vi.mock("@webalive/shared", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>("@webalive/shared")
+  return {
+    ...actual,
+    DEFAULTS: { ...(actual.DEFAULTS as Record<string, unknown>), DEFAULT_MODEL: "model-default" },
+    isRetiredModel: vi.fn(() => false),
+    isValidClaudeModel: vi.fn(() => true),
+  }
+})
 
 vi.mock("@/lib/oauth/fetch-oauth-tokens", () => ({
   fetchOAuthTokens: (...args: unknown[]) => fetchOAuthTokensMock(...args),

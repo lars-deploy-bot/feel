@@ -1,3 +1,4 @@
+import { SDK_TOOL_LOWER } from "@webalive/shared"
 import { BashInput } from "@/components/ui/chat/tools/bash/BashInput"
 import { EditInput } from "@/components/ui/chat/tools/edit/EditInput"
 import { GlobInput } from "@/components/ui/chat/tools/glob/GlobInput"
@@ -18,49 +19,49 @@ export function ToolInputRouter({ toolName, input }: ToolInputRouterProps) {
   const tool = toolName.toLowerCase()
 
   switch (tool) {
-    case "bash":
+    case SDK_TOOL_LOWER.BASH:
       if (input.command) {
         return <BashInput {...input} />
       }
       break
 
-    case "read":
+    case SDK_TOOL_LOWER.READ:
       if (input.file_path) {
         return <ReadInput {...input} />
       }
       break
 
-    case "edit":
+    case SDK_TOOL_LOWER.EDIT:
       if (input.file_path && input.old_string && input.new_string) {
         return <EditInput {...input} />
       }
       break
 
-    case "write":
+    case SDK_TOOL_LOWER.WRITE:
       if (input.file_path && input.content) {
         return <WriteInput {...input} />
       }
       break
 
-    case "grep":
+    case SDK_TOOL_LOWER.GREP:
       if (input.pattern) {
         return <GrepInput {...input} />
       }
       break
 
-    case "glob":
+    case SDK_TOOL_LOWER.GLOB:
       if (input.pattern) {
         return <GlobInput {...input} />
       }
       break
 
-    case "task":
+    case SDK_TOOL_LOWER.TASK:
       if (input.description && input.prompt && input.subagent_type) {
         return <TaskInput {...input} />
       }
       break
 
-    case "webfetch":
+    case SDK_TOOL_LOWER.WEB_FETCH:
       if (input.url && input.prompt) {
         return <WebFetchInput {...input} />
       }

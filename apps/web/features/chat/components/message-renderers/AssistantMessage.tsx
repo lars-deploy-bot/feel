@@ -17,6 +17,7 @@
  */
 
 import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
+import { getToolActionLabel, getToolDetail } from "@webalive/shared"
 import { isStreamClientVisibleTool } from "@webalive/shared/tools"
 import { ChevronRight } from "lucide-react"
 import { useState } from "react"
@@ -29,7 +30,7 @@ import { cn } from "@/lib/utils"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import type { ContentItem } from "@/types/guards/content"
 import { isTextBlock, isToolUseBlock } from "@/types/guards/content"
-import { ICON_SIZE, interactiveText, monoText, mutedIcon, subtleText, toolIndicatorButton } from "./styles"
+import { ICON_SIZE, interactiveText, messageText, monoText, mutedIcon, subtleText, toolIndicatorButton } from "./styles"
 
 interface AssistantMessageProps {
   content: SDKAssistantMessage
@@ -70,22 +71,17 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
     // Text messages get more vertical spacing than tool results
     if (hasMarkdown(text)) {
       return (
-        <div className="mb-2">
+        <div>
           <MarkdownDisplay content={text} />
         </div>
       )
     }
 
-    return (
-      <div className="mb-2 whitespace-pre-wrap break-words text-black dark:text-white font-normal leading-relaxed">
-        {text}
-      </div>
-    )
+    return <div className={messageText}>{text}</div>
   }
 
   if (isToolUseBlock(item)) {
-    const toolItem = item as { name: string; input: Record<string, unknown> }
-    if (!isStreamClientVisibleTool(toolItem.name)) {
+    if (!isStreamClientVisibleTool(item.name)) {
       return null
     }
 
@@ -95,67 +91,16 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
       return null
     }
 
-    const Icon = getToolIcon(toolItem.name)
+    const Icon = getToolIcon(item.name)
+    const actionLabel = getToolActionLabel(item.name)
+    const inlineDetail = getToolDetail(item.name, item.input)
 
-    const getActionLabel = (toolName: string) => {
-      switch (toolName.toLowerCase()) {
-        case "read":
-          return "reading"
-        case "edit":
-          return "editing"
-        case "write":
-          return "writing"
-        case "grep":
-          return "searching"
-        case "glob":
-          return "finding"
-        case "bash":
-          return "running"
-        case "task":
-          return "delegating"
-        case "webfetch":
-          return "fetching"
-        default:
-          return toolName.toLowerCase()
-      }
-    }
-
-    const getInlineDetail = (toolName: string, input: Record<string, unknown>) => {
-      const name = toolName.toLowerCase()
-      if (name === "read" || name === "edit" || name === "write") {
-        const filePath = input.file_path as string
-        if (filePath) {
-          return filePath.split("/").pop() || filePath
-        }
-      }
-      if (name === "webfetch") {
-        const url = input.url as string
-        if (url) {
-          try {
-            return new URL(url).hostname.replace(/^www\./, "")
-          } catch {
-            return url.length > 30 ? `${url.slice(0, 30)}...` : url
-          }
-        }
-      }
-      return null
-    }
-
-    const inlineDetail = getInlineDetail(toolItem.name, toolItem.input)
-
-    return (
-      <DebugToolItem
-        toolItem={toolItem}
-        icon={Icon}
-        actionLabel={getActionLabel(toolItem.name)}
-        inlineDetail={inlineDetail}
-      />
-    )
+    return <DebugToolItem toolItem={item} icon={Icon} actionLabel={actionLabel} inlineDetail={inlineDetail} />
   }
 
   // Unhandled content type
-  const unhandledItem = item as unknown as { type: string }
-  return <div className="text-xs text-red-600 dark:text-red-400">Unhandled content type: {unhandledItem.type}</div>
+  const unhandledType = typeof item === "object" && item !== null && "type" in item ? String(item.type) : "unknown"
+  return <div className="text-xs text-red-600 dark:text-red-400">Unhandled content type: {unhandledType}</div>
 }
 
 function DebugToolItem({
@@ -164,7 +109,7 @@ function DebugToolItem({
   actionLabel,
   inlineDetail,
 }: {
-  toolItem: { name: string; input: Record<string, unknown> }
+  toolItem: { name: string; input: unknown }
   icon: React.ComponentType<{ size?: string | number; className?: string }>
   actionLabel: string
   inlineDetail: string | null

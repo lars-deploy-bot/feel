@@ -7,28 +7,33 @@ import { parseAsBoolean, parseAsString, parseAsStringLiteral } from "nuqs"
 
 // Shared
 export const pageParam = parseAsString.withDefault("organizations")
-export const tabParam = parseAsStringLiteral(["overview", "activity"] as const).withDefault("overview")
+
+const TAB_OPTIONS: readonly ["overview", "activity"] = ["overview", "activity"]
+export const tabParam = parseAsStringLiteral(TAB_OPTIONS).withDefault("overview")
+
 export const searchParam = parseAsString.withDefault("")
 export const sortAscParam = parseAsBoolean.withDefault(false)
 
 // Users page
-export const usersSortParam = parseAsStringLiteral([
+const USER_SORT_OPTIONS: readonly ["name", "status", "last_active", "created", "orgs"] = [
   "name",
   "status",
   "last_active",
   "created",
   "orgs",
-] as const).withDefault("last_active")
+]
+export const usersSortParam = parseAsStringLiteral(USER_SORT_OPTIONS).withDefault("last_active")
 export const selectedUserParam = parseAsString
 
 // Orgs page
-export const orgsSortParam = parseAsStringLiteral([
+const ORG_SORT_OPTIONS: readonly ["name", "credits", "members", "projects", "created"] = [
   "name",
   "credits",
   "members",
   "projects",
   "created",
-] as const).withDefault("name")
+]
+export const orgsSortParam = parseAsStringLiteral(ORG_SORT_OPTIONS).withDefault("name")
 export const selectedOrgParam = parseAsString
 
 /**
@@ -41,4 +46,4 @@ export const PARAM_KEYS = {
   sort: "sort",
   sortAsc: "asc",
   selected: "id",
-} as const
+} satisfies Record<string, string>

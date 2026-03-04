@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { orgsApi } from "../orgs.api"
 import type { Organization } from "../orgs.types"
 
-const ORGS_KEY = ["orgs"] as const
+const ORGS_KEY: readonly ["orgs"] = ["orgs"]
 
 export function useOrgs() {
   const queryClient = useQueryClient()

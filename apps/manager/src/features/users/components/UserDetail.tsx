@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/Badge"
 import { cn } from "@/lib/cn"
 import { useRoute } from "@/lib/useRoute"
@@ -6,6 +6,7 @@ import type { UserDevice, UserLocation } from "../users.api"
 import { usersApi } from "../users.api"
 import type { User } from "../users.types"
 import { avatarColor, formatDate, relativeTime, roleBadgeVariant, statusVariant } from "../users.utils"
+import { ModelAccess } from "./ModelAccess"
 
 interface UserDetailProps {
   user: User
@@ -21,7 +22,7 @@ function formatLocation(l: UserLocation): string {
   return [l.city, l.region, l.country].filter(Boolean).join(", ")
 }
 
-function SectionHeader({ label, count }: { label: string; count?: number }) {
+export function SectionHeader({ label, count }: { label: string; count?: number }) {
   return (
     <h4 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-2">
       {label}
@@ -43,6 +44,7 @@ function InfoRow({ label, value }: { label: string; value: string | null }) {
 export function UserDetail({ user }: UserDetailProps) {
   const displayName = user.display_name ?? user.email ?? "Unknown"
   const { navigate } = useRoute()
+  const queryClient = useQueryClient()
 
   const { data: profile } = useQuery({
     queryKey: ["users", user.user_id, "profile"],
@@ -141,6 +143,14 @@ export function UserDetail({ user }: UserDetailProps) {
           </div>
         )}
       </div>
+
+      {/* Model Access */}
+      <ModelAccess
+        key={user.user_id}
+        userId={user.user_id}
+        enabledModels={user.enabled_models}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ["users"] })}
+      />
 
       {/* Organizations */}
       <div>

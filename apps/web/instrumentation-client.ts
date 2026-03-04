@@ -40,6 +40,11 @@ if (!isPlaywrightTest && sentryDsn) {
     // Performance: sample 10% of transactions on client
     tracesSampleRate: 0.1,
 
+    // Only attach sentry-trace/baggage headers to our API routes.
+    // Without this, Sentry adds tracing headers to ALL same-origin requests
+    // (including the PostHog proxy at /a/), which adblockers can fingerprint.
+    tracePropagationTargets: [/^\/api\//],
+
     // Session replay for debugging (1% baseline, 100% on error)
     replaysSessionSampleRate: 0.01,
     replaysOnErrorSampleRate: 1.0,

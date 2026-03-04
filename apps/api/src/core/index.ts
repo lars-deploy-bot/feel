@@ -7,6 +7,7 @@ import { domainsRoutes } from "./manager/domains/domains.routes"
 import { feedbackRoutes } from "./manager/feedback/feedback.routes"
 import { orgsRoutes } from "./manager/orgs/orgs.routes"
 import { templatesRoutes } from "./manager/templates/templates.routes"
+import { transfersRoutes } from "./manager/transfers/transfers.routes"
 import { usersRoutes } from "./manager/users/users.routes"
 
 /**
@@ -35,6 +36,7 @@ export function buildRoutes(): Hono<AppBindings> {
   manager.route("/domains", domainsRoutes)
   manager.route("/feedback", feedbackRoutes)
   manager.route("/templates", templatesRoutes)
+  manager.route("/transfers", transfersRoutes)
 
   apiGroup.route("/manager", manager)
 

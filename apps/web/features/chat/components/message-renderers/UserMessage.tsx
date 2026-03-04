@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import type { UIMessage } from "../../lib/message-parser"
 import { ChatAttachments } from "./ChatAttachments"
-import { filledBg, roundedContainer } from "./styles"
+import { filledBg, messageText, roundedContainer } from "./styles"
 
 interface UserMessageProps {
   content: string
@@ -16,7 +16,7 @@ interface UserMessageProps {
  */
 export function UserMessage({ content, attachments }: UserMessageProps) {
   return (
-    <div className="flex justify-end mb-2">
+    <div className="flex justify-end">
       <div className="max-w-full md:max-w-2xl">
         {/* Attachments */}
         <ChatAttachments attachments={attachments} />
@@ -26,9 +26,7 @@ export function UserMessage({ content, attachments }: UserMessageProps) {
           {hasMarkdown(content) ? (
             <MarkdownDisplay content={content} />
           ) : (
-            <p className="whitespace-pre-wrap break-words text-black dark:text-white font-normal leading-relaxed m-0">
-              {content}
-            </p>
+            <p className={cn(messageText, "m-0")}>{content}</p>
           )}
         </div>
       </div>

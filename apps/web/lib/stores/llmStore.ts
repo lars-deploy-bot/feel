@@ -1,10 +1,8 @@
 "use client"
 
+import { type ClaudeModel, DEFAULT_CLAUDE_MODEL, isValidClaudeModel } from "@webalive/shared"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { CLAUDE_MODELS, type ClaudeModel, DEFAULT_MODEL, isValidClaudeModel } from "@/lib/models/claude-models"
-
-export { CLAUDE_MODELS, DEFAULT_MODEL, type ClaudeModel }
 
 interface LLMState {
   model: ClaudeModel
@@ -29,7 +27,7 @@ const useLLMStoreBase = create<LLMStore>()(
       }
 
       return {
-        model: DEFAULT_MODEL, // Default model for credit users
+        model: DEFAULT_CLAUDE_MODEL, // Default model for credit users
         actions,
       }
     },
@@ -59,7 +57,7 @@ const useLLMStoreBase = create<LLMStore>()(
         let model = currentState.model
         if (!isValidClaudeModel(model)) {
           console.warn(`[LLMStore] Invalid model "${model}", resetting to default`)
-          model = DEFAULT_MODEL
+          model = DEFAULT_CLAUDE_MODEL
         }
 
         // Atomic state update via setState (not mutation)

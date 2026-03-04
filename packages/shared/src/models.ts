@@ -17,6 +17,11 @@ export const CLAUDE_MODELS = {
 export type ClaudeModel = (typeof CLAUDE_MODELS)[keyof typeof CLAUDE_MODELS]
 
 /**
+ * All available models as an array — use this instead of hardcoding model lists.
+ */
+export const ALL_CLAUDE_MODELS = Object.values(CLAUDE_MODELS) as [ClaudeModel, ...ClaudeModel[]]
+
+/**
  * Default model used for credit users and as initial state
  */
 export const DEFAULT_CLAUDE_MODEL: ClaudeModel = CLAUDE_MODELS.SONNET_4_6

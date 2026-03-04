@@ -10,6 +10,7 @@
  * it is absorbed into the group as a trailing status indicator.
  */
 
+import { SDK_TOOL } from "@webalive/shared"
 import type { SDKUserMessage } from "@/features/chat/types/sdk-types"
 import { COMPONENT_TYPE, getMessageComponentType, type UIMessage } from "./message-parser"
 
@@ -26,7 +27,7 @@ function isToolResultBlock(item: unknown): item is ToolResultBlock {
 }
 
 /** Tools considered "exploration" — read-only codebase analysis */
-const EXPLORATION_TOOLS = new Set(["Read", "Glob", "Grep"])
+const EXPLORATION_TOOLS: Set<string> = new Set([SDK_TOOL.READ, SDK_TOOL.GLOB, SDK_TOOL.GREP])
 
 /** Minimum consecutive exploration tool results to form a group */
 const MIN_GROUP_SIZE = 3
@@ -77,7 +78,7 @@ function isExplorationToolResult(message: UIMessage): boolean {
  */
 function isTaskToolResult(message: UIMessage): boolean {
   const toolNames = getToolNames(message)
-  return toolNames.length === 1 && toolNames[0] === "Task"
+  return toolNames.length === 1 && toolNames[0] === SDK_TOOL.TASK
 }
 
 /**

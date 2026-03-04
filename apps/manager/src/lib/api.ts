@@ -1,6 +1,4 @@
-// BASE_URL is "/manager-2/" (from vite.config.ts base).
-// Caddy strips /manager-2 prefix, so server.ts receives /api/... directly.
-const BASE = `${import.meta.env.BASE_URL}api`.replace(/\/\//g, "/")
+const BASE = "/api"
 
 class ApiError extends Error {
   status: number

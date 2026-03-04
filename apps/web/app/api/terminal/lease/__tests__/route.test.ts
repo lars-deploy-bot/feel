@@ -48,6 +48,11 @@ vi.mock("@webalive/shared", () => ({
   SUPERADMIN: { WORKSPACE_NAME: "alive" },
 }))
 
+// Mock domain runtime — tests use systemd path (domain = null)
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  resolveDomainRuntime: vi.fn().mockResolvedValue(null),
+}))
+
 // Mock global fetch for shell server calls
 vi.stubGlobal(
   "fetch",

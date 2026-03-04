@@ -17,6 +17,10 @@
       "import": "./dist/environments.js",
       "types": "./dist/environments.d.ts"
     },
+    "./manager-types": {
+      "import": "./dist/manager-types.js",
+      "types": "./dist/manager-types.d.ts"
+    },
     "./models": {
       "import": "./dist/models.js",
       "types": "./dist/models.d.ts"

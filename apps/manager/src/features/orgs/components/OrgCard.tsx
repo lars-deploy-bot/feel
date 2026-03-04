@@ -1,5 +1,5 @@
 import { formatTokensAsDollars, TOKENS_PER_DOLLAR } from "@webalive/shared/constants"
-import { Badge } from "@/components/ui/Badge"
+import { Badge, type BadgeVariant } from "@/components/ui/Badge"
 import { cn } from "@/lib/cn"
 import type { Organization } from "../orgs.types"
 
@@ -26,10 +26,10 @@ function avatarColor(name: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
-function creditsBadgeVariant(tokens: number) {
-  if (tokens <= 0) return "danger" as const
-  if (tokens < TOKENS_PER_DOLLAR) return "warning" as const
-  return "success" as const
+function creditsBadgeVariant(tokens: number): BadgeVariant {
+  if (tokens <= 0) return "danger"
+  if (tokens < TOKENS_PER_DOLLAR) return "warning"
+  return "success"
 }
 
 export function OrgCard({ org, selected, onSelect }: OrgCardProps) {

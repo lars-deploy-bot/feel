@@ -1,3 +1,5 @@
+import { SDK_TOOL_LOWER } from "@webalive/shared"
+import { STRIPE } from "@webalive/tools/display"
 import { BashOutput } from "@/components/ui/chat/tools/bash/BashOutput"
 import { EditOutput } from "@/components/ui/chat/tools/edit/EditOutput"
 import { GlobOutput } from "@/components/ui/chat/tools/glob/GlobOutput"
@@ -169,19 +171,19 @@ export function ToolOutputRouter({
   }
 
   switch (tool) {
-    case "bash":
+    case SDK_TOOL_LOWER.BASH:
       if (content.output !== undefined && content.exitCode !== undefined) {
         return <BashOutput {...content} />
       }
       break
 
-    case "bashoutput":
+    case SDK_TOOL_LOWER.BASH_OUTPUT:
       if (content.output !== undefined && content.exitCode !== undefined) {
         return <BashOutput {...content} />
       }
       break
 
-    case "read":
+    case SDK_TOOL_LOWER.READ:
       // TextFileOutput
       if (content.total_lines !== undefined && content.content) {
         return <ReadOutput {...content} />
@@ -200,19 +202,19 @@ export function ToolOutputRouter({
       }
       break
 
-    case "edit":
+    case SDK_TOOL_LOWER.EDIT:
       if (content.replacements !== undefined) {
         return <EditOutput {...content} />
       }
       break
 
-    case "write":
+    case SDK_TOOL_LOWER.WRITE:
       if (content.bytes_written !== undefined) {
         return <WriteOutput {...content} />
       }
       break
 
-    case "grep":
+    case SDK_TOOL_LOWER.GREP:
       // GrepFilesOutput
       if (content.files && content.count !== undefined) {
         return <GrepOutput {...content} />
@@ -227,19 +229,19 @@ export function ToolOutputRouter({
       }
       break
 
-    case "glob":
+    case SDK_TOOL_LOWER.GLOB:
       if (content.matches && content.count !== undefined) {
         return <GlobOutput {...content} />
       }
       break
 
-    case "task":
+    case SDK_TOOL_LOWER.TASK:
       if (content.result) {
         return <TaskOutput {...content} />
       }
       break
 
-    case "webfetch": {
+    case SDK_TOOL_LOWER.WEB_FETCH: {
       // WebFetch returns a string response, toolInput has url/prompt
       const url = (toolInput as Record<string, unknown>)?.url as string | undefined
       if (typeof content === "string" || content.content) {
@@ -251,7 +253,7 @@ export function ToolOutputRouter({
       break
     }
 
-    case "websearch": {
+    case SDK_TOOL_LOWER.WEB_SEARCH: {
       // WebSearch returns a text summary — render as clean text
       if (typeof content === "string") {
         return (
@@ -265,7 +267,7 @@ export function ToolOutputRouter({
       break
     }
 
-    case "mcp__stripe__list_subscriptions": {
+    case STRIPE.LIST_SUBSCRIPTIONS: {
       const subscriptions = unwrapMcp(content)
       if (Array.isArray(subscriptions) && subscriptions.length > 0 && subscriptions[0].id) {
         return <StripeSubscriptionsOutput subscriptions={subscriptions} />
@@ -273,7 +275,7 @@ export function ToolOutputRouter({
       break
     }
 
-    case "mcp__stripe__list_customers": {
+    case STRIPE.LIST_CUSTOMERS: {
       const data = unwrapMcp(content) as Record<string, unknown> | unknown[]
       // Stripe API returns {object: "list", data: [...]}
       const customers = (data as Record<string, unknown>)?.data || data
@@ -283,7 +285,7 @@ export function ToolOutputRouter({
       break
     }
 
-    case "mcp__stripe__fetch_stripe_resources": {
+    case STRIPE.FETCH_RESOURCES: {
       // This tool returns multiple text items, each needs parsing
       const resources: any[] = []
       if (Array.isArray(content)) {
@@ -303,7 +305,7 @@ export function ToolOutputRouter({
       break
     }
 
-    case "mcp__stripe__retrieve_balance": {
+    case STRIPE.RETRIEVE_BALANCE: {
       const balance = unwrapMcp(content)
       if (balance && typeof balance === "object") {
         return <StripeBalanceOutput balance={balance} />
@@ -311,7 +313,7 @@ export function ToolOutputRouter({
       break
     }
 
-    case "mcp__stripe__get_stripe_account_info": {
+    case STRIPE.GET_ACCOUNT_INFO: {
       const account = unwrapMcp(content)
       if (account && typeof account === "object") {
         return <StripeAccountOutput account={account} />
@@ -319,7 +321,7 @@ export function ToolOutputRouter({
       break
     }
 
-    case "mcp__stripe__list_payment_intents": {
+    case STRIPE.LIST_PAYMENT_INTENTS: {
       const paymentIntents = unwrapMcp(content)
       if (Array.isArray(paymentIntents) && paymentIntents.length > 0) {
         return <StripePaymentIntentsOutput paymentIntents={paymentIntents} />
@@ -327,7 +329,7 @@ export function ToolOutputRouter({
       break
     }
 
-    case "mcp__stripe__search_stripe_resources": {
+    case STRIPE.SEARCH_RESOURCES: {
       const data = unwrapMcp(content) as Record<string, unknown> | null
       if (data?.results && Array.isArray(data.results)) {
         return <StripeSearchOutput results={data.results} />

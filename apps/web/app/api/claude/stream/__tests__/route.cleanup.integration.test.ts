@@ -44,12 +44,18 @@ vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }))
 
-vi.mock("@webalive/shared", () => ({
-  DEFAULTS: { CLAUDE_MAX_TURNS: 8 },
-  SUPERADMIN: { WORKSPACE_NAME: "alive" },
-  WORKER_POOL: { ENABLED: false },
-  COOKIE_NAMES: { SESSION: "session" },
-}))
+vi.mock("@webalive/shared", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>("@webalive/shared")
+  return {
+    ...actual,
+    DEFAULTS: { ...(actual.DEFAULTS as Record<string, unknown>), CLAUDE_MAX_TURNS: 8 },
+    SUPERADMIN: { WORKSPACE_NAME: "alive" },
+    WORKER_POOL: { ENABLED: false },
+    COOKIE_NAMES: { SESSION: "session" },
+    isValidClaudeModel: vi.fn(() => true),
+    isRetiredModel: vi.fn(() => false),
+  }
+})
 
 vi.mock("@webalive/worker-pool", () => ({
   getWorkerPool: vi.fn(),
@@ -154,12 +160,6 @@ vi.mock("@/lib/image-analyze/fetch-and-save", () => ({
 
 vi.mock("@/lib/input-logger", () => ({
   logInput: vi.fn(),
-}))
-
-vi.mock("@/lib/models/claude-models", () => ({
-  DEFAULT_MODEL: "model-default",
-  isRetiredModel: vi.fn(() => false),
-  isValidClaudeModel: vi.fn(() => true),
 }))
 
 vi.mock("@/lib/oauth/fetch-oauth-tokens", () => ({

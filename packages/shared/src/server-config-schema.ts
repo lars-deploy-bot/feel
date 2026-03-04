@@ -107,6 +107,7 @@ export const serverConfigSchema = z
         domains: z.array(domainStr),
         listen: z.string().min(1),
         upstream: z.string().min(1),
+        e2bUpstream: z.string().min(1).optional(),
       })
       .strict(),
 

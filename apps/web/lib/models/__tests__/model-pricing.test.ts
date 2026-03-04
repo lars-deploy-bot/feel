@@ -11,8 +11,8 @@
  * Credit conversion: 1 USD = 10 credits
  */
 
+import { CLAUDE_MODELS } from "@webalive/shared"
 import { describe, expect, test } from "vitest"
-import { CLAUDE_MODELS } from "../claude-models"
 import {
   CREDITS_PER_USD,
   calculateCreditsToCharge,

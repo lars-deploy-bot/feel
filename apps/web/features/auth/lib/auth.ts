@@ -79,7 +79,7 @@ function buildSessionUser(id: string, email: string, name: string | null, enable
     name,
     isAdmin,
     isSuperadmin,
-    canSelectAnyModel: isAdmin || enabledModels.length > 0,
+    canSelectAnyModel: true,
     enabledModels,
   }
 }

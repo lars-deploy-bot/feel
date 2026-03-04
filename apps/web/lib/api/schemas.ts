@@ -3,6 +3,7 @@ import type {
   Params as PkgParams,
   Query as PkgQuery,
   Req as PkgReq,
+  ReqInput as PkgReqInput,
   Res as PkgRes,
   ResPayload as PkgResPayload,
 } from "@alive-brug/alrighty"
@@ -124,7 +125,6 @@ export const apiSchemas = {
    * Returns full SessionUser object from getSessionUser()
    */
   user: {
-    req: z.undefined().brand<"UserRequest">(), // GET has no body
     res: z.object({
       user: z.object({
         id: z.string(),
@@ -198,7 +198,6 @@ export const apiSchemas = {
    * Get active templates for this server (public, no auth)
    */
   templates: {
-    req: z.undefined().brand<"TemplatesRequest">(),
     res: z.object({
       templates: z.array(
         z.object({
@@ -220,7 +219,6 @@ export const apiSchemas = {
    * Get all templates (manager auth required)
    */
   "manager/templates": {
-    req: z.undefined().brand<"ManagerTemplatesGetRequest">(),
     res: z.object({
       ok: z.boolean(),
       templates: z.array(
@@ -335,7 +333,6 @@ export const apiSchemas = {
    * Get all organizations with members and domains (manager auth required)
    */
   "manager/orgs": {
-    req: z.undefined().brand<"ManagerOrgsRequest">(),
     res: z.object({
       ok: z.literal(true),
       orgs: z.array(
@@ -383,7 +380,6 @@ export const apiSchemas = {
    * Get user's organizations with workspace counts
    */
   "auth/organizations": {
-    req: z.undefined().brand<"AuthOrganizationsRequest">(),
     res: z.object({
       ok: z.literal(true),
       organizations: z.array(
@@ -404,7 +400,6 @@ export const apiSchemas = {
    * Get all workspaces for all orgs in one request
    */
   "auth/all-workspaces": {
-    req: z.undefined().brand<"AuthAllWorkspacesRequest">(),
     res: z.object({
       ok: z.literal(true),
       workspaces: z.record(z.string(), z.array(z.object({ hostname: z.string(), createdAt: z.string() }))),
@@ -419,10 +414,10 @@ export const apiSchemas = {
     query: z.object({
       org_id: z.string().min(1).optional(),
     }),
-    req: z.undefined().brand<"AuthWorkspacesRequest">(),
     res: z.object({
       ok: z.literal(true),
       workspaces: z.array(z.string()),
+      sandboxed: z.array(z.string()).optional(),
     }),
   },
 
@@ -434,7 +429,6 @@ export const apiSchemas = {
     query: z.object({
       orgId: z.string().min(1),
     }),
-    req: z.undefined().brand<"AuthOrgMembersRequest">(),
     res: z.object({
       ok: z.literal(true),
       members: z.array(
@@ -685,7 +679,6 @@ export const apiSchemas = {
       site_id: z.string().min(1).optional(),
       limit: z.coerce.number().int().min(1).max(100).optional().default(50),
     }),
-    req: z.undefined().brand<"AutomationsRequest">(),
     res: z.object({
       ok: z.literal(true),
       automations: z.array(
@@ -778,7 +771,6 @@ export const apiSchemas = {
    */
   "automations/get-by-id": {
     params: z.object({ id: z.string().min(1) }),
-    req: z.undefined().brand<"AutomationsGetByIdRequest">(),
     res: z.object({
       ok: z.literal(true),
       automation: z.record(z.string(), z.unknown()),
@@ -823,7 +815,6 @@ export const apiSchemas = {
     query: z.object({
       org_id: z.string().min(1).optional(),
     }),
-    req: z.undefined().brand<"SitesRequest">(),
     res: z.object({
       ok: z.literal(true),
       sites: z.array(
@@ -844,7 +835,6 @@ export const apiSchemas = {
     query: z.object({
       workspace: z.string().optional(),
     }),
-    req: z.undefined().brand<"WorktreesRequest">(),
     res: z.object({
       ok: z.literal(true),
       worktrees: z.array(
@@ -948,7 +938,6 @@ export const apiSchemas = {
       offset: z.coerce.number().int().min(0).default(0),
       status: AutomationRunStatusSchema.optional(),
     }),
-    req: z.undefined().brand<"AutomationsRunsRequest">(),
     res: z.object({
       ok: z.literal(true),
       runs: z.array(
@@ -992,7 +981,6 @@ export const apiSchemas = {
         .default("true")
         .transform(value => value === "true"),
     }),
-    req: z.undefined().brand<"AutomationsRunRequest">(),
     res: z.object({
       ok: z.literal(true),
       run: z.object({
@@ -1020,7 +1008,6 @@ export const apiSchemas = {
    * List env key names (values are NOT returned for security)
    */
   "user-env-keys": {
-    req: z.undefined().brand<"UserEnvKeysRequest">(),
     res: z.object({
       ok: z.literal(true),
       keys: z.array(
@@ -1088,7 +1075,6 @@ export const apiSchemas = {
    * Get available integrations for the current user
    */
   "integrations/available": {
-    req: z.undefined().brand<"IntegrationsAvailableRequest">(),
     res: z.object({
       integrations: z.array(
         z.object({
@@ -1442,7 +1428,6 @@ export const apiSchemas = {
    * List active login sessions for the current user
    */
   "auth/sessions": {
-    req: z.undefined().brand<"AuthSessionsRequest">(),
     res: z.object({
       ok: z.literal(true),
       sessions: z.array(
@@ -1480,6 +1465,7 @@ export const apiSchemas = {
    * Revoke all sessions except the current one
    */
   "auth/sessions/revoke-others": {
+    req: z.undefined().brand<"RevokeOtherSessionsRequest">(),
     res: z.object({
       ok: z.literal(true),
       revokedCount: z.number(),
@@ -1667,6 +1653,8 @@ export const apiSchemas = {
 
 export type Endpoint = keyof typeof apiSchemas
 export type Req<E extends Endpoint> = PkgReq<typeof apiSchemas, E>
+/** Raw input accepted by the endpoint request schema before parsing/branding */
+export type ReqInput<E extends Endpoint> = PkgReqInput<typeof apiSchemas, E>
 export type Res<E extends Endpoint> = PkgRes<typeof apiSchemas, E>
 /** What callers pass to alrighty — `ok` is auto-injected */
 export type ResPayload<E extends Endpoint> = PkgResPayload<typeof apiSchemas, E>
@@ -1674,6 +1662,19 @@ export type ResPayload<E extends Endpoint> = PkgResPayload<typeof apiSchemas, E>
 export type Params<E extends Endpoint> = PkgParams<typeof apiSchemas, E>
 /** Validated URL query params for an endpoint (e.g., `{ limit: number }`) */
 export type Query<E extends Endpoint> = PkgQuery<typeof apiSchemas, E>
+
+/** Endpoints that define a request schema (including `z.undefined()` request schemas). */
+type EndpointWithReq = {
+  [K in Endpoint]: "req" extends keyof (typeof apiSchemas)[K] ? K : never
+}[Endpoint]
+
+/** Endpoints with explicit `z.undefined()` request schemas. */
+type UndefinedReqEndpoint = {
+  [K in EndpointWithReq]: [ReqInput<K>] extends [undefined] ? K : never
+}[EndpointWithReq]
+
+/** Endpoints whose request schema expects a non-undefined body. */
+type NonUndefinedReqEndpoint = Exclude<EndpointWithReq, UndefinedReqEndpoint>
 
 // ============================================================================
 // VALIDATION HELPER
@@ -1694,12 +1695,25 @@ export type Query<E extends Endpoint> = PkgQuery<typeof apiSchemas, E>
  * // ✅ This is required:
  * const validated = validateRequest("login", { email: "test@example.com", password: "secret" })
  * await postty("login", validated)
+ *
+ * // ✅ For no-body endpoints with req: z.undefined(), omit body or pass undefined
+ * const triggerReq = validateRequest("automations/trigger")
  * ```
  *
  * @throws {ZodError} If validation fails (invalid email, password too short, etc.)
  */
-export function validateRequest<E extends Endpoint>(endpoint: E, data: unknown): Req<E> {
+export function validateRequest<E extends UndefinedReqEndpoint>(endpoint: E, data?: undefined): Req<E>
+export function validateRequest<E extends NonUndefinedReqEndpoint>(endpoint: E, data: ReqInput<E>): Req<E>
+export function validateRequest<E extends EndpointWithReq>(endpoint: E, data?: unknown): Req<E> {
   const entry: EndpointSchema = apiSchemas[endpoint]
   if (!entry.req) throw new Error(`No request schema defined for ${String(endpoint)}`)
-  return entry.req.parse(data) as Req<E>
+  try {
+    return entry.req.parse(data) as Req<E>
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const issues = error.issues.map(i => `${i.path.join(".") || "(root)"}: ${i.message}`).join(", ")
+      throw new Error(`validateRequest("${String(endpoint)}"): ${issues}`)
+    }
+    throw error
+  }
 }

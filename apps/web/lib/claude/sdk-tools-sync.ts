@@ -30,6 +30,7 @@ import type {
 import {
   createStreamToolContext,
   getStreamToolDecision,
+  SDK_TOOL,
   STREAM_SDK_TOOL_NAMES,
   type StreamSdkToolName,
 } from "@webalive/shared"
@@ -83,26 +84,27 @@ export type DisallowedSDKTool = (typeof DISALLOWED_SDK_TOOLS)[number]
 
 /**
  * Maps SDK Input types to their tool names.
+ * Uses SDK_TOOL constants — if a constant is renamed/removed, this breaks at compile time.
  */
 type SDKToolMap = {
-  AgentInput: "Task"
-  BashInput: "Bash"
-  TaskOutputInput: "TaskOutput"
-  ExitPlanModeInput: "ExitPlanMode"
-  FileEditInput: "Edit"
-  FileReadInput: "Read"
-  FileWriteInput: "Write"
-  GlobInput: "Glob"
-  GrepInput: "Grep"
-  TaskStopInput: "TaskStop"
-  ListMcpResourcesInput: "ListMcpResources"
-  McpInput: "Mcp"
-  NotebookEditInput: "NotebookEdit"
-  ReadMcpResourceInput: "ReadMcpResource"
-  TodoWriteInput: "TodoWrite"
-  WebFetchInput: "WebFetch"
-  WebSearchInput: "WebSearch"
-  AskUserQuestionInput: "AskUserQuestion"
+  AgentInput: typeof SDK_TOOL.TASK
+  BashInput: typeof SDK_TOOL.BASH
+  TaskOutputInput: typeof SDK_TOOL.TASK_OUTPUT
+  ExitPlanModeInput: typeof SDK_TOOL.EXIT_PLAN_MODE
+  FileEditInput: typeof SDK_TOOL.EDIT
+  FileReadInput: typeof SDK_TOOL.READ
+  FileWriteInput: typeof SDK_TOOL.WRITE
+  GlobInput: typeof SDK_TOOL.GLOB
+  GrepInput: typeof SDK_TOOL.GREP
+  TaskStopInput: typeof SDK_TOOL.TASK_STOP
+  ListMcpResourcesInput: typeof SDK_TOOL.LIST_MCP_RESOURCES
+  McpInput: typeof SDK_TOOL.MCP
+  NotebookEditInput: typeof SDK_TOOL.NOTEBOOK_EDIT
+  ReadMcpResourceInput: typeof SDK_TOOL.READ_MCP_RESOURCE
+  TodoWriteInput: typeof SDK_TOOL.TODO_WRITE
+  WebFetchInput: typeof SDK_TOOL.WEB_FETCH
+  WebSearchInput: typeof SDK_TOOL.WEB_SEARCH
+  AskUserQuestionInput: typeof SDK_TOOL.ASK_USER_QUESTION
 }
 
 /**
@@ -155,24 +157,24 @@ export type SDKToolName = SDKToolMap[keyof SDKToolMap]
  * SDK tool names as a const array for runtime use.
  */
 export const SDK_TOOL_NAMES = [
-  "Task",
-  "Bash",
-  "TaskOutput",
-  "ExitPlanMode",
-  "Edit",
-  "Read",
-  "Write",
-  "Glob",
-  "Grep",
-  "TaskStop",
-  "ListMcpResources",
-  "Mcp",
-  "NotebookEdit",
-  "ReadMcpResource",
-  "TodoWrite",
-  "WebFetch",
-  "WebSearch",
-  "AskUserQuestion",
+  SDK_TOOL.TASK,
+  SDK_TOOL.BASH,
+  SDK_TOOL.TASK_OUTPUT,
+  SDK_TOOL.EXIT_PLAN_MODE,
+  SDK_TOOL.EDIT,
+  SDK_TOOL.READ,
+  SDK_TOOL.WRITE,
+  SDK_TOOL.GLOB,
+  SDK_TOOL.GREP,
+  SDK_TOOL.TASK_STOP,
+  SDK_TOOL.LIST_MCP_RESOURCES,
+  SDK_TOOL.MCP,
+  SDK_TOOL.NOTEBOOK_EDIT,
+  SDK_TOOL.READ_MCP_RESOURCE,
+  SDK_TOOL.TODO_WRITE,
+  SDK_TOOL.WEB_FETCH,
+  SDK_TOOL.WEB_SEARCH,
+  SDK_TOOL.ASK_USER_QUESTION,
 ] as const satisfies readonly SDKToolName[]
 
 /**

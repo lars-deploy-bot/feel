@@ -8,6 +8,7 @@ import {
   type Query,
   type ReadEndpoint,
   type Req,
+  type ReqInput,
   type Res,
   type SchemaRegistry,
 } from "../index.js"
@@ -28,9 +29,14 @@ const schemas = {
     req: z.object({ name: z.string() }),
     res: z.object({ ok: z.boolean() }),
   },
-  // POST - no req (bodyless action/trigger)
+  // GET - no req
   trigger: {
     res: z.object({ ok: z.boolean(), count: z.number() }),
+  },
+  // POST - explicit undefined req schema
+  action: {
+    req: z.undefined(),
+    res: z.object({ ok: z.boolean() }),
   },
 } satisfies SchemaRegistry
 
@@ -39,13 +45,13 @@ type TestSchemas = typeof schemas
 describe("Type Tests", () => {
   describe("Endpoint type", () => {
     it("extracts endpoint names as string union", () => {
-      expectTypeOf<Endpoint<TestSchemas>>().toEqualTypeOf<"user" | "login" | "update" | "trigger">()
+      expectTypeOf<Endpoint<TestSchemas>>().toEqualTypeOf<"user" | "login" | "update" | "trigger" | "action">()
     })
   })
 
   describe("MutationEndpoint type", () => {
     it("extracts only endpoints with req schema", () => {
-      expectTypeOf<MutationEndpoint<TestSchemas>>().toEqualTypeOf<"login" | "update">()
+      expectTypeOf<MutationEndpoint<TestSchemas>>().toEqualTypeOf<"login" | "update" | "action">()
     })
   })
 
@@ -64,6 +70,27 @@ describe("Type Tests", () => {
     it("returns never for GET endpoint without req", () => {
       type UserReq = Req<TestSchemas, "user">
       expectTypeOf<UserReq>().toEqualTypeOf<never>()
+    })
+  })
+
+  describe("ReqInput type", () => {
+    const inputSchemas = {
+      action: {
+        req: z.undefined(),
+        res: z.object({ ok: z.boolean() }),
+      },
+      create: {
+        req: z.object({ name: z.string().min(1) }).brand<"CreateReq">(),
+        res: z.object({ ok: z.boolean() }),
+      },
+    } satisfies SchemaRegistry
+
+    it("extracts input type for branded request schemas", () => {
+      expectTypeOf<ReqInput<typeof inputSchemas, "create">>().toEqualTypeOf<{ name: string }>()
+    })
+
+    it("extracts undefined for z.undefined request schemas", () => {
+      expectTypeOf<ReqInput<typeof inputSchemas, "action">>().toEqualTypeOf<undefined>()
     })
   })
 
@@ -163,12 +190,22 @@ describe("Type Tests", () => {
       expectTypeOf(result).toEqualTypeOf<{ ok: boolean; token?: string }>()
     })
 
-    it("postty supports bodyless POST for endpoints without req", () => {
-      assertType<Promise<{ ok: boolean; count: number }>>(postty("trigger"))
+    it("postty supports bodyless POST for endpoints with req: z.undefined()", () => {
+      assertType<Promise<{ ok: boolean }>>(postty("action"))
     })
 
     it("postty supports bodyless POST with pathOverride", () => {
-      assertType<Promise<{ ok: boolean; count: number }>>(postty("trigger", undefined, "/api/custom"))
+      assertType<Promise<{ ok: boolean }>>(postty("action", undefined, "/api/custom"))
+    })
+
+    it("postty rejects missing body for required-body endpoints", () => {
+      // @ts-expect-error - login requires request body
+      postty("login")
+    })
+
+    it("postty rejects read endpoints", () => {
+      // @ts-expect-error - trigger has no req and is read-only
+      postty("trigger")
     })
 
     it("postty rejects wrong body type", () => {
@@ -189,6 +226,8 @@ describe("Type Tests", () => {
     it("putty rejects GET-only endpoints", () => {
       // @ts-expect-error - user is GET only
       putty("user", undefined)
+      // @ts-expect-error - trigger is GET only
+      putty("trigger", undefined)
     })
 
     it("patchy requires correct body type", () => {
@@ -198,12 +237,16 @@ describe("Type Tests", () => {
     it("patchy rejects GET-only endpoints", () => {
       // @ts-expect-error - user is GET only
       patchy("user", undefined)
+      // @ts-expect-error - trigger is GET only
+      patchy("trigger", undefined)
     })
 
-    it("deletty works on any endpoint", () => {
-      // deletty should work on both GET and mutation endpoints
+    it("deletty requires body for required-body endpoints", () => {
+      // deletty should work on read/no-body endpoints
       assertType<Promise<{ id: string; email: string }>>(deletty("user"))
-      assertType<Promise<{ ok: boolean; token?: string }>>(deletty("login"))
+      assertType<Promise<{ ok: boolean }>>(deletty("action"))
+      // @ts-expect-error - login requires request body
+      deletty("login")
       assertType<Promise<{ ok: boolean; token?: string }>>(deletty("login", { email: "", password: "" }))
     })
 
@@ -224,6 +267,11 @@ describe("Type Tests", () => {
     it("accepts valid endpoint names", () => {
       assertType<Promise<{ id: string; email: string }>>(getty("user"))
       assertType<Promise<{ ok: boolean; token?: string }>>(postty("login", { email: "", password: "" }))
+    })
+
+    it("getty rejects mutation endpoints", () => {
+      // @ts-expect-error - login has req and is not a read endpoint
+      getty("login")
     })
   })
 

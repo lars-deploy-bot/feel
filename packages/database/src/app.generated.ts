@@ -321,30 +321,39 @@ export type Database = {
         Row: {
           created_at: string
           domain_id: string
+          execution_mode: Database["app"]["Enums"]["execution_mode"]
           hostname: string
           is_test_env: boolean | null
           org_id: string | null
           port: number
+          sandbox_id: string | null
+          sandbox_status: Database["app"]["Enums"]["sandbox_status"] | null
           server_id: string | null
           test_run_id: string | null
         }
         Insert: {
           created_at?: string
           domain_id?: string
+          execution_mode?: Database["app"]["Enums"]["execution_mode"]
           hostname: string
           is_test_env?: boolean | null
           org_id?: string | null
           port: number
+          sandbox_id?: string | null
+          sandbox_status?: Database["app"]["Enums"]["sandbox_status"] | null
           server_id?: string | null
           test_run_id?: string | null
         }
         Update: {
           created_at?: string
           domain_id?: string
+          execution_mode?: Database["app"]["Enums"]["execution_mode"]
           hostname?: string
           is_test_env?: boolean | null
           org_id?: string | null
           port?: number
+          sandbox_id?: string | null
+          sandbox_status?: Database["app"]["Enums"]["sandbox_status"] | null
           server_id?: string | null
           test_run_id?: string | null
         }
@@ -780,6 +789,8 @@ export type Database = {
       automation_run_status: "pending" | "running" | "success" | "failure" | "skipped"
       automation_trigger_type: "cron" | "webhook" | "one-time" | "email"
       conversation_source: "chat" | "automation_run"
+      execution_mode: "systemd" | "e2b"
+      sandbox_status: "creating" | "running" | "dead"
       severity_level: "info" | "warn" | "error" | "debug" | "fatal"
     }
     CompositeTypes: {
@@ -905,6 +916,8 @@ export const Constants = {
       automation_run_status: ["pending", "running", "success", "failure", "skipped"],
       automation_trigger_type: ["cron", "webhook", "one-time", "email"],
       conversation_source: ["chat", "automation_run"],
+      execution_mode: ["systemd", "e2b"],
+      sandbox_status: ["creating", "running", "dead"],
       severity_level: ["info", "warn", "error", "debug", "fatal"],
     },
   },

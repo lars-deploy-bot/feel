@@ -7,8 +7,10 @@ import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
+import { connectSandbox, SANDBOX_WORKSPACE_ROOT, SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
 
 /**
  * Critical files within /user that cannot be deleted.
@@ -95,23 +97,16 @@ async function validateSymlinkTarget(
       )
       return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
         status: 403,
-        details: {
-          requestId,
-          reason: "Symlink points outside workspace",
-        },
+        details: { requestId, reason: "Symlink points outside workspace" },
       })
     }
 
     return null // Safe
   } catch (_err) {
-    // Expected: broken or unreadable symlink — treat as suspicious
     console.warn(`[Delete ${requestId}] Failed to read symlink target: ${symlinkPath}`)
     return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
       status: 403,
-      details: {
-        requestId,
-        reason: "Cannot verify symlink target",
-      },
+      details: { requestId, reason: "Cannot verify symlink target" },
     })
   }
 }
@@ -128,6 +123,7 @@ async function validateSymlinkTarget(
  * - Uses realpath() to resolve workspace and prevent symlink-based escapes
  * - No shell commands - uses fs APIs directly
  * - All deletions are logged
+ * - E2B: uses sandbox.files.remove() instead of host fs
  *
  * Request body:
  * - path: string (required) - relative path within workspace
@@ -135,7 +131,6 @@ async function validateSymlinkTarget(
  * - recursive: boolean (optional) - required for directories
  *
  * Note: Uses POST instead of DELETE method to allow request body parsing.
- * DELETE requests traditionally don't have bodies, though the spec allows it.
  */
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request)
@@ -160,10 +155,7 @@ export async function POST(request: NextRequest) {
     if (!targetPath || typeof targetPath !== "string") {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
-        details: {
-          requestId,
-          field: "path",
-        },
+        details: { requestId, field: "path" },
       })
     }
 
@@ -173,14 +165,29 @@ export async function POST(request: NextRequest) {
       console.warn(`[Delete ${requestId}] User ${user.id} denied access to workspace: ${body.workspace}`)
       return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, {
         status: 401,
-        details: {
-          requestId,
-          workspace: body.workspace,
-        },
+        details: { requestId, workspace: body.workspace },
       })
     }
 
-    // 4. Resolve workspace path
+    // 4. Protected file/directory check (shared between systemd and E2B)
+    const protectionCheck = isProtected(targetPath)
+    if (protectionCheck.protected) {
+      console.warn(`[Delete ${requestId}] Protected file blocked: ${targetPath}`)
+      return structuredErrorResponse(ErrorCodes.FILE_PROTECTED, {
+        status: 403,
+        details: { requestId, filePath: targetPath, reason: protectionCheck.reason },
+      })
+    }
+
+    // 5. E2B branch: check execution mode before host filesystem ops
+    if (body.workspace) {
+      const domain = await resolveDomainRuntime(body.workspace)
+      if (domain?.execution_mode === "e2b") {
+        return handleE2bDelete(domain, targetPath, recursive, requestId)
+      }
+    }
+
+    // 6. Systemd path: resolve workspace
     const host = request.headers.get("host") || "localhost"
     const workspaceResult = await getWorkspace({ host, body, requestId })
 
@@ -188,47 +195,28 @@ export async function POST(request: NextRequest) {
       return workspaceResult.response
     }
 
-    // 5. Resolve workspace to real path (follows symlinks, prevents workspace symlink attack)
+    // 7. Resolve workspace to real path (follows symlinks, prevents workspace symlink attack)
     let resolvedWorkspace: string
     try {
       resolvedWorkspace = await realpath(workspaceResult.workspace)
     } catch (_err) {
-      // Expected: workspace path may not exist (non-existent paths are a normal 404, not a Sentry-worthy error)
       console.error(`[Delete ${requestId}] Failed to resolve workspace: ${workspaceResult.workspace}`)
       return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, { status: 404, details: { requestId } })
     }
 
-    // 6. Path traversal protection (string-based check first)
+    // 8. Path traversal protection (string-based check first)
     const fullPath = path.join(resolvedWorkspace, targetPath)
     const resolvedPath = path.resolve(fullPath)
 
-    if (!isPathWithinWorkspace(resolvedPath, resolvedWorkspace, path.sep)) {
+    if (resolvedPath === resolvedWorkspace || !isPathWithinWorkspace(resolvedPath, resolvedWorkspace, path.sep)) {
       console.warn(`[Delete ${requestId}] Path traversal blocked: ${targetPath} -> ${resolvedPath}`)
       return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
         status: 403,
-        details: {
-          requestId,
-          attemptedPath: targetPath,
-          workspacePath: resolvedWorkspace,
-        },
+        details: { requestId, attemptedPath: targetPath, workspacePath: resolvedWorkspace },
       })
     }
 
-    // 7. Protected file/directory check (case-insensitive for macOS compatibility)
-    const protectionCheck = isProtected(targetPath)
-    if (protectionCheck.protected) {
-      console.warn(`[Delete ${requestId}] Protected file blocked: ${targetPath}`)
-      return structuredErrorResponse(ErrorCodes.FILE_PROTECTED, {
-        status: 403,
-        details: {
-          requestId,
-          filePath: targetPath,
-          reason: protectionCheck.reason,
-        },
-      })
-    }
-
-    // 8. Use lstat() to check file WITHOUT following symlinks (TOCTOU protection)
+    // 9. Use lstat() to check file WITHOUT following symlinks (TOCTOU protection)
     let lstats: Stats
     try {
       lstats = await lstat(resolvedPath)
@@ -237,16 +225,13 @@ export async function POST(request: NextRequest) {
       if (fsError.code === "ENOENT") {
         return structuredErrorResponse(ErrorCodes.FILE_NOT_FOUND, {
           status: 404,
-          details: {
-            requestId,
-            filePath: targetPath,
-          },
+          details: { requestId, filePath: targetPath },
         })
       }
       throw err
     }
 
-    // 9. If it's a symlink, validate the target is within workspace
+    // 10. If it's a symlink, validate the target is within workspace
     if (lstats.isSymbolicLink()) {
       const symlinkError = await validateSymlinkTarget(resolvedPath, resolvedWorkspace, requestId)
       if (symlinkError) {
@@ -256,7 +241,7 @@ export async function POST(request: NextRequest) {
 
     const isDir = lstats.isDirectory()
 
-    // 10. Directory requires recursive flag
+    // 11. Directory requires recursive flag
     if (isDir && !recursive) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
@@ -268,10 +253,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 11. Perform deletion with audit logging
+    // 12. Perform deletion with audit logging
     let fileCount = 0
     if (isDir) {
-      // Count files for audit logging
       try {
         const countFiles = async (dir: string): Promise<number> => {
           let count = 0
@@ -289,7 +273,6 @@ export async function POST(request: NextRequest) {
           `[Delete ${requestId}] Deleting directory: ${resolvedPath} (${fileCount} file${fileCount !== 1 ? "s" : ""})`,
         )
       } catch (_err) {
-        // Expected: counting may fail due to permissions — proceed with deletion anyway
         console.log(`[Delete ${requestId}] Deleting directory: ${resolvedPath}`)
       }
     } else {
@@ -307,11 +290,7 @@ export async function POST(request: NextRequest) {
       console.error(`[Delete ${requestId}] Failed to delete: ${fsError.message}`)
       return structuredErrorResponse(ErrorCodes.FILE_DELETE_ERROR, {
         status: 500,
-        details: {
-          requestId,
-          filePath: targetPath,
-          error: fsError.message,
-        },
+        details: { requestId, filePath: targetPath, error: fsError.message },
       })
     }
 
@@ -333,10 +312,75 @@ export async function POST(request: NextRequest) {
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.FILE_DELETE_ERROR, {
       status: 500,
-      details: {
-        requestId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
+      details: { requestId, error: error instanceof Error ? error.message : "Unknown error" },
+    })
+  }
+}
+
+async function handleE2bDelete(
+  domain: ResolvedDomain,
+  targetPath: string,
+  recursive: boolean,
+  requestId: string,
+): Promise<NextResponse> {
+  // Path traversal check for E2B
+  const normalized = path.normalize(targetPath)
+  if (normalized.startsWith("..") || path.isAbsolute(normalized) || normalized === "." || normalized === "") {
+    console.warn(`[Delete ${requestId}] E2B path traversal blocked: ${targetPath}`)
+    return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
+      status: 403,
+      details: { requestId },
+    })
+  }
+
+  try {
+    const sandbox = await connectSandbox(domain)
+    const sandboxPath = path.join(SANDBOX_WORKSPACE_ROOT, targetPath)
+
+    // Check if target is a directory by listing parent and finding the entry
+    let isDir = false
+    const parentDir = path.dirname(sandboxPath)
+    const baseName = path.basename(sandboxPath)
+    try {
+      const entries = await sandbox.files.list(parentDir)
+      const entry = entries.find(e => e.name === baseName)
+      if (entry) {
+        isDir = entry.type === "dir"
+      }
+    } catch (_listErr) {
+      // Parent listing failed — target likely doesn't exist, let remove() handle the error
+    }
+
+    // Directory requires recursive flag (mirrors systemd path)
+    if (isDir && !recursive) {
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: {
+          requestId,
+          message: "Cannot delete directory without recursive: true",
+          hint: "Add recursive: true to delete directories",
+        },
+      })
+    }
+
+    await sandbox.files.remove(sandboxPath)
+
+    console.log(`[Delete ${requestId}] E2B deleted: ${sandboxPath}`)
+
+    return NextResponse.json({
+      ok: true,
+      deleted: targetPath,
+      type: isDir ? "directory" : "file",
+    })
+  } catch (err) {
+    if (err instanceof SandboxNotReadyError) {
+      return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
+    }
+    console.error(`[Delete ${requestId}] E2B delete error:`, err)
+    Sentry.captureException(err)
+    return structuredErrorResponse(ErrorCodes.FILE_DELETE_ERROR, {
+      status: 500,
+      details: { requestId, error: err instanceof Error ? err.message : "Unknown error" },
     })
   }
 }

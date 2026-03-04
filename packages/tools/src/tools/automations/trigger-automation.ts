@@ -32,7 +32,7 @@ export async function triggerAutomation(
   const encodedAutomationId = encodeURIComponent(safeParams.automation_id)
 
   try {
-    const validated = validateToolsRequest("automations/trigger", {})
+    const validated = validateToolsRequest("automations/trigger", undefined)
     const data = await api().postty(
       "automations/trigger",
       validated,

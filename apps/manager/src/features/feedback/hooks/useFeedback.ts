@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { feedbackApi } from "../feedback.api"
 import type { FeedbackItem } from "../feedback.types"
 
-const FEEDBACK_KEY = ["feedback"] as const
+const FEEDBACK_KEY: readonly ["feedback"] = ["feedback"]
 
 export function useFeedback() {
   const {

@@ -1,7 +1,14 @@
+import {
+  type ClaudeModel,
+  isValidClaudeModel,
+  type ManagerUser,
+  type ManagerUserOrg,
+  type ManagerUserSession,
+} from "@webalive/shared"
 import { app, iam } from "../../../db/clients"
 import { usersRepo } from "../../../db/repos"
+import type { UserRow } from "../../../db/repos/users.repo"
 import { InternalError } from "../../../infra/errors"
-import type { ManagerUser, ManagerUserOrg, ManagerUserSession } from "./users.types"
 
 interface MembershipWithOrg {
   user_id: string
@@ -109,15 +116,19 @@ async function fetchSessionsGrouped(): Promise<SessionsGrouped> {
   return { activity, sessions }
 }
 
+function isJsonObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v)
+}
+
+function extractEnabledModels(metadata: unknown): ClaudeModel[] {
+  if (!isJsonObject(metadata)) return []
+  const raw = metadata.enabled_models
+  if (!Array.isArray(raw)) return []
+  return raw.filter((v): v is ClaudeModel => typeof v === "string" && isValidClaudeModel(v))
+}
+
 function enrichUser(
-  u: {
-    user_id: string
-    email: string | null
-    display_name: string | null
-    status: string
-    created_at: string
-    updated_at: string
-  },
+  u: UserRow,
   orgsByUser: Record<string, ManagerUserOrg[]>,
   sessionsData: SessionsGrouped,
 ): ManagerUser {
@@ -137,6 +148,7 @@ function enrichUser(
     last_active: sessionsData.activity[u.user_id] ?? null,
     sessions: userSessions,
     session_count: totalSessions,
+    enabled_models: extractEnabledModels(u.metadata),
   }
 }
 
@@ -158,4 +170,10 @@ export async function getUserById(userId: string): Promise<ManagerUser> {
   ])
 
   return enrichUser(u, orgsByUser, sessionsData)
+}
+
+export async function updateEnabledModels(userId: string, models: ClaudeModel[]): Promise<void> {
+  const user = await usersRepo.findById(userId)
+  const base = isJsonObject(user.metadata) ? user.metadata : {}
+  await usersRepo.updateMetadata(userId, { ...base, enabled_models: models })
 }

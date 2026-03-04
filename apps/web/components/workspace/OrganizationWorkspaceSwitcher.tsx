@@ -1,7 +1,7 @@
 "use client"
 
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Shield } from "lucide-react"
 import { useCallback, useMemo, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { trackCreateProjectClicked, trackCreateTeamClicked } from "@/lib/analytics/events"
@@ -52,6 +52,7 @@ export function OrganizationWorkspaceSwitcher({
       return 0
     })
   }, [workspacesData?.workspaces])
+  const sandboxedSet = useMemo(() => new Set(workspacesData?.sandboxed ?? []), [workspacesData?.sandboxed])
 
   const [orgOpen, setOrgOpen] = useState(false)
   const [wsOpen, setWsOpen] = useState(false)
@@ -133,9 +134,13 @@ export function OrganizationWorkspaceSwitcher({
             }}
             className="flex items-center gap-1.5 hover:opacity-80 transition-opacity truncate"
           >
-            <span
-              className={`size-1.5 rounded-full shrink-0 ${wsInOrg ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
-            />
+            {wsInOrg && sandboxedSet.has(wsInOrg) ? (
+              <Shield size={12} strokeWidth={2.5} className="shrink-0 text-emerald-500" />
+            ) : (
+              <span
+                className={`size-1.5 rounded-full shrink-0 ${wsInOrg ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
+              />
+            )}
             <span
               className={`text-sm truncate ${
                 wsInOrg ? "text-black/80 dark:text-white/80 font-medium" : "text-black/25 dark:text-white/25"
@@ -213,9 +218,13 @@ export function OrganizationWorkspaceSwitcher({
           }}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <span
-            className={`size-1.5 rounded-full shrink-0 ${wsInOrg ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
-          />
+          {wsInOrg && sandboxedSet.has(wsInOrg) ? (
+            <Shield size={12} strokeWidth={2.5} className="shrink-0 text-emerald-500" />
+          ) : (
+            <span
+              className={`size-1.5 rounded-full shrink-0 ${wsInOrg ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
+            />
+          )}
           <span
             className={
               wsInOrg

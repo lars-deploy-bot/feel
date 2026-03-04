@@ -135,7 +135,7 @@ interface MarkdownDisplayProps {
 
 export function MarkdownDisplay({ content, className }: MarkdownDisplayProps) {
   return (
-    <div className={cn("text-black dark:text-white leading-relaxed", className)}>
+    <div className={cn("text-black dark:text-white leading-relaxed [overflow-wrap:anywhere]", className)}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>

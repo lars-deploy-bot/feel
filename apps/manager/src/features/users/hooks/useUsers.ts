@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { usersApi } from "../users.api"
 
-const USERS_KEY = ["users"] as const
+const USERS_KEY: readonly ["users"] = ["users"]
 
 export function useUsers() {
   const {

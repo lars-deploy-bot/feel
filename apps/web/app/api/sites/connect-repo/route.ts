@@ -1,7 +1,8 @@
-import { readFileSync, writeFileSync } from "node:fs"
+import { readFile, stat } from "node:fs/promises"
 import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { writeAsWorkspaceOwner } from "@/features/workspace/lib/workspace-secure"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { parseGithubRepoWithUrls } from "@/lib/git/github-repo-url"
@@ -10,8 +11,8 @@ import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
 import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
 
 const ConnectRepoSchema = z.object({
-  workspaceRoot: z.string(),
-  repoUrl: z.string().min(1),
+  workspaceRoot: z.string().trim().min(1),
+  repoUrl: z.string().trim().min(1),
 })
 
 /**
@@ -40,9 +41,16 @@ export async function PATCH(req: Request) {
 
       // Read existing metadata first; we only persist on successful git remote update.
       const metadataPath = resolveMetadataPath(workspaceRoot)
+      if (!metadataPath) {
+        return NextResponse.json(
+          { ok: false, error: ErrorCodes.SITE_NOT_FOUND, message: "No site metadata found", requestId },
+          { status: 404 },
+        )
+      }
       let metadata: Record<string, unknown>
       try {
-        const parsed: Record<string, unknown> = JSON.parse(readFileSync(metadataPath, "utf-8"))
+        const raw = await readFile(metadataPath, "utf-8")
+        const parsed: Record<string, unknown> = JSON.parse(raw)
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
           throw new Error("Site metadata must be a JSON object")
         }
@@ -104,7 +112,11 @@ export async function PATCH(req: Request) {
       metadata.sourceRepo = parsedRepo.canonicalUrl
       delete metadata.sourceBranch
       try {
-        writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), "utf-8")
+        const workspaceStats = await stat(workspaceRoot)
+        writeAsWorkspaceOwner(metadataPath, JSON.stringify(metadata, null, 2), {
+          uid: workspaceStats.uid,
+          gid: workspaceStats.gid,
+        })
       } catch (error) {
         console.error(`[connect-repo ${requestId}] Failed to write metadata:`, error)
         Sentry.captureException(error)

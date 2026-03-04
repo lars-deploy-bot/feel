@@ -115,7 +115,7 @@ const nextConfig = {
   poweredByHeader: false,
   devIndicators: false,
   skipTrailingSlashRedirect: true,
-  // PostHog proxy: handled by app/ingest/[...path]/route.ts (not rewrites)
+  // PostHog proxy: handled by app/a/[...path]/route.ts (generic path to bypass adblockers)
   // so that X-Forwarded-For is preserved for accurate GeoIP.
   // Sentry uses a tunnel API route — see app/api/monitoring/route.ts.
   // Manager v2 is routed directly by Caddy → localhost:5090.
@@ -195,15 +195,15 @@ const nextConfig = {
       ...ripgrepExcludes,
     ],
   },
-  serverExternalPackages: ["@napi-rs/image", "@webalive/site-controller", "@webalive/oauth-core"],
-  transpilePackages: [
-    "@webalive/images",
-    "@webalive/tools",
-    "@webalive/shared",
-    "@webalive/env",
+  serverExternalPackages: [
+    "@napi-rs/image",
+    "@webalive/site-controller",
+    "@webalive/oauth-core",
+    "@webalive/sandbox",
     "@webalive/worker-pool",
-    "@webalive/database",
+    "e2b",
   ],
+  transpilePackages: ["@webalive/images", "@webalive/tools", "@webalive/shared", "@webalive/env", "@webalive/database"],
 }
 export default withSentryConfig(nextConfig, {
   // Suppress noisy source map upload logs

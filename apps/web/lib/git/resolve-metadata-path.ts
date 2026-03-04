@@ -9,12 +9,12 @@ import { SITE_METADATA_FILENAME } from "@webalive/shared"
  * typically pass `<site>/user` as workspaceRoot while metadata lives
  * at `<site>/.site-metadata.json`.
  */
-export function resolveMetadataPath(workspaceRoot: string): string {
+export function resolveMetadataPath(workspaceRoot: string): string | null {
   const direct = resolve(workspaceRoot, SITE_METADATA_FILENAME)
   if (existsSync(direct)) return direct
 
   const parent = resolve(workspaceRoot, "..", SITE_METADATA_FILENAME)
   if (existsSync(parent)) return parent
 
-  return parent
+  return null
 }

@@ -24,6 +24,7 @@ interface DebugState {
   isDebugView: boolean
   showWorkbench: boolean
   isWorkbenchMinimized: boolean
+  isWorkbenchFullscreen: boolean
   workbenchWidth: number | null // null = use default (half viewport)
 }
 
@@ -33,9 +34,11 @@ interface DebugActions {
     toggleView: () => void
     toggleWorkbench: () => void
     toggleWorkbenchMinimized: () => void
+    toggleWorkbenchFullscreen: () => void
     setDebugView: (show: boolean) => void
     setWorkbench: (show: boolean) => void
     setWorkbenchMinimized: (minimized: boolean) => void
+    setWorkbenchFullscreen: (fullscreen: boolean) => void
     setWorkbenchWidth: (width: number) => void
   }
 }
@@ -62,25 +65,29 @@ export const useDebugStoreBase = create<DebugStore>()(
             isWorkbenchMinimized: state.showWorkbench ? state.isWorkbenchMinimized : false,
           })),
         toggleWorkbenchMinimized: () => set(state => ({ isWorkbenchMinimized: !state.isWorkbenchMinimized })),
+        toggleWorkbenchFullscreen: () => set(state => ({ isWorkbenchFullscreen: !state.isWorkbenchFullscreen })),
         setDebugView: (show: boolean) => set({ isDebugView: show }),
         setWorkbench: (show: boolean) => set({ showWorkbench: show }),
         setWorkbenchMinimized: (minimized: boolean) => set({ isWorkbenchMinimized: minimized }),
+        setWorkbenchFullscreen: (fullscreen: boolean) => set({ isWorkbenchFullscreen: fullscreen }),
         setWorkbenchWidth: (width: number) => set({ workbenchWidth: width }),
       }
       return {
         isDebugView: false,
         showWorkbench: true,
         isWorkbenchMinimized: true,
+        isWorkbenchFullscreen: false,
         workbenchWidth: null,
         actions,
       }
     },
     {
-      name: "alive-debug-view-v8",
+      name: "alive-debug-view-v9",
       partialize: state => ({
         isDebugView: state.isDebugView,
         showWorkbench: state.showWorkbench,
         isWorkbenchMinimized: state.isWorkbenchMinimized,
+        isWorkbenchFullscreen: state.isWorkbenchFullscreen,
         workbenchWidth: state.workbenchWidth,
       }),
       skipHydration: true,
@@ -96,6 +103,9 @@ export const useWorkbench = () => useDebugStoreBase(state => state.showWorkbench
 
 // Atomic selector: Workbench minimized state (Guide §14.1)
 export const useWorkbenchMinimized = () => useDebugStoreBase(state => state.isWorkbenchMinimized)
+
+// Atomic selector: Workbench fullscreen state (Guide §14.1)
+export const useWorkbenchFullscreen = () => useDebugStoreBase(state => state.isWorkbenchFullscreen)
 
 // Atomic selector: Workbench width (Guide §14.1)
 export const useWorkbenchWidth = () => useDebugStoreBase(state => state.workbenchWidth)

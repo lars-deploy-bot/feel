@@ -54,6 +54,11 @@ export function useFileWatcher({ workspace, worktree }: UseFileWatcherOptions): 
         if (generation !== mountGenRef.current) return
 
         if (!res.ok) {
+          const data = await res.json().catch(() => ({}) as Record<string, unknown>)
+          if (data.error === "WATCH_UNSUPPORTED") {
+            setState("disconnected") // Stable non-retrying state
+            return
+          }
           setState("error")
           scheduleReconnect(generation)
           return

@@ -11,7 +11,7 @@ export interface Workspace {
 
 /**
  * Atomic write helper with proper ownership and durability
- * All edits happen as the workspace owner, not as whoever is running the stream.
+ * Writes are performed by the current process, then ownership is set to the workspace owner before atomic rename.
  */
 export function writeAsWorkspaceOwner(
   filePath: string,

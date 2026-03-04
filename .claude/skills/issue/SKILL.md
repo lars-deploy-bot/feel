@@ -14,6 +14,9 @@ Write issues like a researcher: report what you observed, not what you think cau
 3. **Reproducible** — Include the exact commands/queries you ran so someone can verify.
 4. **Anonymized** — Never include email addresses, display names, or anything personally identifiable. Use `org_id`, `user_id`, and `domain_id` only. Redact IPs.
 5. **Measurable acceptance** — "Done" must be verifiable with a query or command. No vague criteria.
+6. **Sentry first** — Validation must require Sentry capture coverage on changed server error paths.
+7. **E2E required** — Validation must require end-to-end test evidence (no mocked backend internals).
+8. **No duplication** — Validation must require explicit DRY proof (shared helper reuse, no copy-pasted branch logic).
 
 ## Structure
 
@@ -77,6 +80,23 @@ Each criterion must be verifiable by running a specific command or query.
 
 - [ ] `journalctl -u alive-production | grep "Charged" | grep "haiku" | grep -v "Charged 0 "` returns results
 - [ ] `SELECT credits FROM iam.orgs WHERE org_id = 'org_xxx'` shows a value lower than starting balance after usage
+
+## Validation gates (strict)
+
+Add this section to every issue body (epics and child issues):
+
+- [ ] **E2E required (no mocks)**: add/update end-to-end coverage for the behavior. Include command output in PR notes.
+  ```bash
+  bun run e2e --grep "<feature-or-route-pattern>"
+  ```
+- [ ] **Sentry-first error telemetry**: changed server-side failure paths must capture errors via `Sentry.captureException` or `Sentry.captureMessage` with request context (`requestId`, `workspace`, `domain_id` when available).
+  ```bash
+  bun run --cwd apps/web scripts/check-error-patterns.ts
+  git diff --name-only origin/main...HEAD -- apps/web packages/worker-pool apps/e2b-terminal \
+    | xargs -r rg -n 'Sentry\.(captureException|captureMessage)|captureException\('
+  ```
+  Both commands must pass and be included in PR evidence.
+- [ ] **Zero duplication (DRY gate)**: repeated logic across touched handlers/services must be extracted into shared helpers and reused at call sites. Include helper-to-callsites mapping in PR notes.
 ```
 
 ## Size
@@ -96,6 +116,8 @@ An issue should be **one clear thing someone can investigate and fix**. Not a pr
 - **DO** include exact queries, commands, and log lines
 - **DO** include timestamps and IDs so someone can reproduce
 - **DO** separate observations from each other — they might have different causes
+- **DO** include a `## Validation gates (strict)` section in every issue
+- **DO** require Sentry evidence, E2E evidence, and DRY evidence in acceptance criteria
 - **DON'T** write "the bug is X" or "this causes Y" — write "X was observed"
 - **DON'T** include email addresses, display names, or IPs — use `org_id` / `user_id` / `domain_id` only
 - **DON'T** mix the issue with a fix proposal — that's a separate conversation
@@ -103,6 +125,7 @@ An issue should be **one clear thing someone can investigate and fix**. Not a pr
 - **DON'T** write vague acceptance criteria like "billing works" — write a query that proves it
 - **DON'T** bundle multiple observations into one issue — split them
 - **DON'T** write "some users" or "several orgs" — count them
+- **DON'T** approve issue closure without E2E + Sentry + DRY gates checked
 
 ## Command
 
@@ -119,6 +142,12 @@ gh issue create \
 ## Data
 
 ...
+
+## Validation gates (strict)
+
+- [ ] E2E required (no mocks) with command output attached in PR
+- [ ] Sentry-first error telemetry evidence attached in PR
+- [ ] Zero duplication (DRY) helper-to-callsites evidence attached in PR
 EOF
 )"
 ```

@@ -12,8 +12,7 @@
  * - Haiku 4.5: $1 input, $5 output per MTok
  */
 
-import type { ClaudeModel } from "./claude-models"
-import { CLAUDE_MODELS } from "./claude-models"
+import { CLAUDE_MODELS, type ClaudeModel } from "@webalive/shared"
 
 /**
  * Credit conversion rate

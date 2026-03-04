@@ -17,6 +17,7 @@ import {
   getTemplateIdsInline,
   INTERNAL_TOOL_DESCRIPTORS,
   OAUTH_MCP_PROVIDERS,
+  SDK_TOOL,
 } from "@webalive/shared"
 import { z } from "zod"
 import { askAutomationConfigParamsSchema } from "../ai/ask-automation-config.js"
@@ -28,7 +29,7 @@ import { listAutomationsParamsSchema } from "../automations/list-automations.js"
  * These are Claude Agent SDK's built-in file operation tools.
  * They are NOT included in the tool registry but are always available.
  */
-export const SDK_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep"] as const
+export const SDK_TOOLS = [SDK_TOOL.READ, SDK_TOOL.WRITE, SDK_TOOL.EDIT, SDK_TOOL.GLOB, SDK_TOOL.GREP] as const
 
 export type SDKTool = (typeof SDK_TOOLS)[number]
 

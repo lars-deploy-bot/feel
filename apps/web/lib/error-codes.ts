@@ -160,6 +160,8 @@ export const ErrorCodes = {
 
   // Shell/terminal errors (14xxx)
   SHELL_SERVER_UNAVAILABLE: "SHELL_SERVER_UNAVAILABLE",
+  SANDBOX_NOT_READY: "SANDBOX_NOT_READY",
+  WATCH_UNSUPPORTED: "WATCH_UNSUPPORTED",
 
   // General errors
   INTERNAL_ERROR: "INTERNAL_ERROR",
@@ -613,6 +615,12 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.SHELL_SERVER_UNAVAILABLE:
       return "The terminal server is temporarily unavailable. Please try again in a moment."
+
+    case ErrorCodes.SANDBOX_NOT_READY:
+      return "Sandbox is not running yet. Send a message first to initialize it."
+
+    case ErrorCodes.WATCH_UNSUPPORTED:
+      return "File watching is not available for sandbox workspaces."
 
     case ErrorCodes.AUTOMATION_JOB_DISABLED:
       return "This automation job is disabled and cannot be triggered."

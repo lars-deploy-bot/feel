@@ -80,7 +80,7 @@ export const config = {
     // middleware buffers request bodies (default 10 MB limit), which
     // truncates large uploads and breaks multipart parsing.
     "/api/((?!images/upload|files/upload|drive/upload).*)",
-    // Page routes — CSP + request-id. Excludes Next.js internals, static files, and PostHog proxy.
-    "/((?!_next|api|ingest|favicon\\.ico).*)",
+    // Page routes — CSP + request-id. Excludes Next.js internals, static files, and PostHog proxy (/a).
+    "/((?!_next|api|a|favicon\\.ico).*)",
   ],
 }

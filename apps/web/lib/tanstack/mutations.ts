@@ -82,9 +82,9 @@ export function useCreateWebsite(
   return useMutation({
     mutationFn: async ({ domain, orgId, templateId }: CreateWebsiteParams) => {
       const body = validateRequest("deploy-subdomain", {
-        domain,
-        org_id: orgId,
-        template_id: templateId,
+        slug: domain,
+        orgId,
+        templateId,
       })
       return postty("deploy-subdomain", body)
     },

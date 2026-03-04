@@ -26,7 +26,6 @@ const ToolCreateActionTypeSchema = z.enum(["prompt"])
 export const toolsSchemas = {
   /** GET /api/automations */
   automations: {
-    req: z.undefined().brand<"AutomationsRequest">(),
     res: z.object({
       ok: z.literal(true),
       automations: z.array(
@@ -87,7 +86,7 @@ export const toolsSchemas = {
   /** POST /api/automations/[id]/trigger (no body — ID is in URL path) */
   "automations/trigger": {
     // Dynamic route: caller must pass pathOverride with the concrete automation ID.
-    req: z.object({}).brand<"AutomationsTriggerRequest">(),
+    req: z.undefined().brand<"AutomationsTriggerRequest">(),
     res: z.object({
       ok: z.literal(true),
       status: z.enum(["queued"]),
@@ -101,7 +100,6 @@ export const toolsSchemas = {
 
   /** GET /api/sites */
   sites: {
-    req: z.undefined().brand<"SitesRequest">(),
     res: z.object({
       ok: z.literal(true),
       sites: z.array(
@@ -182,7 +180,10 @@ export function api(): ToolsClient {
 // ---------------------------------------------------------------------------
 
 type ToolsEndpoint = keyof typeof toolsSchemas
-type ToolsReq<E extends ToolsEndpoint> = Req<typeof toolsSchemas, E>
+type ToolsReqEndpoint = {
+  [K in ToolsEndpoint]: "req" extends keyof (typeof toolsSchemas)[K] ? K : never
+}[ToolsEndpoint]
+type ToolsReq<E extends ToolsReqEndpoint> = Req<typeof toolsSchemas, E>
 
 /**
  * Validate request data against the tools schema.
@@ -194,9 +195,10 @@ type ToolsReq<E extends ToolsEndpoint> = Req<typeof toolsSchemas, E>
  * const data = await api().postty("automations/create", validated)
  * ```
  */
-export function validateToolsRequest<E extends ToolsEndpoint>(endpoint: E, data: unknown): ToolsReq<E> {
-  const schema = toolsSchemas[endpoint].req
-  return schema.parse(data) as ToolsReq<E>
+export function validateToolsRequest<E extends ToolsReqEndpoint>(endpoint: E, data: unknown): ToolsReq<E> {
+  const entry = toolsSchemas[endpoint]
+  if (!("req" in entry) || !entry.req) throw new Error(`Endpoint "${endpoint}" has no request schema`)
+  return entry.req.parse(data) as ToolsReq<E>
 }
 
 export { ApiError }

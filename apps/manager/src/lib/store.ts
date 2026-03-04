@@ -19,16 +19,23 @@ export function createStore<T>(initial: T) {
     return () => listeners.delete(cb)
   }
 
-  function set(next: T | ((prev: T) => T)) {
-    const value = typeof next === "function" ? (next as (prev: T) => T)(state) : next
+  function emit() {
+    for (const cb of listeners) cb()
+  }
+
+  function set(value: T) {
     if (Object.is(state, value)) return
     state = value
-    for (const cb of listeners) cb()
+    emit()
+  }
+
+  function update(fn: (prev: T) => T) {
+    set(fn(state))
   }
 
   function use(): T {
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
   }
 
-  return { get: getSnapshot, set, use, subscribe }
+  return { get: getSnapshot, set, update, use, subscribe }
 }

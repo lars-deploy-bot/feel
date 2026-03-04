@@ -76,13 +76,20 @@ type LoginResult = Res<"login">   // { ok: boolean }
 
 ## API Methods
 
-| Method | HTTP | Body Required |
-|--------|------|---------------|
-| `getty(endpoint)` | GET | No |
-| `postty(endpoint, body)` | POST | Yes |
-| `putty(endpoint, body)` | PUT | Yes |
-| `patchy(endpoint, body)` | PATCH | Yes |
-| `deletty(endpoint)` | DELETE | No |
+`createClient()` now enforces endpoint/body rules at compile time:
+
+- `getty` only accepts endpoints without a `req` schema.
+- `postty`/`putty`/`patchy` only accept endpoints with a `req` schema.
+- For `req: z.object(...)`, body is required.
+- For `req: z.undefined()`, body is optional (`undefined`) for no-body mutations.
+
+| Method | HTTP | Body Rule |
+|--------|------|-----------|
+| `getty(endpoint)` | GET | Endpoint must have no `req` schema |
+| `postty(endpoint, body?)` | POST | Endpoint must have `req`; body required unless `req` is `z.undefined()` |
+| `putty(endpoint, body)` | PUT | Required |
+| `patchy(endpoint, body)` | PATCH | Required |
+| `deletty(endpoint, body?)` | DELETE | Works for read endpoints and `req` endpoints; body follows req schema when present |
 
 All methods accept an optional `init` parameter for extra fetch options.
 
@@ -130,7 +137,9 @@ try {
 - `res` is **required** - every endpoint needs a response schema
 - `req` is **optional** - omit for GET/DELETE endpoints
 - `path` is **optional** - override URL derivation when schema key is not the route path
-- Endpoints without `req` can only use `getty` or `deletty` (TypeScript enforced)
+- Endpoints without `req` can be called with `getty` (and `deletty`)
+- Endpoints with `req` can be called with `postty`/`putty`/`patchy`
+- Endpoints with required request schemas cannot be called without a body (`postty`/`deletty` are type-checked)
 
 ### `path` override example
 
