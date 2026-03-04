@@ -24,6 +24,13 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
   const mountGenRef = useRef(0)
   const onDataDisposableRef = useRef<{ dispose: () => void } | null>(null)
 
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const retryCountRef = useRef(0)
+  const wsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const MAX_SANDBOX_RETRIES = 20 // 20 × 3s = ~60s
+  const WS_CONNECT_TIMEOUT_MS = 15_000
+
   const connect = useCallback(
     async (term: Terminal, fit: FitAddon, generation: number) => {
       setState("connecting")
@@ -38,8 +45,27 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
+          const errorCode = typeof data.error === "string" ? data.error : ""
+
+          // Auto-retry when sandbox is still provisioning, up to max
+          if (errorCode === "SANDBOX_NOT_READY" && generation === mountGenRef.current) {
+            if (retryCountRef.current >= MAX_SANDBOX_RETRIES) {
+              throw new Error(typeof data.message === "string" ? data.message : "Sandbox is not running yet.")
+            }
+            retryCountRef.current++
+            retryTimerRef.current = setTimeout(() => {
+              if (generation === mountGenRef.current) {
+                connect(term, fit, generation)
+              }
+            }, 3000)
+            return
+          }
+
           throw new Error(data.message ?? `Failed to get terminal lease (${res.status})`)
         }
+
+        // Lease succeeded — reset retry counter
+        retryCountRef.current = 0
 
         const leaseData: Record<string, unknown> = await res.json()
         const wsUrl = leaseData.wsUrl
@@ -53,6 +79,16 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
         const ws = new WebSocket(wsUrl)
         ws.binaryType = "arraybuffer"
         wsRef.current = ws
+
+        // Timeout: if server never sends "connected" message, give up
+        wsTimeoutRef.current = setTimeout(() => {
+          if (generation !== mountGenRef.current) return
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.close()
+          }
+          setState("error")
+          setErrorMsg("Connection timed out")
+        }, WS_CONNECT_TIMEOUT_MS)
 
         ws.onopen = () => {
           if (generation !== mountGenRef.current) {
@@ -75,6 +111,10 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
               const msgType = typeof msg.type === "string" ? msg.type : ""
               switch (msgType) {
                 case "connected":
+                  if (wsTimeoutRef.current) {
+                    clearTimeout(wsTimeoutRef.current)
+                    wsTimeoutRef.current = null
+                  }
                   setState("connected")
                   // Re-fit after connected in case container resized during connect
                   requestAnimationFrame(() => {
@@ -101,14 +141,22 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
 
         ws.onerror = () => {
           if (generation !== mountGenRef.current) return
+          if (wsTimeoutRef.current) {
+            clearTimeout(wsTimeoutRef.current)
+            wsTimeoutRef.current = null
+          }
           setState("error")
           setErrorMsg("Connection error")
         }
 
         ws.onclose = () => {
           if (generation !== mountGenRef.current) return
+          if (wsTimeoutRef.current) {
+            clearTimeout(wsTimeoutRef.current)
+            wsTimeoutRef.current = null
+          }
           wsRef.current = null
-          setState(prev => (prev === "connected" ? "disconnected" : prev))
+          setState(prev => (prev === "connected" || prev === "connecting" ? "disconnected" : prev))
         }
 
         // Clean up previous input listener to prevent accumulation on reconnect
@@ -199,6 +247,14 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
 
     return () => {
       mountGenRef.current++
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = null
+      }
+      if (wsTimeoutRef.current) {
+        clearTimeout(wsTimeoutRef.current)
+        wsTimeoutRef.current = null
+      }
       ro.disconnect()
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.close()
@@ -217,12 +273,19 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
     const fit = fitRef.current
     if (!term || !fit) return
 
+    // Cancel any pending retry timer to prevent duplicate connect() calls
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current)
+      retryTimerRef.current = null
+    }
+
     // Close existing connection
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.close()
     }
     wsRef.current = null
 
+    retryCountRef.current = 0
     term.clear()
     connect(term, fit, mountGenRef.current)
   }

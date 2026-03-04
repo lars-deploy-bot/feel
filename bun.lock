@@ -130,9 +130,6 @@
         "vitest": "4.0.17",
       },
     },
-    "apps/mcp-servers/ocr": {
-      "name": "@webalive/mcp-ocr",
-    },
     "apps/mcp-servers/outlook": {
       "name": "@webalive/mcp-outlook",
       "version": "1.0.0",
@@ -1249,8 +1246,6 @@
     "@webalive/mcp-gmail": ["@webalive/mcp-gmail@workspace:apps/mcp-servers/gmail"],
 
     "@webalive/mcp-google-calendar": ["@webalive/mcp-google-calendar@workspace:apps/mcp-servers/google-calendar"],
-
-    "@webalive/mcp-ocr": ["@webalive/mcp-ocr@workspace:apps/mcp-servers/ocr"],
 
     "@webalive/mcp-outlook": ["@webalive/mcp-outlook@workspace:apps/mcp-servers/outlook"],
 

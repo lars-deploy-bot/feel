@@ -42,7 +42,7 @@ import {
   SandboxManager,
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamCanUseTool, createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isHeavyBashCommand, isOAuthMcpTool, isStreamClientVisibleTool, isTransientNetworkError, SDK_TOOL, SENTRY } from "@webalive/shared"
+import { createStreamCanUseTool, createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isHeavyBashCommand, isStreamInitVisibleTool, isTransientNetworkError, SDK_TOOL, SENTRY } from "@webalive/shared"
 import {
   emailInternalMcp,
   toolsInternalMcp,
@@ -1104,11 +1104,7 @@ async function handleQuery(ipc, requestId, payload) {
         if (message.type === "system" && message.subtype === "init" && message.tools) {
           outputMessage = {
             ...message,
-            tools: message.tools.filter(
-              tool =>
-                (allowedTools.includes(tool) || isOAuthMcpTool(tool, connectedProviders)) &&
-                isStreamClientVisibleTool(tool),
-            ),
+            tools: message.tools.filter(tool => isStreamInitVisibleTool(tool, toolContext, allowedTools)),
           }
         }
 

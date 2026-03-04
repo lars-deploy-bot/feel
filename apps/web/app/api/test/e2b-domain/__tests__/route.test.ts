@@ -23,6 +23,17 @@ vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }))
 
+const mockShutdownWorker = vi.fn(async (_workspaceKey?: string, _reason?: string) => {})
+const mockGetWorkerInfo = vi.fn(() => [] as Array<{ workspaceKey: string }>)
+const mockGetWorkerPool = vi.fn(() => ({
+  getWorkerInfo: mockGetWorkerInfo,
+  shutdownWorker: mockShutdownWorker,
+}))
+
+vi.mock("@webalive/worker-pool", () => ({
+  getWorkerPool: () => mockGetWorkerPool(),
+}))
+
 const mockSandboxKill = vi.fn()
 const mockSandboxConnect = vi.fn(async (_id?: string, _opts?: Record<string, unknown>) => ({
   kill: mockSandboxKill,
@@ -215,6 +226,8 @@ describe("POST /api/test/e2b-domain", () => {
     vi.mocked(createAppClient).mockResolvedValue(createMockAppClient({ domain: makeDomain() }) as never)
     mockSandboxKill.mockResolvedValue(undefined)
     mockSandboxConnect.mockResolvedValue({ kill: mockSandboxKill })
+    mockGetWorkerInfo.mockReturnValue([])
+    mockShutdownWorker.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -336,5 +349,29 @@ describe("POST /api/test/e2b-domain", () => {
     expect(res.status).toBe(200)
     expect(json.kill.killed).toBe(false)
     expect(json.domain.execution_mode).toBe("systemd")
+  })
+
+  it("restarts matching workspace workers when requested", async () => {
+    mockGetWorkerInfo.mockReturnValue([
+      { workspaceKey: "e2e-w0.alive.local:0" },
+      { workspaceKey: "other-workspace:0" },
+      { workspaceKey: "e2e-w0.alive.local:1" },
+    ])
+
+    const res = await POST(
+      makePostRequest({
+        workspace: "e2e-w0.alive.local",
+        executionMode: "e2b",
+        restartWorkspaceWorkers: true,
+      }),
+    )
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(mockGetWorkerPool).toHaveBeenCalledTimes(1)
+    expect(mockShutdownWorker).toHaveBeenCalledTimes(2)
+    expect(mockShutdownWorker).toHaveBeenCalledWith("e2e-w0.alive.local:0", "test_e2b_domain_runtime_reset")
+    expect(mockShutdownWorker).toHaveBeenCalledWith("e2e-w0.alive.local:1", "test_e2b_domain_runtime_reset")
+    expect(json.workerRestart).toEqual({ requested: true, matched: 2, restarted: 2 })
   })
 })
