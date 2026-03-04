@@ -149,6 +149,19 @@ describe("POST /api/git/push", () => {
         args: ["remote", "add", "origin", "https://github.com/acme/repo.git"],
       }),
     )
+
+    // The push call (3rd) must carry inline git credential env
+    expect(runAsWorkspaceUserMock).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        command: "git",
+        args: ["push", "origin"],
+        env: expect.objectContaining({
+          GIT_TERMINAL_PROMPT: "0",
+          GIT_CONFIG_KEY_0: "credential.helper",
+        }),
+      }),
+    )
   })
 
   it("returns 400 when remote is missing and sourceRepo metadata is unavailable", async () => {
@@ -166,8 +179,21 @@ describe("POST /api/git/push", () => {
     )
 
     expect(response.status).toBe(400)
-    const payload = (await response.json()) as { error: string }
-    expect(payload.error).toBe(ErrorCodes.VALIDATION_ERROR)
+    expect(await response.json()).toMatchObject({ error: ErrorCodes.VALIDATION_ERROR })
+  })
+
+  it("returns 401 when workspace API auth fails", async () => {
+    isAuthorized = false
+
+    const response = await POST(
+      createRequest({
+        workspaceRoot,
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toMatchObject({ error: ErrorCodes.UNAUTHORIZED })
+    expect(runAsWorkspaceUserMock).not.toHaveBeenCalled()
   })
 
   it("returns 403 when GitHub OAuth token is unavailable", async () => {
@@ -180,8 +206,7 @@ describe("POST /api/git/push", () => {
     )
 
     expect(response.status).toBe(403)
-    const payload = (await response.json()) as { error: string }
-    expect(payload.error).toBe(ErrorCodes.GITHUB_NOT_CONNECTED)
+    expect(await response.json()).toMatchObject({ error: ErrorCodes.GITHUB_NOT_CONNECTED })
     expect(runAsWorkspaceUserMock).not.toHaveBeenCalled()
   })
 })

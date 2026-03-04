@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { validateRequest } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 
 const LeaseResponseSchema = z.object({
@@ -24,6 +25,20 @@ export async function POST(req: Request) {
 
   const shellWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME ? "root" : workspace
   const worktree = typeof body.worktree === "string" ? body.worktree : undefined
+
+  // Superadmin uses systemd/root access, never E2B — skip the DB lookup
+  let domain: Awaited<ReturnType<typeof resolveDomainRuntime>> = null
+  try {
+    domain = workspace === SUPERADMIN.WORKSPACE_NAME ? null : await resolveDomainRuntime(shellWorkspace)
+  } catch (err) {
+    console.error(`[Watch ${requestId}] Failed to resolve domain runtime for ${shellWorkspace}:`, err)
+    Sentry.captureException(err, { extra: { requestId, workspace: shellWorkspace } })
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500, details: { requestId } })
+  }
+  // E2B domains: file watching is not supported
+  if (domain?.execution_mode === "e2b") {
+    return structuredErrorResponse(ErrorCodes.WATCH_UNSUPPORTED, { status: 501, details: { requestId } })
+  }
 
   const shellPassword = env.SHELL_PASSWORD
   if (!shellPassword) {

@@ -115,4 +115,11 @@ vi.mock("@anthropic-ai/claude-agent-sdk", () => ({
   stream: vi.fn(() => {
     throw new Error("🚨 Anthropic SDK stream() called in test without mocking!")
   }),
+  tool: vi.fn((name: string, description: string, inputSchema: unknown, handler: unknown) => ({
+    name,
+    description,
+    inputSchema,
+    handler,
+  })),
+  createSdkMcpServer: vi.fn((config: unknown) => config),
 }))

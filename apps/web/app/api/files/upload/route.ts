@@ -7,8 +7,10 @@ import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { writeAsWorkspaceOwner } from "@/features/workspace/lib/workspace-secure"
 import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
+import { connectSandbox, SANDBOX_WORKSPACE_ROOT, SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
 
 /**
  * Maximum file size for uploads (10MB)
@@ -78,7 +80,8 @@ function sanitizeFilename(filename: string): string {
  * - File is saved within workspace boundary only
  * - Filename is sanitized to prevent path traversal
  * - File type and size are validated
- * - Uses writeAsWorkspaceOwner for correct file ownership
+ * - Uses writeAsWorkspaceOwner for correct file ownership (systemd)
+ * - E2B: writes directly to sandbox filesystem
  *
  * Request: multipart/form-data
  * - file: File (required)
@@ -107,10 +110,7 @@ export async function POST(request: NextRequest) {
     } catch (_err) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
-        details: {
-          requestId,
-          message: "Failed to parse form data",
-        },
+        details: { requestId, message: "Failed to parse form data" },
       })
     }
 
@@ -126,21 +126,14 @@ export async function POST(request: NextRequest) {
     if (file.size > MAX_FILE_SIZE) {
       return structuredErrorResponse(ErrorCodes.FILE_TOO_LARGE, {
         status: 400,
-        details: {
-          requestId,
-          maxSize: `${MAX_FILE_SIZE / 1024 / 1024}MB`,
-        },
+        details: { requestId, maxSize: `${MAX_FILE_SIZE / 1024 / 1024}MB` },
       })
     }
 
     if (!ALLOWED_MIME_TYPES.has(file.type)) {
       return structuredErrorResponse(ErrorCodes.INVALID_FILE_TYPE, {
         status: 400,
-        details: {
-          requestId,
-          fileType: file.type,
-          allowed: Array.from(ALLOWED_MIME_TYPES),
-        },
+        details: { requestId, fileType: file.type, allowed: Array.from(ALLOWED_MIME_TYPES) },
       })
     }
 
@@ -154,14 +147,22 @@ export async function POST(request: NextRequest) {
       console.warn(`[Upload ${requestId}] User ${user.id} denied access to workspace: ${workspaceParam}`)
       return structuredErrorResponse(ErrorCodes.FORBIDDEN, {
         status: 403,
-        details: {
-          requestId,
-          workspace: workspaceParam,
-        },
+        details: { requestId, workspace: workspaceParam },
       })
     }
 
-    // 5. Resolve workspace path
+    // 5. Sanitize filename (shared between systemd and E2B)
+    const sanitizedName = sanitizeFilename(file.name)
+
+    // 6. E2B branch: check execution mode before host filesystem ops
+    if (workspaceParam) {
+      const domain = await resolveDomainRuntime(String(workspaceParam))
+      if (domain?.execution_mode === "e2b") {
+        return handleE2bUpload(domain, file, sanitizedName, requestId)
+      }
+    }
+
+    // 7. Systemd path: resolve workspace on host filesystem
     const host = request.headers.get("host") || "localhost"
     const workspaceResult = await getWorkspace({ host, body, requestId })
 
@@ -169,60 +170,49 @@ export async function POST(request: NextRequest) {
       return workspaceResult.response
     }
 
-    // 6. Resolve to real path (prevents symlink attacks)
+    // 8. Resolve to real path (prevents symlink attacks)
     let resolvedWorkspace: string
     try {
       resolvedWorkspace = await realpath(workspaceResult.workspace)
     } catch (_err) {
-      // Expected: workspace path may not exist
       console.error(`[Upload ${requestId}] Failed to resolve workspace: ${workspaceResult.workspace}`)
       return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, { status: 404, details: { requestId } })
     }
 
-    // 7. Get workspace ownership info
+    // 9. Get workspace ownership info
     const workspaceStats = await stat(resolvedWorkspace)
     const { uid, gid } = workspaceStats
 
-    // 8. Prepare uploads directory
+    // 10. Prepare uploads directory
     const uploadsDir = path.join(resolvedWorkspace, UPLOADS_DIR)
 
-    // Create uploads directory if it doesn't exist
     try {
       await mkdir(uploadsDir, { recursive: true })
       await chown(uploadsDir, uid, gid)
     } catch (err) {
-      // Ignore EEXIST, rethrow others
       if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
         console.error(`[Upload ${requestId}] Failed to create uploads directory:`, err)
         Sentry.captureException(err)
         return structuredErrorResponse(ErrorCodes.FILE_WRITE_ERROR, {
           status: 500,
-          details: {
-            requestId,
-            reason: "Failed to create uploads directory",
-          },
+          details: { requestId, reason: "Failed to create uploads directory" },
         })
       }
     }
 
-    // 9. Sanitize filename and create full path
-    const sanitizedName = sanitizeFilename(file.name)
+    // 11. Create full path and verify security
     const savePath = path.join(uploadsDir, sanitizedName)
     const resolvedSavePath = path.resolve(savePath)
 
-    // 10. Security: verify save path is within workspace
     if (!isPathWithinWorkspace(resolvedSavePath, resolvedWorkspace, path.sep)) {
       console.warn(`[Upload ${requestId}] Path traversal blocked: ${sanitizedName} -> ${resolvedSavePath}`)
       return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
         status: 403,
-        details: {
-          requestId,
-          attemptedPath: sanitizedName,
-        },
+        details: { requestId, attemptedPath: sanitizedName },
       })
     }
 
-    // 11. Convert file to buffer and write
+    // 12. Convert file to buffer and write
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
@@ -233,16 +223,11 @@ export async function POST(request: NextRequest) {
       Sentry.captureException(err)
       return structuredErrorResponse(ErrorCodes.FILE_WRITE_ERROR, {
         status: 500,
-        details: {
-          requestId,
-          reason: "Failed to write uploaded file",
-        },
+        details: { requestId, reason: "Failed to write uploaded file" },
       })
     }
 
-    // 12. Return success with relative path for SDK Read tool
     const relativePath = `${UPLOADS_DIR}/${sanitizedName}`
-
     console.log(`[Upload ${requestId}] Successfully uploaded: ${file.name} -> ${relativePath} (${file.size} bytes)`)
 
     return NextResponse.json({
@@ -257,10 +242,49 @@ export async function POST(request: NextRequest) {
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.FILE_WRITE_ERROR, {
       status: 500,
-      details: {
-        requestId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
+      details: { requestId, error: error instanceof Error ? error.message : "Unknown error" },
+    })
+  }
+}
+
+async function handleE2bUpload(
+  domain: ResolvedDomain,
+  file: File,
+  sanitizedName: string,
+  requestId: string,
+): Promise<NextResponse> {
+  try {
+    const sandbox = await connectSandbox(domain)
+
+    const uploadsDir = path.join(SANDBOX_WORKSPACE_ROOT, UPLOADS_DIR)
+    // Ensure .uploads dir exists (ignore if already exists)
+    await sandbox.files.makeDir(uploadsDir).catch((err: Error) => {
+      if (!err.message?.includes("exists")) throw err
+    })
+
+    const savePath = path.join(uploadsDir, sanitizedName)
+    const arrayBuffer = await file.arrayBuffer()
+    await sandbox.files.write(savePath, arrayBuffer)
+
+    const relativePath = `${UPLOADS_DIR}/${sanitizedName}`
+    console.log(`[Upload ${requestId}] E2B uploaded: ${file.name} -> ${relativePath} (${file.size} bytes)`)
+
+    return NextResponse.json({
+      ok: true,
+      path: relativePath,
+      originalName: file.name,
+      size: file.size,
+      mimeType: file.type,
+    })
+  } catch (err) {
+    if (err instanceof SandboxNotReadyError) {
+      return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
+    }
+    console.error(`[Upload ${requestId}] E2B upload error:`, err)
+    Sentry.captureException(err)
+    return structuredErrorResponse(ErrorCodes.FILE_WRITE_ERROR, {
+      status: 500,
+      details: { requestId, error: err instanceof Error ? err.message : "Unknown error" },
     })
   }
 }

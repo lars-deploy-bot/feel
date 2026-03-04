@@ -1,33 +1,12 @@
-export interface UserOrg {
-  org_id: string
-  name: string
-  role: string
-}
-
-export interface UserSession {
-  domain_hostname: string
-  session_count: number
-  last_activity: string
-}
-
-export interface User {
-  user_id: string
-  email: string | null
-  display_name: string | null
-  status: string
-  created_at: string
-  updated_at: string
-  orgs: UserOrg[]
-  org_count: number
-  last_active: string | null
-  sessions: UserSession[]
-  session_count: number
-}
-
-export interface UserEvent {
-  id: string
-  event: string
-  distinct_id: string
-  timestamp: string
-  properties: Record<string, unknown>
-}
+/**
+ * Re-export from @webalive/shared — SINGLE SOURCE OF TRUTH
+ *
+ * Uses subpath import for browser-safety (apps/manager is a Vite browser app).
+ * PostHog types (UserDevice, UserLocation, UserProfile) stay in users.api.ts — they're frontend-only.
+ */
+export type {
+  ManagerUser as User,
+  ManagerUserEvent as UserEvent,
+  ManagerUserOrg as UserOrg,
+  ManagerUserSession as UserSession,
+} from "@webalive/shared"

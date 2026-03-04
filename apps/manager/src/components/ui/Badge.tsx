@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn"
 
-type BadgeVariant = "default" | "success" | "warning" | "danger" | "accent"
+export type BadgeVariant = "default" | "success" | "warning" | "danger" | "accent"
 
 interface BadgeProps {
   variant?: BadgeVariant

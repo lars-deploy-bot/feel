@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     // Superadmins: use service client (bypasses RLS) to see all or org-scoped workspaces
     if (user.isSuperadmin) {
       const app = await createAppClient("service")
-      let query = app.from("domains").select("hostname, is_test_env")
+      let query = app.from("domains").select("hostname, is_test_env, execution_mode")
       if (orgId) {
         query = query.eq("org_id", orgId)
       }
@@ -49,9 +49,11 @@ export async function GET(req: NextRequest) {
       const realDomains = allDomains?.filter(d => !d.is_test_env).map(d => d.hostname) || []
       const testDomains = allDomains?.filter(d => d.is_test_env).map(d => d.hostname) || []
       const workspaces = [...filterLocalDomains(realDomains), ...testDomains]
+      const sandboxed = allDomains?.filter(d => d.execution_mode === "e2b").map(d => d.hostname) || []
 
       return createCorsSuccessResponse(origin, {
         workspaces,
+        sandboxed,
       })
     }
 
@@ -78,13 +80,17 @@ export async function GET(req: NextRequest) {
     }
 
     // Get all domains for these orgs (include is_test_env to handle test domains)
-    const { data: domains } = await app.from("domains").select("hostname, is_test_env").in("org_id", orgIds)
+    const { data: domains } = await app
+      .from("domains")
+      .select("hostname, is_test_env, execution_mode")
+      .in("org_id", orgIds)
 
     // Filter to only include domains that exist on THIS server
     // Exception: test domains (is_test_env=true) are always included - they don't exist on filesystem
     const realDomains = domains?.filter(d => !d.is_test_env).map(d => d.hostname) || []
     const testDomains = domains?.filter(d => d.is_test_env).map(d => d.hostname) || []
     let workspaces = [...filterLocalDomains(realDomains), ...testDomains]
+    const sandboxed = domains?.filter(d => d.execution_mode === "e2b").map(d => d.hostname) || []
 
     // SECURITY: alive workspace is only visible to superadmins
     // Non-superadmins should never see it in the list
@@ -94,6 +100,7 @@ export async function GET(req: NextRequest) {
 
     return createCorsSuccessResponse(origin, {
       workspaces,
+      sandboxed,
     })
   } catch (error) {
     Sentry.captureException(error)

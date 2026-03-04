@@ -127,6 +127,13 @@ export {
   wrapExternalContent,
 } from "./external-content.js"
 export { generateInviteCode } from "./invite-code.js"
+export type {
+  // Manager API response types - shared contract between apps/api and apps/manager
+  ManagerUser,
+  ManagerUserEvent,
+  ManagerUserOrg,
+  ManagerUserSession,
+} from "./manager-types.js"
 export {
   type AllOAuthProviderKey,
   // Global MCP providers (always available, no auth required)
@@ -162,6 +169,7 @@ export {
   providerSupportsPat,
 } from "./mcp-providers.js"
 export {
+  ALL_CLAUDE_MODELS,
   // Claude models - SINGLE SOURCE OF TRUTH
   CLAUDE_MODELS,
   type ClaudeModel,
@@ -309,9 +317,16 @@ export {
   getStreamToolDecision,
   getStreamToolRole,
   getStreamWorkspaceKind,
+  // SDK tool display helpers
+  getToolActionLabel,
+  getToolDetail,
   isHeavyBashCommand,
   isStreamClientVisibleTool,
   isStreamPolicyTool,
+  // SDK tool name constants (single source of truth)
+  SDK_TOOL,
+  SDK_TOOL_LOWER,
+  type SdkToolKey,
   // Stream tool policy constants/types
   STREAM_INTERNAL_MCP_TOOLS,
   STREAM_PERMISSION_MODE,
@@ -322,6 +337,7 @@ export {
   type StreamMcpServerConfig,
   type StreamPlanModeBehavior,
   type StreamPolicyToolName,
+  type StreamSdkToolLowerName,
   type StreamSdkToolName,
   type StreamToolContext,
   type StreamToolDecision,
@@ -329,6 +345,7 @@ export {
   type StreamToolRuntimeConfig,
   type StreamToolVisibility,
   type StreamWorkspaceKind,
+  type ToolDetailOptions,
 } from "./tools/stream-tools.js"
 export { getWorkspacePath } from "./tools/stream-tools-server.js"
 export {

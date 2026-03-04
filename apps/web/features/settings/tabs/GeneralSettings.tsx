@@ -1,16 +1,12 @@
 "use client"
 
+import { ALL_CLAUDE_MODELS, DEFAULT_CLAUDE_MODEL, getModelDisplayName, isValidClaudeModel } from "@webalive/shared"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
-import { getModelDisplayName } from "@/lib/models/claude-models"
-import { CLAUDE_MODELS, type ClaudeModel, DEFAULT_MODEL, useLLMStore } from "@/lib/stores/llmStore"
+import { useLLMStore } from "@/lib/stores/llmStore"
 import { readOnlyField, sectionDivider, select, selectionCardActive, selectionCardInactive, text } from "../styles"
 import { SettingsTabLayout } from "./SettingsTabLayout"
-
-function isValidModel(value: string): value is ClaudeModel {
-  return Object.values(CLAUDE_MODELS).includes(value as ClaudeModel)
-}
 
 export function GeneralSettings() {
   const { user } = useAuth()
@@ -23,13 +19,13 @@ export function GeneralSettings() {
   const isModelAvailable = (modelId: string): boolean => {
     if (canSelectAnyModel) return true
     if (enabledModels.length > 0) return enabledModels.includes(modelId)
-    return modelId === DEFAULT_MODEL
+    return modelId === DEFAULT_CLAUDE_MODEL
   }
 
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => setTheme(newTheme)
   const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value
-    if (isValidModel(value)) setModel(value)
+    if (isValidClaudeModel(value)) setModel(value)
   }
 
   return (
@@ -85,7 +81,7 @@ export function GeneralSettings() {
           <p className={`${text.muted} mb-3`}>
             {canChooseModel
               ? "Opus is the smartest but slowest. Sonnet balances speed and quality. Haiku is fastest for simple tasks."
-              : `You're using ${getModelDisplayName(DEFAULT_MODEL)}. Model access is controlled by your plan.`}
+              : `You're using ${getModelDisplayName(DEFAULT_CLAUDE_MODEL)}. Model access is controlled by your plan.`}
           </p>
           <select
             id="claude-model"
@@ -96,9 +92,8 @@ export function GeneralSettings() {
             aria-label="Claude Model Selection"
           >
             {(() => {
-              const allModels = Object.values(CLAUDE_MODELS) as ClaudeModel[]
-              const available = allModels.filter(isModelAvailable)
-              const options = available.length > 0 ? available : [DEFAULT_MODEL]
+              const available = ALL_CLAUDE_MODELS.filter(isModelAvailable)
+              const options = available.length > 0 ? available : [DEFAULT_CLAUDE_MODEL]
               return options.map(m => (
                 <option key={m} value={m}>
                   {getModelDisplayName(m)}

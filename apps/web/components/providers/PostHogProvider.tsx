@@ -18,7 +18,7 @@ import { useAuthStatus } from "@/lib/stores/authStore"
  */
 
 const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
-const posthogHost = "/ingest"
+const posthogHost = "/a"
 
 // Track initialization state
 let isInitialized = false

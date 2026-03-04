@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Badge } from "@/components/ui/Badge"
+import { Badge, type BadgeVariant } from "@/components/ui/Badge"
 import { Spinner } from "@/components/ui/Spinner"
 import { usersApi } from "../users.api"
 import type { UserEvent } from "../users.types"
@@ -15,12 +15,12 @@ function eventLabel(event: string): string {
   return clean.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
 }
 
-function eventVariant(event: string) {
-  if (event === "$pageview") return "accent" as const
-  if (event === "$pageleave") return "default" as const
-  if (event === "$autocapture") return "default" as const
-  if (event.startsWith("$exception")) return "danger" as const
-  return "success" as const
+function eventVariant(event: string): BadgeVariant {
+  if (event === "$pageview") return "accent"
+  if (event === "$pageleave") return "default"
+  if (event === "$autocapture") return "default"
+  if (event.startsWith("$exception")) return "danger"
+  return "success"
 }
 
 function formatTimestamp(iso: string): string {

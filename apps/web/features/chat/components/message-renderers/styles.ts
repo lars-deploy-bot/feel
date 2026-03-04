@@ -47,3 +47,10 @@ export const roundedContainer = "rounded-xl"
 /** Code block styling - minimal, no border */
 export const codeBlock =
   "text-xs text-black/50 dark:text-white/50 font-diatype-mono leading-relaxed overflow-auto max-h-60 p-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.04]"
+
+/** Message body text — shared between user and assistant */
+export const messageText =
+  "whitespace-pre-wrap [overflow-wrap:anywhere] text-black dark:text-white font-normal leading-relaxed"
+
+/** Ghost action button (copy, delete) */
+export const ghostActionBtn = "p-0.5 text-black/15 dark:text-white/30 transition-colors duration-100"

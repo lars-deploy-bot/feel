@@ -1,6 +1,7 @@
 import { statSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
-import { DEFAULTS, SUPERADMIN, WORKER_POOL } from "@webalive/shared"
+import { SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
+import { DEFAULTS, isRetiredModel, isValidClaudeModel, SUPERADMIN, WORKER_POOL } from "@webalive/shared"
 import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
@@ -45,7 +46,6 @@ import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { buildAnalyzeImagePrompt, fetchAndSaveAnalyzeImages } from "@/lib/image-analyze/fetch-and-save"
 import { logInput } from "@/lib/input-logger"
-import { type ClaudeModel, DEFAULT_MODEL, isRetiredModel, isValidClaudeModel } from "@/lib/models/claude-models"
 import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
 import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
 import { getRequestId } from "@/lib/request-id"
@@ -353,7 +353,7 @@ export async function POST(req: NextRequest) {
     const app = user.isSuperadmin ? await createAppClient("service") : await createRLSAppClient()
     const { data: domainRecord } = await app
       .from("domains")
-      .select("domain_id, hostname, port")
+      .select("domain_id, hostname, port, execution_mode, sandbox_id, sandbox_status")
       .eq("hostname", resolvedWorkspaceName)
       .single()
 
@@ -374,7 +374,9 @@ export async function POST(req: NextRequest) {
       tabId,
     })
 
-    logger.log(`Domain: ${domainRecord.hostname} (port: ${domainRecord.port}, id: ${domainRecord.domain_id})`)
+    logger.log(
+      `Domain: ${domainRecord.hostname} (port: ${domainRecord.port}, id: ${domainRecord.domain_id}, mode: ${domainRecord.execution_mode})`,
+    )
     logger.log("Session key:", sessionKey)
     logger.log("Attempting to lock...")
 
@@ -482,19 +484,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const isUnrestrictedUser = user.isAdmin
-    const hasModelAccess =
-      isUnrestrictedUser || requestedModel === DEFAULT_MODEL || user.enabledModels.includes(requestedModel)
-
-    if (tokenSource === "workspace" && !hasModelAccess) {
-      return structuredErrorResponse(ErrorCodes.MODEL_NOT_AVAILABLE, {
-        status: 403,
-        details: { requestId, model: requestedModel },
-      })
-    }
-
-    const effectiveModel: ClaudeModel = requestedModel
-    logger.log("Claude model:", effectiveModel)
+    logger.log("Claude model:", requestedModel)
     logger.log("User isAdmin:", user.isAdmin)
     logger.log("User isSuperadmin:", user.isSuperadmin)
 
@@ -559,10 +549,12 @@ export async function POST(req: NextRequest) {
     if (hasGmailConnection) connectedEmailProviders.push("gmail")
     if (hasOutlookConnection) connectedEmailProviders.push("outlook")
 
+    const isE2b = domainRecord.execution_mode === "e2b"
+
     const systemPrompt = getSystemPrompt({
       projectId,
       userId,
-      workspaceFolder: cwd,
+      workspaceFolder: isE2b ? SANDBOX_WORKSPACE_ROOT : cwd,
       hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName, hasStripeConnection),
       connectedEmailProviders,
       additionalContext,
@@ -657,7 +649,7 @@ export async function POST(req: NextRequest) {
               workloadClass: "chat",
               payload: {
                 message: finalMessage,
-                model: effectiveModel,
+                model: requestedModel,
                 maxTurns: maxTurns,
                 resume: resumeId,
                 resumeSessionAt: resumeAtMessage,
@@ -667,6 +659,18 @@ export async function POST(req: NextRequest) {
                 userEnvKeys, // User-defined environment keys for MCP servers
                 agentConfig,
                 sessionCookie, // Required for MCP tools to authenticate API calls
+                // E2B sandbox routing
+                executionMode: domainRecord.execution_mode,
+                ...(domainRecord.execution_mode === "e2b"
+                  ? {
+                      sandboxDomain: {
+                        domain_id: domainRecord.domain_id,
+                        hostname: domainRecord.hostname,
+                        sandbox_id: domainRecord.sandbox_id,
+                        sandbox_status: domainRecord.sandbox_status,
+                      },
+                    }
+                  : {}),
               },
               onMessage: (msg: WorkerToParentMessage) => {
                 // Track first message timing
@@ -931,7 +935,7 @@ export async function POST(req: NextRequest) {
 
       childStream = runAgentChild(cwd, {
         message: finalMessage,
-        model: effectiveModel,
+        model: requestedModel,
         maxTurns: maxTurns,
         resume: existingSessionId || undefined,
         resumeSessionAt: resumeSessionAt || undefined,
@@ -955,7 +959,7 @@ export async function POST(req: NextRequest) {
       tabId, // Tab ID for routing responses to correct tab
       conversationWorkspace: resolvedWorkspaceName,
       tokenSource,
-      model: effectiveModel, // For model-specific credit calculation
+      model: requestedModel, // For model-specific credit calculation
       cancelState, // Pass shared cancellation state
       consumeCancelIntent: async () => {
         const pollConsumeResults = await Promise.allSettled([

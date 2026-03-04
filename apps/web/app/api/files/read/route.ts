@@ -1,15 +1,15 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
-import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { hasSessionCookie } from "@/features/auth/types/guards"
+import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { COOKIE_NAMES } from "@/lib/auth/cookies"
+import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
+import { connectSandbox, SANDBOX_WORKSPACE_ROOT, SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
 
 // Max file size to read (1MB)
 const MAX_FILE_SIZE = 1024 * 1024
@@ -89,28 +89,51 @@ export async function POST(request: NextRequest) {
   const requestId = getRequestId(request)
 
   try {
-    const jar = await cookies()
-    if (!hasSessionCookie(jar.get(COOKIE_NAMES.SESSION))) {
+    // Auth hardening: full user + workspace verification (not just cookie check)
+    const user = await getSessionUser()
+    if (!user) {
       return structuredErrorResponse(ErrorCodes.NO_SESSION, { status: 401, details: { requestId } })
     }
 
     const body = await request.json()
-    const host = request.headers.get("host") || "localhost"
 
-    const workspaceResult = await getWorkspace({ host, body, requestId })
-    if (!workspaceResult.success) {
-      return workspaceResult.response
+    const authorized = await verifyWorkspaceAccess(user, body, `[Files/Read ${requestId}]`)
+    if (!authorized) {
+      return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, { status: 403, details: { requestId } })
     }
+
+    const host = request.headers.get("host") || "localhost"
+    const workspaceName = body.workspace as string | undefined
 
     const filePath = body.path
     if (!filePath || typeof filePath !== "string") {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
-        details: {
-          requestId,
-          message: "Missing required field: path",
-        },
+        details: { requestId, message: "Missing required field: path" },
       })
+    }
+
+    // Check for binary files (applies to both systemd and E2B)
+    const ext = filePath.toLowerCase().split(".").pop() || ""
+    if (BINARY_EXTENSIONS.has(ext)) {
+      return structuredErrorResponse(ErrorCodes.BINARY_FILE_NOT_SUPPORTED, {
+        status: 400,
+        details: { requestId, filePath, extension: ext },
+      })
+    }
+
+    // E2B branch: resolve domain runtime before filesystem checks
+    if (workspaceName) {
+      const domain = await resolveDomainRuntime(workspaceName)
+      if (domain?.execution_mode === "e2b") {
+        return handleE2bRead(domain, filePath, requestId)
+      }
+    }
+
+    // Systemd path: existing getWorkspace() + node:fs logic
+    const workspaceResult = await getWorkspace({ host, body, requestId })
+    if (!workspaceResult.success) {
+      return workspaceResult.response
     }
 
     const fullPath = path.join(workspaceResult.workspace, filePath)
@@ -121,40 +144,17 @@ export async function POST(request: NextRequest) {
     if (!isPathWithinWorkspace(resolvedPath, resolvedWorkspace, path.sep)) {
       return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
         status: 403,
-        details: {
-          requestId,
-          attemptedPath: resolvedPath,
-          workspacePath: resolvedWorkspace,
-        },
-      })
-    }
-
-    // Check for binary files
-    const ext = filePath.toLowerCase().split(".").pop() || ""
-    if (BINARY_EXTENSIONS.has(ext)) {
-      return structuredErrorResponse(ErrorCodes.BINARY_FILE_NOT_SUPPORTED, {
-        status: 400,
-        details: {
-          requestId,
-          filePath,
-          extension: ext,
-        },
+        details: { requestId, attemptedPath: resolvedPath, workspacePath: resolvedWorkspace },
       })
     }
 
     try {
       const content = await readFile(fullPath, "utf-8")
 
-      // Check file size after reading (could also use stat before)
       if (content.length > MAX_FILE_SIZE) {
         return structuredErrorResponse(ErrorCodes.FILE_TOO_LARGE_TO_READ, {
           status: 400,
-          details: {
-            requestId,
-            filePath,
-            size: content.length,
-            maxSize: MAX_FILE_SIZE,
-          },
+          details: { requestId, filePath, size: content.length, maxSize: MAX_FILE_SIZE },
         })
       }
 
@@ -174,30 +174,20 @@ export async function POST(request: NextRequest) {
       if (err.code === "ENOENT") {
         return structuredErrorResponse(ErrorCodes.FILE_NOT_FOUND, {
           status: 404,
-          details: {
-            requestId,
-            filePath,
-          },
+          details: { requestId, filePath },
         })
       }
       if (err.code === "EISDIR") {
         return structuredErrorResponse(ErrorCodes.PATH_IS_DIRECTORY, {
           status: 400,
-          details: {
-            requestId,
-            filePath,
-          },
+          details: { requestId, filePath },
         })
       }
       console.error(`[Files/Read ${requestId}] Error reading file:`, fsError)
       Sentry.captureException(fsError)
       return structuredErrorResponse(ErrorCodes.FILE_READ_ERROR, {
         status: 500,
-        details: {
-          requestId,
-          filePath,
-          error: err.message,
-        },
+        details: { requestId, filePath, error: err.message },
       })
     }
   } catch (error) {
@@ -205,10 +195,54 @@ export async function POST(request: NextRequest) {
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, {
       status: 500,
-      details: {
-        requestId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
+      details: { requestId, error: error instanceof Error ? error.message : "Unknown error" },
+    })
+  }
+}
+
+async function handleE2bRead(domain: ResolvedDomain, filePath: string, requestId: string): Promise<NextResponse> {
+  // Path traversal check for E2B
+  const normalized = path.normalize(filePath)
+  if (normalized.startsWith("..") || path.isAbsolute(normalized)) {
+    console.warn(`[Files/Read ${requestId}] E2B path traversal blocked: ${filePath}`)
+    return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
+      status: 403,
+      details: { requestId },
+    })
+  }
+
+  try {
+    const sandbox = await connectSandbox(domain)
+    const sandboxPath = path.join(SANDBOX_WORKSPACE_ROOT, filePath)
+    const content = await sandbox.files.read(sandboxPath)
+
+    if (content.length > MAX_FILE_SIZE) {
+      return structuredErrorResponse(ErrorCodes.FILE_TOO_LARGE_TO_READ, {
+        status: 400,
+        details: { requestId, filePath, size: content.length, maxSize: MAX_FILE_SIZE },
+      })
+    }
+
+    const filename = path.basename(filePath)
+    const language = getLanguageFromFilename(filename)
+
+    return NextResponse.json({
+      ok: true,
+      path: filePath,
+      filename,
+      content,
+      language,
+      size: content.length,
+    })
+  } catch (err) {
+    if (err instanceof SandboxNotReadyError) {
+      return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
+    }
+    console.error(`[Files/Read ${requestId}] E2B read error:`, err)
+    Sentry.captureException(err)
+    return structuredErrorResponse(ErrorCodes.FILE_READ_ERROR, {
+      status: 500,
+      details: { requestId, filePath, error: err instanceof Error ? err.message : "Unknown error" },
     })
   }
 }

@@ -8,11 +8,7 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url)
 
-    // Caddy handle_path strips /manager-2 prefix, but handle direct access too
-    let pathname = url.pathname
-    if (pathname.startsWith("/manager-2")) {
-      pathname = pathname.slice("/manager-2".length) || "/"
-    }
+    const pathname = url.pathname
 
     // Proxy API requests to the API server on port 5080
     if (pathname.startsWith("/api") || pathname.startsWith("/auth") || pathname.startsWith("/health")) {

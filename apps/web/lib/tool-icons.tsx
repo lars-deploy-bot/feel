@@ -1,3 +1,4 @@
+import { SDK_TOOL_LOWER } from "@webalive/shared"
 import { Code, CreditCard, Edit3, FileText, FolderOpen, Globe, Search, Terminal, Workflow } from "lucide-react"
 
 /**
@@ -9,13 +10,13 @@ import { Code, CreditCard, Edit3, FileText, FolderOpen, Globe, Search, Terminal,
 export function getToolIcon(toolName: string) {
   const name = toolName.toLowerCase()
 
-  if (name === "read") return FileText
-  if (name === "write" || name === "edit") return Edit3
-  if (name === "grep") return Search
-  if (name === "glob") return FolderOpen
-  if (name === "bash") return Terminal
-  if (name === "task") return Workflow
-  if (name === "webfetch") return Globe
+  if (name === SDK_TOOL_LOWER.READ) return FileText
+  if (name === SDK_TOOL_LOWER.WRITE || name === SDK_TOOL_LOWER.EDIT) return Edit3
+  if (name === SDK_TOOL_LOWER.GREP) return Search
+  if (name === SDK_TOOL_LOWER.GLOB) return FolderOpen
+  if (name === SDK_TOOL_LOWER.BASH) return Terminal
+  if (name === SDK_TOOL_LOWER.TASK) return Workflow
+  if (name === SDK_TOOL_LOWER.WEB_FETCH) return Globe
 
   // Stripe MCP tools
   if (name.includes("stripe")) return CreditCard

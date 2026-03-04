@@ -1,5 +1,8 @@
 /**
- * PostHog reverse proxy — forwards /ingest/* to PostHog with the real client IP.
+ * PostHog reverse proxy — forwards /a/* to PostHog with the real client IP.
+ *
+ * Path intentionally generic ("/a") to avoid adblocker filter lists that
+ * target well-known PostHog proxy paths like "/ingest".
  *
  * Replaces the Next.js `rewrites()` approach which drops X-Forwarded-For,
  * causing PostHog GeoIP to see the server IP instead of the user's IP.
@@ -13,8 +16,8 @@ async function proxy(req: Request): Promise<Response> {
   }
 
   const url = new URL(req.url)
-  const pathAfterIngest = url.pathname.replace(/^\/ingest/, "")
-  const target = `${POSTHOG_HOST}${pathAfterIngest}${url.search}`
+  const pathAfterProxy = url.pathname.replace(/^\/a/, "")
+  const target = `${POSTHOG_HOST}${pathAfterProxy}${url.search}`
 
   const headers = new Headers()
   // Forward content type

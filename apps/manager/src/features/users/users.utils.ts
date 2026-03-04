@@ -1,3 +1,5 @@
+import type { BadgeVariant } from "@/components/ui/Badge"
+
 const AVATAR_COLORS = [
   "bg-blue-50 text-blue-500",
   "bg-emerald-50 text-emerald-500",
@@ -15,10 +17,10 @@ export function avatarColor(str: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
-export function statusVariant(status: string) {
-  if (status === "active") return "success" as const
-  if (status === "suspended") return "danger" as const
-  return "default" as const
+export function statusVariant(status: string): BadgeVariant {
+  if (status === "active") return "success"
+  if (status === "suspended") return "danger"
+  return "default"
 }
 
 export function formatDate(iso: string): string {
@@ -43,8 +45,8 @@ export function relativeTime(iso: string | null): string {
   return `${months}mo ago`
 }
 
-export function roleBadgeVariant(role: string) {
-  if (role === "owner") return "accent" as const
-  if (role === "admin") return "warning" as const
-  return "default" as const
+export function roleBadgeVariant(role: string): BadgeVariant {
+  if (role === "owner") return "accent"
+  if (role === "admin") return "warning"
+  return "default"
 }

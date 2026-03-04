@@ -47,7 +47,7 @@ export function CalendarEventDeleteOutput({ data, isError = false, onSubmitAnswe
   const handleDelete = useCallback(
     async (eventData: DeleteEventDraft) => {
       const validated = validateRequest("google/calendar/delete-event", {
-        calendarId: eventData.calendarId,
+        calendarId: eventData.calendarId || "primary",
         eventId: eventData.eventId,
       })
       await delly("google/calendar/delete-event", validated)

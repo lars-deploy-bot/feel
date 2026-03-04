@@ -19,6 +19,8 @@ export type RunStatus = Database["app"]["Enums"]["automation_run_status"]
 export type JobStatus = Database["app"]["Enums"]["automation_job_status"]
 export type TriggerType = Database["app"]["Enums"]["automation_trigger_type"]
 export type ActionType = Database["app"]["Enums"]["automation_action_type"]
+export type ExecutionMode = Database["app"]["Enums"]["execution_mode"]
+export type SandboxStatus = Database["app"]["Enums"]["sandbox_status"]
 
 /** Terminal statuses — a run that has finished (not pending/running). */
 export type TerminalRunStatus = Exclude<RunStatus, "pending" | "running">
@@ -31,12 +33,16 @@ export const RUN_STATUSES: ReadonlySet<RunStatus> = new Set(Constants.app.Enums.
 export const JOB_STATUSES: ReadonlySet<JobStatus> = new Set(Constants.app.Enums.automation_job_status)
 export const TRIGGER_TYPES: ReadonlySet<TriggerType> = new Set(Constants.app.Enums.automation_trigger_type)
 export const ACTION_TYPES: ReadonlySet<ActionType> = new Set(Constants.app.Enums.automation_action_type)
+export const EXECUTION_MODES: ReadonlySet<ExecutionMode> = new Set(Constants.app.Enums.execution_mode)
+export const SANDBOX_STATUSES: ReadonlySet<SandboxStatus> = new Set(Constants.app.Enums.sandbox_status)
 
 // String-typed sets for type guards (avoids `as` casts on the typed sets above)
 const RUN_STATUS_STRINGS: ReadonlySet<string> = new Set(Constants.app.Enums.automation_run_status)
 const JOB_STATUS_STRINGS: ReadonlySet<string> = new Set(Constants.app.Enums.automation_job_status)
 const TRIGGER_TYPE_STRINGS: ReadonlySet<string> = new Set(Constants.app.Enums.automation_trigger_type)
 const ACTION_TYPE_STRINGS: ReadonlySet<string> = new Set(Constants.app.Enums.automation_action_type)
+const EXECUTION_MODE_STRINGS: ReadonlySet<string> = new Set(Constants.app.Enums.execution_mode)
+const SANDBOX_STATUS_STRINGS: ReadonlySet<string> = new Set(Constants.app.Enums.sandbox_status)
 
 // =============================================================================
 // Type Guards
@@ -56,4 +62,12 @@ export function isTriggerType(value: unknown): value is TriggerType {
 
 export function isActionType(value: unknown): value is ActionType {
   return typeof value === "string" && ACTION_TYPE_STRINGS.has(value)
+}
+
+export function isExecutionMode(value: unknown): value is ExecutionMode {
+  return typeof value === "string" && EXECUTION_MODE_STRINGS.has(value)
+}
+
+export function isSandboxStatus(value: unknown): value is SandboxStatus {
+  return typeof value === "string" && SANDBOX_STATUS_STRINGS.has(value)
 }

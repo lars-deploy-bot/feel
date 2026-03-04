@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/Badge"
+import { Badge, type BadgeVariant } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import type { OrgMember } from "../orgs.types"
 
@@ -40,10 +40,10 @@ function formatJoined(iso: string | null): string | null {
   return `${Math.floor(days / 365)}y ago`
 }
 
-function roleBadgeVariant(role: string) {
-  if (role === "owner") return "accent" as const
-  if (role === "admin") return "warning" as const
-  return "default" as const
+function roleBadgeVariant(role: string): BadgeVariant {
+  if (role === "owner") return "accent"
+  if (role === "admin") return "warning"
+  return "default"
 }
 
 export function OrgMembersList({ members, onAdd, onRemove }: OrgMembersListProps) {

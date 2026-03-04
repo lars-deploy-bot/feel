@@ -22,7 +22,7 @@ import type { CleanupStats, ServiceStatus } from "@/features/manager/lib/service
 import * as settingsService from "@/features/manager/lib/services/settingsService"
 import { executeHandler } from "@/features/manager/lib/utils/executeHandler"
 import { ApiError, delly, getty, postty, putty } from "@/lib/api/api-client"
-import { validateRequest } from "@/lib/api/schemas"
+import { type ReqInput, validateRequest } from "@/lib/api/schemas"
 import { resetPostHogIdentity } from "@/lib/posthog"
 import type { DomainConfigClient, DomainStatus } from "@/types/domain"
 import type { FeedbackEntry } from "@/types/feedback"
@@ -786,7 +786,18 @@ export default function ManagerPage() {
   const handleSaveTemplate = async (template: Partial<Template> & { template_id: string }) => {
     setSavingTemplate(template.template_id)
     try {
-      const validated = validateRequest("manager/templates/update", template)
+      const request: ReqInput<"manager/templates/update"> = {
+        template_id: template.template_id,
+        name: template.name ?? undefined,
+        description: template.description ?? undefined,
+        ai_description: template.ai_description ?? undefined,
+        source_path: template.source_path ?? undefined,
+        preview_url: template.preview_url ?? undefined,
+        image_url: template.image_url ?? undefined,
+        is_active: template.is_active ?? undefined,
+        deploy_count: template.deploy_count ?? undefined,
+      }
+      const validated = validateRequest("manager/templates/update", request)
       const data = await putty("manager/templates/update", validated, undefined, "/api/manager/templates")
       if (data.ok) {
         toast.success("Template saved")
@@ -809,11 +820,8 @@ export default function ManagerPage() {
     setConfirmDeleteTemplate(null)
     setDeletingTemplate(templateId)
     try {
-      const data = await delly(
-        "manager/templates/delete",
-        undefined,
-        `/api/manager/templates?template_id=${templateId}`,
-      )
+      const request = validateRequest("manager/templates/delete")
+      const data = await delly("manager/templates/delete", request, `/api/manager/templates?template_id=${templateId}`)
       if (data.ok) {
         toast.success("Template deleted")
         setTemplates(prev => prev.filter(t => t.template_id !== templateId))
@@ -828,7 +836,17 @@ export default function ManagerPage() {
 
   const handleAddTemplate = async (template: Omit<Template, "template_id"> & { template_id?: string }) => {
     try {
-      const validated = validateRequest("manager/templates/create", template)
+      const request: ReqInput<"manager/templates/create"> = {
+        template_id: template.template_id ?? undefined,
+        name: template.name,
+        description: template.description ?? undefined,
+        ai_description: template.ai_description ?? undefined,
+        source_path: template.source_path,
+        preview_url: template.preview_url ?? undefined,
+        image_url: template.image_url ?? undefined,
+        is_active: template.is_active ?? undefined,
+      }
+      const validated = validateRequest("manager/templates/create", request)
       const data = await postty("manager/templates/create", validated, undefined, "/api/manager/templates")
       if (data.ok) {
         toast.success("Template added")

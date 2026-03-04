@@ -181,6 +181,19 @@ describe("POST /api/files/delete", () => {
       expect(data.error).toBe("PATH_OUTSIDE_WORKSPACE")
     })
 
+    it("should block workspace-root deletion (path='.')", async () => {
+      const req = createMockRequest({
+        path: ".",
+        workspace: "test",
+        recursive: true,
+      })
+      const response = await POST(req)
+      const data = await response.json()
+
+      expect(response.status).toBe(403)
+      expect(data.error).toBe("PATH_OUTSIDE_WORKSPACE")
+    })
+
     it("should block deeply nested traversal attempts", async () => {
       const req = createMockRequest({
         path: "foo/bar/../../../../etc/passwd",

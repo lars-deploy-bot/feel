@@ -9,7 +9,8 @@
 
 import { describe, expectTypeOf, it } from "vitest"
 import type { ApiError } from "../api-client"
-import type { Endpoint, Params, Query, Req, Res } from "../schemas"
+import type { Endpoint, Params, Query, Req, ReqInput, Res } from "../schemas"
+import { validateRequest } from "../schemas"
 
 describe("API Schema Type System", () => {
   describe("Endpoint type", () => {
@@ -113,13 +114,10 @@ describe("API Schema Type System", () => {
       expectTypeOf<FeedbackReq>().toHaveProperty("conversationId")
     })
 
-    it("should have branded type for user GET endpoint", () => {
+    it("should infer never for user GET endpoint (no request schema)", () => {
       type UserReq = Req<"user">
 
-      // User endpoint has branded undefined (GET request, no body)
-      // The brand makes it distinct from plain undefined
-      type PlainUndefined = undefined
-      expectTypeOf<PlainUndefined>().not.toMatchTypeOf<UserReq>()
+      expectTypeOf<UserReq>().toEqualTypeOf<never>()
     })
 
     it("should not allow plain objects as branded types", () => {
@@ -129,6 +127,40 @@ describe("API Schema Type System", () => {
       // Plain object is NOT the same as branded type
       expectTypeOf<PlainLogin>().not.toEqualTypeOf<LoginReq>()
       expectTypeOf<PlainLogin>().not.toMatchTypeOf<LoginReq>()
+    })
+  })
+
+  describe("Request input types (ReqInput<E>)", () => {
+    it("should model raw input separately from branded output", () => {
+      type LoginInput = ReqInput<"login">
+      type LoginReq = Req<"login">
+
+      expectTypeOf<LoginInput>().toEqualTypeOf<{ email: string; password: string }>()
+      expectTypeOf<LoginInput>().not.toEqualTypeOf<LoginReq>()
+    })
+
+    it("should enforce undefined input for no-body mutation endpoints", () => {
+      expectTypeOf<ReqInput<"automations/trigger">>().toEqualTypeOf<undefined>()
+      expectTypeOf<Record<string, never>>().not.toMatchTypeOf<ReqInput<"automations/trigger">>()
+    })
+  })
+
+  describe("validateRequest typing", () => {
+    it("allows undefined-body endpoints without payload", () => {
+      validateRequest("automations/trigger")
+      validateRequest("automations/trigger", undefined)
+    })
+
+    it("rejects object payload for undefined-body endpoints", () => {
+      type TriggerInput = ReqInput<"automations/trigger">
+      expectTypeOf<TriggerInput>().toEqualTypeOf<undefined>()
+      expectTypeOf<Record<string, never>>().not.toMatchTypeOf<TriggerInput>()
+    })
+
+    it("requires payload for object-body endpoints", () => {
+      type LoginInput = ReqInput<"login">
+      expectTypeOf<LoginInput>().toEqualTypeOf<{ email: string; password: string }>()
+      expectTypeOf<LoginInput>().not.toEqualTypeOf<undefined>()
     })
   })
 
@@ -234,12 +266,12 @@ describe("API Schema Type System", () => {
     it("should have distinct brands per endpoint", () => {
       type Login = Req<"login">
       type Feedback = Req<"feedback">
-      type User = Req<"user">
+      type Trigger = Req<"automations/trigger">
 
       // All three should be different types
       expectTypeOf<Login>().not.toEqualTypeOf<Feedback>()
-      expectTypeOf<Login>().not.toEqualTypeOf<User>()
-      expectTypeOf<Feedback>().not.toEqualTypeOf<User>()
+      expectTypeOf<Login>().not.toEqualTypeOf<Trigger>()
+      expectTypeOf<Feedback>().not.toEqualTypeOf<Trigger>()
     })
   })
 

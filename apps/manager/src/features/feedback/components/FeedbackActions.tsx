@@ -7,24 +7,33 @@ interface FeedbackActionsProps {
   item: FeedbackItem
 }
 
-const FIELDS = [
+type FeedbackFieldKey = "github_issue_url" | "aware_email_sent" | "fixed_email_sent"
+
+interface FeedbackField {
+  key: FeedbackFieldKey
+  label: string
+  placeholder: string
+  type: "input" | "textarea"
+}
+
+const FIELDS: FeedbackField[] = [
   {
-    key: "github_issue_url" as const,
+    key: "github_issue_url",
     label: "GitHub Issue",
     placeholder: "https://github.com/eenlars/alive/issues/...",
-    type: "input" as const,
+    type: "input",
   },
   {
-    key: "aware_email_sent" as const,
+    key: "aware_email_sent",
     label: "Aware email",
     placeholder: "Paste the email text sent to user...",
-    type: "textarea" as const,
+    type: "textarea",
   },
   {
-    key: "fixed_email_sent" as const,
+    key: "fixed_email_sent",
     label: "Fixed email",
     placeholder: "Paste the email text sent to user...",
-    type: "textarea" as const,
+    type: "textarea",
   },
 ]
 

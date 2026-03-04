@@ -1,6 +1,16 @@
 import { ZodError } from "zod"
 import { ApiError } from "./error.js"
-import type { ClientOptions, Endpoint, Req, Res, SchemaRegistry } from "./types.js"
+import type {
+  BodyReqEndpoint,
+  ClientOptions,
+  Endpoint,
+  EndpointWithReq,
+  ReadEndpoint,
+  Req,
+  Res,
+  SchemaRegistry,
+  UndefinedReqEndpoint,
+} from "./types.js"
 
 function resolvePath(
   basePath: string,
@@ -31,7 +41,12 @@ function resolvePath(
  * Creates a typed API client from a schema registry
  */
 export function createClient<T extends SchemaRegistry>(schemas: T, options: ClientOptions = {}) {
-  const { basePath = "/api", credentials = "include", headers: defaultHeaders } = options
+  const {
+    basePath = "/api",
+    credentials = "include",
+    headers: defaultHeaders,
+    allowAbsolutePathOverride = false,
+  } = options
 
   async function api<E extends Endpoint<T>>(
     endpoint: E,
@@ -40,6 +55,14 @@ export function createClient<T extends SchemaRegistry>(schemas: T, options: Clie
     init?: Omit<RequestInit, "body" | "method">,
     pathOverride?: string,
   ): Promise<Res<T, E>> {
+    if (pathOverride && /^https?:\/\//.test(pathOverride) && !allowAbsolutePathOverride) {
+      throw new ApiError(
+        "Absolute pathOverride URLs are disabled. Use a relative '/api/...' path or enable allowAbsolutePathOverride.",
+        undefined,
+        "UNSAFE_PATH_OVERRIDE",
+      )
+    }
+
     const schemaPath = schemas[endpoint]?.path
     const path = resolvePath(basePath, String(endpoint), schemaPath, pathOverride)
     const hasBody = method !== "GET"
@@ -110,23 +133,16 @@ export function createClient<T extends SchemaRegistry>(schemas: T, options: Clie
     }
   }
 
-  function deletty<E extends Endpoint<T>>(
+  function resolveDeleteArgs<E extends Endpoint<T>>(
     endpoint: E,
-    init?: Omit<RequestInit, "body" | "method">,
-    pathOverride?: string,
-  ): Promise<Res<T, E>>
-  function deletty<E extends Endpoint<T>>(
-    endpoint: E,
-    body: Req<T, E>,
-    init?: Omit<RequestInit, "body" | "method">,
-    pathOverride?: string,
-  ): Promise<Res<T, E>>
-  function deletty<E extends Endpoint<T>>(
-    endpoint: E,
-    bodyOrInit?: Req<T, E> | Omit<RequestInit, "body" | "method">,
+    bodyOrInit?: Req<T, E> | undefined | Omit<RequestInit, "body" | "method">,
     initOrPath?: Omit<RequestInit, "body" | "method"> | string,
     pathOverrideMaybe?: string,
-  ): Promise<Res<T, E>> {
+  ): {
+    body: unknown
+    init: Omit<RequestInit, "body" | "method"> | undefined
+    pathOverrideResolved: string | undefined
+  } {
     let body: unknown
     let init: Omit<RequestInit, "body" | "method"> | undefined
     let pathOverrideResolved: string | undefined
@@ -137,8 +153,13 @@ export function createClient<T extends SchemaRegistry>(schemas: T, options: Clie
       init = initOrPath as Omit<RequestInit, "body" | "method"> | undefined
       pathOverrideResolved = pathOverrideMaybe
     } else if (typeof initOrPath === "string") {
-      // Backward compatible form: deletty(endpoint, init?, pathOverride)
-      init = bodyOrInit as Omit<RequestInit, "body" | "method"> | undefined
+      // For endpoints with request schemas, second arg is body.
+      if (schemas[endpoint].req) {
+        body = bodyOrInit
+      } else {
+        // Backward compatible form: deletty(endpoint, init?, pathOverride)
+        init = bodyOrInit as Omit<RequestInit, "body" | "method"> | undefined
+      }
       pathOverrideResolved = initOrPath
     } else if (initOrPath !== undefined) {
       // New form: deletty(endpoint, body, init)
@@ -154,48 +175,99 @@ export function createClient<T extends SchemaRegistry>(schemas: T, options: Clie
       init = bodyOrInit as Omit<RequestInit, "body" | "method">
     }
 
-    return api(endpoint, "DELETE", body, init, pathOverrideResolved)
+    return { body, init, pathOverrideResolved }
   }
 
-  function delly<E extends Endpoint<T>>(
-    endpoint: E,
-    init?: Omit<RequestInit, "body" | "method">,
-    pathOverride?: string,
-  ): Promise<Res<T, E>>
-  function delly<E extends Endpoint<T>>(
+  function deletty<E extends BodyReqEndpoint<T>>(
     endpoint: E,
     body: Req<T, E>,
     init?: Omit<RequestInit, "body" | "method">,
     pathOverride?: string,
   ): Promise<Res<T, E>>
-  function delly<E extends Endpoint<T>>(
+  function deletty<E extends BodyReqEndpoint<T>>(endpoint: E, body: Req<T, E>, pathOverride: string): Promise<Res<T, E>>
+  function deletty<E extends UndefinedReqEndpoint<T>>(endpoint: E): Promise<Res<T, E>>
+  function deletty<E extends UndefinedReqEndpoint<T>>(
     endpoint: E,
-    bodyOrInit?: Req<T, E> | Omit<RequestInit, "body" | "method">,
+    body: undefined,
+    init?: Omit<RequestInit, "body" | "method">,
+    pathOverride?: string,
+  ): Promise<Res<T, E>>
+  function deletty<E extends UndefinedReqEndpoint<T>>(
+    endpoint: E,
+    body: undefined,
+    pathOverride: string,
+  ): Promise<Res<T, E>>
+  function deletty<E extends ReadEndpoint<T>>(
+    endpoint: E,
+    init?: Omit<RequestInit, "body" | "method">,
+    pathOverride?: string,
+  ): Promise<Res<T, E>>
+  function deletty<E extends Endpoint<T>>(
+    endpoint: E,
+    bodyOrInit?: Req<T, E> | undefined | Omit<RequestInit, "body" | "method">,
     initOrPath?: Omit<RequestInit, "body" | "method"> | string,
     pathOverrideMaybe?: string,
   ): Promise<Res<T, E>> {
-    return deletty(
-      endpoint,
-      bodyOrInit as Req<T, E>,
-      initOrPath as Omit<RequestInit, "body" | "method">,
-      pathOverrideMaybe,
-    )
+    const { body, init, pathOverrideResolved } = resolveDeleteArgs(endpoint, bodyOrInit, initOrPath, pathOverrideMaybe)
+    return api(endpoint, "DELETE", body, init, pathOverrideResolved)
   }
 
-  function postty<E extends Endpoint<T>>(
-    endpoint: E,
-    init?: Omit<RequestInit, "body" | "method">,
-    pathOverride?: string,
-  ): Promise<Res<T, E>>
-  function postty<E extends Endpoint<T>>(
+  function delly<E extends BodyReqEndpoint<T>>(
     endpoint: E,
     body: Req<T, E>,
     init?: Omit<RequestInit, "body" | "method">,
     pathOverride?: string,
   ): Promise<Res<T, E>>
-  function postty<E extends Endpoint<T>>(
+  function delly<E extends BodyReqEndpoint<T>>(endpoint: E, body: Req<T, E>, pathOverride: string): Promise<Res<T, E>>
+  function delly<E extends UndefinedReqEndpoint<T>>(endpoint: E): Promise<Res<T, E>>
+  function delly<E extends UndefinedReqEndpoint<T>>(
     endpoint: E,
-    bodyOrInit?: Req<T, E> | Omit<RequestInit, "body" | "method">,
+    body: undefined,
+    init?: Omit<RequestInit, "body" | "method">,
+    pathOverride?: string,
+  ): Promise<Res<T, E>>
+  function delly<E extends UndefinedReqEndpoint<T>>(
+    endpoint: E,
+    body: undefined,
+    pathOverride: string,
+  ): Promise<Res<T, E>>
+  function delly<E extends ReadEndpoint<T>>(
+    endpoint: E,
+    init?: Omit<RequestInit, "body" | "method">,
+    pathOverride?: string,
+  ): Promise<Res<T, E>>
+  function delly<E extends Endpoint<T>>(
+    endpoint: E,
+    bodyOrInit?: Req<T, E> | undefined | Omit<RequestInit, "body" | "method">,
+    initOrPath?: Omit<RequestInit, "body" | "method"> | string,
+    pathOverrideMaybe?: string,
+  ): Promise<Res<T, E>> {
+    const { body, init, pathOverrideResolved } = resolveDeleteArgs(endpoint, bodyOrInit, initOrPath, pathOverrideMaybe)
+    return api(endpoint, "DELETE", body, init, pathOverrideResolved)
+  }
+
+  function postty<E extends BodyReqEndpoint<T>>(
+    endpoint: E,
+    body: Req<T, E>,
+    init?: Omit<RequestInit, "body" | "method">,
+    pathOverride?: string,
+  ): Promise<Res<T, E>>
+  function postty<E extends BodyReqEndpoint<T>>(endpoint: E, body: Req<T, E>, pathOverride: string): Promise<Res<T, E>>
+  function postty<E extends UndefinedReqEndpoint<T>>(endpoint: E): Promise<Res<T, E>>
+  function postty<E extends UndefinedReqEndpoint<T>>(
+    endpoint: E,
+    body: undefined,
+    init?: Omit<RequestInit, "body" | "method">,
+    pathOverride?: string,
+  ): Promise<Res<T, E>>
+  function postty<E extends UndefinedReqEndpoint<T>>(
+    endpoint: E,
+    body: undefined,
+    pathOverride: string,
+  ): Promise<Res<T, E>>
+  function postty<E extends EndpointWithReq<T>>(
+    endpoint: E,
+    bodyOrUndefined?: Req<T, E> | undefined,
     initOrPath?: Omit<RequestInit, "body" | "method"> | string,
     pathOverrideMaybe?: string,
   ): Promise<Res<T, E>> {
@@ -204,41 +276,36 @@ export function createClient<T extends SchemaRegistry>(schemas: T, options: Clie
     let pathOverrideResolved: string | undefined
 
     if (typeof pathOverrideMaybe === "string") {
-      body = bodyOrInit
+      body = bodyOrUndefined
       init = initOrPath as Omit<RequestInit, "body" | "method"> | undefined
       pathOverrideResolved = pathOverrideMaybe
     } else if (typeof initOrPath === "string") {
-      if (schemas[endpoint].req) {
-        body = bodyOrInit
-      } else {
-        init = bodyOrInit as Omit<RequestInit, "body" | "method"> | undefined
-      }
+      body = bodyOrUndefined
       pathOverrideResolved = initOrPath
     } else if (initOrPath !== undefined) {
-      body = bodyOrInit
-      init = initOrPath as Omit<RequestInit, "body" | "method"> | undefined
-    } else if (bodyOrInit === undefined) {
-      init = undefined
-    } else if (schemas[endpoint].req) {
-      body = bodyOrInit
+      body = bodyOrUndefined
+      init = initOrPath
     } else {
-      init = bodyOrInit as Omit<RequestInit, "body" | "method">
+      body = bodyOrUndefined
     }
 
     return api(endpoint, "POST", body, init, pathOverrideResolved)
   }
 
   return {
-    getty: <E extends Endpoint<T>>(endpoint: E, init?: Omit<RequestInit, "body" | "method">, pathOverride?: string) =>
-      api(endpoint, "GET", undefined, init, pathOverride),
+    getty: <E extends ReadEndpoint<T>>(
+      endpoint: E,
+      init?: Omit<RequestInit, "body" | "method">,
+      pathOverride?: string,
+    ) => api(endpoint, "GET", undefined, init, pathOverride),
     postty,
-    putty: <E extends Endpoint<T>>(
+    putty: <E extends EndpointWithReq<T>>(
       endpoint: E,
       body: Req<T, E>,
       init?: Omit<RequestInit, "body" | "method">,
       pathOverride?: string,
     ) => api(endpoint, "PUT", body, init, pathOverride),
-    patchy: <E extends Endpoint<T>>(
+    patchy: <E extends EndpointWithReq<T>>(
       endpoint: E,
       body: Req<T, E>,
       init?: Omit<RequestInit, "body" | "method">,

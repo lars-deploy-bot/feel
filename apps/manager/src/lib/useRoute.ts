@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react"
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "") // e.g. "/manager-2"
+const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "")
 
 function getPage(): string {
   const path = window.location.pathname

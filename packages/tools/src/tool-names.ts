@@ -1,16 +1,21 @@
 /**
  * Shared Tool Name Constants
  *
- * Single source of truth for all tool names across the codebase.
+ * MCP tool names live here. SDK tool names live in @webalive/shared (SDK_TOOL, SDK_TOOL_LOWER).
  * Import these instead of hardcoding strings.
  *
  * @example
  * ```typescript
- * import { LINEAR, FILE_OPS } from "@webalive/tools"
- *
+ * import { LINEAR } from "@webalive/tools"
  * if (toolName === LINEAR.CREATE_ISSUE) { ... }
+ *
+ * // For SDK tools, use @webalive/shared:
+ * import { SDK_TOOL, SDK_TOOL_LOWER } from "@webalive/shared"
+ * if (toolName === SDK_TOOL.READ) { ... }
  * ```
  */
+
+import { SDK_TOOL_LOWER } from "@webalive/shared"
 
 // ============================================================
 // LINEAR MCP TOOLS
@@ -59,15 +64,15 @@ export type StripeTool = (typeof STRIPE)[keyof typeof STRIPE]
 export type StripePattern = (typeof STRIPE_PATTERNS)[keyof typeof STRIPE_PATTERNS]
 
 // ============================================================
-// FILE OPERATIONS (SDK built-in)
+// FILE OPERATIONS (SDK built-in) — derived from @webalive/shared
 // ============================================================
 
 export const FILE_OPS = {
-  READ: "read",
-  WRITE: "write",
-  EDIT: "edit",
-  GREP: "grep",
-  GLOB: "glob",
+  READ: SDK_TOOL_LOWER.READ,
+  WRITE: SDK_TOOL_LOWER.WRITE,
+  EDIT: SDK_TOOL_LOWER.EDIT,
+  GREP: SDK_TOOL_LOWER.GREP,
+  GLOB: SDK_TOOL_LOWER.GLOB,
 } as const
 
 export type FileOpTool = (typeof FILE_OPS)[keyof typeof FILE_OPS]
@@ -139,11 +144,11 @@ export const AUTOMATION = {
 export type AutomationTool = (typeof AUTOMATION)[keyof typeof AUTOMATION]
 
 // ============================================================
-// PLAN MODE TOOLS (SDK built-in)
+// PLAN MODE TOOLS (SDK built-in) — derived from @webalive/shared
 // ============================================================
 
 export const PLAN = {
-  EXIT_PLAN_MODE: "exitplanmode",
+  EXIT_PLAN_MODE: SDK_TOOL_LOWER.EXIT_PLAN_MODE,
 } as const
 
 export type PlanTool = (typeof PLAN)[keyof typeof PLAN]
@@ -163,15 +168,15 @@ export type BrowserTool = (typeof BROWSER)[keyof typeof BROWSER]
 // ============================================================
 
 export const WEB = {
-  FETCH: "webfetch",
-  SEARCH: "websearch",
+  FETCH: SDK_TOOL_LOWER.WEB_FETCH,
+  SEARCH: SDK_TOOL_LOWER.WEB_SEARCH,
 } as const
 
 export type WebTool = (typeof WEB)[keyof typeof WEB]
 
 export const OTHER = {
-  BASH: "bash",
-  TASK: "task",
+  BASH: SDK_TOOL_LOWER.BASH,
+  TASK: SDK_TOOL_LOWER.TASK,
 } as const
 
 export type OtherTool = (typeof OTHER)[keyof typeof OTHER]

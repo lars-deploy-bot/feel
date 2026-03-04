@@ -85,6 +85,7 @@ const existingHosts = [
   ...extractHostsFromCaddyfile("/etc/caddy/Caddyfile.prod"),
   ...extractHostsFromCaddyfile("/etc/caddy/Caddyfile.staging"),
   ...extractHostsFromCaddyfile("/etc/caddy/Caddyfile"),
+  ...extractHostsFromCaddyfile(resolve(aliveRoot, "ops/caddy/Caddyfile")),
 ]
 
 const blocked = new Set([...reserved, ...previewForReserved, ...existingHosts])

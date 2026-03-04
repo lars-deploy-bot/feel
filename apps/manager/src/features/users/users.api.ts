@@ -1,3 +1,4 @@
+import type { ClaudeModel } from "@webalive/shared/models"
 import { api } from "@/lib/api"
 import type { User, UserEvent } from "./users.types"
 
@@ -43,4 +44,6 @@ export const usersApi = {
   profile: (userId: string) => api.get<UserProfileResponse>(`/manager/users/${userId}/profile`).then(r => r.data),
   events: (userId: string, limit = 50) =>
     api.get<UserEventsResponse>(`/manager/users/${userId}/events?limit=${limit}`).then(r => r.data),
+  updateModels: (userId: string, enabledModels: ClaudeModel[]) =>
+    api.patch(`/manager/users/${userId}/models`, { enabled_models: enabledModels }),
 }

@@ -41,6 +41,7 @@ const schemas = {
   },
   // POST endpoint without body (action/trigger)
   "session/revoke-others": {
+    req: z.undefined(),
     res: z.object({ ok: z.boolean(), count: z.number() }),
   },
   // DELETE endpoint (no req, can use deletty)

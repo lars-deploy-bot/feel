@@ -1,7 +1,10 @@
+import { ALL_CLAUDE_MODELS } from "@webalive/shared/models"
 import { Hono } from "hono"
+import { z } from "zod"
 import { fetchUserEvents, fetchUserProfile } from "../../../infra/posthog"
+import { validate } from "../../../shared/validation"
 import type { AppBindings } from "../../../types/hono"
-import { getUserById, listUsers } from "./users.service"
+import { getUserById, listUsers, updateEnabledModels } from "./users.service"
 
 export const usersRoutes = new Hono<AppBindings>()
 
@@ -23,6 +26,18 @@ usersRoutes.get("/:id/profile", async c => {
   const userId = c.req.param("id")
   const profile = await fetchUserProfile(userId)
   return c.json({ ok: true, data: profile })
+})
+
+// PATCH /api/manager/users/:id/models - update enabled models
+const modelsSchema = z.object({
+  enabled_models: z.array(z.enum(ALL_CLAUDE_MODELS)),
+})
+
+usersRoutes.patch("/:id/models", async c => {
+  const userId = c.req.param("id")
+  const body = validate(modelsSchema, await c.req.json())
+  await updateEnabledModels(userId, body.enabled_models)
+  return c.json({ ok: true })
 })
 
 // GET /api/manager/users/:id/events - get PostHog events for a user

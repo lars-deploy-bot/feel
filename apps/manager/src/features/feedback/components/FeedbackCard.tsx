@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/Badge"
+import { Badge, type BadgeVariant } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import type { FeedbackItem } from "../feedback.types"
 import { useUpdateFeedback } from "../hooks/useFeedback"
@@ -21,12 +21,12 @@ function formatDate(iso: string | null): string {
   })
 }
 
-function statusBadge(item: FeedbackItem) {
-  if (item.closed_at) return { label: "Resolved", variant: "success" as const }
-  if (item.fixed_email_sent) return { label: "Fixed", variant: "success" as const }
-  if (item.aware_email_sent) return { label: "Aware", variant: "warning" as const }
-  if (item.github_issue_url) return { label: "Issue", variant: "accent" as const }
-  return { label: "Open", variant: "default" as const }
+function statusBadge(item: FeedbackItem): { label: string; variant: BadgeVariant } {
+  if (item.closed_at) return { label: "Resolved", variant: "success" }
+  if (item.fixed_email_sent) return { label: "Fixed", variant: "success" }
+  if (item.aware_email_sent) return { label: "Aware", variant: "warning" }
+  if (item.github_issue_url) return { label: "Issue", variant: "accent" }
+  return { label: "Open", variant: "default" }
 }
 
 export function FeedbackCard({ item, selected, onSelect }: FeedbackCardProps) {

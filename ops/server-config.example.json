@@ -35,7 +35,8 @@
   "shell": {
     "domains": ["go.example.com"],
     "listen": ":8443",
-    "upstream": "localhost:3888"
+    "upstream": "localhost:3888",
+    "e2bUpstream": "localhost:5075"
   },
   "generated": {
     "dir": "/path/to/generated",

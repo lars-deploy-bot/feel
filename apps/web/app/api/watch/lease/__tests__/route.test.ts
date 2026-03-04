@@ -38,7 +38,13 @@ vi.mock("@/lib/error-codes", () => ({
   ErrorCodes: {
     INTERNAL_ERROR: "INTERNAL_ERROR",
     SHELL_SERVER_UNAVAILABLE: "SHELL_SERVER_UNAVAILABLE",
+    WATCH_UNSUPPORTED: "WATCH_UNSUPPORTED",
   },
+}))
+
+const mockResolveDomainRuntime = vi.fn()
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  resolveDomainRuntime: (...args: unknown[]) => mockResolveDomainRuntime(...args),
 }))
 
 const mockEnv: Record<string, string | undefined> = {}
@@ -58,11 +64,23 @@ function makeRequest(body: Record<string, unknown> = { workspace: "example.com" 
   })
 }
 
+function getShellLeaseCall(): [string, RequestInit] {
+  const call = mockFetch.mock.calls.find(call => call[0] === "http://localhost:3888/internal/watch-lease") as
+    | [string, RequestInit]
+    | undefined
+
+  if (!call) {
+    throw new Error("Expected shell lease fetch call was not made")
+  }
+  return call
+}
+
 describe("POST /api/watch/lease", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockEnv.SHELL_PASSWORD = "test-secret"
     mockEnv.SHELL_HOST = "go.example.com"
+    mockResolveDomainRuntime.mockResolvedValue(null)
   })
 
   it("returns auth error when validateRequest fails", async () => {
@@ -138,6 +156,26 @@ describe("POST /api/watch/lease", () => {
     expect(res.status).toBe(502)
   })
 
+  it("returns 501 for e2b workspaces and does not call shell server", async () => {
+    mockValidateRequest.mockResolvedValue({
+      data: { workspace: "example.com", body: { workspace: "example.com" } },
+    })
+    mockResolveDomainRuntime.mockResolvedValue({
+      domain_id: "domain-1",
+      hostname: "example.com",
+      execution_mode: "e2b",
+      sandbox_id: "sandbox-1",
+      sandbox_status: "ready",
+    })
+
+    const res = await POST(makeRequest())
+    const data = await res.json()
+
+    expect(res.status).toBe(501)
+    expect(data.error.code).toBe("WATCH_UNSUPPORTED")
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
   it("returns lease data on success", async () => {
     mockValidateRequest.mockResolvedValue({
       data: { workspace: "example.com", body: { workspace: "example.com" } },
@@ -177,8 +215,8 @@ describe("POST /api/watch/lease", () => {
     const res = await POST(makeRequest({ workspace: "alive" }))
     expect(res.status).toBe(200)
 
-    // Verify the fetch was called with workspace: "root"
-    const fetchBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const [, requestInit] = getShellLeaseCall()
+    const fetchBody = JSON.parse(String(requestInit.body))
     expect(fetchBody.workspace).toBe("root")
   })
 
@@ -198,7 +236,8 @@ describe("POST /api/watch/lease", () => {
     const res = await POST(makeRequest({ workspace: "example.com", worktree: "my-feature" }))
     expect(res.status).toBe(200)
 
-    const fetchBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const [, requestInit] = getShellLeaseCall()
+    const fetchBody = JSON.parse(String(requestInit.body))
     expect(fetchBody.worktree).toBe("my-feature")
   })
 
@@ -217,7 +256,8 @@ describe("POST /api/watch/lease", () => {
 
     await POST(makeRequest({ workspace: "example.com" }))
 
-    const fetchBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const [, requestInit] = getShellLeaseCall()
+    const fetchBody = JSON.parse(String(requestInit.body))
     expect(fetchBody.worktree).toBeUndefined()
   })
 

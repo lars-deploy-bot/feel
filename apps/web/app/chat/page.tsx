@@ -57,7 +57,7 @@ import {
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
-import { useDebugVisible, useWorkbench } from "@/lib/stores/debug-store"
+import { useDebugVisible, useWorkbench, useWorkbenchFullscreen } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 import { useLastSeenStreamSeq, useStreamingActions } from "@/lib/stores/streamingStore"
@@ -125,6 +125,7 @@ function ChatPageContent() {
   const chatInputRef = useRef<ChatInputHandle | null>(null)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
   const showWorkbenchRaw = useWorkbench()
+  const isWorkbenchFullscreen = useWorkbenchFullscreen()
   const isDebugMode = useDebugVisible()
   const { addEvent: addDevEvent } = useDevTerminal()
   const { workspace, worktree, workspaceKey, isTerminal, mounted, setWorkspace, setWorktree } = useWorkspace({
@@ -761,7 +762,7 @@ function ChatPageContent() {
           )}
 
           <section
-            className={`flex-1 flex flex-col overflow-hidden relative min-w-0 ${modals.settings ? "hidden" : ""}`}
+            className={`flex-1 flex flex-col overflow-hidden relative min-w-0 ${modals.settings || (showWorkbench && isWorkbenchFullscreen) ? "hidden" : ""}`}
             aria-label="Chat area"
             onDragEnter={handleChatDragEnter}
             onDragLeave={handleChatDragLeave}
@@ -868,12 +869,22 @@ function ChatPageContent() {
                           )
                         })
 
+                      const isTextMessage =
+                        message.type === "user" ||
+                        (message.type === "sdk_message" &&
+                          typeof message.content === "object" &&
+                          message.content !== null &&
+                          "type" in message.content &&
+                          message.content.type === "assistant")
+
                       return (
                         <MessageWrapper
                           key={message.id}
                           messageId={message.id}
                           tabId={sessionTabId ?? ""}
                           canDelete={canDelete}
+                          align={message.type === "user" ? "right" : "left"}
+                          showActions={isTextMessage}
                         >
                           {content}
                         </MessageWrapper>
@@ -967,7 +978,7 @@ function ChatPageContent() {
 
           {/* Workbench - desktop only, hidden when settings open */}
           {showWorkbench && !modals.settings && (
-            <div className="hidden md:flex h-full overflow-hidden">
+            <div className={`hidden md:flex h-full overflow-hidden ${isWorkbenchFullscreen ? "flex-1" : ""}`}>
               <Workbench />
             </div>
           )}

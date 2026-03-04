@@ -1,7 +1,6 @@
-import { SECURITY } from "@webalive/shared"
+import { CLAUDE_MODELS, SECURITY } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { isConversationLocked, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
-import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { setupAbortHandler } from "@/lib/stream/abort-handler"
 import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 

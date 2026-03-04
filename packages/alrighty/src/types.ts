@@ -49,6 +49,9 @@ export type MutationEndpoint<T extends SchemaRegistry> = {
 }[keyof T] &
   string
 
+/** Alias for endpoints that define a request schema. */
+export type EndpointWithReq<T extends SchemaRegistry> = MutationEndpoint<T>
+
 /**
  * Endpoints that have NO request body schema (for GET/DELETE)
  */
@@ -57,12 +60,29 @@ export type ReadEndpoint<T extends SchemaRegistry> = {
 }[keyof T] &
   string
 
+/** Endpoints whose request schema input is exactly `undefined` (e.g. `z.undefined()`). */
+export type UndefinedReqEndpoint<T extends SchemaRegistry> = {
+  [K in EndpointWithReq<T>]: [ReqInput<T, K>] extends [undefined] ? K : never
+}[EndpointWithReq<T>] &
+  string
+
+/** Endpoints that require a non-undefined request body. */
+export type BodyReqEndpoint<T extends SchemaRegistry> = Exclude<EndpointWithReq<T>, UndefinedReqEndpoint<T>>
+
 /**
  * Extract request type for an endpoint.
  * Returns `never` if no req schema (prevents passing body to GET endpoints).
  */
 export type Req<T extends SchemaRegistry, E extends Endpoint<T>> = T[E]["req"] extends z.ZodTypeAny
   ? z.infer<T[E]["req"]>
+  : never
+
+/**
+ * Extract raw request input type for an endpoint (before parse/transform/brand).
+ * Returns `never` if no req schema.
+ */
+export type ReqInput<T extends SchemaRegistry, E extends Endpoint<T>> = T[E]["req"] extends z.ZodTypeAny
+  ? z.input<T[E]["req"]>
   : never
 
 /**
@@ -102,4 +122,6 @@ export interface ClientOptions {
   credentials?: RequestCredentials
   /** Default headers for all requests (e.g., auth tokens). Use Record<string, string>, not Headers instance. */
   headers?: Record<string, string>
+  /** Allow absolute URL `pathOverride` values (default: false for SSRF safety). */
+  allowAbsolutePathOverride?: boolean
 }

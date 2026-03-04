@@ -199,6 +199,20 @@ if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
     fi
 fi
 
+# Check required support services
+_SERVICES_DOWN=()
+for _svc in e2b-terminal shell-server-go caddy-shell preview-proxy; do
+    if systemctl list-unit-files "${_svc}.service" >/dev/null 2>&1 \
+       && ! systemctl is-active --quiet "$_svc"; then
+        _SERVICES_DOWN+=("$_svc")
+    fi
+done
+if [ ${#_SERVICES_DOWN[@]} -gt 0 ]; then
+    phase_end error "Support services not running: ${_SERVICES_DOWN[*]}"
+    log_error "Fix: systemctl start ${_SERVICES_DOWN[*]}"
+    exit 1
+fi
+
 phase_end ok "Environment validated"
 
 # =============================================================================
@@ -321,10 +335,16 @@ elif [ ! -d "$TEMPLATES_ROOT/.git" ]; then
     fi
 else
     phase_start "Syncing templates"
-    if git -C "$TEMPLATES_ROOT" pull --ff-only 2>&1 | tail -3; then
-        phase_end ok "Templates up to date"
+    WRITE_PROBE="$TEMPLATES_ROOT/.git/.alive-write-probe.$$"
+    if ! touch "$WRITE_PROBE" 2>/dev/null; then
+        phase_end warn "Templates repo not writable in this runtime — skipping sync"
     else
-        phase_end warn "Templates sync failed (non-fast-forward?) — continuing with existing templates"
+        rm -f "$WRITE_PROBE"
+        if git -C "$TEMPLATES_ROOT" pull --ff-only 2>&1 | tail -3; then
+            phase_end ok "Templates up to date"
+        else
+            phase_end warn "Templates sync failed — continuing with existing templates"
+        fi
     fi
 fi
 

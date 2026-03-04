@@ -14,21 +14,32 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest, NextResponse } from "next/server"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import type { SessionUser } from "@/features/auth/lib/auth"
 
-// Mock cookies
-vi.mock("next/headers", () => ({
-  cookies: vi.fn(),
-}))
+const mockGetSessionUser = vi.fn()
+const mockVerifyWorkspaceAccess = vi.fn()
 
-// Mock auth guards
-vi.mock("@/features/auth/types/guards", () => ({
-  hasSessionCookie: vi.fn(),
-}))
+// Keep auth module resilient to future route imports by auto-mocking all exported functions.
+vi.mock("@/features/auth/lib/auth", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/features/auth/lib/auth")>()
+  const mockedModule: Record<string, unknown> = { ...actual }
 
-// Mock auth functions
-vi.mock("@/features/auth/lib/auth", async () => {
-  return {}
+  for (const [key, value] of Object.entries(actual)) {
+    if (typeof value === "function") {
+      mockedModule[key] = vi.fn()
+    }
+  }
+
+  mockedModule.getSessionUser = (...args: unknown[]) => mockGetSessionUser(...args)
+  mockedModule.verifyWorkspaceAccess = (...args: unknown[]) => mockVerifyWorkspaceAccess(...args)
+
+  return mockedModule
 })
+
+const mockResolveDomainRuntime = vi.fn()
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  resolveDomainRuntime: (...args: unknown[]) => mockResolveDomainRuntime(...args),
+}))
 
 // Mock structured error response
 vi.mock("@/lib/api/responses", async () => {
@@ -47,8 +58,6 @@ vi.mock("@/features/chat/lib/workspaceRetriever", () => ({
 
 // Import after mocking
 const { POST } = await import("../route")
-const { cookies } = await import("next/headers")
-const { hasSessionCookie } = await import("@/features/auth/types/guards")
 const { getWorkspace } = await import("@/features/chat/lib/workspaceRetriever")
 
 // Test workspace directory
@@ -71,6 +80,16 @@ interface ReadErrorResponse {
 }
 
 type ReadResponse = ReadSuccessResponse | ReadErrorResponse
+
+const MOCK_USER: SessionUser = {
+  id: "user-123",
+  email: "test@example.com",
+  name: "Test User",
+  canSelectAnyModel: false,
+  isAdmin: false,
+  isSuperadmin: false,
+  enabledModels: [],
+}
 
 function createMockRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest("http://localhost/api/files/read", {
@@ -107,12 +126,9 @@ describe("POST /api/files/read", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-
-    // Default: valid session cookie
-    vi.mocked(cookies).mockResolvedValue({
-      get: vi.fn().mockReturnValue({ value: "valid-session-token" }),
-    } as never)
-    vi.mocked(hasSessionCookie).mockReturnValue(true)
+    mockGetSessionUser.mockResolvedValue(MOCK_USER)
+    mockVerifyWorkspaceAccess.mockResolvedValue(TEST_WORKSPACE)
+    mockResolveDomainRuntime.mockResolvedValue(null)
 
     // Default: valid workspace
     vi.mocked(getWorkspace).mockResolvedValue({
@@ -123,7 +139,7 @@ describe("POST /api/files/read", () => {
 
   describe("Authentication", () => {
     it("should require session cookie (401 without session)", async () => {
-      vi.mocked(hasSessionCookie).mockReturnValue(false)
+      mockGetSessionUser.mockResolvedValue(null)
 
       const req = createMockRequest({ path: "test.txt" })
       const response = await POST(req)

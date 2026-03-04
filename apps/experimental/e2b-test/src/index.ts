@@ -1,6 +1,7 @@
 import { Sandbox } from "e2b"
+import { E2B_DEFAULT_TEMPLATE } from "@webalive/sandbox"
 
-const sandbox = await Sandbox.create("base", {
+const sandbox = await Sandbox.create(E2B_DEFAULT_TEMPLATE, {
   apiKey: process.env.E2B_API_KEY,
   domain: "e2b.sonno.tech",
 })

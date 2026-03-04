@@ -98,9 +98,10 @@ export function WorktreeSwitcher({
     setRemovingSlug(target)
 
     try {
+      const request = validateRequest("worktrees/delete")
       await delly(
         "worktrees/delete",
-        undefined,
+        request,
         `/api/worktrees?workspace=${encodeURIComponent(workspace)}&slug=${encodeURIComponent(target)}`,
       )
       setWorktrees(prev => prev.filter(item => item.slug !== target))

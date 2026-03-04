@@ -50,6 +50,22 @@ function buildBaseConfig(overrides?: Record<string, unknown>): Record<string, un
 }
 
 describe("parseServerConfig sentry compatibility", () => {
+  it("parses optional shell.e2bUpstream", () => {
+    const raw = JSON.stringify(
+      buildBaseConfig({
+        shell: {
+          domains: ["go.example.com"],
+          listen: ":8443",
+          upstream: "localhost:3888",
+          e2bUpstream: "localhost:5075",
+        },
+      }),
+    )
+
+    const parsed = parseServerConfig(raw)
+    expect(parsed.shell.e2bUpstream).toBe("localhost:5075")
+  })
+
   it("parses canonical sentry.url + sentry.projectId", () => {
     const raw = JSON.stringify(buildBaseConfig())
     const parsed = parseServerConfig(raw)

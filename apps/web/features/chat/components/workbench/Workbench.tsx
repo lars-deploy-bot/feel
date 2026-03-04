@@ -1,13 +1,13 @@
 "use client"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
-import { Activity, Code, ExternalLink, Globe, RotateCw, Terminal, X } from "lucide-react"
+import { Activity, Code, ExternalLink, Globe, Maximize2, Minimize2, RotateCw, Terminal, X } from "lucide-react"
 import { useCallback, useEffect, useRef } from "react"
 import { useWorkbenchContext, type WorkbenchView } from "@/features/chat/lib/workbench-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { trackWorkbenchViewChanged } from "@/lib/analytics/events"
 import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { getSiteUrl } from "@/lib/preview-utils"
-import { useDebugActions, useWorkbenchWidth } from "@/lib/stores/debug-store"
+import { useDebugActions, useWorkbenchFullscreen, useWorkbenchWidth } from "@/lib/stores/debug-store"
 import { PulsingDot } from "../ui/PulsingDot"
 // import { useFeatureFlag } from "@/lib/stores/featureFlagStore" -- will be needed when final home style is chosen
 import { DrivePanel } from "./drive/DrivePanel"
@@ -23,10 +23,11 @@ export function Workbench() {
   const { workbench, setView, openFile, closeFile, toggleFolder, setTreeWidth, toggleTreeCollapsed } =
     useWorkbenchContext()
   const savedWidth = useWorkbenchWidth()
-  const { setWorkbench, setWorkbenchWidth } = useDebugActions()
+  const isFullscreen = useWorkbenchFullscreen()
+  const { setWorkbench, setWorkbenchWidth, toggleWorkbenchFullscreen } = useDebugActions()
   const { width, setWidth, isResizing, handleMouseDown } = useResizablePanel({
     defaultWidth: savedWidth ?? 600,
-    maxWidthPercent: 0.6,
+    maxWidthPercent: 0.8,
   })
   const inputRef = useRef<HTMLInputElement>(null)
   // const driveEnabled = useFeatureFlag("DRIVE") -- will be needed when final home style is chosen
@@ -95,10 +96,10 @@ export function Workbench() {
 
   return (
     <div
-      className={`relative bg-white dark:bg-[#0d0d0d] flex flex-col border-l border-black/[0.08] dark:border-white/[0.04] h-full ${isResizing ? "select-none" : ""}`}
-      style={{ width: `${width}px` }}
+      className={`relative bg-white dark:bg-[#0d0d0d] flex flex-col border-l border-black/[0.08] dark:border-white/[0.04] h-full ${isFullscreen ? "flex-1" : ""} ${isResizing ? "select-none" : ""}`}
+      style={isFullscreen ? undefined : { width: `${width}px` }}
     >
-      {/* Resize handle */}
+      {/* Resize handle — hidden in fullscreen */}
       {/* biome-ignore lint/a11y/useSemanticElements: div needed for child visual indicator */}
       <div
         role="separator"
@@ -106,7 +107,7 @@ export function Workbench() {
         aria-label="Resize panel"
         aria-valuenow={width}
         tabIndex={0}
-        className="absolute left-0 top-0 bottom-0 w-3 -ml-1.5 cursor-col-resize z-10 group flex items-center justify-center"
+        className={`absolute left-0 top-0 bottom-0 w-6 -ml-3 cursor-col-resize z-10 group flex items-center justify-center ${isFullscreen ? "hidden" : ""}`}
         onMouseDown={handleMouseDown}
         style={{ userSelect: "none" }}
       >
@@ -144,6 +145,14 @@ export function Workbench() {
             )
           })}
           <div className="flex-1" />
+          <button
+            type="button"
+            onClick={toggleWorkbenchFullscreen}
+            className="p-1 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 size={13} strokeWidth={1.5} /> : <Maximize2 size={13} strokeWidth={1.5} />}
+          </button>
           <button
             type="button"
             onClick={() => setWorkbench(false)}

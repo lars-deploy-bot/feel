@@ -1,92 +1,85 @@
 "use client"
 
-/**
- * MessageWrapper Component
- *
- * Wraps individual messages with hover actions like delete.
- * Button positioned to the right on desktop (hidden on mobile).
- * Uses opacity + pointer-events for smooth fade without layout shift.
- */
-
-import { Trash2 } from "lucide-react"
-import { useState } from "react"
+import { Check, Copy, Trash2 } from "lucide-react"
+import { useCallback, useRef, useState } from "react"
 import { trackMessageDeleted } from "@/lib/analytics/events"
 import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
 import { cn } from "@/lib/utils"
+import { ghostActionBtn } from "./styles"
 
 interface MessageWrapperProps {
   messageId: string
   tabId: string
-  /** Whether this message can be deleted (has previous assistant message) */
   canDelete: boolean
+  align?: "left" | "right"
+  /** Show copy/delete actions on hover — only for text messages */
+  showActions?: boolean
   children: React.ReactNode
 }
 
-export function MessageWrapper({ messageId, tabId, canDelete, children }: MessageWrapperProps) {
+export function MessageWrapper({
+  messageId,
+  tabId,
+  canDelete,
+  align = "left",
+  showActions = false,
+  children,
+}: MessageWrapperProps) {
   const [isDeleting, setIsDeleting] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
   const { deleteMessagesAfter } = useDexieMessageActions()
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (isDeleting) return
     setIsDeleting(true)
-
-    console.log("[MessageWrapper] Deleting message:", { messageId, tabId, canDelete })
-
     try {
       const resumeUuid = await deleteMessagesAfter(messageId, tabId)
-      if (resumeUuid) {
-        trackMessageDeleted()
-        console.log("[MessageWrapper] Messages deleted, will resume at:", resumeUuid)
-      } else {
-        console.warn("[MessageWrapper] Could not delete messages (no previous assistant)")
-      }
+      if (resumeUuid) trackMessageDeleted()
     } catch (error) {
       console.error("[MessageWrapper] Delete failed:", error)
     } finally {
       setIsDeleting(false)
     }
-  }
+  }, [isDeleting, deleteMessagesAfter, messageId, tabId])
 
-  // Button to the RIGHT of message (horizontal flex layout)
-  // Only show button container on desktop when canDelete is true
+  const handleCopy = useCallback(() => {
+    if (copied) return
+    const text = contentRef.current?.innerText ?? ""
+    navigator.clipboard.writeText(text.trim())
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }, [copied])
+
   return (
-    <div className={cn("group flex items-start", canDelete && "gap-1")}>
-      {/* Message content - takes available space */}
-      <div className="min-w-0 flex-1">{children}</div>
-
-      {/* Delete button - to the right, shown on hover (desktop only) */}
-      {canDelete && (
+    <div className="group" ref={contentRef}>
+      {children}
+      {showActions && (
         <div
           className={cn(
-            // Fixed width container so layout doesn't shift
-            "w-8 flex-shrink-0",
-            // Desktop only
-            "hidden md:flex",
-            // Center the button
-            "items-start justify-center pt-1",
+            "hidden md:flex gap-1 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+            align === "right" && "justify-end",
           )}
         >
           <button
             type="button"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className={cn(
-              "p-1.5 rounded-md",
-              // Colors
-              "text-zinc-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400",
-              "hover:bg-red-50 dark:hover:bg-red-950/30",
-              // Hidden by default, shown on group hover
-              "opacity-0 pointer-events-none",
-              "group-hover:opacity-100 group-hover:pointer-events-auto",
-              "transition-opacity duration-150",
-              // Loading state
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-            )}
-            title="Delete this message and all messages after it"
-            aria-label="Delete message"
+            onClick={handleCopy}
+            className={cn(ghostActionBtn, "hover:text-black/40 dark:hover:text-white/40")}
+            aria-label="Copy message"
           >
-            <Trash2 size={14} strokeWidth={1.5} />
+            {copied ? <Check size={11} strokeWidth={1.5} /> : <Copy size={11} strokeWidth={1.5} />}
           </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className={cn(ghostActionBtn, "hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50")}
+              aria-label="Delete message"
+            >
+              <Trash2 size={11} strokeWidth={1.5} />
+            </button>
+          )}
         </div>
       )}
     </div>

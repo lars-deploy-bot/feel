@@ -26,18 +26,100 @@ import process from "node:process"
 // Each workspace gets its own subdirectory to persist Claude session data
 const SESSIONS_BASE_DIR = "/var/lib/claude-sessions"
 
+import { query } from "@anthropic-ai/claude-agent-sdk"
 // IMPORTANT: Import these BEFORE dropping privileges!
 // After privilege drop, the worker can't read /root/alive/node_modules/
-import { query } from "@anthropic-ai/claude-agent-sdk"
+import * as Sentry from "@sentry/node"
+import {
+  createE2bMcp,
+  E2B_DEFAULT_TEMPLATE,
+  E2B_DISABLED_SDK_TOOLS,
+  E2B_MCP_TOOLS,
+  EXECUTION_MODES,
+  SANDBOX_STATUSES,
+  SANDBOX_WORKSPACE_ROOT,
+  SandboxManager,
+} from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamCanUseTool, createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isHeavyBashCommand, isOAuthMcpTool, isStreamClientVisibleTool, isTransientNetworkError } from "@webalive/shared"
+import { createStreamCanUseTool, createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isHeavyBashCommand, isOAuthMcpTool, isStreamClientVisibleTool, isTransientNetworkError, SDK_TOOL, SENTRY } from "@webalive/shared"
 import {
   emailInternalMcp,
   toolsInternalMcp,
   withSearchToolsConnectedProviders,
   workspaceInternalMcp,
 } from "@webalive/tools"
-import { prepareRequestEnv } from "../dist/env-isolation.js"
+import { E2B_INFRASTRUCTURE_ENV_KEYS, prepareRequestEnv } from "../dist/env-isolation.js"
+
+// Initialize Sentry for error reporting in the worker process.
+// DSN comes from server-config.json via @webalive/shared.
+if (SENTRY.DSN) {
+  Sentry.init({
+    dsn: SENTRY.DSN,
+    environment: process.env.STREAM_ENV ?? process.env.NODE_ENV ?? "unknown",
+    // Workers are long-lived — no need for performance tracing
+    tracesSampleRate: 0,
+  })
+}
+
+// Singleton sandbox manager — created lazily on first E2B request.
+// Persists sandbox state via PostgREST (Supabase REST API).
+let sandboxManager = null
+function getSandboxManager() {
+  if (sandboxManager) return sandboxManager
+
+  // FAIL FAST: All E2B env vars must be present. If any are missing, the worker
+  // was spawned without them (check WORKER_SPAWN_ALLOWED_ENV_KEYS in env-isolation.ts).
+  const e2bApiKey = process.env.E2B_API_KEY
+  const e2bDomain = process.env.E2B_DOMAIN
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  const missing = []
+  if (!e2bApiKey) missing.push("E2B_API_KEY")
+  if (!e2bDomain) missing.push("E2B_DOMAIN")
+  if (!supabaseUrl) missing.push("SUPABASE_URL")
+  if (!serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY")
+  if (missing.length > 0) {
+    throw new Error(
+      `[sandbox-manager] FATAL: Missing env vars for E2B mode: ${missing.join(", ")}. Check env-isolation.ts allowlist and .env files.`,
+    )
+  }
+
+  sandboxManager = new SandboxManager({
+    domain: e2bDomain,
+    template: E2B_DEFAULT_TEMPLATE,
+    persistence: {
+      async updateSandbox(domainId, sandboxId, status) {
+        const response = await fetch(`${supabaseUrl}/rest/v1/domains?domain_id=eq.${domainId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Profile": "app",
+            apikey: serviceRoleKey,
+            Authorization: `Bearer ${serviceRoleKey}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({
+            sandbox_id: sandboxId || null,
+            sandbox_status: status,
+          }),
+        })
+        if (!response.ok) {
+          const body = await response.text()
+          const err = new Error(
+            `[sandbox-manager] DB update failed for domain ${domainId} (status=${status}): HTTP ${response.status} — ${body}`,
+          )
+          Sentry.captureException(err, {
+            tags: { component: "e2b", operation: "updateSandbox" },
+            extra: { domainId, sandboxId, status, httpStatus: response.status, body },
+          })
+          throw err
+        }
+      },
+    },
+  })
+  return sandboxManager
+}
 
 // Global unhandled rejection handler - smart handling based on error type
 // Pattern from OpenClaw: don't crash on transient network errors or intentional aborts
@@ -655,6 +737,29 @@ async function handleQuery(ipc, requestId, payload) {
     }
   }
 
+  if (payload.executionMode !== undefined && !EXECUTION_MODES.has(payload.executionMode)) {
+    validationErrors.push("executionMode must be 'systemd' or 'e2b'")
+  }
+  if (payload.executionMode === "e2b") {
+    if (!payload.sandboxDomain || typeof payload.sandboxDomain !== "object") {
+      validationErrors.push("sandboxDomain is required when executionMode is 'e2b'")
+    } else {
+      const domain = payload.sandboxDomain
+      if (typeof domain.domain_id !== "string" || domain.domain_id.length === 0) {
+        validationErrors.push("sandboxDomain.domain_id must be a non-empty string")
+      }
+      if (typeof domain.hostname !== "string" || domain.hostname.length === 0) {
+        validationErrors.push("sandboxDomain.hostname must be a non-empty string")
+      }
+      if (domain.sandbox_id !== null && typeof domain.sandbox_id !== "string") {
+        validationErrors.push("sandboxDomain.sandbox_id must be string|null")
+      }
+      if (domain.sandbox_status !== null && !SANDBOX_STATUSES.has(domain.sandbox_status)) {
+        validationErrors.push("sandboxDomain.sandbox_status must be 'creating'|'running'|'dead'|null")
+      }
+    }
+  }
+
   // Optional object fields
   if (oauthMcpServers !== undefined && (typeof oauthMcpServers !== "object" || oauthMcpServers === null)) {
     validationErrors.push("oauthMcpServers must be an object")
@@ -745,8 +850,8 @@ async function handleQuery(ipc, requestId, payload) {
         const workspaceCwd = process.cwd()
 
         // Tools that use file_path or notebook_path
-        if (["Read", "Write", "Edit", "NotebookEdit"].includes(toolName)) {
-          const filePath = toolName === "NotebookEdit" ? input?.notebook_path : input?.file_path
+        if ([SDK_TOOL.READ, SDK_TOOL.WRITE, SDK_TOOL.EDIT, SDK_TOOL.NOTEBOOK_EDIT].includes(toolName)) {
+          const filePath = toolName === SDK_TOOL.NOTEBOOK_EDIT ? input?.notebook_path : input?.file_path
           if (typeof filePath === "string") {
             const resolved = resolvePath(filePath)
             if (!resolved.startsWith(`${workspaceCwd}/`) && resolved !== workspaceCwd) {
@@ -762,7 +867,7 @@ async function handleQuery(ipc, requestId, payload) {
         }
 
         // Tools that use path parameter (Glob, Grep)
-        if (["Glob", "Grep"].includes(toolName) && typeof input?.path === "string") {
+        if ([SDK_TOOL.GLOB, SDK_TOOL.GREP].includes(toolName) && typeof input?.path === "string") {
           const resolved = resolvePath(input.path)
           if (!resolved.startsWith(`${workspaceCwd}/`) && resolved !== workspaceCwd) {
             console.error(
@@ -776,7 +881,7 @@ async function handleQuery(ipc, requestId, payload) {
         }
 
         // Bash: validate command doesn't reference paths outside workspace
-        if (toolName === "Bash") {
+        if (toolName === SDK_TOOL.BASH) {
           const command = typeof input?.command === "string" ? input.command : ""
 
           // Block heavy commands (computational cost)
@@ -839,6 +944,42 @@ async function handleQuery(ipc, requestId, payload) {
       ...globalMcpServers,
       ...(oauthMcpServers || {}),
     }
+
+    // E2B sandbox routing: swap file/shell tools to remote sandbox.
+    // The SDK cwd stays local (needed for subprocess), but Claude sees SANDBOX_WORKSPACE_ROOT
+    // in the system prompt and all file ops go through the sandbox MCP.
+    if (payload.executionMode === "e2b" && payload.sandboxDomain) {
+      try {
+        const manager = getSandboxManager()
+        const hostWorkspacePath = process.cwd()
+        const sandbox = await manager.getOrCreate(payload.sandboxDomain, hostWorkspacePath)
+        mcpServers.e2b = createE2bMcp(sandbox, (error, context) => {
+          Sentry.captureException(error, {
+            tags: { component: "e2b", security: "path_traversal", domain: payload.sandboxDomain.hostname },
+            extra: context,
+          })
+        })
+        // Swap SDK built-in file/shell tools for E2B MCP equivalents.
+        // This is the SINGLE place E2B tool routing happens — not in agent-constants.mjs.
+        disallowedTools.push(...E2B_DISABLED_SDK_TOOLS)
+        allowedTools.push(...E2B_MCP_TOOLS)
+        console.error(
+          `[worker] E2B mode: sandbox ${sandbox.sandboxId} for ${payload.sandboxDomain.hostname}, workspace at ${SANDBOX_WORKSPACE_ROOT}`,
+        )
+      } catch (e2bError) {
+        const ctx = payload.sandboxDomain
+        const wrapped = new Error(
+          `[E2B] Sandbox setup failed for ${ctx.hostname} (domain_id=${ctx.domain_id}, sandbox_id=${ctx.sandbox_id}): ${e2bError instanceof Error ? e2bError.message : String(e2bError)}`,
+        )
+        if (e2bError instanceof Error) wrapped.cause = e2bError
+        Sentry.captureException(wrapped, {
+          tags: { component: "e2b", domain: ctx.hostname },
+          extra: { domain_id: ctx.domain_id, sandbox_id: ctx.sandbox_id },
+        })
+        throw wrapped
+      }
+    }
+
     enabledMcpServerKeys = Object.keys(mcpServers)
 
     console.error("[worker] MCP servers enabled:", enabledMcpServerKeys.join(", "))
@@ -868,9 +1009,11 @@ async function handleQuery(ipc, requestId, payload) {
       // SECURITY (defense-in-depth): Build explicit env for the Claude subprocess.
       // Even though createWorkerSpawnEnv() already strips secrets at spawn time,
       // this ensures the SDK subprocess never inherits anything unexpected.
+      // Infrastructure keys are stripped — they're only needed by the worker process itself.
+      const SDK_STRIP_KEYS = new Set(E2B_INFRASTRUCTURE_ENV_KEYS)
       const sdkEnv = {}
       for (const [key, value] of Object.entries(process.env)) {
-        if (value !== undefined) sdkEnv[key] = value
+        if (value !== undefined && !SDK_STRIP_KEYS.has(key)) sdkEnv[key] = value
       }
 
       const agentQuery = query({

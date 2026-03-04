@@ -19,6 +19,7 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
+import type { ClaudeModel } from "@webalive/shared"
 import { type OAuthWarning, STREAMING } from "@webalive/shared"
 import { sessionStore, type TabSessionKey } from "@/features/auth/lib/sessionStore"
 import type {
@@ -44,7 +45,6 @@ import {
 import { isAssistantMessageWithUsage, isBridgeMessageEvent } from "@/features/chat/types/guards"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { logStreamError } from "@/lib/error-logger"
-import type { ClaudeModel } from "@/lib/models/claude-models"
 import { calculateCreditsToCharge } from "@/lib/models/model-pricing"
 import { chargeCreditsDirectly } from "@/lib/tokens"
 

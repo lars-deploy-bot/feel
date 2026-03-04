@@ -6,6 +6,8 @@ import {
   getStreamAllowedTools,
   getStreamDisallowedTools,
   getStreamToolDecision,
+  getToolActionLabel,
+  getToolDetail,
   isHeavyBashCommand,
   isStreamClientVisibleTool,
 } from "../tools/stream-tools"
@@ -61,6 +63,47 @@ describe("isHeavyBashCommand", () => {
     expect(isHeavyBashCommand("pnpm run lint")).toBe(false)
     expect(isHeavyBashCommand("yarn build")).toBe(false)
     expect(isHeavyBashCommand("yarn lint")).toBe(false)
+  })
+})
+
+describe("tool display helpers", () => {
+  it("returns action labels case-insensitively", () => {
+    expect(getToolActionLabel("Read")).toBe("reading")
+    expect(getToolActionLabel("read")).toBe("reading")
+    expect(getToolActionLabel("WEBFETCH")).toBe("fetching")
+    expect(getToolActionLabel("UnknownTool")).toBe("unknowntool")
+  })
+
+  it("extracts file details from file_path and path", () => {
+    expect(getToolDetail("Read", { file_path: "/tmp/src/App.tsx" })).toBe("App.tsx")
+    expect(getToolDetail("edit", { file_path: "C:\\work\\index.ts" })).toBe("index.ts")
+    expect(getToolDetail("write", { path: "/tmp/legacy/path.txt" })).toBe("path.txt")
+  })
+
+  it("extracts grep/glob, task, and bash details", () => {
+    expect(getToolDetail("Grep", { pattern: "TODO" })).toBe("TODO")
+    expect(getToolDetail("glob", { pattern: "**/*.tsx" })).toBe("**/*.tsx")
+    expect(getToolDetail("Task", { description: "Refactor auth flow" })).toBe("Refactor auth flow")
+    expect(getToolDetail("Bash", { command: "bun run test --watch\necho done" })).toBe("bun")
+    expect(getToolDetail("Bash", { command: "bun run test --watch" }, { bashDetail: "firstLine" })).toBe(
+      "bun run test --watch",
+    )
+  })
+
+  it("extracts webfetch hostnames and falls back safely", () => {
+    expect(getToolDetail("WebFetch", { url: "https://www.example.com/docs" })).toBe("example.com")
+    expect(getToolDetail("webfetch", { url: "example.com/docs" })).toBe("example.com")
+    expect(getToolDetail("webfetch", { url: "not a valid url" }, { webFetchFallbackMaxChars: 10 })).toBe(
+      "not a vali...",
+    )
+  })
+
+  it("fails closed on malformed input shapes", () => {
+    expect(getToolDetail("Read", undefined)).toBeNull()
+    expect(getToolDetail("Read", null)).toBeNull()
+    expect(getToolDetail("Read", 42)).toBeNull()
+    expect(getToolDetail("Read", { file_path: 123 })).toBeNull()
+    expect(getToolDetail("UnknownTool", { file_path: "/tmp/x.ts" })).toBeNull()
   })
 })
 

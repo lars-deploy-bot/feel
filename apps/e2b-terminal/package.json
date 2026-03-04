@@ -1,0 +1,19 @@
+{
+  "name": "@webalive/e2b-terminal",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun src/server.ts",
+    "dev": "bun --watch src/server.ts",
+    "type-check": "tsgo --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "ci": "biome ci ."
+  },
+  "dependencies": {
+    "@sentry/node": "^10.39.0",
+    "@webalive/shared": "workspace:*",
+    "e2b": "^2.13.0"
+  }
+}

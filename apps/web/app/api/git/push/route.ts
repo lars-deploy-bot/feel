@@ -22,6 +22,7 @@ const GitPushSchema = z.object({
 function readSourceRepo(workspaceRoot: string): string | null {
   try {
     const metadataPath = resolveMetadataPath(workspaceRoot)
+    if (!metadataPath) return null
     const raw = JSON.parse(readFileSync(metadataPath, "utf-8"))
     return typeof raw.sourceRepo === "string" ? raw.sourceRepo : null
   } catch (_err) {

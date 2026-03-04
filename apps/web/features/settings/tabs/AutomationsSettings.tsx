@@ -191,7 +191,10 @@ export function AutomationsSettings() {
   })
 
   const deleteMutation = useMutation<Res<"automations/delete">, ApiError, string, { previous: unknown }>({
-    mutationFn: (id: string) => delly("automations/delete", undefined, `/api/automations/${id}`),
+    mutationFn: (id: string) => {
+      const body = validateRequest("automations/delete")
+      return delly("automations/delete", body, `/api/automations/${id}`)
+    },
     onMutate: async id => {
       const key = queryKeys.automations.list(queryFilter)
       await queryClient.cancelQueries({ queryKey: key })
@@ -216,7 +219,7 @@ export function AutomationsSettings() {
 
   const triggerMutation = useMutation<Res<"automations/trigger">, ApiError, string>({
     mutationFn: (id: string) => {
-      const body = validateRequest("automations/trigger", {})
+      const body = validateRequest("automations/trigger")
       return postty("automations/trigger", body, undefined, `/api/automations/${id}/trigger`)
     },
     onSuccess: () => {
