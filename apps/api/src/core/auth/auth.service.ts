@@ -1,8 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
 import { AUTH } from "../../config/constants"
+import { env } from "../../config/env"
 import { passwordResetTokensRepo, usersRepo } from "../../db/repos"
 import { UnauthorizedError } from "../../infra/errors"
-import { env } from "../../config/env"
 
 export function verifyPasscode(passcode: string): boolean {
   const bufA = Buffer.from(passcode)

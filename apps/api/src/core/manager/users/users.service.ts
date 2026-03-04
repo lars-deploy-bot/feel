@@ -6,11 +6,11 @@ import {
   type ManagerUserOrg,
   type ManagerUserSession,
 } from "@webalive/shared"
-import { issuePasswordResetToken } from "../../auth/auth.service"
 import { app, iam } from "../../../db/clients"
 import { usersRepo } from "../../../db/repos"
 import type { UserRow } from "../../../db/repos/users.repo"
 import { InternalError } from "../../../infra/errors"
+import { issuePasswordResetToken } from "../../auth/auth.service"
 
 interface MembershipWithOrg {
   user_id: string
