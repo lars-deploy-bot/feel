@@ -72,7 +72,7 @@ if [ "$DEPLOY_API" = true ]; then
     sleep 1
 
     if systemctl is-active --quiet alive-api; then
-        log_success "alive-api running on port 5082"
+        log_success "alive-api running on port 5080"
     else
         log_error "alive-api failed to start"
         log_step "Check logs: journalctl -u alive-api -n 50"
@@ -110,6 +110,6 @@ fi
 # Done
 # =============================================================================
 banner_success "Services deployed"
-[ "$DEPLOY_API" = true ] && echo -e "  API:     ${GREEN}alive-api${NC} (port 5082)"
+[ "$DEPLOY_API" = true ] && echo -e "  API:     ${GREEN}alive-api${NC} (port 5080)"
 [ "$DEPLOY_MANAGER" = true ] && echo -e "  Manager: ${GREEN}alive-manager${NC} (port 5090)"
 echo ""

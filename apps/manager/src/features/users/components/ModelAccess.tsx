@@ -16,12 +16,18 @@ function effectiveModels(stored: ClaudeModel[]): ClaudeModel[] {
   return stored.length === 0 ? [DEFAULT_CLAUDE_MODEL] : stored
 }
 
+function normalizeForPersist(models: Iterable<ClaudeModel>): ClaudeModel[] {
+  const unique = [...new Set(models)]
+  return unique.length === 0 ? [DEFAULT_CLAUDE_MODEL] : unique
+}
+
 export function ModelAccess({ userId, enabledModels, onSaved }: ModelAccessProps) {
-  const effective = effectiveModels(enabledModels)
-  const [selected, setSelected] = useState<Set<ClaudeModel>>(new Set(effective))
+  const baseline = new Set(effectiveModels(enabledModels))
+  const [selected, setSelected] = useState<Set<ClaudeModel>>(new Set(baseline))
   const [saving, setSaving] = useState(false)
 
-  const dirty = selected.size !== effective.length || effective.some(m => !selected.has(m))
+  const persisted = new Set(normalizeForPersist(selected))
+  const dirty = persisted.size !== baseline.size || [...baseline].some(m => !persisted.has(m))
 
   function toggle(model: ClaudeModel) {
     setSelected(prev => {
@@ -38,7 +44,7 @@ export function ModelAccess({ userId, enabledModels, onSaved }: ModelAccessProps
   async function save() {
     setSaving(true)
     try {
-      await usersApi.updateModels(userId, [...selected])
+      await usersApi.updateModels(userId, normalizeForPersist(selected))
       toast.success("Model access saved")
       onSaved()
     } catch {
