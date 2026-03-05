@@ -162,17 +162,32 @@ const bashTool = (sandbox: Sandbox) =>
   tool(
     "Bash",
     "Executes a given bash command and returns its output. " +
-      "The working directory persists between commands, but shell state does not.",
+      "The working directory persists between commands, but shell state does not. " +
+      "Use background: true for long-running commands (e.g. dev servers) — returns immediately with the PID.",
     {
       command: z.string().describe("The command to execute"),
       timeout: z.number().optional().describe("Optional timeout in milliseconds (max 600000)"),
+      background: z
+        .boolean()
+        .optional()
+        .describe(
+          "Run the command in the background. Returns immediately with PID. Use for dev servers and long-running processes.",
+        ),
       description: z
         .string()
         .optional()
         .describe("Clear, concise description of what this command does in active voice."),
     },
-    async ({ command, timeout }) => {
+    async ({ command, timeout, background }) => {
       try {
+        if (background) {
+          const handle = await sandbox.commands.run(command, {
+            background: true,
+            cwd: SANDBOX_WORKSPACE_ROOT,
+          })
+          return textResult(`Background process started (PID: ${handle.pid})`)
+        }
+
         const timeoutMs = timeout ? Math.min(timeout, 600_000) : 120_000
         const result = await sandbox.commands.run(command, { timeoutMs, cwd: SANDBOX_WORKSPACE_ROOT })
 

@@ -22,6 +22,7 @@ export interface SandboxDomain {
   hostname: string
   sandbox_id: string | null
   sandbox_status: SandboxStatus | null
+  is_test_env?: boolean
 }
 
 /** Standard workspace root inside the sandbox. */
@@ -56,6 +57,28 @@ const SYNC_SKIP_DIRS = new Set([
   ".vite",
   "__pycache__",
   ".alive",
+])
+
+/** File extensions to skip when syncing — binary assets that need separate hosting. */
+const SYNC_SKIP_EXTENSIONS = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".avif",
+  ".ico",
+  ".svg",
+  ".mp4",
+  ".webm",
+  ".mp3",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".eot",
+  ".otf",
+  ".pdf",
+  ".zip",
 ])
 
 /** Max files to sync. If workspace exceeds this, skip sync and let Claude install from scratch. */
@@ -231,6 +254,9 @@ function collectWorkspaceFiles(hostDir: string): {
         if (SYNC_SKIP_DIRS.has(entry.name)) continue
         walk(path.join(dir, entry.name))
       } else if (entry.isFile()) {
+        const ext = path.extname(entry.name).toLowerCase()
+        if (SYNC_SKIP_EXTENSIONS.has(ext)) continue
+
         const filePath = path.join(dir, entry.name)
         const relativePath = path.relative(hostDir, filePath)
         const sandboxPath = path.join(SANDBOX_WORKSPACE_ROOT, relativePath)
@@ -295,6 +321,37 @@ async function syncWorkspaceToSandbox(sandbox: Sandbox, hostWorkspacePath: strin
   // Batch write all files (E2B SDK supports array writes)
   await sandbox.files.write(collected.files)
 
+  // Patch vite config to allow all hosts — sandbox is isolated so this is safe.
+  // E2B proxy serves on {port}-{sandboxId}.{e2bDomain} which Vite blocks by default.
+  await patchViteAllowedHosts(sandbox)
+
   const elapsedMs = Date.now() - startMs
   console.error(`[sandbox-manager] Synced ${collected.files.length} files to sandbox in ${elapsedMs}ms`)
+}
+
+/**
+ * Patch vite.config.ts/js in the sandbox to set server.allowedHosts to true.
+ * Sandboxes are isolated — no security risk from allowing all hosts.
+ */
+async function patchViteAllowedHosts(sandbox: Sandbox): Promise<void> {
+  const configNames = ["vite.config.ts", "vite.config.js", "vite.config.mts", "vite.config.mjs"]
+
+  for (const name of configNames) {
+    const configPath = path.join(SANDBOX_WORKSPACE_ROOT, name)
+    let content: string
+    try {
+      content = await sandbox.files.read(configPath)
+    } catch {
+      continue // File doesn't exist, try next
+    }
+
+    // Replace allowedHosts: [...anything...] with allowedHosts: true
+    // Handles single-line arrays and the common multi-line case
+    const patched = content.replace(/allowedHosts:\s*\[[\s\S]*?\]/g, "allowedHosts: true")
+    if (patched !== content) {
+      await sandbox.files.write(configPath, patched)
+      console.error(`[sandbox-manager] Patched ${name}: allowedHosts → true`)
+    }
+    return // Only patch the first config found
+  }
 }

@@ -323,7 +323,9 @@ export {
   getToolDetail,
   isHeavyBashCommand,
   isStreamClientVisibleTool,
+  isStreamInitVisibleTool,
   isStreamPolicyTool,
+  isUserApprovalTool,
   // SDK tool name constants (single source of truth)
   SDK_TOOL,
   SDK_TOOL_LOWER,
