@@ -520,20 +520,40 @@ else
         log_step "Using Playwright browsers from: $E2E_PLAYWRIGHT_PATH"
     fi
 
+    run_web_e2e() {
+        local script_name="$1"
+        shift
+        if [ -n "$E2E_PLAYWRIGHT_PATH" ]; then
+            (
+                cd apps/web &&
+                ENV_FILE=".env.$ENV" \
+                E2E_TEST_SECRET="$E2E_SECRET" \
+                PLAYWRIGHT_BROWSERS_PATH="$E2E_PLAYWRIGHT_PATH" \
+                bun run "$script_name" "$@"
+            )
+        else
+            (
+                cd apps/web &&
+                ENV_FILE=".env.$ENV" \
+                E2E_TEST_SECRET="$E2E_SECRET" \
+                bun run "$script_name" "$@"
+            )
+        fi
+    }
+
+    log_step "Running standard E2E suite"
     set +e
-    if [ -n "$E2E_PLAYWRIGHT_PATH" ]; then
-        (
-            cd apps/web &&
-            ENV_FILE=".env.$ENV" \
-            E2E_TEST_SECRET="$E2E_SECRET" \
-            PLAYWRIGHT_BROWSERS_PATH="$E2E_PLAYWRIGHT_PATH" \
-            bun run test:e2e
-        )
-    else
-        (cd apps/web && ENV_FILE=".env.$ENV" E2E_TEST_SECRET="$E2E_SECRET" bun run test:e2e)
-    fi
+    run_web_e2e test:e2e
     E2E_EXIT=$?
     set -e
+
+    if [ $E2E_EXIT -eq 0 ]; then
+        log_step "Running live deploy E2E gate (deploy-live.spec.ts)"
+        set +e
+        E2E_REQUIRE_DELETE_SITE_ENDPOINT=1 run_web_e2e test:e2e:deploy-live
+        E2E_EXIT=$?
+        set -e
+    fi
 
     if [ $E2E_EXIT -ne 0 ]; then
         phase_end error "E2E tests failed (exit $E2E_EXIT)"

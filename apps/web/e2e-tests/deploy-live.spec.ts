@@ -8,7 +8,6 @@
  */
 
 import { type APIRequestContext, expect, test } from "@playwright/test"
-import { TEST_CONFIG } from "@webalive/shared"
 import type { Req, Res } from "@/lib/api/schemas"
 import { apiSchemas, validateRequest } from "@/lib/api/schemas"
 import { CleanupDeployedSiteRequestSchema, CleanupDeployedSiteResponseSchema } from "@/lib/testing/e2e-site-deployment"
@@ -104,20 +103,80 @@ async function cleanupDeployedSite(request: APIRequestContext, domain: string): 
   CleanupDeployedSiteResponseSchema.parse(payload)
 }
 
+async function resolveTemplateId(request: APIRequestContext): Promise<string> {
+  const response = await request.get("/api/templates")
+  const payload: unknown = await response.json().catch(() => null)
+
+  if (!response.ok()) {
+    throw new Error(`Failed to load templates (${response.status()}): ${JSON.stringify(payload)}`)
+  }
+
+  const parsed = apiSchemas.templates.res.parse(payload)
+  const templateId = parsed.templates[0]?.template_id
+  if (!templateId) {
+    throw new Error("No active templates returned by /api/templates")
+  }
+  return templateId
+}
+
+async function hasDeleteSiteEndpoint(request: APIRequestContext): Promise<boolean> {
+  const probeBody = CleanupDeployedSiteRequestSchema.parse({ domain: "probe-delete-endpoint.sonno.tech" })
+  const response = await request.delete("/api/test/delete-site", {
+    data: probeBody,
+    headers: buildTestHeaders(),
+  })
+
+  const payload: unknown = await response.json().catch(() => null)
+  if (response.ok()) return true
+  if (!payload || typeof payload !== "object" || !("error" in payload)) return false
+
+  const errorCode = payload.error
+  if (typeof errorCode !== "string") return false
+  return new Set(["SITE_NOT_FOUND", "VALIDATION_ERROR", "FORBIDDEN", "INTERNAL_ERROR", "UNAUTHORIZED"]).has(errorCode)
+}
+
+async function cleanupStaleDeployDomains(request: APIRequestContext): Promise<void> {
+  const sitesResponse = await request.get("/api/sites")
+  const sitesPayload: unknown = await sitesResponse.json().catch(() => null)
+  if (!sitesResponse.ok()) {
+    throw new Error(`Failed to list sites (${sitesResponse.status()}): ${JSON.stringify(sitesPayload)}`)
+  }
+
+  const parsedSites = apiSchemas.sites.res.parse(sitesPayload)
+  const staleDomains = parsedSites.sites.map(site => site.hostname).filter(hostname => /^dl[a-z0-9]+\./.test(hostname))
+
+  for (const staleDomain of staleDomains) {
+    await cleanupDeployedSite(request, staleDomain)
+  }
+}
+
 test.describe("Live staging deploy", () => {
   test("deploys a new site and verifies it is live before cleanup", async ({ page }) => {
     test.setTimeout(LIVE_DEPLOY_TIMEOUT_MS + 120_000)
 
+    const cleanupEndpointAvailable = await hasDeleteSiteEndpoint(page.request)
+    if (!cleanupEndpointAvailable) {
+      const missingEndpointMessage =
+        "Missing /api/test/delete-site endpoint on target environment. Deploy this branch to run deploy-live cleanup safely."
+      if (process.env.E2E_REQUIRE_DELETE_SITE_ENDPOINT === "1") {
+        throw new Error(missingEndpointMessage)
+      }
+      test.skip(true, missingEndpointMessage)
+      return
+    }
+
     const baseUrl = getProjectBaseUrl(test.info())
     const user = await getLiveStagingUser(test.info().workerIndex, baseUrl)
     await loginLiveStaging(page, user)
+    await cleanupStaleDeployDomains(page.request)
+    const templateId = await resolveTemplateId(page.request)
 
     const slug = buildUniqueSlug(test.info().workerIndex)
     const deployBody: Req<"deploy-subdomain"> = validateRequest("deploy-subdomain", {
       slug,
       orgId: user.orgId,
       siteIdeas: "E2E live deployment verification",
-      templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
+      templateId,
     })
 
     let deployedDomain: string | null = null
