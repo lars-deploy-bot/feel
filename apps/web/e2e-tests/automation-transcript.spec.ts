@@ -20,6 +20,18 @@ interface AutomationTestHandles {
   tabId: string
 }
 
+async function ensureConversationSidebarOpen(authenticatedPage: import("@playwright/test").Page): Promise<void> {
+  const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
+  if (await sidebar.isVisible()) {
+    return
+  }
+
+  const openSidebarButton = authenticatedPage.getByRole("button", { name: "Open sidebar" })
+  await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+  await openSidebarButton.click()
+  await expect(sidebar).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+}
+
 function buildTestEndpointHeaders(): Record<string, string> | undefined {
   const secret = process.env.E2E_TEST_SECRET
   if (!secret) return undefined
@@ -102,19 +114,39 @@ async function cleanupAutomationTranscript(request: APIRequestContext, handles: 
   const cleanupResponse = await request.delete("/api/test/seed-automation-transcript", {
     headers: buildTestEndpointHeaders(),
     data: cleanupBody,
+    timeout: 20_000,
   })
 
   if (cleanupResponse.status() === 404) {
-    await request.delete(`/api/automations/${handles.jobId}`)
+    const jobDeleteResponse = await request.delete(`/api/automations/${handles.jobId}`, {
+      timeout: 20_000,
+    })
+    if (!jobDeleteResponse.ok() && jobDeleteResponse.status() !== 404) {
+      const payload: unknown = await jobDeleteResponse.json().catch(() => null)
+      throw new Error(
+        `[cleanup automation job] ${jobDeleteResponse.status()} ${jobDeleteResponse.statusText()} ${JSON.stringify(payload)}`,
+      )
+    }
     return
   }
 
-  if (cleanupResponse.ok()) {
-    const cleanupPayload: unknown = await cleanupResponse.json().catch(() => null)
-    CleanupAutomationTranscriptResponseSchema.parse(cleanupPayload)
+  if (!cleanupResponse.ok()) {
+    const payload: unknown = await cleanupResponse.json().catch(() => null)
+    throw new Error(
+      `[cleanup transcript] ${cleanupResponse.status()} ${cleanupResponse.statusText()} ${JSON.stringify(payload)}`,
+    )
   }
 
-  await request.delete(`/api/automations/${handles.jobId}`)
+  const cleanupPayload: unknown = await cleanupResponse.json().catch(() => null)
+  CleanupAutomationTranscriptResponseSchema.parse(cleanupPayload)
+
+  const jobDeleteResponse = await request.delete(`/api/automations/${handles.jobId}`, { timeout: 20_000 })
+  if (!jobDeleteResponse.ok() && jobDeleteResponse.status() !== 404) {
+    const payload: unknown = await jobDeleteResponse.json().catch(() => null)
+    throw new Error(
+      `[cleanup automation job] ${jobDeleteResponse.status()} ${jobDeleteResponse.statusText()} ${JSON.stringify(payload)}`,
+    )
+  }
 }
 
 test.describe("Automation Transcript Read-Only UX", () => {
@@ -143,10 +175,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
       await waitForChatReady(authenticatedPage)
 
       // Open sidebar and find the automation conversation
-      const openSidebarButton = authenticatedPage.getByRole("button", { name: "Open sidebar" })
-      await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
-      await openSidebarButton.click()
-
+      await ensureConversationSidebarOpen(authenticatedPage)
       const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
       const automationConversation = sidebar.getByText(seed.title, { exact: true })
       await expect(automationConversation).toBeVisible({ timeout: TEST_TIMEOUTS.max })
@@ -179,7 +208,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
     authenticatedPage,
     workerTenant,
   }, testInfo) => {
-    // This test has many UI interactions with sidebar navigation — needs extra time in remote env
+    // Keep timeout strict; the selector flow is deterministic via ensureConversationSidebarOpen().
     testInfo.setTimeout(120_000)
     const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
     const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
@@ -210,10 +239,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
       await expect(readonlyBar).not.toBeVisible()
 
       // Switch to automation conversation via sidebar
-      const openSidebarButton = authenticatedPage.getByRole("button", { name: "Open sidebar" })
-      await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
-      await openSidebarButton.click()
-
+      await ensureConversationSidebarOpen(authenticatedPage)
       const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
       const automationConversation = sidebar.getByText(seed.title, { exact: true })
       await expect(automationConversation).toBeVisible({ timeout: TEST_TIMEOUTS.max })
@@ -223,12 +249,8 @@ test.describe("Automation Transcript Read-Only UX", () => {
       await expect(readonlyBar).toBeVisible({ timeout: TEST_TIMEOUTS.max })
       await expect(messageInput).not.toBeVisible()
 
-      // Switch back to a new regular conversation via "New Chat" in sidebar
-      // Re-open sidebar if it closed on mobile
-      const reopenSidebar = authenticatedPage.getByRole("button", { name: "Open sidebar" })
-      if (await reopenSidebar.isVisible()) {
-        await reopenSidebar.click()
-      }
+      // Switch back to a new regular conversation via "New Chat" in sidebar.
+      await ensureConversationSidebarOpen(authenticatedPage)
       const newChatButton = sidebar.getByRole("button", { name: "New Chat" })
       await expect(newChatButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
       await newChatButton.click()
