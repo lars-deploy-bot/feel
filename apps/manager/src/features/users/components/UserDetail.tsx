@@ -72,6 +72,7 @@ export function UserDetail({ user }: UserDetailProps) {
     const requestId = ++issueRequestIdRef.current
     setIsIssuingToken(true)
     setTokenError(null)
+    setResetToken(null)
     setCopied(false)
 
     try {
@@ -213,7 +214,12 @@ export function UserDetail({ user }: UserDetailProps) {
           {resetToken && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Input value={resetToken.token} readOnly className="font-mono text-[11px]" />
+                <Input
+                  value={resetToken.token}
+                  readOnly
+                  aria-label="Password reset token"
+                  className="font-mono text-[11px]"
+                />
                 <Button variant="secondary" size="sm" onClick={handleCopyResetToken}>
                   {copied ? "Copied" : "Copy"}
                 </Button>
