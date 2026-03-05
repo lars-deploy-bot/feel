@@ -77,7 +77,100 @@ fi
 echo ""
 
 # -----------------------------------------------------------------------------
-# Check 3: SUBPROCESS_PACKAGES have required dependencies installed
+# Check 3: Standalone package list covers all workspace:* runtime dependencies
+# -----------------------------------------------------------------------------
+echo "Checking workspace dependency closure..."
+set +e
+CLOSURE_OUTPUT=$(bun - "$PROJECT_ROOT" "${STANDALONE_PACKAGES[@]}" 2>&1 <<'NODE'
+const fs = require("node:fs")
+const path = require("node:path")
+
+const [, , projectRoot, ...standaloneDirs] = process.argv
+if (!projectRoot || standaloneDirs.length === 0) {
+  console.error("invalid arguments")
+  process.exit(2)
+}
+
+function readPackageName(packageJsonPath) {
+  const json = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"))
+  return typeof json.name === "string" ? json.name : null
+}
+
+function collectWorkspacePackages(baseDir) {
+  const out = new Map()
+  if (!fs.existsSync(baseDir)) return out
+  for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const packageJsonPath = path.join(baseDir, entry.name, "package.json")
+    if (!fs.existsSync(packageJsonPath)) continue
+    const pkgName = readPackageName(packageJsonPath)
+    if (!pkgName) continue
+    out.set(pkgName, packageJsonPath)
+  }
+  return out
+}
+
+const allWorkspace = new Map([
+  ...collectWorkspacePackages(path.join(projectRoot, "packages")),
+  ...collectWorkspacePackages(path.join(projectRoot, "apps")),
+])
+
+const standaloneByName = new Map()
+const standaloneByDir = new Map()
+for (const dir of standaloneDirs) {
+  const packageJsonPath = path.join(projectRoot, "packages", dir, "package.json")
+  if (!fs.existsSync(packageJsonPath)) {
+    console.log(`missing package directory: packages/${dir}`)
+    process.exitCode = 1
+    continue
+  }
+  const pkgName = readPackageName(packageJsonPath)
+  if (!pkgName) {
+    console.log(`missing package name: packages/${dir}/package.json`)
+    process.exitCode = 1
+    continue
+  }
+  standaloneByName.set(pkgName, dir)
+  standaloneByDir.set(dir, { pkgName, packageJsonPath })
+}
+
+for (const [dir, meta] of standaloneByDir.entries()) {
+  const pkg = JSON.parse(fs.readFileSync(meta.packageJsonPath, "utf8"))
+  const deps = {
+    ...(pkg.dependencies || {}),
+    ...(pkg.optionalDependencies || {}),
+  }
+  for (const [depName, version] of Object.entries(deps)) {
+    if (typeof version !== "string" || !version.startsWith("workspace:")) continue
+    if (!allWorkspace.has(depName)) {
+      console.log(`${meta.pkgName} -> ${depName} (workspace dependency not found in monorepo)`)
+      process.exitCode = 1
+      continue
+    }
+    if (!standaloneByName.has(depName)) {
+      console.log(`${meta.pkgName} -> ${depName} (missing from STANDALONE_PACKAGES)`)
+      process.exitCode = 1
+    }
+  }
+}
+NODE
+)
+CLOSURE_EXIT=$?
+set -e
+
+if [ $CLOSURE_EXIT -ne 0 ]; then
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        echo -e "  ${RED}✗${NC} $line"
+    done <<< "$CLOSURE_OUTPUT"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "  ${GREEN}✓${NC} workspace dependency closure is complete"
+fi
+echo ""
+
+# -----------------------------------------------------------------------------
+# Check 4: SUBPROCESS_PACKAGES have required dependencies installed
 # -----------------------------------------------------------------------------
 echo "Checking subprocess package dependencies..."
 for pkg in "${SUBPROCESS_PACKAGES[@]}"; do
