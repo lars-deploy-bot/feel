@@ -15,7 +15,8 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { DOMAINS, generateInviteCode } from "@webalive/shared"
+import { DOMAINS } from "@webalive/shared"
+import { generateInviteCode } from "@webalive/shared/invite-code"
 import { NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"

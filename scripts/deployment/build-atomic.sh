@@ -233,14 +233,40 @@ done
 # =============================================================================
 log_step "Linking packages into node_modules..."
 STANDALONE_NODE_MODULES="$STANDALONE_DIR/node_modules"
-mkdir -p "$STANDALONE_NODE_MODULES/@webalive"
+mkdir -p "$STANDALONE_NODE_MODULES"
 
-# Link workspace packages to node_modules/@webalive.
+declare -A STANDALONE_PACKAGE_NAME_TO_DIR=()
+declare -A STANDALONE_PACKAGE_DIR_TO_NAME=()
+
+# Build package-name lookup so we can support multiple scopes (e.g. @webalive/*, @alive-brug/*).
+for pkg in "${STANDALONE_PACKAGES[@]}"; do
+    PKG_DIR="$STANDALONE_PACKAGES_DIR/$pkg"
+    PKG_JSON="$PKG_DIR/package.json"
+    [ ! -f "$PKG_JSON" ] && { log_error "Missing package.json for standalone package: $pkg"; exit 1; }
+
+    PKG_NAME=$(bun -e 'const fs=require("node:fs"); const p=process.argv[1]; const j=JSON.parse(fs.readFileSync(p,"utf8")); process.stdout.write(j.name || "");' "$PKG_JSON")
+    [ -z "$PKG_NAME" ] && { log_error "Package name missing in $PKG_JSON"; exit 1; }
+
+    STANDALONE_PACKAGE_NAME_TO_DIR["$PKG_NAME"]="$pkg"
+    STANDALONE_PACKAGE_DIR_TO_NAME["$pkg"]="$PKG_NAME"
+done
+
+# Link copied workspace packages into standalone app node_modules.
 # Relative links keep everything self-contained within standalone/ after timestamped move.
 for pkg in "${STANDALONE_PACKAGES[@]}"; do
     [ ! -d "$STANDALONE_PACKAGES_DIR/$pkg" ] && { log_error "Standalone package missing: $pkg"; exit 1; }
-    rm -rf "${STANDALONE_NODE_MODULES:?}/@webalive/$pkg" 2>/dev/null || true
-    ln -s "../../../../packages/$pkg" "$STANDALONE_NODE_MODULES/@webalive/$pkg"
+
+    PKG_NAME="${STANDALONE_PACKAGE_DIR_TO_NAME[$pkg]}"
+    if [[ "$PKG_NAME" == @*/* ]]; then
+        PKG_SCOPE="${PKG_NAME%%/*}"
+        PKG_BASENAME="${PKG_NAME#*/}"
+        mkdir -p "$STANDALONE_NODE_MODULES/$PKG_SCOPE"
+        rm -rf "${STANDALONE_NODE_MODULES:?}/$PKG_SCOPE/$PKG_BASENAME" 2>/dev/null || true
+        ln -s "../../../../packages/$pkg" "$STANDALONE_NODE_MODULES/$PKG_SCOPE/$PKG_BASENAME"
+    else
+        rm -rf "${STANDALONE_NODE_MODULES:?}/$PKG_NAME" 2>/dev/null || true
+        ln -s "../../../packages/$pkg" "$STANDALONE_NODE_MODULES/$PKG_NAME"
+    fi
 done
 
 # Copy worker-entry.mjs (it's in src/ not dist/)
@@ -249,19 +275,48 @@ if [ -f "packages/worker-pool/src/worker-entry.mjs" ]; then
     cp "packages/worker-pool/src/worker-entry.mjs" "${STANDALONE_NODE_MODULES:?}/@webalive/worker-pool/dist/"
 fi
 
-# Worker-entry.mjs imports @webalive/tools - link it in worker-pool's local node_modules.
-WORKER_POOL_PKG="$STANDALONE_PACKAGES_DIR/worker-pool"
-if [ -d "$WORKER_POOL_PKG" ]; then
-    mkdir -p "$WORKER_POOL_PKG/node_modules/@webalive"
-    rm -rf "$WORKER_POOL_PKG/node_modules/@webalive/tools" 2>/dev/null || true
-    ln -s "../../../tools" "$WORKER_POOL_PKG/node_modules/@webalive/tools"
-fi
+# Link all workspace:* dependencies locally inside each copied package.
+# This prevents fallback resolution to repo-level node_modules (split-brain risk).
+log_step "Linking workspace dependencies inside standalone packages..."
+for pkg in "${STANDALONE_PACKAGES[@]}"; do
+    PKG_DIR="$STANDALONE_PACKAGES_DIR/$pkg"
+    PKG_JSON="$PKG_DIR/package.json"
+    PKG_NAME="${STANDALONE_PACKAGE_DIR_TO_NAME[$pkg]}"
+
+    while IFS= read -r DEP_NAME; do
+        [ -z "$DEP_NAME" ] && continue
+
+        DEP_DIR="${STANDALONE_PACKAGE_NAME_TO_DIR[$DEP_NAME]:-}"
+        if [ -z "$DEP_DIR" ]; then
+            log_error "Workspace dependency '$DEP_NAME' required by '$PKG_NAME' is not in STANDALONE_PACKAGES"
+            log_error "Add its package directory to scripts/deployment/lib/standalone-packages.sh"
+            exit 1
+        fi
+
+        if [[ "$DEP_NAME" == @*/* ]]; then
+            DEP_SCOPE="${DEP_NAME%%/*}"
+            DEP_BASENAME="${DEP_NAME#*/}"
+            mkdir -p "$PKG_DIR/node_modules/$DEP_SCOPE"
+            rm -rf "$PKG_DIR/node_modules/$DEP_SCOPE/$DEP_BASENAME" 2>/dev/null || true
+            ln -s "../../../$DEP_DIR" "$PKG_DIR/node_modules/$DEP_SCOPE/$DEP_BASENAME"
+        else
+            mkdir -p "$PKG_DIR/node_modules"
+            rm -rf "$PKG_DIR/node_modules/$DEP_NAME" 2>/dev/null || true
+            ln -s "../../$DEP_DIR" "$PKG_DIR/node_modules/$DEP_NAME"
+        fi
+    done < <(
+        bun -e 'const fs=require("node:fs"); const p=process.argv[1]; const j=JSON.parse(fs.readFileSync(p,"utf8")); const deps={...(j.dependencies||{}), ...(j.optionalDependencies||{})}; for (const [name, version] of Object.entries(deps)) { if (typeof version==="string" && version.startsWith("workspace:")) console.log(name); }' "$PKG_JSON"
+    )
+done
 
 # Copy zod dependency from the .bun cache (it's in the root standalone node_modules)
 BUN_ZOD="$TEMP_BUILD_DIR/standalone/node_modules/.bun/node_modules/zod"
 if [ -d "$BUN_ZOD" ]; then
     cp -rL "$BUN_ZOD" "$STANDALONE_NODE_MODULES/zod" 2>/dev/null || true
 fi
+
+log_step "Verifying hermetic workspace import resolution..."
+bun "$SCRIPT_DIR/verify-hermetic-imports.mjs" "$TEMP_BUILD_DIR/standalone"
 
 # =============================================================================
 # Phase 10: Atomic Swap

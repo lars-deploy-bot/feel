@@ -3,12 +3,6 @@ import "fake-indexeddb/auto"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
-// Mock @webalive/shared to avoid node:crypto import from invite-code.ts barrel export.
-// Only STREAM_ENV is needed by messageDb.ts for DB naming.
-vi.mock("@webalive/shared", () => ({
-  STREAM_ENV: { LOCAL: "local", DEV: "dev", STAGING: "staging", PRODUCTION: "production", STANDALONE: "standalone" },
-}))
-
 // Mock Sentry to avoid Next.js module resolution issues in test environment
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),

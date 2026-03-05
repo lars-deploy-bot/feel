@@ -9,7 +9,8 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { DOMAINS, resolveAndValidatePath } from "@webalive/shared"
+import { DOMAINS } from "@webalive/shared"
+import { resolveAndValidatePath } from "@webalive/shared/path-security"
 import { describe, expect, it, type TestContext } from "vitest"
 import { getWorkspace } from "../workspaceRetriever"
 

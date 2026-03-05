@@ -32,6 +32,14 @@
     "./database": {
       "import": "./dist/database/index.js",
       "types": "./dist/database/index.d.ts"
+    },
+    "./invite-code": {
+      "import": "./dist/invite-code.js",
+      "types": "./dist/invite-code.d.ts"
+    },
+    "./path-security": {
+      "import": "./dist/path-security.js",
+      "types": "./dist/path-security.d.ts"
     }
   },
   "scripts": {
