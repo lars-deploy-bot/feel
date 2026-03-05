@@ -29,6 +29,8 @@ interface E2bRuntimeUpdatePayload {
   restartWorkspaceWorkers?: boolean
   sandboxId?: string | null
   sandboxStatus?: "creating" | "running" | "dead" | null
+  seedHostFiles?: Array<{ path: string; content: string }>
+  cleanHostFiles?: string[]
 }
 
 interface ErrorResponse {
@@ -209,10 +211,33 @@ test.describe("E2B Mother - Phases 0-6", () => {
 
     await restoreSystemd()
 
+    // Test fixtures for sync verification (seeded on host, verified in sandbox)
+    const TEST_VITE_CONFIG = `import { defineConfig } from "vite"
+export default defineConfig({
+  server: {
+    host: "::",
+    port: 3000,
+    allowedHosts: ["test.example.com"],
+  },
+})
+`
+    const SEED_FILES = [
+      { path: "vite.config.ts", content: TEST_VITE_CONFIG },
+      { path: "test-sync-skip.png", content: "fake-png-binary-content" },
+    ]
+    const SEED_FILE_PATHS = SEED_FILES.map(f => f.path)
+
     try {
       // Phase 0: preflight
       expect(initialRuntime.hostname).toBe(user.workspace)
       expect(initialRuntime.is_test_env).toBe(true)
+
+      // Seed test files on host workspace (systemd mode) for sync verification
+      await updateDomainRuntime(baseUrl, {
+        workspace: user.workspace,
+        executionMode: "systemd",
+        seedHostFiles: SEED_FILES,
+      })
 
       // Phase 1: switch to E2B with clean sandbox baseline
       const e2bRuntime = await updateDomainRuntime(baseUrl, {
@@ -238,6 +263,24 @@ test.describe("E2B Mother - Phases 0-6", () => {
       expect(runningRuntime.execution_mode).toBe("e2b")
       expect(runningRuntime.sandbox_status).toBe("running")
       expect(runningRuntime.sandbox_id).toBeTruthy()
+
+      // Phase 2b: verify sandbox sync behavior
+      // vite.config.ts should be patched: allowedHosts array → allowedHosts: true
+      const viteConfigRes = await page.request.post("/api/files/read", {
+        data: { workspace: user.workspace, path: "vite.config.ts" },
+      })
+      expect(viteConfigRes.status()).toBe(200)
+      const viteConfigJson = await viteConfigRes.json()
+      expect(typeof viteConfigJson.content).toBe("string")
+      expect(viteConfigJson.content).toContain("allowedHosts: true")
+      expect(viteConfigJson.content).not.toContain('allowedHosts: ["test.example.com"]')
+
+      // Binary files (.png) should NOT be synced to sandbox
+      const pngRes = await page.request.post("/api/files/read", {
+        data: { workspace: user.workspace, path: "test-sync-skip.png" },
+      })
+      // Should fail — file was not synced
+      expect(pngRes.status()).not.toBe(200)
 
       // Phase 3: file APIs over E2B
       const filename = `e2b-proof-${Date.now()}.png`
@@ -411,6 +454,12 @@ test.describe("E2B Mother - Phases 0-6", () => {
         expect(runtimeAfterRotate.sandbox_id).not.toBe(previousSandboxId)
       }
     } finally {
+      // Clean up seeded test files from host workspace
+      await updateDomainRuntime(baseUrl, {
+        workspace: user.workspace,
+        executionMode: "systemd",
+        cleanHostFiles: SEED_FILE_PATHS,
+      }).catch(() => {})
       await restoreSystemd()
     }
   })

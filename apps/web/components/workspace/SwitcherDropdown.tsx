@@ -1,13 +1,13 @@
 "use client"
 
-import { Plus } from "lucide-react"
+import { Plus, X } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const DROPDOWN =
-  "z-[9999] w-96 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] overflow-hidden"
+  "z-[9999] w-[calc(100vw-16px)] max-w-96 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] overflow-hidden"
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -40,8 +40,12 @@ export function SwitcherDropdown<T>({
   const menuRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  // Auto-focus search input via callback ref (no useEffect needed)
-  const searchRef = useCallback((el: HTMLInputElement | null) => el?.focus(), [])
+  // Auto-focus search input on desktop only — on mobile, focus opens the keyboard
+  const searchRef = useCallback((el: HTMLInputElement | null) => {
+    if (el && window.matchMedia("(pointer: fine)").matches) {
+      el.focus()
+    }
+  }, [])
 
   // ─── Position below trigger + reposition on resize/scroll ────────────────
 
@@ -66,17 +70,21 @@ export function SwitcherDropdown<T>({
     }
   }, [reposition])
 
-  // ─── Click outside to close ──────────────────────────────────────────────
+  // ─── Click / tap outside to close ───────────────────────────────────────
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: MouseEvent | TouchEvent) => {
       const target = e.target
       if (!(target instanceof Node)) return
       if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return
       onClose()
     }
     document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
+    document.addEventListener("touchstart", handler)
+    return () => {
+      document.removeEventListener("mousedown", handler)
+      document.removeEventListener("touchstart", handler)
+    }
   }, [triggerRef, onClose])
 
   // ─── Filter + keyboard navigation ────────────────────────────────────────
@@ -147,7 +155,9 @@ export function SwitcherDropdown<T>({
           aria-label="Close"
           className="grid w-10 h-10 place-content-center bg-transparent border-none cursor-pointer shrink-0"
         >
-          <kbd className="text-[11px] text-black/30 dark:text-white/30 border border-black/[0.12] dark:border-white/[0.12] rounded px-1.5 py-0.5 font-mono">
+          {/* X icon on touch devices, Esc badge on desktop */}
+          <X size={16} strokeWidth={2} className="text-black/30 dark:text-white/30 pointer-coarse:block hidden" />
+          <kbd className="text-[11px] text-black/30 dark:text-white/30 border border-black/[0.12] dark:border-white/[0.12] rounded px-1.5 py-0.5 font-mono pointer-coarse:hidden">
             Esc
           </kbd>
         </button>
