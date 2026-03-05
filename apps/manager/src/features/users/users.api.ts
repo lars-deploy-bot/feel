@@ -1,3 +1,4 @@
+import type { ManagerUserProfile } from "@webalive/shared"
 import type { ClaudeModel } from "@webalive/shared/models"
 import { api } from "@/lib/api"
 import type { User, UserEvent } from "./users.types"
@@ -10,33 +11,8 @@ interface UserEventsResponse {
   data: UserEvent[]
 }
 
-export interface UserDevice {
-  browser: string | null
-  browser_version: string | null
-  os: string | null
-  os_version: string | null
-  device_type: string | null
-  screen: string | null
-  last_seen: string
-}
-
-export interface UserLocation {
-  city: string | null
-  country: string | null
-  region: string | null
-  timezone: string | null
-  last_seen: string
-}
-
-export interface UserProfile {
-  devices: UserDevice[]
-  locations: UserLocation[]
-  referrer: string | null
-  initial_referrer: string | null
-}
-
 interface UserProfileResponse {
-  data: UserProfile | null
+  data: ManagerUserProfile | null
 }
 
 export interface PasswordResetToken {

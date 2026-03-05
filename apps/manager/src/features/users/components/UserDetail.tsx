@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { cn } from "@/lib/cn"
 import { useRoute } from "@/lib/useRoute"
-import type { PasswordResetToken, UserDevice, UserLocation } from "../users.api"
+import type { ManagerUserDevice, ManagerUserLocation } from "@webalive/shared"
+import type { PasswordResetToken } from "../users.api"
 import { usersApi } from "../users.api"
 import type { User } from "../users.types"
 import { avatarColor, formatDate, relativeTime, roleBadgeVariant, statusVariant } from "../users.utils"
@@ -15,13 +16,13 @@ interface UserDetailProps {
   user: User
 }
 
-function formatDevice(d: UserDevice): string {
+function formatDevice(d: ManagerUserDevice): string {
   const browser = d.browser_version ? `${d.browser} ${d.browser_version}` : d.browser
   const os = d.os_version ? `${d.os} ${d.os_version}` : d.os
   return [browser, os].filter(Boolean).join(" · ")
 }
 
-function formatLocation(l: UserLocation): string {
+function formatLocation(l: ManagerUserLocation): string {
   return [l.city, l.region, l.country].filter(Boolean).join(", ")
 }
 

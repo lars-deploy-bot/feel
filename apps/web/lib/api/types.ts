@@ -47,24 +47,6 @@ export interface WorkspacesResponse {
   workspaces: string[]
 }
 
-export interface LoginResponse {
-  ok: true
-  userId: string
-}
-
-export interface LogoutResponse {
-  ok: true
-  message: string
-}
-
-export interface VerifyResponse {
-  ok: true
-  verified: true
-  workspace: string
-  message: string
-  requestId: string
-}
-
 export interface TokensResponse {
   ok: true
   tokens: number
@@ -200,13 +182,6 @@ export function isWorkspacesResponse(data: unknown): data is WorkspacesResponse 
   if (!isApiSuccess(data)) return false
 
   return "workspaces" in data && Array.isArray(data.workspaces) && data.workspaces.every(w => typeof w === "string")
-}
-
-/**
- * Type guard for LoginResponse
- */
-export function isLoginResponse(data: unknown): data is LoginResponse {
-  return isApiSuccess(data)
 }
 
 /**

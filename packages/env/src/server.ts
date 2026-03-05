@@ -102,37 +102,20 @@ export function getAnthropicApiKey(): string {
 }
 
 /**
- * Default Redis URL for local/native Redis (with dev password).
- * Native systemd Redis uses ACL auth — password required even locally.
- */
-const LOCAL_DEV_REDIS_URL = "redis://:dev_password_only@127.0.0.1:6379"
-
-/**
- * Get Redis URL with environment-aware validation
- *
- * - Production/Staging: REDIS_URL is REQUIRED (throws if missing)
- * - Local dev (STREAM_ENV=local): Falls back to default dev password
- * - Standalone (STREAM_ENV=standalone): Returns null (Redis not required)
- *
- * This prevents auth mismatches in production while allowing easy local dev.
+ * Get Redis URL. REDIS_URL must be set in the environment.
+ * Returns null only in standalone mode (STREAM_ENV=standalone).
  */
 export function getRedisUrl(): string | null {
-  // Standalone mode - Redis not available
   if (env.STREAM_ENV === "standalone") {
     return null
   }
 
   const redisUrl = env.REDIS_URL
-  const isLocalDev = env.STREAM_ENV === "local"
-
-  if (!redisUrl && !isLocalDev) {
-    throw new Error(
-      "REDIS_URL is required in production/staging. " +
-        "Set REDIS_URL environment variable or use STREAM_ENV=local for development.",
-    )
+  if (!redisUrl) {
+    throw new Error("REDIS_URL is required. Set it in your .env file.")
   }
 
-  return redisUrl || LOCAL_DEV_REDIS_URL
+  return redisUrl
 }
 
 /**
