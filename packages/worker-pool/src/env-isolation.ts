@@ -95,6 +95,11 @@ export function createWorkerSpawnEnv(extras: Record<string, string>): Record<str
   env.TMP ??= "/tmp"
   env.TEMP ??= "/tmp"
 
+  // Test-only worker behavior flag for integration tests (not passed in production runs).
+  if (process.env.VITEST === "true" && process.env.TEST_WORKER_MODE !== undefined) {
+    env.TEST_WORKER_MODE = process.env.TEST_WORKER_MODE
+  }
+
   // Merge caller-provided extras (worker-specific vars like TARGET_UID etc.)
   Object.assign(env, extras)
 
