@@ -9,7 +9,7 @@
  */
 
 import { execSync } from "node:child_process"
-import { access, mkdir, readFile, symlink, rm, writeFile } from "node:fs/promises"
+import { access, mkdir, readFile, symlink, rm } from "node:fs/promises"
 import { constants, existsSync } from "node:fs"
 
 // =============================================================================
@@ -36,13 +36,6 @@ const REQUIRED_TOOLS = [
   { name: "caddy", install: "apt install caddy" },
   { name: "redis-cli", install: "apt install redis-server" },
 ]
-
-const OPS_SYSTEMD_UNITS = [
-  "alive-runtime-status.service",
-  "alive-runtime-status.timer",
-  "alive-build-prune.service",
-  "alive-build-prune.timer",
-] as const
 
 // =============================================================================
 // Helpers
@@ -78,6 +71,12 @@ function run(cmd: string, opts?: { cwd?: string; silent?: boolean }): boolean {
     return true
   } catch {
     return false
+  }
+}
+
+function runOrThrow(cmd: string, errorMessage: string, opts?: { cwd?: string; silent?: boolean }): void {
+  if (!run(cmd, opts)) {
+    throw new Error(errorMessage)
   }
 }
 
@@ -211,30 +210,20 @@ async function setupServices(aliveRoot: string, generatedDir: string, enable: bo
   }
 
   // Install generated Alive services
-  run(`cp ${generatedDir}/alive-*.service /etc/systemd/system/`)
+  runOrThrow(`cp ${generatedDir}/alive-*.service /etc/systemd/system/`, "Failed to install generated services")
 
-  // Install repo-managed monitoring/pruning timers with server-specific aliveRoot
-  try {
-    for (const unit of OPS_SYSTEMD_UNITS) {
-      const templatePath = `${aliveRoot}/ops/systemd/${unit}`
-      const destinationPath = `/etc/systemd/system/${unit}`
-      const template = await readFile(templatePath, "utf8")
-      const rendered = template.replaceAll("__ALIVE_ROOT__", aliveRoot)
-      await writeFile(destinationPath, rendered, "utf8")
-    }
-  } catch (error) {
-    fail(`Failed to install ops systemd units: ${error instanceof Error ? error.message : String(error)}`)
-    return false
-  }
+  // Install and optionally enforce repo-managed monitoring/pruning timers.
+  const syncScriptPath = `${aliveRoot}/scripts/systemd/sync-ops-units.sh`
+  const syncCommand = enable
+    ? `"${syncScriptPath}" --alive-root "${aliveRoot}" --enable-required-timers --verify-required-timers`
+    : `"${syncScriptPath}" --alive-root "${aliveRoot}"`
 
-  run(`systemctl daemon-reload`)
+  runOrThrow(syncCommand, "Failed to sync ops systemd units")
   ok("Services installed")
 
   if (enable) {
-    run(`systemctl enable alive-dev`)
-    run(`systemctl enable alive-production`)
-    run(`systemctl enable --now alive-runtime-status.timer`)
-    run(`systemctl enable --now alive-build-prune.timer`)
+    runOrThrow(`systemctl enable alive-dev`, "Failed to enable alive-dev")
+    runOrThrow(`systemctl enable alive-production`, "Failed to enable alive-production")
     ok("Services enabled for auto-start")
   }
 
@@ -291,6 +280,7 @@ ${COLORS.bold}╔═════════════════════
 
   const aliveRoot = prereq.aliveRoot
   const generatedDir = prereq.generatedDir
+  const requiredTimersCommand = `systemctl status $(grep -vE '^\\s*(#|$)' "${aliveRoot}/ops/systemd/required-timers.list" | xargs)`
 
   // Generate routing
   header("Generating routing config")
@@ -323,8 +313,7 @@ ${COLORS.dim}Useful commands:${COLORS.reset}
   bun run see:dev     # View dev logs
   bun run gen:all     # Regenerate all configs
   systemctl status alive-*
-  systemctl status alive-runtime-status.timer
-  systemctl status alive-build-prune.timer
+  ${requiredTimersCommand}
 `)
 }
 

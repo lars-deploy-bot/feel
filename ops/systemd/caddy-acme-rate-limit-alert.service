@@ -1,0 +1,15 @@
+[Unit]
+Description=Alive Caddy ACME Rate-Limit Alert Check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__ALIVE_ROOT__
+ExecStart=/bin/bash __ALIVE_ROOT__/scripts/maintenance/caddy-acme-rate-limit-check.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=caddy-acme-rate-limit-alert
+
+[Install]
+WantedBy=multi-user.target
