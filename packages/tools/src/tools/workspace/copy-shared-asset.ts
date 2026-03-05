@@ -2,7 +2,7 @@ import { existsSync, statSync } from "node:fs"
 import { copyFile, mkdir, realpath } from "node:fs/promises"
 import { join } from "node:path"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { resolveAndValidatePath } from "@webalive/shared"
+import { resolveAndValidatePath } from "@webalive/shared/path-security"
 import { z } from "zod"
 import { errorResult, successResult, type ToolResult } from "../../lib/api-client.js"
 import {

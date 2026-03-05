@@ -126,7 +126,7 @@ export {
   type WrapExternalContentOptions,
   wrapExternalContent,
 } from "./external-content.js"
-export { generateInviteCode } from "./invite-code.js"
+// invite-code.ts uses node:crypto — import via "@webalive/shared/invite-code" (server-only)
 export type {
   ManagerPasswordResetToken,
   // Manager API response types - shared contract between apps/api and apps/manager
@@ -206,11 +206,7 @@ export {
   // Output limiting utilities
   truncateOutput,
 } from "./output-limits.js"
-export {
-  isPathWithinWorkspace,
-  type PathValidationResult,
-  resolveAndValidatePath,
-} from "./path-security.js"
+// path-security.ts uses node:path — import via "@webalive/shared/path-security" (server-only)
 export {
   type BackoffPolicy,
   computeBackoff,

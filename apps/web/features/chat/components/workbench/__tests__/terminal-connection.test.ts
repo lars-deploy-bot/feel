@@ -13,7 +13,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // ---------------------------------------------------------------------------
 // Minimal WebSocket mock that lets us control events
 // ---------------------------------------------------------------------------
-type WSListener = (...args: unknown[]) => void
+interface MockMessageEvent {
+  data: string
+}
 
 class MockWebSocket {
   static CONNECTING = 0 as const
@@ -29,10 +31,10 @@ class MockWebSocket {
   readyState: number = MockWebSocket.CONNECTING
   binaryType = "blob"
 
-  onopen: WSListener | null = null
-  onmessage: WSListener | null = null
-  onerror: WSListener | null = null
-  onclose: WSListener | null = null
+  onopen: ((event: Event) => void) | null = null
+  onmessage: ((event: MockMessageEvent) => void) | null = null
+  onerror: ((event: Event) => void) | null = null
+  onclose: ((event: Event) => void) | null = null
 
   url: string
   constructor(url: string) {
@@ -47,20 +49,20 @@ class MockWebSocket {
   // Test helpers to simulate server behaviour
   _simulateOpen() {
     this.readyState = MockWebSocket.OPEN
-    this.onopen?.({} as Event)
+    this.onopen?.(new Event("open"))
   }
 
   _simulateMessage(data: string) {
-    this.onmessage?.({ data } as MessageEvent)
+    this.onmessage?.({ data })
   }
 
   _simulateClose() {
     this.readyState = MockWebSocket.CLOSED
-    this.onclose?.({} as CloseEvent)
+    this.onclose?.(new Event("close"))
   }
 
   _simulateError() {
-    this.onerror?.({} as Event)
+    this.onerror?.(new Event("error"))
   }
 }
 
@@ -131,10 +133,9 @@ async function simulateConnect(
       state = state === "connected" || state === "connecting" ? "disconnected" : state
     }
 
-    ws.onmessage = (event: unknown) => {
-      const ev = event as { data: string }
+    ws.onmessage = (event: MockMessageEvent) => {
       try {
-        const msg = JSON.parse(ev.data)
+        const msg = JSON.parse(event.data)
         if (msg.type === "connected") {
           state = "connected"
         }
@@ -396,7 +397,7 @@ class TerminalStateMachine {
 
       // WS connection timeout
       this.wsTimeout = setTimeout(() => {
-        if (ws.readyState === MockWebSocket.OPEN) {
+        if (ws.readyState === MockWebSocket.CONNECTING || ws.readyState === MockWebSocket.OPEN) {
           ws.close()
         }
         this.state = "error"
@@ -412,10 +413,9 @@ class TerminalStateMachine {
         this.state = this.state === "connected" || this.state === "connecting" ? "disconnected" : this.state
       }
 
-      ws.onmessage = (event: unknown) => {
-        const ev = event as { data: string }
+      ws.onmessage = (event: MockMessageEvent) => {
         try {
-          const msg = JSON.parse(ev.data)
+          const msg = JSON.parse(event.data)
           if (msg.type === "connected") {
             if (this.wsTimeout) {
               clearTimeout(this.wsTimeout)

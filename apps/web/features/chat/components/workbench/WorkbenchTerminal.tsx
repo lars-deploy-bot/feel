@@ -83,7 +83,7 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
         // Timeout: if server never sends "connected" message, give up
         wsTimeoutRef.current = setTimeout(() => {
           if (generation !== mountGenRef.current) return
-          if (ws.readyState === WebSocket.OPEN) {
+          if (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN) {
             ws.close()
           }
           setState("error")
@@ -141,6 +141,7 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
 
         ws.onerror = () => {
           if (generation !== mountGenRef.current) return
+          if (wsRef.current !== ws) return
           if (wsTimeoutRef.current) {
             clearTimeout(wsTimeoutRef.current)
             wsTimeoutRef.current = null
@@ -151,6 +152,7 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
 
         ws.onclose = () => {
           if (generation !== mountGenRef.current) return
+          if (wsRef.current !== ws) return
           if (wsTimeoutRef.current) {
             clearTimeout(wsTimeoutRef.current)
             wsTimeoutRef.current = null
@@ -256,7 +258,10 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
         wsTimeoutRef.current = null
       }
       ro.disconnect()
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
+      if (
+        wsRef.current &&
+        (wsRef.current.readyState === WebSocket.CONNECTING || wsRef.current.readyState === WebSocket.OPEN)
+      ) {
         wsRef.current.close()
       }
       wsRef.current = null
@@ -280,7 +285,10 @@ export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
     }
 
     // Close existing connection
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (
+      wsRef.current &&
+      (wsRef.current.readyState === WebSocket.CONNECTING || wsRef.current.readyState === WebSocket.OPEN)
+    ) {
       wsRef.current.close()
     }
     wsRef.current = null

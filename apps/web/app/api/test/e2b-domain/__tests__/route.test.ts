@@ -7,7 +7,8 @@ const envMock = {
     {},
     {
       get(_, prop) {
-        return process.env[prop as string]
+        if (typeof prop !== "string") return undefined
+        return process.env[prop]
       },
     },
   ),
@@ -38,7 +39,8 @@ vi.mock("@sentry/nextjs", () => ({
 }))
 
 const mockShutdownWorker = vi.fn(async (_workspaceKey?: string, _reason?: string) => {})
-const mockGetWorkerInfo = vi.fn(() => [] as Array<{ workspaceKey: string }>)
+const emptyWorkerInfo: Array<{ workspaceKey: string }> = []
+const mockGetWorkerInfo = vi.fn(() => emptyWorkerInfo)
 const mockGetWorkerPool = vi.fn(() => ({
   getWorkerInfo: mockGetWorkerInfo,
   shutdownWorker: mockShutdownWorker,
@@ -61,10 +63,25 @@ vi.mock("e2b", () => ({
 const { GET, POST } = await import("../route")
 const { createAppClient } = await import("@/lib/supabase/app")
 
+function isExecutionMode(v: unknown): v is DomainState["execution_mode"] {
+  return v === "systemd" || v === "e2b"
+}
+
+function isSandboxStatus(v: unknown): v is DomainState["sandbox_status"] {
+  return v === "creating" || v === "running" || v === "dead" || v === null
+}
+
+/** Concentrate the mock-to-SupabaseClient type mismatch in one place.
+ * The mock only implements the `.from("domains")` chain used by the route.
+ * `as never` bridges the partial mock to the full SupabaseClient return type. */
+function mockAppClient(options: MockOptions): void {
+  vi.mocked(createAppClient).mockResolvedValue(createMockAppClient(options) as never)
+}
+
 interface DomainState {
   domain_id: string
   hostname: string
-  org_id: string
+  org_id: string | null
   is_test_env: boolean
   execution_mode: "systemd" | "e2b"
   sandbox_id: string | null
@@ -101,17 +118,18 @@ function createMockAppClient(options: MockOptions) {
               single: vi.fn(async () => {
                 if (updateError) return { data: null, error: updateError }
                 if (!domainState) return { data: null, error: { code: "PGRST116", message: "No rows found" } }
-                const hasExecutionMode = Object.hasOwn(patch, "execution_mode")
-                const hasSandboxId = Object.hasOwn(patch, "sandbox_id")
-                const hasSandboxStatus = Object.hasOwn(patch, "sandbox_status")
                 domainState = {
                   ...domainState,
-                  execution_mode: hasExecutionMode
-                    ? (patch.execution_mode as DomainState["execution_mode"])
+                  execution_mode: isExecutionMode(patch.execution_mode)
+                    ? patch.execution_mode
                     : domainState.execution_mode,
-                  sandbox_id: hasSandboxId ? (patch.sandbox_id as string | null) : domainState.sandbox_id,
-                  sandbox_status: hasSandboxStatus
-                    ? (patch.sandbox_status as DomainState["sandbox_status"])
+                  sandbox_id:
+                    Object.hasOwn(patch, "sandbox_id") &&
+                    (typeof patch.sandbox_id === "string" || patch.sandbox_id === null)
+                      ? patch.sandbox_id
+                      : domainState.sandbox_id,
+                  sandbox_status: isSandboxStatus(patch.sandbox_status)
+                    ? patch.sandbox_status
                     : domainState.sandbox_status,
                 }
                 return { data: domainState, error: null }
@@ -164,7 +182,7 @@ describe("GET /api/test/e2b-domain", () => {
     vi.stubEnv("STREAM_ENV", "local")
     vi.stubEnv("E2E_TEST_SECRET", "test-secret")
     vi.stubEnv("E2B_DOMAIN", "e2b.test.local")
-    vi.mocked(createAppClient).mockResolvedValue(createMockAppClient({ domain: makeDomain() }) as never)
+    mockAppClient({ domain: makeDomain() })
   })
 
   afterEach(() => {
@@ -191,12 +209,10 @@ describe("GET /api/test/e2b-domain", () => {
   })
 
   it("returns 404 when workspace is missing in DB", async () => {
-    vi.mocked(createAppClient).mockResolvedValue(
-      createMockAppClient({
-        domain: null,
-        selectError: { code: "PGRST116", message: "No rows found" },
-      }) as never,
-    )
+    mockAppClient({
+      domain: null,
+      selectError: { code: "PGRST116", message: "No rows found" },
+    })
 
     const res = await GET(makeGetRequest("missing.alive.local"))
     const json = await res.json()
@@ -206,11 +222,9 @@ describe("GET /api/test/e2b-domain", () => {
   })
 
   it("returns 403 for non-test domains", async () => {
-    vi.mocked(createAppClient).mockResolvedValue(
-      createMockAppClient({
-        domain: makeDomain({ is_test_env: false }),
-      }) as never,
-    )
+    mockAppClient({
+      domain: makeDomain({ is_test_env: false }),
+    })
 
     const res = await GET(makeGetRequest("e2e-w0.alive.local"))
     const json = await res.json()
@@ -237,7 +251,7 @@ describe("POST /api/test/e2b-domain", () => {
     vi.stubEnv("STREAM_ENV", "local")
     vi.stubEnv("E2E_TEST_SECRET", "test-secret")
     vi.stubEnv("E2B_DOMAIN", "e2b.test.local")
-    vi.mocked(createAppClient).mockResolvedValue(createMockAppClient({ domain: makeDomain() }) as never)
+    mockAppClient({ domain: makeDomain() })
     mockSandboxKill.mockResolvedValue(undefined)
     mockSandboxConnect.mockResolvedValue({ kill: mockSandboxKill })
     mockGetWorkerInfo.mockReturnValue([])
@@ -268,11 +282,9 @@ describe("POST /api/test/e2b-domain", () => {
   })
 
   it("returns 403 for non-test domains", async () => {
-    vi.mocked(createAppClient).mockResolvedValue(
-      createMockAppClient({
-        domain: makeDomain({ is_test_env: false }),
-      }) as never,
-    )
+    mockAppClient({
+      domain: makeDomain({ is_test_env: false }),
+    })
 
     const res = await POST(makePostRequest({ workspace: "e2e-w0.alive.local", executionMode: "e2b" }))
     const json = await res.json()
@@ -282,15 +294,13 @@ describe("POST /api/test/e2b-domain", () => {
   })
 
   it("updates execution_mode and clears sandbox fields when resetSandboxFields=true", async () => {
-    vi.mocked(createAppClient).mockResolvedValue(
-      createMockAppClient({
-        domain: makeDomain({
-          execution_mode: "systemd",
-          sandbox_id: "sbx_old",
-          sandbox_status: "running",
-        }),
-      }) as never,
-    )
+    mockAppClient({
+      domain: makeDomain({
+        execution_mode: "systemd",
+        sandbox_id: "sbx_old",
+        sandbox_status: "running",
+      }),
+    })
 
     const res = await POST(
       makePostRequest({
@@ -308,15 +318,13 @@ describe("POST /api/test/e2b-domain", () => {
   })
 
   it("kills active sandbox when killSandbox=true", async () => {
-    vi.mocked(createAppClient).mockResolvedValue(
-      createMockAppClient({
-        domain: makeDomain({
-          execution_mode: "e2b",
-          sandbox_id: "sbx_active",
-          sandbox_status: "running",
-        }),
-      }) as never,
-    )
+    mockAppClient({
+      domain: makeDomain({
+        execution_mode: "e2b",
+        sandbox_id: "sbx_active",
+        sandbox_status: "running",
+      }),
+    })
 
     const res = await POST(
       makePostRequest({
@@ -340,15 +348,13 @@ describe("POST /api/test/e2b-domain", () => {
   it("keeps update successful even when sandbox kill fails", async () => {
     mockSandboxConnect.mockRejectedValueOnce(new Error("sandbox not found"))
 
-    vi.mocked(createAppClient).mockResolvedValue(
-      createMockAppClient({
-        domain: makeDomain({
-          execution_mode: "e2b",
-          sandbox_id: "sbx_missing",
-          sandbox_status: "dead",
-        }),
-      }) as never,
-    )
+    mockAppClient({
+      domain: makeDomain({
+        execution_mode: "e2b",
+        sandbox_id: "sbx_missing",
+        sandbox_status: "dead",
+      }),
+    })
 
     const res = await POST(
       makePostRequest({

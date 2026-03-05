@@ -40,12 +40,13 @@ describe("@webalive/shared exports", () => {
     expect(models.length).toBeGreaterThan(0)
   })
 
-  it("exports security functions", async () => {
-    const shared = await import("@webalive/shared")
+  it("exports security functions from path-security subpath", async () => {
+    // path-security uses node:path — not in barrel, available via @webalive/shared/path-security
+    const pathSecurity = await import("@webalive/shared/path-security")
 
     // Path security - critical for preventing traversal attacks
-    expect(shared.isPathWithinWorkspace).toBeInstanceOf(Function)
-    expect(shared.resolveAndValidatePath).toBeInstanceOf(Function)
+    expect(pathSecurity.isPathWithinWorkspace).toBeInstanceOf(Function)
+    expect(pathSecurity.resolveAndValidatePath).toBeInstanceOf(Function)
   })
 
   it("exports stream tool configuration", async () => {
