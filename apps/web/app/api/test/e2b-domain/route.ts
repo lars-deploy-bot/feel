@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises"
 import * as path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { AppConstants } from "@webalive/database"
 import { env } from "@webalive/env/server"
 import { getWorkspacePath } from "@webalive/shared"
 import { getWorkerPool } from "@webalive/worker-pool"
@@ -13,11 +14,11 @@ import { createAppClient } from "@/lib/supabase/app"
 const RuntimeResponseSchema = z.object({
   domain_id: z.string(),
   hostname: z.string(),
-  org_id: z.string(),
+  org_id: z.string().nullable(),
   is_test_env: z.boolean(),
-  execution_mode: z.enum(["systemd", "e2b"]),
+  execution_mode: z.enum(AppConstants.app.Enums.execution_mode),
   sandbox_id: z.string().nullable(),
-  sandbox_status: z.enum(["creating", "running", "dead"]).nullable(),
+  sandbox_status: z.enum(AppConstants.app.Enums.sandbox_status).nullable(),
 })
 
 const SeedFileSchema = z.object({
@@ -29,8 +30,8 @@ const SeedFileSchema = z.object({
 
 const UpdateBodySchema = z.object({
   workspace: z.string().min(1),
-  executionMode: z.enum(["systemd", "e2b"]),
-  sandboxStatus: z.enum(["creating", "running", "dead"]).nullable().optional(),
+  executionMode: z.enum(AppConstants.app.Enums.execution_mode),
+  sandboxStatus: z.enum(AppConstants.app.Enums.sandbox_status).nullable().optional(),
   sandboxId: z.string().nullable().optional(),
   killSandbox: z.boolean().optional().default(false),
   resetSandboxFields: z.boolean().optional().default(false),
