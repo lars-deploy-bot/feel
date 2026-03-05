@@ -1,3 +1,4 @@
+import type { ManagerUserDevice, ManagerUserLocation, ManagerUserProfile } from "@webalive/shared"
 import { env } from "../config/env"
 
 const POSTHOG_HOST = env.POSTHOG_HOST
@@ -60,31 +61,6 @@ export async function fetchUserEvents(
   return data.results
 }
 
-export interface UserDevice {
-  browser: string | null
-  browser_version: string | null
-  os: string | null
-  os_version: string | null
-  device_type: string | null
-  screen: string | null
-  last_seen: string
-}
-
-export interface UserLocation {
-  city: string | null
-  country: string | null
-  region: string | null
-  timezone: string | null
-  last_seen: string
-}
-
-export interface PostHogUserProfile {
-  devices: UserDevice[]
-  locations: UserLocation[]
-  referrer: string | null
-  initial_referrer: string | null
-}
-
 function str(p: Record<string, unknown>, key: string): string | null {
   const v = p[key]
   return typeof v === "string" && v.length > 0 ? v : null
@@ -94,7 +70,7 @@ function str(p: Record<string, unknown>, key: string): string | null {
  * Build a user profile from their recent PostHog events.
  * Scans recent events to find all unique devices and locations.
  */
-export async function fetchUserProfile(distinctId: string): Promise<PostHogUserProfile | null> {
+export async function fetchUserProfile(distinctId: string): Promise<ManagerUserProfile | null> {
   if (!isConfigured()) {
     return null
   }
@@ -104,9 +80,9 @@ export async function fetchUserProfile(distinctId: string): Promise<PostHogUserP
   if (events.length === 0) return null
 
   // Dedupe devices by "browser + os + screen" fingerprint
-  const deviceMap = new Map<string, UserDevice>()
+  const deviceMap = new Map<string, ManagerUserDevice>()
   // Dedupe locations by "city + country"
-  const locationMap = new Map<string, UserLocation>()
+  const locationMap = new Map<string, ManagerUserLocation>()
 
   for (const event of events) {
     const p = event.properties

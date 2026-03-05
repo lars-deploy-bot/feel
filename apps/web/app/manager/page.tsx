@@ -25,7 +25,7 @@ import { ApiError, delly, getty, postty, putty } from "@/lib/api/api-client"
 import { type ReqInput, validateRequest } from "@/lib/api/schemas"
 import { resetPostHogIdentity } from "@/lib/posthog"
 import type { DomainConfigClient, DomainStatus } from "@/types/domain"
-import type { FeedbackEntry } from "@/types/feedback"
+import type { FeedbackEntry } from "@/lib/feedback"
 import type { SourceData } from "@/types/sources"
 
 type DomainPasswords = Record<string, DomainConfigClient>

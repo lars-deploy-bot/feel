@@ -44,3 +44,28 @@ export interface ManagerPasswordResetToken {
   token: string
   expires_at: string
 }
+
+export interface ManagerUserDevice {
+  browser: string | null
+  browser_version: string | null
+  os: string | null
+  os_version: string | null
+  device_type: string | null
+  screen: string | null
+  last_seen: string
+}
+
+export interface ManagerUserLocation {
+  city: string | null
+  country: string | null
+  region: string | null
+  timezone: string | null
+  last_seen: string
+}
+
+export interface ManagerUserProfile {
+  devices: ManagerUserDevice[]
+  locations: ManagerUserLocation[]
+  referrer: string | null
+  initial_referrer: string | null
+}
