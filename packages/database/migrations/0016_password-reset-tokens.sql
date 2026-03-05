@@ -28,6 +28,10 @@ SECURITY DEFINER
 SET search_path = iam
 AS $$
 BEGIN
+  IF p_expires_at <= now() THEN
+    RAISE EXCEPTION 'p_expires_at must be in the future';
+  END IF;
+
   -- Invalidate previous unused tokens for the same user.
   UPDATE iam.password_reset_tokens
   SET used_at = now()

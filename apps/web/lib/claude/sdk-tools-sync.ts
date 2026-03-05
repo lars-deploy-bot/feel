@@ -30,6 +30,7 @@ import type {
 import {
   createStreamToolContext,
   getStreamToolDecision,
+  isUserApprovalTool,
   SDK_TOOL,
   STREAM_SDK_TOOL_NAMES,
   type StreamSdkToolName,
@@ -61,10 +62,10 @@ const superadminContext = createStreamToolContext({
 })
 
 export const ALLOWED_SDK_TOOLS = STREAM_SDK_TOOL_NAMES.filter(
-  tool => getStreamToolDecision(tool, memberContext).executable,
+  tool => getStreamToolDecision(tool, memberContext).executable || isUserApprovalTool(tool),
 )
 export const DISALLOWED_SDK_TOOLS = STREAM_SDK_TOOL_NAMES.filter(
-  tool => !getStreamToolDecision(tool, memberContext).executable,
+  tool => !getStreamToolDecision(tool, memberContext).executable && !isUserApprovalTool(tool),
 )
 
 export const ADMIN_ONLY_SDK_TOOLS = STREAM_SDK_TOOL_NAMES.filter(

@@ -93,7 +93,7 @@ export async function getLiveStagingUser(workerIndex: number, baseUrl: string): 
     throw new Error(`bootstrap-tenant returned non-JSON response: ${contentType || "unknown"}`)
   }
 
-  const payload: BootstrapTenantResponse = await response.json()
+  const payload = (await response.json()) as BootstrapTenantResponse
   if (!payload.ok) {
     throw new Error("bootstrap-tenant returned ok=false")
   }
@@ -108,6 +108,7 @@ export async function getLiveStagingUser(workerIndex: number, baseUrl: string): 
 
 export async function loginLiveStaging(page: Page, user: LiveStagingUser): Promise<void> {
   await login(page, user)
+
   await page.waitForURL("**/chat", { timeout: TEST_TIMEOUTS.max })
 
   await expect(page.locator('[data-testid="workspace-ready"]')).toBeAttached({
@@ -118,8 +119,7 @@ export async function loginLiveStaging(page: Page, user: LiveStagingUser): Promi
   if (!storageValue) {
     throw new Error("Workspace storage missing after login")
   }
-
-  const parsed: WorkspaceStorageValue = JSON.parse(storageValue)
+  const parsed = JSON.parse(storageValue) as WorkspaceStorageValue
   expect(parsed.state.currentWorkspace).toBe(user.workspace)
   expect(parsed.state.selectedOrgId).toBe(user.orgId)
 
@@ -138,7 +138,7 @@ export async function getTenantSandboxState(baseUrl: string, email: string): Pro
     throw new Error(`verify-tenant failed (${response.status})`)
   }
 
-  const payload: VerifyTenantResponse = await response.json()
+  const payload = (await response.json()) as VerifyTenantResponse
   if (!payload.ready) {
     throw new Error("verify-tenant returned ready=false while checking sandbox state")
   }

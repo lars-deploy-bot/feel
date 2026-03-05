@@ -56,6 +56,7 @@ export function UserDetail({ user }: UserDetailProps) {
 
   useEffect(() => {
     issueRequestIdRef.current += 1
+    setIsIssuingToken(false)
     setResetToken(null)
     setTokenError(null)
     setCopied(false)
@@ -96,6 +97,7 @@ export function UserDetail({ user }: UserDetailProps) {
       setTokenError(null)
       setCopied(true)
     } catch {
+      setCopied(false)
       setTokenError("Clipboard copy failed")
     }
   }

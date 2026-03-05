@@ -69,6 +69,7 @@ See these guides for detail:
 - docs/testing/UNIT_TESTING.md
 - docs/testing/INTEGRATION_TESTING.md
 - docs/testing/E2E_TESTING.md
+- docs/testing/E2B_MOTHER_E2E_ARCHITECTURE.md
 - docs/testing/TEST_PATTERNS.md
 - docs/testing/TESTING_FAILURE_MODES.md
 - docs/testing/AUTH_RLS_CONTRACT_AND_DRIFT.md

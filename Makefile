@@ -10,7 +10,15 @@
 #
 # =============================================================================
 
-.PHONY: help ship ship-fast staging staging-fast production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy
+.PHONY: all clean test help ship ship-fast staging staging-fast production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager
+
+all: help
+
+clean:
+	@echo "No clean target defined"
+
+test:
+	@bun run test:core
 
 # Load environment variables
 ifneq (,$(wildcard .env))
@@ -49,6 +57,11 @@ help:
 	@echo "  make logs-staging    View staging logs"
 	@echo "  make logs-production View production logs"
 	@echo "  make logs-dev        View dev logs"
+	@echo ""
+	@echo "$(GREEN)Services:$(NC)"
+	@echo "  make services        Build and deploy API + Manager"
+	@echo "  make api             Build and deploy API only"
+	@echo "  make manager         Build and deploy Manager only"
 	@echo ""
 	@echo "$(GREEN)Other:$(NC)"
 	@echo "  make rollback        Interactive rollback to previous build"
@@ -161,3 +174,16 @@ deploy-go:
 
 preview-proxy:
 	@./scripts/deployment/deploy-preview-proxy.sh
+
+# =============================================================================
+# Standalone Services (API + Manager)
+# =============================================================================
+
+services:
+	@./scripts/deployment/deploy-services.sh
+
+api:
+	@./scripts/deployment/deploy-services.sh --api
+
+manager:
+	@./scripts/deployment/deploy-services.sh --manager
