@@ -19,6 +19,20 @@ vi.mock("@/lib/supabase/app", () => ({
   createAppClient: vi.fn(),
 }))
 
+const mockWriteFile = vi.fn(async (_path: string, _content: string) => {})
+const mockMkdir = vi.fn(async (_path: string, _opts?: Record<string, unknown>) => {})
+const mockUnlink = vi.fn(async (_path: string) => {})
+
+vi.mock("node:fs/promises", () => ({
+  writeFile: (p: string, c: string) => mockWriteFile(p, c),
+  mkdir: (p: string, o?: Record<string, unknown>) => mockMkdir(p, o),
+  unlink: (p: string) => mockUnlink(p),
+}))
+
+vi.mock("@webalive/shared", () => ({
+  getWorkspacePath: (domain: string) => `/srv/webalive/sites/${domain}/user`,
+}))
+
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }))
@@ -373,5 +387,71 @@ describe("POST /api/test/e2b-domain", () => {
     expect(mockShutdownWorker).toHaveBeenCalledWith("e2e-w0.alive.local:0", "test_e2b_domain_runtime_reset")
     expect(mockShutdownWorker).toHaveBeenCalledWith("e2e-w0.alive.local:1", "test_e2b_domain_runtime_reset")
     expect(json.workerRestart).toEqual({ requested: true, matched: 2, restarted: 2 })
+  })
+
+  it("seeds host files to workspace directory", async () => {
+    const res = await POST(
+      makePostRequest({
+        workspace: "e2e-w0.alive.local",
+        executionMode: "systemd",
+        seedHostFiles: [
+          { path: "vite.config.ts", content: "export default {}" },
+          { path: "src/app.ts", content: "console.log('hi')" },
+        ],
+      }),
+    )
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.seededFiles).toEqual(["vite.config.ts", "src/app.ts"])
+    expect(mockMkdir).toHaveBeenCalledTimes(2)
+    expect(mockWriteFile).toHaveBeenCalledTimes(2)
+    expect(mockWriteFile).toHaveBeenCalledWith(
+      "/srv/webalive/sites/e2e-w0.alive.local/user/vite.config.ts",
+      "export default {}",
+    )
+  })
+
+  it("blocks path traversal in seedHostFiles", async () => {
+    const res = await POST(
+      makePostRequest({
+        workspace: "e2e-w0.alive.local",
+        executionMode: "systemd",
+        seedHostFiles: [{ path: "../../etc/passwd", content: "hacked" }],
+      }),
+    )
+
+    expect(res.status).toBe(500)
+  })
+
+  it("cleans host files from workspace directory", async () => {
+    const res = await POST(
+      makePostRequest({
+        workspace: "e2e-w0.alive.local",
+        executionMode: "systemd",
+        cleanHostFiles: ["vite.config.ts", "test.png"],
+      }),
+    )
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.cleanedFiles).toEqual(["vite.config.ts", "test.png"])
+    expect(mockUnlink).toHaveBeenCalledTimes(2)
+  })
+
+  it("ignores missing files during cleanup", async () => {
+    mockUnlink.mockRejectedValueOnce(new Error("ENOENT"))
+
+    const res = await POST(
+      makePostRequest({
+        workspace: "e2e-w0.alive.local",
+        executionMode: "systemd",
+        cleanHostFiles: ["missing.txt"],
+      }),
+    )
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.cleanedFiles).toEqual([])
   })
 })

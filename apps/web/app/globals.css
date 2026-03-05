@@ -3,6 +3,7 @@
 @import "../features/chat/components/ChatInput/composer.css";
 
 @custom-variant dark (.dark &);
+@custom-variant pointer-coarse (@media (pointer: coarse));
 
 /* Satoshi Variable Font - for headings */
 @font-face {
