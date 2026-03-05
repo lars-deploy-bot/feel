@@ -31,20 +31,34 @@ import {
 
 export type StreamToolRole = "member" | "admin" | "superadmin"
 export type StreamWorkspaceKind = "site" | "platform"
-export type StreamPlanModeBehavior = "allow" | "block"
 export type StreamToolVisibility = "visible" | "silent"
+
+// =============================================================================
+// STREAM MODE REGISTRY
+// =============================================================================
+
+export const STREAM_MODE_KEYS = ["default", "plan", "superadmin"] as const
+export type StreamMode = (typeof STREAM_MODE_KEYS)[number]
+
+export interface StreamModeConfig {
+  /** SDK tools allowed in this mode. null = use role/workspace policy (no mode filter). */
+  sdkTools: readonly StreamSdkToolName[] | null
+  /** Whether MCP servers should be registered. */
+  mcpEnabled: boolean
+  /** SDK permission mode string passed to Claude Agent SDK. */
+  permissionMode: string
+}
 
 export interface StreamToolContext {
   role: StreamToolRole
   workspaceKind: StreamWorkspaceKind
-  isPlanMode: boolean
+  mode: StreamMode
   connectedProviders: string[]
 }
 
 export interface StreamToolPolicy {
   roles: readonly StreamToolRole[]
   workspaceKinds: readonly StreamWorkspaceKind[]
-  planMode: StreamPlanModeBehavior
   visibility: StreamToolVisibility
   requiresUserApproval?: boolean
   reason: string
@@ -67,7 +81,7 @@ interface StreamToolContextInput {
   isAdmin?: boolean
   isSuperadmin?: boolean
   isSuperadminWorkspace?: boolean
-  isPlanMode?: boolean
+  mode?: StreamMode
   connectedProviders?: string[]
 }
 
@@ -93,7 +107,7 @@ export function createStreamToolContext(input: StreamToolContextInput = {}): Str
   return {
     role,
     workspaceKind,
-    isPlanMode: !!input.isPlanMode,
+    mode: input.mode ?? "default",
     connectedProviders,
   }
 }
@@ -200,6 +214,42 @@ export const STREAM_SDK_TOOL_NAMES = defineSdkToolNames(
 
 type MissingSdkToolNames = Exclude<StreamSdkToolName, (typeof STREAM_SDK_TOOL_NAMES)[number]>
 const _assertAllSdkToolNamesListed: MissingSdkToolNames extends never ? true : never = true
+
+/**
+ * Stream Mode Registry — defines allowed tools per mode.
+ *
+ * "default" = no mode filter, role/workspace policy applies as-is.
+ * Non-default modes are allowlists: if a tool isn't listed, it's blocked.
+ */
+export const STREAM_MODES: Record<StreamMode, StreamModeConfig> = {
+  default: {
+    sdkTools: null,
+    mcpEnabled: true,
+    permissionMode: "forcedAccept",
+  },
+  plan: {
+    sdkTools: [
+      SDK_TOOL.READ,
+      SDK_TOOL.GLOB,
+      SDK_TOOL.GREP,
+      SDK_TOOL.BASH_OUTPUT,
+      SDK_TOOL.TASK_OUTPUT,
+      SDK_TOOL.WEB_FETCH,
+      SDK_TOOL.WEB_SEARCH,
+      SDK_TOOL.ASK_USER_QUESTION,
+      SDK_TOOL.TODO_WRITE,
+      SDK_TOOL.SKILL,
+      SDK_TOOL.EXIT_PLAN_MODE,
+    ],
+    mcpEnabled: false,
+    permissionMode: "plan",
+  },
+  superadmin: {
+    sdkTools: [SDK_TOOL.BASH, SDK_TOOL.BASH_OUTPUT, SDK_TOOL.ASK_USER_QUESTION],
+    mcpEnabled: false,
+    permissionMode: "bypassPermissions",
+  },
+}
 
 /**
  * Lowercase SDK tool name constants — derived from SDK_TOOL (cannot drift).
@@ -396,7 +446,6 @@ function policy(overrides: Partial<StreamToolPolicy> & Pick<StreamToolPolicy, "r
   return {
     roles: ALL_ROLES,
     workspaceKinds: BOTH_WORKSPACE_KINDS,
-    planMode: "allow",
     visibility: "visible",
     ...overrides,
   }
@@ -410,7 +459,6 @@ function descriptorToPolicy(d: InternalToolDescriptor): StreamToolPolicy {
   return policy({
     reason: d.reason,
     ...(d.workspaceKinds ? { workspaceKinds: d.workspaceKinds } : {}),
-    ...(d.planMode ? { planMode: d.planMode } : {}),
     ...(d.visibility ? { visibility: d.visibility } : {}),
     ...(d.roles ? { roles: d.roles } : {}),
   })
@@ -435,11 +483,11 @@ function generateInternalMcpPolicies(): Record<string, StreamToolPolicy> {
  */
 const SDK_TOOL_POLICIES: Record<StreamSdkToolName, StreamToolPolicy> = {
   [SDK_TOOL.READ]: policy({ reason: "Workspace-scoped file reads are allowed." }),
-  [SDK_TOOL.WRITE]: policy({ reason: "Workspace file writes are allowed in normal mode.", planMode: "block" }),
-  [SDK_TOOL.EDIT]: policy({ reason: "Workspace file edits are allowed in normal mode.", planMode: "block" }),
+  [SDK_TOOL.WRITE]: policy({ reason: "Workspace file writes are allowed." }),
+  [SDK_TOOL.EDIT]: policy({ reason: "Workspace file edits are allowed." }),
   [SDK_TOOL.GLOB]: policy({ reason: "Workspace discovery is allowed." }),
   [SDK_TOOL.GREP]: policy({ reason: "Workspace search is allowed." }),
-  [SDK_TOOL.BASH]: policy({ reason: "Shell commands are allowed with runtime safeguards.", planMode: "block" }),
+  [SDK_TOOL.BASH]: policy({ reason: "Shell commands are allowed with runtime safeguards." }),
   [SDK_TOOL.TASK_OUTPUT]: policy({ reason: "Task output streaming is allowed." }),
   [SDK_TOOL.BASH_OUTPUT]: policy({ reason: "Legacy bash output alias is allowed." }),
   [SDK_TOOL.TODO_WRITE]: policy({
@@ -447,36 +495,31 @@ const SDK_TOOL_POLICIES: Record<StreamSdkToolName, StreamToolPolicy> = {
     visibility: "silent",
   }),
   [SDK_TOOL.ASK_USER_QUESTION]: policy({ reason: "Clarification UI questions are allowed for all roles." }),
-  [SDK_TOOL.MCP]: policy({ reason: "MCP bridge invocation is allowed.", planMode: "block" }),
+  [SDK_TOOL.MCP]: policy({ reason: "MCP bridge invocation is allowed." }),
   [SDK_TOOL.LIST_MCP_RESOURCES]: policy({
     reason: "MCP resource listing is member-only by product policy.",
     roles: MEMBER_ONLY,
-    planMode: "block",
   }),
   [SDK_TOOL.READ_MCP_RESOURCE]: policy({
     reason: "MCP resource reading is member-only by product policy.",
     roles: MEMBER_ONLY,
-    planMode: "block",
   }),
-  [SDK_TOOL.NOTEBOOK_EDIT]: policy({ reason: "Notebook editing is allowed in normal mode.", planMode: "block" }),
+  [SDK_TOOL.NOTEBOOK_EDIT]: policy({ reason: "Notebook editing is allowed." }),
   [SDK_TOOL.WEB_FETCH]: policy({ reason: "Single-page fetch is allowed." }),
   [SDK_TOOL.SKILL]: policy({ reason: "Local skills are allowed." }),
   [SDK_TOOL.TASK_STOP]: policy({
     reason: "Stopping tasks is admin/superadmin only.",
     roles: ADMIN_AND_SUPERADMIN,
-    planMode: "block",
   }),
   [SDK_TOOL.TASK]: policy({
     reason: "Subagent spawning is superadmin-only.",
     roles: SUPERADMIN_ONLY,
-    planMode: "block",
   }),
   [SDK_TOOL.WEB_SEARCH]: policy({ reason: "Web search is superadmin-only.", roles: SUPERADMIN_ONLY }),
   [SDK_TOOL.EXIT_PLAN_MODE]: policy({
     reason: "Exiting plan mode requires explicit user action in UI.",
     roles: [],
     requiresUserApproval: true,
-    planMode: "block",
   }),
 } satisfies Record<StreamSdkToolName, StreamToolPolicy>
 
@@ -593,7 +636,7 @@ export function getStreamToolDecision(toolName: string, context: StreamToolConte
     }
   }
 
-  const { policy, policyToolName } = effectivePolicy
+  const { policy } = effectivePolicy
   const visibleToClient = policy.visibility === "visible"
 
   if (policy.requiresUserApproval) {
@@ -623,13 +666,13 @@ export function getStreamToolDecision(toolName: string, context: StreamToolConte
     }
   }
 
-  if (context.isPlanMode && policy.planMode === "block") {
-    const viaSource = policyToolName !== toolName ? ` via "${policyToolName}" policy` : ""
+  const modeConfig = STREAM_MODES[context.mode]
+  if (modeConfig.sdkTools !== null && !modeConfig.sdkTools.includes(toolName as StreamSdkToolName)) {
     return {
       executable: false,
       visibleToClient,
       policyFound: true,
-      reason: `Tool "${toolName}" is blocked in plan mode${viaSource}. ${policy.reason}`,
+      reason: `Tool "${toolName}" is not available in ${context.mode} mode.`,
     }
   }
 
@@ -829,14 +872,14 @@ export function getStreamAllowedTools(
   isAdmin = false,
   isSuperadmin = false,
   isSuperadminWorkspace = false,
-  isPlanMode = false,
+  mode: StreamMode = "default",
   connectedProviders: string[] = [],
 ): string[] {
   const context = createStreamToolContext({
     isAdmin,
     isSuperadmin,
     isSuperadminWorkspace,
-    isPlanMode,
+    mode,
     connectedProviders,
   })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).allowedTools
@@ -848,31 +891,26 @@ export function getStreamAllowedTools(
 export function getStreamDisallowedTools(
   isAdmin: boolean,
   isSuperadmin = false,
-  isPlanMode = false,
+  mode: StreamMode = "default",
   isSuperadminWorkspace = false,
 ): string[] {
   const context = createStreamToolContext({
     isAdmin,
     isSuperadmin,
     isSuperadminWorkspace,
-    isPlanMode,
+    mode,
   })
-  return getSdkToolsForPolicyEvaluation().filter(
-    tool => !getStreamToolDecision(tool, context).executable && !isUserApprovalTool(tool),
-  )
+  return buildStreamToolRuntimeConfig(() => [], context).disallowedTools
 }
 
 /**
- * Backwards-compatible helper that now delegates to registry logic.
+ * Filter tools by stream mode. In non-default modes, only mode-allowed tools pass.
  */
-export function filterToolsForPlanMode(allowedTools: string[], isPlanMode: boolean): string[] {
-  if (!isPlanMode) return allowedTools
+export function filterToolsForMode(allowedTools: string[], mode: StreamMode): string[] {
+  const modeConfig = STREAM_MODES[mode]
+  if (modeConfig.sdkTools === null) return allowedTools
 
-  return allowedTools.filter(tool => {
-    const effectivePolicy = getEffectivePolicyForTool(tool)
-    if (!effectivePolicy) return true
-    return effectivePolicy.policy.planMode !== "block"
-  })
+  return allowedTools.filter(tool => modeConfig.sdkTools!.includes(tool as StreamSdkToolName))
 }
 
 /**

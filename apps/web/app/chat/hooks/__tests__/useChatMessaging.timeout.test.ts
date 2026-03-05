@@ -59,6 +59,7 @@ const mocks = vi.hoisted(() => {
     useModel: vi.fn(() => "claude-sonnet"),
     usePlanMode: vi.fn(() => false),
     getPlanModeState: vi.fn(() => ({ planMode: false })),
+    getStreamModeState: vi.fn(() => ({ mode: "default" })),
     streamingActions,
     useDexieMessageStore,
     handleSessionExpired: vi.fn((..._args: unknown[]) => undefined),
@@ -192,9 +193,10 @@ vi.mock("@/lib/stores/llmStore", () => ({
   useModel: () => mocks.useModel(),
 }))
 
-vi.mock("@/lib/stores/planModeStore", () => ({
+vi.mock("@/lib/stores/streamModeStore", () => ({
   usePlanMode: () => mocks.usePlanMode(),
   getPlanModeState: () => mocks.getPlanModeState(),
+  getStreamModeState: () => mocks.getStreamModeState(),
 }))
 
 vi.mock("@/lib/stores/streamingStore", () => ({

@@ -42,7 +42,7 @@ import {
   SandboxManager,
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamCanUseTool, createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isHeavyBashCommand, isStreamInitVisibleTool, isTransientNetworkError, SDK_TOOL, SENTRY } from "@webalive/shared"
+import { createStreamCanUseTool, createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isHeavyBashCommand, isStreamInitVisibleTool, isTransientNetworkError, SDK_TOOL, SENTRY, STREAM_MODES } from "@webalive/shared"
 import {
   emailInternalMcp,
   toolsInternalMcp,
@@ -825,18 +825,18 @@ async function handleQuery(ipc, requestId, payload) {
     console.error(`[worker] Allowed tools count: ${allowedTools.length}`)
     console.error(`[worker] Permission mode: "${permissionMode}"`)
 
-    // Plan mode: block tools that modify files
-    // See docs/architecture/plan-mode.md for full explanation
-    const isPlanMode = permissionMode === "plan"
-    if (isPlanMode) {
-      console.error("[worker] PLAN MODE: Write/Edit/Bash tools will be blocked")
+    // Stream mode: determines tool availability
+    const streamMode = agentConfig.streamMode || "default"
+    const modeConfig = STREAM_MODES[streamMode]
+    if (streamMode !== "default") {
+      console.error(`[worker] Stream mode: ${streamMode} (MCP enabled: ${modeConfig.mcpEnabled})`)
     }
 
     const toolContext = createStreamToolContext({
       isAdmin: !!agentConfig.isAdmin,
       isSuperadmin: !!agentConfig.isSuperadmin,
       isSuperadminWorkspace: !!agentConfig.isSuperadminWorkspace,
-      isPlanMode,
+      mode: streamMode,
       connectedProviders,
     })
 
@@ -945,13 +945,15 @@ async function handleQuery(ipc, requestId, payload) {
       }
     }
 
-    const mcpServers = {
-      "alive-workspace": workspaceInternalMcp,
-      "alive-tools": toolsInternalMcp,
-      ...optionalMcpServers,
-      ...globalMcpServers,
-      ...(oauthMcpServers || {}),
-    }
+    const mcpServers = modeConfig.mcpEnabled
+      ? {
+          "alive-workspace": workspaceInternalMcp,
+          "alive-tools": toolsInternalMcp,
+          ...optionalMcpServers,
+          ...globalMcpServers,
+          ...(oauthMcpServers || {}),
+        }
+      : {}
 
     // E2B sandbox routing: swap file/shell tools to remote sandbox.
     // The SDK cwd stays local (needed for subprocess), but Claude sees SANDBOX_WORKSPACE_ROOT

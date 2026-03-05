@@ -178,7 +178,7 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
       isAdmin: false,
       isSuperadmin: false,
       isSuperadminWorkspace: false,
-      isPlanMode: permissionMode === "plan",
+      mode: permissionMode === "plan" ? "plan" : "default",
       connectedProviders,
     })
 

@@ -114,11 +114,11 @@ async function readStdinJson() {
     const isSuperadmin = request.isSuperadmin === true
     console.error(`[runner] isAdmin: ${isAdmin}, isSuperadmin: ${isSuperadmin}`)
 
-    // Plan mode: use from request or fall back to default
+    // Stream mode: derive from permission mode for backward compat
     const effectivePermissionMode = request.permissionMode || PERMISSION_MODE
-    const isPlanMode = effectivePermissionMode === "plan"
-    if (isPlanMode) {
-      console.error("[runner] 🔒 PLAN MODE ENABLED: Write/Edit/Bash tools will be blocked")
+    const streamMode = effectivePermissionMode === "plan" ? "plan" : "default"
+    if (streamMode !== "default") {
+      console.error(`[runner] Stream mode: ${streamMode}`)
     }
 
     // Get base allowed tools (SDK + internal MCP tools)
@@ -133,18 +133,18 @@ async function readStdinJson() {
       isAdmin,
       isSuperadmin,
       isSuperadmin,
-      isPlanMode,
+      streamMode,
     )
     // Extra tools from trigger request (e.g. email's send_reply)
     if (request.extraTools?.length) {
       baseAllowedTools.push(...request.extraTools)
       console.error(`[runner] Extra tools added: ${request.extraTools.join(", ")}`)
     }
-    const disallowedTools = getDisallowedTools(isAdmin, isSuperadmin, isPlanMode, isSuperadmin)
+    const disallowedTools = getDisallowedTools(isAdmin, isSuperadmin, streamMode, isSuperadmin)
 
     console.error(`[runner] Base allowed tools count: ${baseAllowedTools.length}`)
-    if (isPlanMode) {
-      console.error(`[runner] 🔒 PLAN MODE: ${baseAllowedTools.length} tools available under registry policy`)
+    if (streamMode !== "default") {
+      console.error(`[runner] ${streamMode} mode: ${baseAllowedTools.length} tools available under registry policy`)
     }
     if (isSuperadmin) {
       const hasTask = baseAllowedTools.includes("Task")
@@ -161,7 +161,7 @@ async function readStdinJson() {
       isAdmin,
       isSuperadmin,
       isSuperadminWorkspace: isSuperadmin,
-      isPlanMode,
+      mode: streamMode,
       connectedProviders,
     })
 

@@ -1,7 +1,15 @@
 import { statSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
 import { SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
-import { DEFAULTS, isRetiredModel, isValidClaudeModel, SUPERADMIN, WORKER_POOL } from "@webalive/shared"
+import {
+  DEFAULTS,
+  isRetiredModel,
+  isValidClaudeModel,
+  STREAM_MODES,
+  type StreamMode,
+  SUPERADMIN,
+  WORKER_POOL,
+} from "@webalive/shared"
 import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
@@ -37,7 +45,6 @@ import {
   getDisallowedTools,
   getOAuthMcpServers,
   hasStripeMcpAccess,
-  PERMISSION_MODE,
   SETTINGS_SOURCES,
   STREAM_TYPES,
 } from "@/lib/claude/agent-constants.mjs"
@@ -202,7 +209,7 @@ export async function POST(req: NextRequest) {
       userId,
       additionalContext,
       analyzeImageUrls,
-      planMode,
+      streamMode: rawStreamMode,
       resumeSessionAt,
     } = parseResult.data
     logger.log("Conversation:", conversationId)
@@ -212,7 +219,6 @@ export async function POST(req: NextRequest) {
     if (userModel) {
       logger.log("Using user-selected model:", userModel)
     }
-    // Plan mode: see docs/architecture/plan-mode.md
 
     // Check input safety (skip for superadmins - they should never be interrupted)
     if (!user.isSuperadmin) {
@@ -569,11 +575,16 @@ export async function POST(req: NextRequest) {
 
     let childStream: ReadableStream<Uint8Array>
 
-    // Plan mode: Claude can only read/explore, not modify files
-    // When enabled, permissionMode is set to 'plan' in the SDK
-    const effectivePermissionMode = planMode ? "plan" : PERMISSION_MODE
-    if (planMode) {
-      logger.log("Plan mode enabled - Claude will only explore, not modify")
+    // Stream mode: determines tool availability and SDK permission mode
+    let streamMode: StreamMode = rawStreamMode ?? "default"
+    // Superadmin mode requires actual superadmin in superadmin workspace
+    if (streamMode === "superadmin" && !(user.isSuperadmin && isSuperadminWorkspace)) {
+      streamMode = "default"
+    }
+    const modeConfig = STREAM_MODES[streamMode]
+    const effectivePermissionMode = modeConfig.permissionMode
+    if (streamMode !== "default") {
+      logger.log(`Stream mode: ${streamMode} (permission: ${effectivePermissionMode})`)
     }
 
     if (WORKER_POOL.ENABLED) {
@@ -606,19 +617,20 @@ export async function POST(req: NextRequest) {
       // Note: Internal MCP servers (alive-workspace, alive-tools) are created locally
       // in the worker because createSdkMcpServer returns function objects that cannot
       // be serialized via IPC. Only OAuth HTTP servers are passed here.
-      const allowedTools = getAllowedTools(cwd, user.isAdmin, user.isSuperadmin, isSuperadminWorkspace, !!planMode)
-      const disallowedTools = getDisallowedTools(user.isAdmin, user.isSuperadmin, !!planMode, isSuperadminWorkspace)
+      const allowedTools = getAllowedTools(cwd, user.isAdmin, user.isSuperadmin, isSuperadminWorkspace, streamMode)
+      const disallowedTools = getDisallowedTools(user.isAdmin, user.isSuperadmin, streamMode, isSuperadminWorkspace)
 
-      // Log tool counts for debugging
-      if (planMode) {
-        logger.log(`Plan mode: ${allowedTools.length} tools available under registry policy`)
+      if (streamMode !== "default") {
+        logger.log(`${streamMode} mode: ${allowedTools.length} tools available under registry policy`)
       }
 
-      const rawOauthMcpServers = getOAuthMcpServers(oauthTokens)
       const oauthMcpServers: Record<string, unknown> = {}
-      if (rawOauthMcpServers && typeof rawOauthMcpServers === "object") {
-        for (const [providerKey, providerConfig] of Object.entries(rawOauthMcpServers)) {
-          oauthMcpServers[providerKey] = providerConfig
+      if (modeConfig.mcpEnabled) {
+        const rawOauthMcpServers = getOAuthMcpServers(oauthTokens)
+        if (rawOauthMcpServers && typeof rawOauthMcpServers === "object") {
+          for (const [providerKey, providerConfig] of Object.entries(rawOauthMcpServers)) {
+            oauthMcpServers[providerKey] = providerConfig
+          }
         }
       }
 
@@ -629,6 +641,7 @@ export async function POST(req: NextRequest) {
         settingSources: SETTINGS_SOURCES,
         oauthMcpServers,
         streamTypes: STREAM_TYPES,
+        streamMode, // Pass stream mode to worker
         isAdmin: user.isAdmin, // Pass to worker for permission checks
         isSuperadmin: user.isSuperadmin, // Superadmin gets elevated tool policy
         isSuperadminWorkspace, // Whether accessing the alive workspace specifically

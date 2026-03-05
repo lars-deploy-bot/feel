@@ -225,7 +225,7 @@ vi.mock("@/types/guards/api", () => ({
         userId: undefined,
         additionalContext: undefined,
         analyzeImageUrls: undefined,
-        planMode: false,
+        streamMode: undefined,
         resumeSessionAt: undefined,
       },
     })),

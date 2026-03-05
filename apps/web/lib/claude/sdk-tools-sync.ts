@@ -44,21 +44,21 @@ const memberContext = createStreamToolContext({
   isAdmin: false,
   isSuperadmin: false,
   isSuperadminWorkspace: false,
-  isPlanMode: false,
+  mode: "default",
 })
 
 const adminContext = createStreamToolContext({
   isAdmin: true,
   isSuperadmin: false,
   isSuperadminWorkspace: false,
-  isPlanMode: false,
+  mode: "default",
 })
 
 const superadminContext = createStreamToolContext({
   isAdmin: true,
   isSuperadmin: true,
   isSuperadminWorkspace: false,
-  isPlanMode: false,
+  mode: "default",
 })
 
 export const ALLOWED_SDK_TOOLS = STREAM_SDK_TOOL_NAMES.filter(

@@ -300,20 +300,18 @@ export {
   WEBSITE_SLUG_MIN_LENGTH,
 } from "./tools/mcp-settings.js"
 export {
-  // Tool permission helpers
   allowTool,
   buildStreamToolRuntimeConfig,
   createStreamCanUseTool,
   createStreamToolContext,
   denyTool,
-  // Helper functions
+  filterToolsForMode,
   getStreamAllowedTools,
   getStreamDisallowedTools,
   getStreamMcpServers,
   getStreamToolDecision,
   getStreamToolRole,
   getStreamWorkspaceKind,
-  // SDK tool display helpers
   getToolActionLabel,
   getToolDetail,
   isHeavyBashCommand,
@@ -321,19 +319,20 @@ export {
   isStreamInitVisibleTool,
   isStreamPolicyTool,
   isUserApprovalTool,
-  // SDK tool name constants (single source of truth)
   SDK_TOOL,
   SDK_TOOL_LOWER,
   type SdkToolKey,
-  // Stream tool policy constants/types
   STREAM_INTERNAL_MCP_TOOLS,
+  STREAM_MODE_KEYS,
+  STREAM_MODES,
   STREAM_PERMISSION_MODE,
   STREAM_SDK_TOOL_NAMES,
   STREAM_SETTINGS_SOURCES,
   STREAM_TOOL_POLICY_REGISTRY,
   type StreamInternalMcpToolName,
   type StreamMcpServerConfig,
-  type StreamPlanModeBehavior,
+  type StreamMode,
+  type StreamModeConfig,
   type StreamPolicyToolName,
   type StreamSdkToolLowerName,
   type StreamSdkToolName,

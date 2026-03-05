@@ -4,7 +4,7 @@ import {
   buildStreamToolRuntimeConfig,
   createStreamCanUseTool,
   createStreamToolContext,
-  filterToolsForPlanMode,
+  filterToolsForMode,
   getStreamAllowedTools,
   getStreamDisallowedTools,
   getStreamToolDecision,
@@ -242,20 +242,20 @@ describe("stream tool role policy", () => {
   })
 
   it("blocks write/edit tools in plan mode at config-build time", () => {
-    const context = createStreamToolContext({ isPlanMode: true })
+    const context = createStreamToolContext({ mode: "plan" })
     const runtime = buildStreamToolRuntimeConfig(enabledMcpTools, context)
 
     expect(runtime.allowedTools).not.toContain("Write")
     expect(runtime.allowedTools).not.toContain("Edit")
     expect(runtime.allowedTools).not.toContain("Bash")
     expect(runtime.allowedTools).not.toContain("mcp__context7__resolve-library-id")
-    expect(runtime.allowedTools).toContain("mcp__alive-workspace__browser")
+    expect(runtime.allowedTools).not.toContain("mcp__alive-workspace__browser")
     expect(runtime.disallowedTools).toContain("Write")
     expect(runtime.disallowedTools).toContain("Edit")
   })
 
   it("blocks external MCP tool invocations in plan mode even with connected providers", async () => {
-    const context = createStreamToolContext({ isPlanMode: true, connectedProviders: ["outlook"] })
+    const context = createStreamToolContext({ mode: "plan", connectedProviders: ["outlook"] })
     const canUseTool = createStreamCanUseTool(context, [])
     const result = await canUseTool(
       "mcp__outlook__search_emails",
@@ -278,13 +278,13 @@ describe("stream tool role policy", () => {
     expect(result.behavior).toBe("allow")
   })
 
-  it("filterToolsForPlanMode removes global MCP tools by inheriting MCP bridge policy", () => {
-    const filtered = filterToolsForPlanMode(["Read", "mcp__context7__resolve-library-id"], true)
+  it("filterToolsForMode removes MCP tools in plan mode", () => {
+    const filtered = filterToolsForMode(["Read", "mcp__context7__resolve-library-id"], "plan")
     expect(filtered).toEqual(["Read"])
   })
 
   it("hides OAuth MCP tools from init payload in plan mode even when connected", () => {
-    const context = createStreamToolContext({ isPlanMode: true, connectedProviders: ["outlook"] })
+    const context = createStreamToolContext({ mode: "plan", connectedProviders: ["outlook"] })
     const visible = isStreamInitVisibleTool("mcp__outlook__search_emails", context, [])
     expect(visible).toBe(false)
   })
@@ -293,6 +293,20 @@ describe("stream tool role policy", () => {
     const context = createStreamToolContext({ connectedProviders: ["outlook"] })
     const visible = isStreamInitVisibleTool("mcp__outlook__search_emails", context, [])
     expect(visible).toBe(true)
+  })
+
+  it("allows only bash tools in superadmin mode", () => {
+    const context = createStreamToolContext({ mode: "superadmin", isSuperadmin: true, isSuperadminWorkspace: true })
+    const runtime = buildStreamToolRuntimeConfig(enabledMcpTools, context)
+
+    expect(runtime.allowedTools).toContain("Bash")
+    expect(runtime.allowedTools).toContain("BashOutput")
+    expect(runtime.allowedTools).toContain("AskUserQuestion")
+    expect(runtime.allowedTools).not.toContain("Read")
+    expect(runtime.allowedTools).not.toContain("Write")
+    expect(runtime.allowedTools).not.toContain("Edit")
+    expect(runtime.allowedTools).not.toContain("Glob")
+    expect(runtime.allowedTools).not.toContain("mcp__alive-tools__search_tools")
   })
 
   it("fails closed for internal tools that have no policy entry", () => {

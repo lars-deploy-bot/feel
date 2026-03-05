@@ -23,8 +23,8 @@ import { authStore } from "@/lib/stores/authStore"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useBuilding, useGoal, useTargetUsers } from "@/lib/stores/goalStore"
 import { useModel } from "@/lib/stores/llmStore"
-import { getPlanModeState, usePlanMode } from "@/lib/stores/planModeStore"
 import { clearAbortController, setAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
+import { getPlanModeState, getStreamModeState, usePlanMode } from "@/lib/stores/streamModeStore"
 
 /**
  * Human-readable fallback messages for HTTP status codes.
@@ -162,14 +162,15 @@ export function useChatMessaging({
       const dexieState = useDexieMessageStore.getState()
       const resumeSessionAt = dexieState.resumeSessionAtByTab[tabId] || undefined
 
+      const currentMode = getStreamModeState().mode
       const baseBody = {
         message,
         tabId,
         tabGroupId,
         model: userModel,
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
-        // Read plan mode directly from store to avoid stale closure
-        planMode: getPlanModeState().planMode || undefined, // Only send if true
+        // Read stream mode directly from store to avoid stale closure
+        streamMode: currentMode !== "default" ? currentMode : undefined, // Only send if non-default
         // Resume at specific message if user deleted messages
         resumeSessionAt,
         worktree: requestWorktree,

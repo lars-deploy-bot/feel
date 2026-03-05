@@ -10,7 +10,7 @@
 
 import { Check } from "lucide-react"
 import { useCallback, useState } from "react"
-import { usePlanModeActions } from "@/lib/stores/planModeStore"
+import { usePlanModeActions } from "@/lib/stores/streamModeStore"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 
 /**

@@ -19,7 +19,6 @@
 
 export type InternalMcpServer = "alive-tools" | "alive-workspace"
 
-type PlanModeBehavior = "allow" | "block"
 type WorkspaceKind = "site" | "platform"
 type ToolVisibility = "visible" | "silent"
 type ToolRole = "member" | "admin" | "superadmin"
@@ -35,8 +34,6 @@ export interface InternalToolDescriptor {
   reason: string
   /** Workspace kinds the tool is available in. Default: all */
   workspaceKinds?: readonly WorkspaceKind[]
-  /** Plan mode behavior. Default: "allow" */
-  planMode?: PlanModeBehavior
   /** Visibility to client UI. Default: "visible" */
   visibility?: ToolVisibility
   /** Restrict to specific roles. Default: all roles */
@@ -127,7 +124,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Codebase analysis is site-workspace only.",
     workspaceKinds: ["site"],
-    // Note: check_codebase allows plan mode (read-only analysis)
   },
   {
     name: "restart_dev_server",
@@ -135,7 +131,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Dev server restart mutates runtime state and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "install_package",
@@ -143,7 +138,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Package install mutates dependencies and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "delete_file",
@@ -151,7 +145,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "File deletion mutates workspace and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "switch_serve_mode",
@@ -159,7 +152,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Serve mode changes runtime behavior and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "copy_shared_asset",
@@ -167,7 +159,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Copying assets mutates workspace and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "create_website",
@@ -175,7 +166,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Website creation mutates workspace and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "git_push",
@@ -183,7 +173,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Git push mutates remote repository and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "browser",

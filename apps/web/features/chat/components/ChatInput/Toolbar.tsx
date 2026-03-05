@@ -18,8 +18,8 @@ import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
 import { useAllSkills, useSkillsLoading } from "@/lib/providers/SkillsStoreProvider"
 import { useWorkbench, useWorkbenchMinimized } from "@/lib/stores/debug-store"
-import { usePlanMode, usePlanModeActions } from "@/lib/stores/planModeStore"
 import type { Skill } from "@/lib/stores/skillsStore"
+import { useStreamMode, useStreamModeActions } from "@/lib/stores/streamModeStore"
 import { useChatInput } from "./ChatInputContext"
 import type { AddSkillFn } from "./types"
 
@@ -44,9 +44,9 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
   const isWorkbenchMinimized = useWorkbenchMinimized()
   const showSelectorButton = isWorkbenchOpen && !isWorkbenchMinimized
 
-  // Plan mode state
-  const planMode = usePlanMode()
-  const { togglePlanMode } = usePlanModeActions()
+  // Stream mode state
+  const mode = useStreamMode()
+  const { toggleMode } = useStreamModeActions()
 
   if (!config.enableCamera) {
     return null
@@ -199,17 +199,17 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
       <button
         type="button"
         onClick={() => {
-          trackPlanModeToggled(!planMode)
-          togglePlanMode()
+          trackPlanModeToggled(mode !== "plan")
+          toggleMode("plan")
         }}
         className={`flex items-center justify-center size-8 rounded-full transition-colors ${
-          planMode
+          mode === "plan"
             ? "bg-blue-500/20 text-blue-500 dark:text-blue-400"
             : "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70"
         }`}
-        aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
+        aria-label={mode === "plan" ? "Disable plan mode" : "Enable plan mode"}
         title={
-          planMode
+          mode === "plan"
             ? "Plan mode ON - Claude will only explore, not modify"
             : "Plan mode OFF - Click to enable planning only"
         }
