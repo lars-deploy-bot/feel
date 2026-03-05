@@ -846,7 +846,23 @@ async function handleQuery(ipc, requestId, payload) {
 
     const baseCanUseTool = createStreamCanUseTool(toolContext, allowedTools)
 
-    // Tool permission handler
+    // ┌──────────────────────────────────────────────────────────────────────┐
+    // │ WARNING: THIS CALLBACK IS NEVER CALLED BY THE SDK (v0.2.41)       │
+    // │                                                                    │
+    // │ The Claude CLI ignores --permission-prompt-tool stdio and          │
+    // │ auto-approves all tools regardless of permissionMode. The          │
+    // │ canUseTool callback is dead code — tested empirically, even        │
+    // │ returning { behavior: "deny" } for every tool has zero effect.    │
+    // │                                                                    │
+    // │ ACTUAL security enforcement comes from:                            │
+    // │   1. allowedTools / disallowedTools (CLI enforces these)           │
+    // │   2. cwd sandboxing (CLI restricts file tools to workspace)        │
+    // │   3. MCP tools' own validateWorkspacePath()                        │
+    // │                                                                    │
+    // │ DO NOT add security logic here. It will never execute.             │
+    // │ If a future SDK version fixes this, re-verify with the test        │
+    // │ script before trusting canUseTool.                                 │
+    // └──────────────────────────────────────────────────────────────────────┘
     const canUseTool = async (toolName, input, options) => {
       if (disallowedTools.includes(toolName)) {
         console.error(`[worker] SECURITY: Blocked disallowed tool: ${toolName}`)

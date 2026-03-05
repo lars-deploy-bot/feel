@@ -52,7 +52,7 @@ export interface StreamModeConfig {
   /** Whether MCP servers should be registered. */
   mcpEnabled: boolean
   /** SDK permission mode string passed to Claude Agent SDK. */
-  permissionMode: string
+  permissionMode: "acceptEdits" | "bypassPermissions" | "default" | "delegate" | "dontAsk" | "plan"
 }
 
 export interface StreamToolContext {
@@ -234,7 +234,7 @@ export const STREAM_MODES: Record<StreamMode, StreamModeConfig> = {
     requiredRole: "member",
     sdkTools: null,
     mcpEnabled: true,
-    permissionMode: "forcedAccept",
+    permissionMode: "default",
   },
   plan: {
     label: "Plan",
