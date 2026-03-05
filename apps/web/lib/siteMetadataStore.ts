@@ -1,5 +1,6 @@
 import path from "node:path"
-import { isPathWithinWorkspace, parseSiteMetadata, SITE_METADATA_FILENAME, type SiteMetadata } from "@webalive/shared"
+import { parseSiteMetadata, SITE_METADATA_FILENAME, type SiteMetadata } from "@webalive/shared"
+import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { buildSubdomain, WORKSPACE_BASE } from "./config"
 import { ensureDirectory, readJsonFile, writeJsonFile } from "./utils/fs-helpers"
 
