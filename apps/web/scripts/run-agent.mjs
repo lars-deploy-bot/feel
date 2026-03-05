@@ -21,13 +21,13 @@ import {
   DEFAULTS,
   isOAuthMcpTool,
   isStreamClientVisibleTool,
+  STREAM_MODES,
 } from "@webalive/shared"
 import { withSearchToolsConnectedProviders } from "@webalive/tools"
 import {
   getAllowedTools,
   getDisallowedTools,
   getMcpServers,
-  PERMISSION_MODE,
   SETTINGS_SOURCES,
   STREAM_TYPES,
 } from "../lib/claude/agent-constants.mjs"
@@ -114,11 +114,23 @@ async function readStdinJson() {
     const isSuperadmin = request.isSuperadmin === true
     console.error(`[runner] isAdmin: ${isAdmin}, isSuperadmin: ${isSuperadmin}`)
 
-    // Stream mode: derive from permission mode for backward compat
-    const effectivePermissionMode = request.permissionMode || PERMISSION_MODE
-    const streamMode = effectivePermissionMode === "plan" ? "plan" : "default"
+    // Stream mode: use explicit request.streamMode when valid, otherwise derive from permission mode.
+    const requestedStreamMode = typeof request.streamMode === "string" ? request.streamMode : null
+    const fallbackMode =
+      request.permissionMode === "plan"
+        ? "plan"
+        : request.permissionMode === "bypassPermissions"
+          ? "superadmin"
+          : "default"
+    const streamMode =
+      requestedStreamMode && Object.hasOwn(STREAM_MODES, requestedStreamMode) ? requestedStreamMode : fallbackMode
+    const modeConfig = STREAM_MODES[streamMode] || STREAM_MODES.default
+    const effectivePermissionMode = request.permissionMode || modeConfig.permissionMode
+    if (requestedStreamMode && requestedStreamMode !== streamMode) {
+      console.error(`[runner] Invalid streamMode "${requestedStreamMode}", falling back to "${streamMode}"`)
+    }
     if (streamMode !== "default") {
-      console.error(`[runner] Stream mode: ${streamMode}`)
+      console.error(`[runner] Stream mode: ${streamMode} (MCP enabled: ${modeConfig.mcpEnabled})`)
     }
 
     // Get base allowed tools (SDK + internal MCP tools)
@@ -183,7 +195,7 @@ async function readStdinJson() {
 
     // Get MCP servers with user-specific OAuth tokens
     // Uses registry from @webalive/shared - add new providers there
-    const workspaceMcpServers = getMcpServers(targetCwd || process.cwd(), { oauthTokens })
+    const workspaceMcpServers = modeConfig.mcpEnabled ? getMcpServers(targetCwd || process.cwd(), { oauthTokens }) : {}
 
     // Load optional MCP servers required by extraTools.
     // Tool names follow mcp__<server-name>__<tool> — we extract server names
@@ -195,7 +207,7 @@ async function readStdinJson() {
       },
     }
 
-    if (request.extraTools?.length) {
+    if (modeConfig.mcpEnabled && request.extraTools?.length) {
       const requiredServers = new Set()
       for (const tool of request.extraTools) {
         const match = tool.match(/^mcp__([^_]+(?:-[^_]+)*)__/)
@@ -208,6 +220,8 @@ async function readStdinJson() {
           console.error(`[runner] Loaded optional MCP server: ${serverName}`)
         }
       }
+    } else if (!modeConfig.mcpEnabled && request.extraTools?.some(tool => tool.startsWith("mcp__"))) {
+      console.error(`[runner] Ignoring MCP extraTools in ${streamMode} mode`)
     }
 
     console.error("[runner] MCP servers enabled:", Object.keys(workspaceMcpServers).join(", "))

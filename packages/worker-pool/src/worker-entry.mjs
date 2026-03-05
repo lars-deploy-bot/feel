@@ -826,8 +826,12 @@ async function handleQuery(ipc, requestId, payload) {
     console.error(`[worker] Permission mode: "${permissionMode}"`)
 
     // Stream mode: determines tool availability
-    const streamMode = agentConfig.streamMode || "default"
+    const rawStreamMode = typeof agentConfig.streamMode === "string" ? agentConfig.streamMode : null
+    const streamMode = rawStreamMode && Object.hasOwn(STREAM_MODES, rawStreamMode) ? rawStreamMode : "default"
     const modeConfig = STREAM_MODES[streamMode]
+    if (rawStreamMode && rawStreamMode !== streamMode) {
+      console.error(`[worker] Invalid streamMode "${rawStreamMode}", falling back to "${streamMode}"`)
+    }
     if (streamMode !== "default") {
       console.error(`[worker] Stream mode: ${streamMode} (MCP enabled: ${modeConfig.mcpEnabled})`)
     }

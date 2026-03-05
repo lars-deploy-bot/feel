@@ -961,6 +961,7 @@ export async function POST(req: NextRequest) {
         isSuperadmin: user.isSuperadmin, // Superadmin gets elevated tool policy
         isSuperadminWorkspace, // Whether accessing the alive workspace specifically
         permissionMode: effectivePermissionMode, // Plan mode: "plan" = read-only exploration
+        streamMode,
       })
     }
 

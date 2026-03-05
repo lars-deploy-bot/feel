@@ -11,6 +11,7 @@ import { spawn } from "node:child_process"
 import { statSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import type { StreamMode } from "@webalive/shared"
 import { createSandboxEnv } from "./sandbox-env"
 
 interface WorkspaceCredentials {
@@ -32,6 +33,7 @@ interface AgentRequest {
   isSuperadmin?: boolean // Whether the user is a superadmin (all tools, runs as root)
   isSuperadminWorkspace?: boolean // Whether workspace is the alive superadmin workspace
   permissionMode?: string // Plan mode: "plan" = read-only exploration, "default" = full access
+  streamMode?: StreamMode // Explicit mode for tool/MCP policy alignment with worker-pool path
   /** Additional MCP tool names to register (e.g. ["mcp__alive-email__send_reply"]) */
   extraTools?: string[]
 }
