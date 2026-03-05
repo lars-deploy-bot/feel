@@ -38,6 +38,7 @@ function buildTestHeaders(): Record<string, string> {
 async function waitForSiteToBeLive(domain: string): Promise<LiveProbeResult> {
   const targetUrl = `https://${domain}`
   let attempts = 0
+  const startedAt = Date.now()
 
   await expect
     .poll(
@@ -51,11 +52,20 @@ async function waitForSiteToBeLive(domain: string): Promise<LiveProbeResult> {
             signal: AbortSignal.timeout(20_000),
           })
           const text = await response.text()
+          if (attempts === 1 || attempts % 3 === 0) {
+            const elapsed = Math.round((Date.now() - startedAt) / 1000)
+            console.log(`[deploy-live] probe #${attempts} after ${elapsed}s -> status ${response.status}`)
+          }
           return {
             status: response.status,
             textSample: text.slice(0, 300),
           }
         } catch (error) {
+          if (attempts === 1 || attempts % 3 === 0) {
+            const elapsed = Math.round((Date.now() - startedAt) / 1000)
+            const errorMessage = error instanceof Error ? error.message : String(error)
+            console.log(`[deploy-live] probe #${attempts} after ${elapsed}s -> network error: ${errorMessage}`)
+          }
           return {
             status: -1,
             textSample: error instanceof Error ? error.message : String(error),
@@ -135,18 +145,23 @@ async function hasDeleteSiteEndpoint(request: APIRequestContext): Promise<boolea
   return new Set(["SITE_NOT_FOUND", "VALIDATION_ERROR", "FORBIDDEN", "INTERNAL_ERROR", "UNAUTHORIZED"]).has(errorCode)
 }
 
-async function cleanupStaleDeployDomains(request: APIRequestContext): Promise<void> {
-  const sitesResponse = await request.get("/api/sites")
-  const sitesPayload: unknown = await sitesResponse.json().catch(() => null)
-  if (!sitesResponse.ok()) {
-    throw new Error(`Failed to list sites (${sitesResponse.status()}): ${JSON.stringify(sitesPayload)}`)
+async function ensureQuotaHeadroom(request: APIRequestContext, email: string): Promise<void> {
+  const response = await request.post("/api/test/set-quota", {
+    headers: buildTestHeaders(),
+    data: { email, maxSites: 20 },
+  })
+
+  if (response.status() === 404) {
+    return
   }
 
-  const parsedSites = apiSchemas.sites.res.parse(sitesPayload)
-  const staleDomains = parsedSites.sites.map(site => site.hostname).filter(hostname => /^dl[a-z0-9]+\./.test(hostname))
+  const payload: unknown = await response.json().catch(() => null)
+  if (!response.ok()) {
+    throw new Error(`Failed to set quota headroom (${response.status()}): ${JSON.stringify(payload)}`)
+  }
 
-  for (const staleDomain of staleDomains) {
-    await cleanupDeployedSite(request, staleDomain)
+  if (!payload || typeof payload !== "object" || !("ok" in payload) || payload.ok !== true) {
+    throw new Error(`Unexpected set-quota response: ${JSON.stringify(payload)}`)
   }
 }
 
@@ -168,7 +183,9 @@ test.describe("Live staging deploy", () => {
     const baseUrl = getProjectBaseUrl(test.info())
     const user = await getLiveStagingUser(test.info().workerIndex, baseUrl)
     await loginLiveStaging(page, user)
-    await cleanupStaleDeployDomains(page.request)
+    console.log("[deploy-live] Authenticated, setting quota headroom")
+    await ensureQuotaHeadroom(page.request, user.email)
+    console.log("[deploy-live] Quota headroom ready, selecting template")
     const templateId = await resolveTemplateId(page.request)
 
     const slug = buildUniqueSlug(test.info().workerIndex)
@@ -182,13 +199,19 @@ test.describe("Live staging deploy", () => {
     let deployedDomain: string | null = null
 
     try {
-      const deployResponse = await page.request.post("/api/deploy-subdomain", { data: deployBody })
+      console.log(`[deploy-live] Deploying slug: ${slug}`)
+      const deployResponse = await page.request.post("/api/deploy-subdomain", {
+        data: deployBody,
+        timeout: LIVE_DEPLOY_TIMEOUT_MS,
+      })
       const deployPayload: unknown = await deployResponse.json().catch(() => null)
 
       expect(deployResponse.status(), `deploy failed: ${JSON.stringify(deployPayload)}`).toBe(200)
       const deployResult: Res<"deploy-subdomain"> = apiSchemas["deploy-subdomain"].res.parse(deployPayload)
       deployedDomain = deployResult.domain
+      console.log(`[deploy-live] Deployment accepted for domain: ${deployedDomain}`)
 
+      console.log("[deploy-live] Waiting for site to become reachable")
       const liveProbe = await waitForSiteToBeLive(deployedDomain)
       expect(liveProbe.status).toBe(200)
       expect(liveProbe.textSample.length).toBeGreaterThan(0)
@@ -199,12 +222,14 @@ test.describe("Live staging deploy", () => {
       expect(siteResponse?.status()).toBe(200)
       await expect(page.locator("body")).toContainText(/\S+/, { timeout: 15_000 })
 
+      console.log("[deploy-live] Verifying duplicate deploy returns SLUG_TAKEN")
       const duplicateDeploy = await page.request.post("/api/deploy-subdomain", { data: deployBody })
       const duplicatePayload: unknown = await duplicateDeploy.json().catch(() => null)
       expect(duplicateDeploy.status()).toBe(409)
       expect(duplicatePayload).toMatchObject({ ok: false, error: "SLUG_TAKEN" })
     } finally {
       if (deployedDomain) {
+        console.log(`[deploy-live] Cleaning up domain: ${deployedDomain}`)
         await cleanupDeployedSite(page.request, deployedDomain)
       }
     }

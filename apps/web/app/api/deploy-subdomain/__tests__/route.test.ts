@@ -9,6 +9,8 @@ const validateTemplateFromDbMock = vi.fn()
 const runStrictDeploymentMock = vi.fn()
 const handleBodyMock = vi.fn()
 const isHandleBodyErrorMock = vi.fn()
+const siteMetadataExistsMock = vi.fn()
+const siteMetadataSetSiteMock = vi.fn()
 
 vi.mock("@/features/auth/lib/auth", () => {
   class AuthenticationError extends Error {
@@ -90,8 +92,8 @@ vi.mock("@/lib/error-logger", () => ({
 
 vi.mock("@/lib/siteMetadataStore", () => ({
   siteMetadataStore: {
-    exists: vi.fn(() => false),
-    setSite: vi.fn(() => Promise.resolve()),
+    exists: (...args: unknown[]) => siteMetadataExistsMock(...args),
+    setSite: (...args: unknown[]) => siteMetadataSetSiteMock(...args),
   },
 }))
 
@@ -152,6 +154,8 @@ describe("POST /api/deploy-subdomain", () => {
       maxSites: 10,
       currentSites: 1,
     })
+    siteMetadataExistsMock.mockReturnValue(false)
+    siteMetadataSetSiteMock.mockResolvedValue(undefined)
     validateTemplateFromDbMock.mockResolvedValue({
       valid: true,
       template: {
@@ -211,6 +215,25 @@ describe("POST /api/deploy-subdomain", () => {
     )
 
     expect(response.status).toBe(403)
+    expect(runStrictDeploymentMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 409 when slug already exists even if quota is exceeded", async () => {
+    siteMetadataExistsMock.mockReturnValueOnce(true)
+    getUserQuotaMock.mockResolvedValueOnce({
+      canCreateSite: false,
+      maxSites: 1,
+      currentSites: 1,
+    })
+
+    const response = await POST(
+      createRequest({ slug: "testsite", siteIdeas: "Test", templateId: "tmpl_blank", orgId: "org-1" }),
+    )
+
+    expect(response.status).toBe(409)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toBe(ErrorCodes.SLUG_TAKEN)
+    expect(getUserQuotaMock).not.toHaveBeenCalled()
     expect(runStrictDeploymentMock).not.toHaveBeenCalled()
   })
 })
