@@ -19,7 +19,7 @@
 import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, statSync } from "node:fs"
 import { createConnection } from "node:net"
 import { tmpdir } from "node:os"
-import { join, resolve as resolvePath } from "node:path"
+import { join } from "node:path"
 import process from "node:process"
 
 // Base directory for stable session storage
@@ -42,7 +42,7 @@ import {
   SandboxManager,
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamCanUseTool, createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isHeavyBashCommand, isStreamInitVisibleTool, isTransientNetworkError, SDK_TOOL, SENTRY, STREAM_MODES } from "@webalive/shared"
+import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, SENTRY, STREAM_MODES } from "@webalive/shared"
 import {
   emailInternalMcp,
   toolsInternalMcp,
@@ -844,94 +844,11 @@ async function handleQuery(ipc, requestId, payload) {
       connectedProviders,
     })
 
-    const baseCanUseTool = createStreamCanUseTool(toolContext, allowedTools)
-
-    // ┌──────────────────────────────────────────────────────────────────────┐
-    // │ WARNING: THIS CALLBACK IS NEVER CALLED BY THE SDK (v0.2.41)       │
-    // │                                                                    │
-    // │ The Claude CLI ignores --permission-prompt-tool stdio and          │
-    // │ auto-approves all tools regardless of permissionMode. The          │
-    // │ canUseTool callback is dead code — tested empirically, even        │
-    // │ returning { behavior: "deny" } for every tool has zero effect.    │
-    // │                                                                    │
-    // │ ACTUAL security enforcement comes from:                            │
-    // │   1. allowedTools / disallowedTools (CLI enforces these)           │
-    // │   2. cwd sandboxing (CLI restricts file tools to workspace)        │
-    // │   3. MCP tools' own validateWorkspacePath()                        │
-    // │                                                                    │
-    // │ DO NOT add security logic here. It will never execute.             │
-    // │ If a future SDK version fixes this, re-verify with the test        │
-    // │ script before trusting canUseTool.                                 │
-    // └──────────────────────────────────────────────────────────────────────┘
-    const canUseTool = async (toolName, input, options) => {
-      if (disallowedTools.includes(toolName)) {
-        console.error(`[worker] SECURITY: Blocked disallowed tool: ${toolName}`)
-        return {
-          behavior: "deny",
-          message: `Tool "${toolName}" is not allowed in this workspace.`,
-        }
-      }
-
-      // SECURITY: Enforce workspace path boundaries for file-accessing tools.
-      // Superadmins are exempt (they operate on the platform repo itself).
-      if (!agentConfig.isSuperadmin) {
-        const workspaceCwd = process.cwd()
-
-        // Tools that use file_path or notebook_path
-        if ([SDK_TOOL.READ, SDK_TOOL.WRITE, SDK_TOOL.EDIT, SDK_TOOL.NOTEBOOK_EDIT].includes(toolName)) {
-          const filePath = toolName === SDK_TOOL.NOTEBOOK_EDIT ? input?.notebook_path : input?.file_path
-          if (typeof filePath === "string") {
-            const resolved = resolvePath(filePath)
-            if (!resolved.startsWith(`${workspaceCwd}/`) && resolved !== workspaceCwd) {
-              console.error(
-                `[worker] SECURITY: Blocked ${toolName} outside workspace: ${resolved} (workspace: ${workspaceCwd})`,
-              )
-              return {
-                behavior: "deny",
-                message: `Cannot access files outside your workspace. Path must be within ${workspaceCwd}`,
-              }
-            }
-          }
-        }
-
-        // Tools that use path parameter (Glob, Grep)
-        if ([SDK_TOOL.GLOB, SDK_TOOL.GREP].includes(toolName) && typeof input?.path === "string") {
-          const resolved = resolvePath(input.path)
-          if (!resolved.startsWith(`${workspaceCwd}/`) && resolved !== workspaceCwd) {
-            console.error(
-              `[worker] SECURITY: Blocked ${toolName} outside workspace: ${resolved} (workspace: ${workspaceCwd})`,
-            )
-            return {
-              behavior: "deny",
-              message: `Cannot search outside your workspace. Path must be within ${workspaceCwd}`,
-            }
-          }
-        }
-
-        // Bash: validate command doesn't reference paths outside workspace
-        if (toolName === SDK_TOOL.BASH) {
-          const command = typeof input?.command === "string" ? input.command : ""
-
-          // Block heavy commands (computational cost)
-          if (isHeavyBashCommand(command)) {
-            console.error("[worker] SECURITY: Blocked heavy Bash command for non-superadmin")
-            return {
-              behavior: "deny",
-              message:
-                "This Bash command is blocked because it is too heavy for shared capacity. " +
-                "Use narrower commands (single package/file) or ask a superadmin to run full builds/checks.",
-            }
-          }
-        }
-      }
-      // Superadmins bypass all path restrictions (they operate on the platform repo)
-
-      const result = await baseCanUseTool(toolName, input, options)
-      if (result.behavior === "deny") {
-        console.error(`[worker] SECURITY: Blocked unauthorized tool: ${toolName}`)
-      }
-      return result
-    }
+    // SDK canUseTool: DEAD — never called (SDK v0.2.41). See CLAUDE.md rule #24.
+    // Security enforced by: allowedTools/disallowedTools + cwd sandboxing + MCP validateWorkspacePath.
+    // Static analysis enforces this stays empty — see scripts/validation/check-canUseTool-dead.sh
+    // canUseTool:disabled
+    const canUseTool = undefined
 
     // Build MCP servers: internal (created locally) + global HTTP + OAuth (received via IPC)
     // Internal SDK MCP servers (workspaceInternalMcp, toolsInternalMcp) cannot be
