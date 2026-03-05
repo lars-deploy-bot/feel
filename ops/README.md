@@ -131,10 +131,10 @@ sudo cp /var/lib/alive/generated/alive-*.service /etc/systemd/system/
 
 # Install ops timers/services with ALIVE_ROOT placeholder resolved
 ALIVE_ROOT=/root/webalive/alive
-for unit in alive-runtime-status.service alive-runtime-status.timer alive-build-prune.service alive-build-prune.timer webalive-mode-check.service webalive-mode-check.timer; do
-  sed "s#__ALIVE_ROOT__#${ALIVE_ROOT}#g" "ops/systemd/$unit" | sudo tee "/etc/systemd/system/$unit" >/dev/null
-done
-sudo systemctl daemon-reload
+sudo "${ALIVE_ROOT}/scripts/systemd/sync-ops-units.sh" \
+  --alive-root "${ALIVE_ROOT}" \
+  --enable-required-timers \
+  --verify-required-timers
 
 # Initialize registry
 sudo mkdir -p /var/lib/webalive
@@ -143,8 +143,6 @@ sudo cp ops/scripts/site-modes.json.template /var/lib/webalive/site-modes.json
 # Enable and start services
 sudo systemctl enable webalive-mode-check.timer
 sudo systemctl start webalive-mode-check.timer
-sudo systemctl enable --now alive-runtime-status.timer
-sudo systemctl enable --now alive-build-prune.timer
 ```
 
 ### Initialize Monitoring

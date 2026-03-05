@@ -1,0 +1,13 @@
+[Unit]
+Description=Alive Caddy ACME Rate-Limit Alert Timer (every 3 minutes)
+Requires=caddy-acme-rate-limit-alert.service
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=3min
+AccuracySec=30s
+Persistent=true
+RandomizedDelaySec=20s
+
+[Install]
+WantedBy=timers.target

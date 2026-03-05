@@ -4,7 +4,7 @@ import { z } from "zod"
 import { fetchUserEvents, fetchUserProfile } from "../../../infra/posthog"
 import { validate } from "../../../shared/validation"
 import type { AppBindings } from "../../../types/hono"
-import { getUserById, listUsers, updateEnabledModels } from "./users.service"
+import { createPasswordResetToken, getUserById, listUsers, updateEnabledModels } from "./users.service"
 
 export const usersRoutes = new Hono<AppBindings>()
 
@@ -48,4 +48,13 @@ usersRoutes.get("/:id/events", async c => {
 
   const events = await fetchUserEvents(userId, { limit, eventType })
   return c.json({ ok: true, data: events })
+})
+
+// POST /api/manager/users/:id/password-reset-token - issue one-time password reset token
+usersRoutes.post("/:id/password-reset-token", async c => {
+  const userId = c.req.param("id")
+  const token = await createPasswordResetToken(userId)
+  c.header("Cache-Control", "no-store")
+  c.header("Pragma", "no-cache")
+  return c.json({ ok: true, data: token }, 201)
 })

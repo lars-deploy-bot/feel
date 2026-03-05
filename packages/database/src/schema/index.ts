@@ -70,6 +70,8 @@ export {
   orgRoleEnum,
   orgs,
   orgsRelations,
+  passwordResetTokens,
+  passwordResetTokensRelations,
   referrals,
   referralsRelations,
   sessions,

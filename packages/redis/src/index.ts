@@ -6,51 +6,20 @@ import Redis from "ioredis"
 const AUTH_ERROR_CODES = ["WRONGPASS", "NOAUTH", "ERR invalid password"]
 
 /**
- * Default Redis URL for local/native Redis (with dev password).
- * Native systemd Redis uses ACL auth — password required even locally.
- * In production, use getRedisUrl() from @webalive/env which validates REDIS_URL is set.
- */
-const LOCAL_DEV_REDIS_URL = "redis://:q6ULeSBi88n6db28Wv2jU88F24rdjAaOfhLSs3Nl@127.0.0.1:6379"
-
-/**
  * Creates a Redis client with automatic connection and error handling.
  *
- * IMPORTANT: In production, pass the URL from getRedisUrl() (@webalive/env)
- * which validates REDIS_URL is set. The fallback is only for local development.
- *
- * @param connectionUrl - Redis connection URL. Use getRedisUrl() from @webalive/env in production.
+ * @param connectionUrl - Redis connection URL. Use getRedisUrl() from @webalive/env.
  *                        Pass null to explicitly indicate Redis is not available (standalone mode).
  * @returns Configured Redis client instance, or null if connectionUrl is null
- *
- * @example Production usage (recommended)
- * ```typescript
- * import { createRedisClient } from '@webalive/redis';
- * import { getRedisUrl } from '@webalive/env/server';
- *
- * const redis = createRedisClient(getRedisUrl());
- * if (!redis) {
- *   // Handle standalone mode - Redis not available
- * }
- * ```
- *
- * @example Local development (auto-fallback)
- * ```typescript
- * const redis = createRedisClient(); // Uses dev password
- * ```
  */
 export const createRedisClient = (connectionUrl?: string | null): Redis | null => {
   // Explicit null means Redis is not available (standalone mode)
   if (connectionUrl === null) {
     return null
   }
-  const url = connectionUrl || process.env.REDIS_URL || LOCAL_DEV_REDIS_URL
-  const isUsingFallback = !connectionUrl && !process.env.REDIS_URL
-
-  if (isUsingFallback && process.env.NODE_ENV === "production") {
-    console.error(
-      "[Redis] WARNING: Using fallback dev password in production! " +
-        "Use getRedisUrl() from @webalive/env to ensure REDIS_URL is validated.",
-    )
+  const url = connectionUrl || process.env.REDIS_URL
+  if (!url) {
+    throw new Error("[Redis] REDIS_URL is required. Set it in your .env file.")
   }
 
   let authErrorCount = 0

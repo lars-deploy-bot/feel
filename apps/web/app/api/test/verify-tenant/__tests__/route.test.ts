@@ -55,7 +55,12 @@ interface IamMockOptions {
 }
 
 interface AppMockOptions {
-  domains?: QueryResult<Array<{ hostname: string }> | null>
+  domains?: QueryResult<Array<{
+    hostname: string
+    execution_mode: "systemd" | "e2b"
+    sandbox_id: string | null
+    sandbox_status: "creating" | "running" | "dead" | null
+  }> | null>
 }
 
 function createMockIamClient(options: IamMockOptions = {}) {
@@ -101,7 +106,17 @@ function createMockIamClient(options: IamMockOptions = {}) {
 }
 
 function createMockAppClient(options: AppMockOptions = {}) {
-  const domains = options.domains ?? { data: [{ hostname: "e2e-w0.alive.local" }], error: null }
+  const domains = options.domains ?? {
+    data: [
+      {
+        hostname: "e2e-w0.alive.local",
+        execution_mode: "e2b",
+        sandbox_id: null,
+        sandbox_status: null,
+      },
+    ],
+    error: null,
+  }
 
   return {
     from: vi.fn((table: string) => {
@@ -169,6 +184,25 @@ describe("GET /api/test/verify-tenant", () => {
 
     expect(res.status).toBe(200)
     expect(json.ready).toBe(true)
+  })
+
+  it("returns sandbox details when includeSandbox=1", async () => {
+    const url = new URL("http://localhost/api/test/verify-tenant")
+    url.searchParams.set("email", `${TEST_CONFIG.WORKER_EMAIL_PREFIX}0@${TEST_CONFIG.EMAIL_DOMAIN}`)
+    url.searchParams.set("includeSandbox", "1")
+
+    const res = await GET(new Request(url.toString(), { method: "GET" }))
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json).toMatchObject({
+      ready: true,
+      sandbox: {
+        executionMode: "e2b",
+        sandboxId: null,
+        sandboxStatus: null,
+      },
+    })
   })
 
   it("returns missing:user when user does not exist", async () => {

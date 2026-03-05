@@ -28,20 +28,25 @@ sudo systemctl enable alive-dev  # auto-start on boot
 - `alive-runtime-status.timer` - Runs runtime status check every 5 minutes
 - `alive-build-prune.service` - Deletes `.builds/{env}/dist.*` older than 7 days
 - `alive-build-prune.timer` - Runs build pruning daily
+- `caddy-acme-rate-limit-alert.service` - Scans Caddy logs for ACME 429/rate-limit errors and emits alerts
+- `caddy-acme-rate-limit-alert.timer` - Runs ACME rate-limit check every 3 minutes
 
 ## Timer Setup
 
 `bun run setup:server --enable` installs and enables these timers automatically.
 
-For manual setup, replace `__ALIVE_ROOT__` in the unit templates before copying:
+Canonical unit lists live in:
+- `ops/systemd/managed-units.list`
+- `ops/systemd/required-timers.list`
+
+For manual setup, use the shared sync script:
 
 ```bash
 ALIVE_ROOT=/root/webalive/alive
-for unit in alive-runtime-status.service alive-runtime-status.timer alive-build-prune.service alive-build-prune.timer; do
-  sed "s#__ALIVE_ROOT__#${ALIVE_ROOT}#g" "ops/systemd/$unit" | sudo tee "/etc/systemd/system/$unit" >/dev/null
-done
-sudo systemctl daemon-reload
-sudo systemctl enable --now alive-runtime-status.timer alive-build-prune.timer
+sudo "${ALIVE_ROOT}/scripts/systemd/sync-ops-units.sh" \
+  --alive-root "${ALIVE_ROOT}" \
+  --enable-required-timers \
+  --verify-required-timers
 ```
 
 ## Configuration

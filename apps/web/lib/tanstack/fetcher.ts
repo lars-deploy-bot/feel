@@ -8,6 +8,11 @@
  * - Clean error messages
  */
 
+import type { ApiResponse } from "@/lib/api/types"
+
+// Re-export for barrel consumers
+export type { ApiResponse }
+
 // ============================================
 // API Error Class
 // ============================================
@@ -50,22 +55,6 @@ export class ApiError extends Error {
   get isClientError(): boolean {
     return this.status >= 400 && this.status < 500
   }
-}
-
-// ============================================
-// API Response Types
-// ============================================
-
-/**
- * Standard API response structure
- * All endpoints should return { ok: boolean, data?, error? }
- */
-export interface ApiResponse<T> {
-  ok: boolean
-  data?: T
-  error?: string
-  // Legacy format support
-  [key: string]: unknown
 }
 
 // ============================================

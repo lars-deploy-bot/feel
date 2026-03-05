@@ -11,4 +11,6 @@ export const RATE_LIMIT = {
 export const AUTH = {
   COOKIE_NAME: "alive_manager",
   COOKIE_MAX_AGE: 7 * 24 * 60 * 60, // 7 days in seconds
+  PASSWORD_RESET_TOKEN_TTL_MS: 30 * 60 * 1000, // 30 minutes
+  PASSWORD_BCRYPT_COST: 12,
 } as const

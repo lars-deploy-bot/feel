@@ -1,6 +1,7 @@
 import {
   type ClaudeModel,
   isValidClaudeModel,
+  type ManagerPasswordResetToken,
   type ManagerUser,
   type ManagerUserOrg,
   type ManagerUserSession,
@@ -9,6 +10,7 @@ import { app, iam } from "../../../db/clients"
 import { usersRepo } from "../../../db/repos"
 import type { UserRow } from "../../../db/repos/users.repo"
 import { InternalError } from "../../../infra/errors"
+import { issuePasswordResetToken } from "../../auth/auth.service"
 
 interface MembershipWithOrg {
   user_id: string
@@ -176,4 +178,8 @@ export async function updateEnabledModels(userId: string, models: ClaudeModel[])
   const user = await usersRepo.findById(userId)
   const base = isJsonObject(user.metadata) ? user.metadata : {}
   await usersRepo.updateMetadata(userId, { ...base, enabled_models: models })
+}
+
+export async function createPasswordResetToken(userId: string): Promise<ManagerPasswordResetToken> {
+  return issuePasswordResetToken(userId)
 }

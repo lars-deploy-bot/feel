@@ -38,6 +38,7 @@ function makeDomain(overrides: Record<string, unknown> = {}) {
 describe("connectSandbox", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv("E2B_DOMAIN", "e2b.test.local")
     mockEqSandboxStatus.mockResolvedValue({ error: null })
   })
 
@@ -49,7 +50,7 @@ describe("connectSandbox", () => {
 
     expect(result).toBe(fakeSandbox)
     expect(mockConnect).toHaveBeenCalledWith("sbx_abc", {
-      domain: process.env.E2B_DOMAIN,
+      domain: "e2b.test.local",
       timeoutMs: 10_000,
     })
   })

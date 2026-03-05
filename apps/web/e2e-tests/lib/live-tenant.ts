@@ -23,6 +23,15 @@ interface BootstrapTenantResponse {
   }
 }
 
+interface VerifyTenantResponse {
+  ready: boolean
+  sandbox?: {
+    executionMode: "systemd" | "e2b"
+    sandboxId: string | null
+    sandboxStatus: "creating" | "running" | "dead" | null
+  }
+}
+
 function getRunId(): string {
   const runId = process.env.E2E_RUN_ID
   if (!runId) {
@@ -31,8 +40,11 @@ function getRunId(): string {
   return runId
 }
 
-function buildBootstrapHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" }
+function buildTestHeaders(includeJsonContentType: boolean): Record<string, string> {
+  const headers: Record<string, string> = {}
+  if (includeJsonContentType) {
+    headers["Content-Type"] = "application/json"
+  }
   const testSecret = process.env.E2E_TEST_SECRET
   if (testSecret) {
     headers["x-test-secret"] = testSecret
@@ -53,13 +65,17 @@ function getWorkerTenantAddress(workerIndex: number): {
   }
 }
 
+export function getProjectBaseUrl(testInfo: TestInfo): string {
+  return requireProjectBaseUrl(testInfo.project.use.baseURL)
+}
+
 export async function getLiveStagingUser(workerIndex: number, baseUrl: string): Promise<LiveStagingUser> {
   const runId = getRunId()
   const { email, workspace, normalizedWorkerIndex } = getWorkerTenantAddress(workerIndex)
 
   const response = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
     method: "POST",
-    headers: buildBootstrapHeaders(),
+    headers: buildTestHeaders(true),
     body: JSON.stringify({
       runId,
       workerIndex: normalizedWorkerIndex,
@@ -112,6 +128,23 @@ export async function loginLiveStaging(page: Page, user: LiveStagingUser): Promi
   })
 }
 
-export function getProjectBaseUrl(testInfo: TestInfo): string {
-  return requireProjectBaseUrl(testInfo.project.use.baseURL)
+export async function getTenantSandboxState(baseUrl: string, email: string): Promise<VerifyTenantResponse["sandbox"]> {
+  const response = await fetch(
+    `${baseUrl}/api/test/verify-tenant?email=${encodeURIComponent(email)}&includeSandbox=1`,
+    { headers: buildTestHeaders(false) },
+  )
+
+  if (!response.ok) {
+    throw new Error(`verify-tenant failed (${response.status})`)
+  }
+
+  const payload = (await response.json()) as VerifyTenantResponse
+  if (!payload.ready) {
+    throw new Error("verify-tenant returned ready=false while checking sandbox state")
+  }
+
+  if (!payload.sandbox) {
+    throw new Error("verify-tenant response missing sandbox payload")
+  }
+  return payload.sandbox
 }

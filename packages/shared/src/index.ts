@@ -121,10 +121,14 @@ export {
 } from "./external-content.js"
 // invite-code.ts uses node:crypto — import via "@webalive/shared/invite-code" (server-only)
 export type {
+  ManagerPasswordResetToken,
   // Manager API response types - shared contract between apps/api and apps/manager
   ManagerUser,
+  ManagerUserDevice,
   ManagerUserEvent,
+  ManagerUserLocation,
   ManagerUserOrg,
+  ManagerUserProfile,
   ManagerUserSession,
 } from "./manager-types.js"
 export {

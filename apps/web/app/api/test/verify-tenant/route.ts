@@ -9,6 +9,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import type { ExecutionMode, SandboxStatus } from "@webalive/database"
 import { env } from "@webalive/env/server"
 import { PATHS, TEST_CONFIG } from "@webalive/shared"
 import { structuredErrorResponse } from "@/lib/api/responses"
@@ -21,6 +22,12 @@ type TenantCheck = "user" | "membership" | "org" | "domain"
 interface PostgrestErrorLike {
   code?: string
   message?: string
+}
+
+interface ReadySandboxState {
+  executionMode: ExecutionMode
+  sandboxId: string | null
+  sandboxStatus: SandboxStatus | null
 }
 
 function asPostgrestError(error: unknown): PostgrestErrorLike | null {
@@ -63,6 +70,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url)
   const email = searchParams.get("email")
+  const includeSandbox = searchParams.get("includeSandbox") === "1"
 
   if (!email) {
     return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 400 })
@@ -119,13 +127,14 @@ export async function GET(req: Request) {
     // 4. Check if domain exists (extract workspace from email pattern)
     // Email format is e2e_w{N}@alive.local (TEST_CONFIG.WORKER_EMAIL_PREFIX = "e2e_w")
     const workerIndex = email.match(/e2e_w(\d+)@/)?.[1]
+    let sandboxState: ReadySandboxState | undefined
     if (workerIndex !== undefined) {
       const workspace = `${TEST_CONFIG.WORKSPACE_PREFIX}${workerIndex}.${TEST_CONFIG.EMAIL_DOMAIN}`
       // Use limit(1) instead of single() - we just need to verify at least one domain exists
       // The domain might be associated with any of the user's orgs (from accumulated test runs)
       const { data: domains, error: domainError } = await app
         .from("domains")
-        .select("hostname")
+        .select("hostname, execution_mode, sandbox_id, sandbox_status")
         .eq("hostname", workspace)
         .limit(1)
 
@@ -137,6 +146,13 @@ export async function GET(req: Request) {
         return Response.json({ ready: false, missing: "domain" })
       }
 
+      const [domain] = domains
+      sandboxState = {
+        executionMode: domain.execution_mode,
+        sandboxId: domain.sandbox_id,
+        sandboxStatus: domain.sandbox_status,
+      }
+
       const workspacePath = path.join(PATHS.SITES_ROOT, workspace, "user")
       if (!existsSync(workspacePath)) {
         return Response.json({ ready: false, missing: "workspace_fs" })
@@ -144,6 +160,9 @@ export async function GET(req: Request) {
     }
 
     // All checks passed
+    if (includeSandbox && sandboxState) {
+      return Response.json({ ready: true, sandbox: sandboxState })
+    }
     return Response.json({ ready: true })
   } catch (error) {
     console.error("[Verify Tenant] Error:", error)
