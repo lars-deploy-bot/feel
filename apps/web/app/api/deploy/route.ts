@@ -52,19 +52,21 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [DEPLOY API] User has access to organization ${orgId}`)
 
-    // Check site creation limit
-    const quota = await getUserQuota(user.id)
-    if (!quota.canCreateSite) {
-      console.error(
-        `❌ [DEPLOY API] User ${user.email} has reached site limit (${quota.currentSites}/${quota.maxSites})`,
-      )
-      return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
-        status: 403,
-        details: {
-          limit: quota.maxSites,
-          currentCount: quota.currentSites,
-        },
-      })
+    // Check site creation limit (superadmins bypass)
+    if (!user.isSuperadmin) {
+      const quota = await getUserQuota(user.id)
+      if (!quota.canCreateSite) {
+        console.error(
+          `❌ [DEPLOY API] User ${user.email} has reached site limit (${quota.currentSites}/${quota.maxSites})`,
+        )
+        return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
+          status: 403,
+          details: {
+            limit: quota.maxSites,
+            currentCount: quota.currentSites,
+          },
+        })
+      }
     }
 
     // Validate and get selected template from database

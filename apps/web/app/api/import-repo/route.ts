@@ -53,13 +53,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check site creation quota
-    const quota = await getUserQuota(sessionUser.id)
-    if (!quota.canCreateSite) {
-      return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
-        status: 403,
-        details: { limit: quota.maxSites, currentCount: quota.currentSites },
-      })
+    // Check site creation quota (superadmins bypass)
+    if (!sessionUser.isSuperadmin) {
+      const quota = await getUserQuota(sessionUser.id)
+      if (!quota.canCreateSite) {
+        return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
+          status: 403,
+          details: { limit: quota.maxSites, currentCount: quota.currentSites },
+        })
+      }
     }
 
     // Build full domain from slug
