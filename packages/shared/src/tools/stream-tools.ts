@@ -41,6 +41,12 @@ export const STREAM_MODE_KEYS = ["default", "plan", "superadmin"] as const
 export type StreamMode = (typeof STREAM_MODE_KEYS)[number]
 
 export interface StreamModeConfig {
+  /** Human-readable label for UI display. */
+  label: string
+  /** Short description of what this mode does. */
+  description: string
+  /** Minimum role required to use this mode. */
+  requiredRole: StreamToolRole
   /** SDK tools allowed in this mode. null = use role/workspace policy (no mode filter). */
   sdkTools: readonly StreamSdkToolName[] | null
   /** Whether MCP servers should be registered. */
@@ -223,11 +229,17 @@ const _assertAllSdkToolNamesListed: MissingSdkToolNames extends never ? true : n
  */
 export const STREAM_MODES: Record<StreamMode, StreamModeConfig> = {
   default: {
+    label: "Default",
+    description: "Full tool access",
+    requiredRole: "member",
     sdkTools: null,
     mcpEnabled: true,
     permissionMode: "forcedAccept",
   },
   plan: {
+    label: "Plan",
+    description: "Read-only exploration",
+    requiredRole: "member",
     sdkTools: [
       SDK_TOOL.READ,
       SDK_TOOL.GLOB,
@@ -245,10 +257,26 @@ export const STREAM_MODES: Record<StreamMode, StreamModeConfig> = {
     permissionMode: "plan",
   },
   superadmin: {
+    label: "Terminal",
+    description: "Bash only",
+    requiredRole: "superadmin",
     sdkTools: [SDK_TOOL.BASH, SDK_TOOL.BASH_OUTPUT, SDK_TOOL.ASK_USER_QUESTION],
     mcpEnabled: false,
     permissionMode: "bypassPermissions",
   },
+}
+
+const ROLE_HIERARCHY: Record<StreamToolRole, number> = { member: 0, admin: 1, superadmin: 2 }
+
+/**
+ * Get modes accessible to a given role. Used by UI to show the mode selector.
+ */
+export function getAccessibleStreamModes(role: StreamToolRole): { key: StreamMode; config: StreamModeConfig }[] {
+  const roleLevel = ROLE_HIERARCHY[role]
+  return STREAM_MODE_KEYS.filter(key => ROLE_HIERARCHY[STREAM_MODES[key].requiredRole] <= roleLevel).map(key => ({
+    key,
+    config: STREAM_MODES[key],
+  }))
 }
 
 /**

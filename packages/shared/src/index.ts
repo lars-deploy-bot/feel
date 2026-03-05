@@ -306,6 +306,7 @@ export {
   createStreamToolContext,
   denyTool,
   filterToolsForMode,
+  getAccessibleStreamModes,
   getStreamAllowedTools,
   getStreamDisallowedTools,
   getStreamMcpServers,

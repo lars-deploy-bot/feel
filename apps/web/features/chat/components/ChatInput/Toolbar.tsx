@@ -1,11 +1,13 @@
 "use client"
 
-import { Camera, ClipboardList, Copy, FileText, Globe, MousePointer2, User } from "lucide-react"
+import { getAccessibleStreamModes, STREAM_MODES, type StreamMode } from "@webalive/shared"
+import { Camera, ChevronDown, ClipboardList, Copy, FileText, Globe, MousePointer2, Terminal, User } from "lucide-react"
 import type { RefObject } from "react"
 import { useState } from "react"
 import toast from "react-hot-toast"
 import { useWorkbenchContext } from "@/features/chat/lib/workbench-context"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
+import { useSuperadmin } from "@/hooks/use-superadmin"
 import {
   trackCameraUsed,
   trackElementSelectorActivated,
@@ -46,7 +48,9 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
 
   // Stream mode state
   const mode = useStreamMode()
-  const { toggleMode } = useStreamModeActions()
+  const { setMode } = useStreamModeActions()
+  const isSuperadmin = useSuperadmin()
+  const [showModeMenu, setShowModeMenu] = useState(false)
 
   if (!config.enableCamera) {
     return null
@@ -195,27 +199,19 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
         </button>
       )}
 
-      {/* Plan Mode Toggle */}
-      <button
-        type="button"
-        onClick={() => {
-          trackPlanModeToggled(mode !== "plan")
-          toggleMode("plan")
+      {/* Mode Selector */}
+      <StreamModeSelector
+        mode={mode}
+        isSuperadmin={isSuperadmin}
+        showMenu={showModeMenu}
+        onToggleMenu={() => setShowModeMenu(v => !v)}
+        onCloseMenu={() => setShowModeMenu(false)}
+        onSelectMode={m => {
+          trackPlanModeToggled(m === "plan")
+          setMode(m)
+          setShowModeMenu(false)
         }}
-        className={`flex items-center justify-center size-8 rounded-full transition-colors ${
-          mode === "plan"
-            ? "bg-blue-500/20 text-blue-500 dark:text-blue-400"
-            : "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70"
-        }`}
-        aria-label={mode === "plan" ? "Disable plan mode" : "Enable plan mode"}
-        title={
-          mode === "plan"
-            ? "Plan mode ON - Claude will only explore, not modify"
-            : "Plan mode OFF - Click to enable planning only"
-        }
-      >
-        <FileText className="size-4" />
-      </button>
+      />
 
       <button
         type="button"
@@ -228,6 +224,119 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
       >
         <Camera className="size-4" />
       </button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Stream Mode Selector
+// ---------------------------------------------------------------------------
+
+// Icons are React components — frontend-only, not in shared.
+const MODE_ICONS: Record<StreamMode, typeof FileText> = {
+  default: ChevronDown,
+  plan: FileText,
+  superadmin: Terminal,
+}
+
+const MODE_BUTTON_STYLES: Record<StreamMode, string> = {
+  default:
+    "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70",
+  plan: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+  superadmin: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+}
+
+function StreamModeSelector({
+  mode,
+  isSuperadmin,
+  showMenu,
+  onToggleMenu,
+  onCloseMenu,
+  onSelectMode,
+}: {
+  mode: StreamMode
+  isSuperadmin: boolean
+  showMenu: boolean
+  onToggleMenu: () => void
+  onCloseMenu: () => void
+  onSelectMode: (mode: StreamMode) => void
+}) {
+  const role = isSuperadmin ? "superadmin" : "member"
+  const accessibleModes = getAccessibleStreamModes(role)
+  const activeConfig = STREAM_MODES[mode]
+  const Icon = MODE_ICONS[mode]
+
+  // Only 2 modes (default + plan) — simple toggle, no dropdown needed
+  if (accessibleModes.length <= 2) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelectMode(mode === "plan" ? "default" : "plan")}
+        className={`flex items-center justify-center size-8 rounded-full transition-colors ${MODE_BUTTON_STYLES[mode]}`}
+        aria-label={mode === "plan" ? "Disable plan mode" : "Enable plan mode"}
+        title={mode === "plan" ? activeConfig.description : "Click to enable plan mode"}
+      >
+        <FileText className="size-4" />
+      </button>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggleMenu}
+        className={`flex items-center gap-1 h-8 px-2 rounded-full transition-colors ${MODE_BUTTON_STYLES[mode]}`}
+        aria-label={`Mode: ${activeConfig.label}`}
+        title={activeConfig.description}
+      >
+        <Icon className="size-4" />
+        {mode !== "default" && <span className="text-[11px] font-medium">{activeConfig.label}</span>}
+      </button>
+
+      {showMenu && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-10 bg-transparent border-0 p-0 cursor-default"
+            onClick={onCloseMenu}
+            onKeyDown={e => e.key === "Escape" && onCloseMenu()}
+            aria-label="Close menu"
+          />
+          <div className="absolute bottom-full left-0 mb-2 w-48 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-2xl shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] z-20 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-150">
+            <div className="p-1.5 space-y-0.5">
+              {accessibleModes.map(({ key, config }) => {
+                const OptionIcon = MODE_ICONS[key]
+                const isActive = mode === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => onSelectMode(key)}
+                    className={`w-full text-left px-3 py-2 rounded-xl transition-colors flex items-center gap-2.5 ${
+                      isActive
+                        ? "bg-black/[0.04] dark:bg-white/[0.06]"
+                        : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    <OptionIcon
+                      className={`size-4 shrink-0 ${isActive ? "text-black/70 dark:text-white/70" : "text-black/30 dark:text-white/30"}`}
+                    />
+                    <div className="min-w-0">
+                      <div
+                        className={`text-[13px] ${isActive ? "font-medium text-black/80 dark:text-white/80" : "text-black/50 dark:text-white/50"}`}
+                      >
+                        {config.label}
+                      </div>
+                      <div className="text-[11px] text-black/30 dark:text-white/30">{config.description}</div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
