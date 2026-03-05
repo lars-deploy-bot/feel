@@ -963,6 +963,11 @@ async function handleQuery(ipc, requestId, payload) {
     // The SDK cwd stays local (needed for subprocess), but Claude sees SANDBOX_WORKSPACE_ROOT
     // in the system prompt and all file ops go through the sandbox MCP.
     if (payload.executionMode === "e2b" && payload.sandboxDomain) {
+      if (!modeConfig.mcpEnabled) {
+        throw new Error(
+          `[worker] executionMode=e2b requires MCP routing, but streamMode="${streamMode}" has mcpEnabled=false`,
+        )
+      }
       try {
         const isTestSandboxDomain = payload.sandboxDomain.is_test_env === true
         const selectedTemplate = isTestSandboxDomain ? E2B_TEMPLATES.ALIVE_E2E_MINIMAL : E2B_DEFAULT_TEMPLATE

@@ -667,7 +667,7 @@ export function getStreamToolDecision(toolName: string, context: StreamToolConte
   }
 
   const modeConfig = STREAM_MODES[context.mode]
-  if (modeConfig.sdkTools !== null && !modeConfig.sdkTools.includes(toolName as StreamSdkToolName)) {
+  if (modeConfig.sdkTools !== null && !modeConfig.sdkTools.some(modeTool => modeTool === toolName)) {
     return {
       executable: false,
       visibleToClient,
@@ -908,9 +908,10 @@ export function getStreamDisallowedTools(
  */
 export function filterToolsForMode(allowedTools: string[], mode: StreamMode): string[] {
   const modeConfig = STREAM_MODES[mode]
-  if (modeConfig.sdkTools === null) return allowedTools
+  const modeTools = modeConfig.sdkTools
+  if (modeTools === null) return allowedTools
 
-  return allowedTools.filter(tool => modeConfig.sdkTools!.includes(tool as StreamSdkToolName))
+  return allowedTools.filter(tool => modeTools.some(modeTool => modeTool === tool))
 }
 
 /**
