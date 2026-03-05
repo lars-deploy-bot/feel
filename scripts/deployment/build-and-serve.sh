@@ -142,6 +142,32 @@ lock_require_or_exit() {
 lock_require_or_exit
 
 # =============================================================================
+# Sync Repo-Managed Systemd Units
+# =============================================================================
+sync_ops_systemd_units() {
+    phase_start "Syncing ops timers"
+
+    local sync_script="$PROJECT_ROOT/scripts/systemd/sync-ops-units.sh"
+
+    if [ ! -x "$sync_script" ]; then
+        phase_end error "Missing or non-executable sync script: $sync_script"
+        exit 1
+    fi
+
+    if ! "$sync_script" \
+        --alive-root "$PROJECT_ROOT" \
+        --enable-required-timers \
+        --verify-required-timers; then
+        phase_end error "Failed to sync ops timers"
+        exit 1
+    fi
+
+    phase_end ok "Ops timers synced"
+}
+
+sync_ops_systemd_units
+
+# =============================================================================
 # Rollback Support
 # =============================================================================
 PREVIOUS_BUILD=""

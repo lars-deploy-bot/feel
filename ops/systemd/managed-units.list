@@ -1,0 +1,7 @@
+# Repo-managed ops systemd units installed onto the host.
+alive-runtime-status.service
+alive-runtime-status.timer
+alive-build-prune.service
+alive-build-prune.timer
+caddy-acme-rate-limit-alert.service
+caddy-acme-rate-limit-alert.timer

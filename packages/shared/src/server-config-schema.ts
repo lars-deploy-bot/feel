@@ -64,6 +64,19 @@ const sentrySchema = z
     }
   })
 
+const wildcardOriginCertSchema = z
+  .object({
+    certFile: pathStr,
+    keyFile: pathStr,
+  })
+  .strict()
+
+const tlsSchema = z
+  .object({
+    wildcardOriginCert: wildcardOriginCertSchema,
+  })
+  .strict()
+
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
@@ -93,6 +106,8 @@ export const serverConfigSchema = z
         frameAncestors: z.array(z.string().min(1)),
       })
       .strict(),
+
+    tls: tlsSchema.optional(),
 
     urls: z
       .object({

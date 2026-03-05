@@ -198,6 +198,7 @@ function renderCaddySites(
   const filteredDomains = filterReservedDomains(domains, environments)
   const previewBase = cfg.domains.previewBase
   const embeddableOnThisServer = filteredDomains.filter(d => embeddableHosts.has(d.hostname.toLowerCase())).length
+  const tlsMode = cfg.tls?.wildcardOriginCert ? "wildcard_origin_cert" : "acme_force_automate"
 
   const header = [
     "# GENERATED FILE - DO NOT EDIT",
@@ -207,6 +208,7 @@ function renderCaddySites(
     `# embeddable_template_domains: ${embeddableOnThisServer}`,
     `# environments: ${environments.map(e => e.key).join(", ")}`,
     `# previewBase: ${previewBase || "(not configured)"}`,
+    `# tls_mode: ${tlsMode}`,
     "",
     "# NOTE: Snippets (common_headers, image_serving) are imported globally",
     "# by the main Caddyfile (see ops/caddy/Caddyfile.snippets)",
@@ -217,9 +219,10 @@ function renderCaddySites(
   const siteBlocks = filteredDomains
     .map(({ hostname, port }) => {
       const isEmbeddable = embeddableHosts.has(hostname.toLowerCase())
+      const tlsConfigLine = renderSiteTlsConfigLine(cfg, hostname)
       return [
         `${hostname} {`,
-        "    tls force_automate",
+        tlsConfigLine,
         ...(isEmbeddable ? [] : ["    import common_headers"]),
         "    import image_serving",
         "",
@@ -261,6 +264,21 @@ function renderCaddySites(
   const wildcardBlock = wildcardDomain ? renderWildcardPreviewBlock(wildcardDomain, cfg.previewProxy?.port) : ""
 
   return `${header}${siteBlocks}\n\n${wildcardBlock}`
+}
+
+function renderSiteTlsConfigLine(cfg: ServerConfig, hostname: string): string {
+  const wildcardOriginCert = cfg.tls?.wildcardOriginCert
+  if (!wildcardOriginCert) {
+    return "    tls force_automate"
+  }
+
+  const wildcardSuffix = `.${cfg.domains.wildcard}`
+  const shouldUseWildcardOriginCert = hostname.endsWith(wildcardSuffix)
+  if (!shouldUseWildcardOriginCert) {
+    return "    tls force_automate"
+  }
+
+  return `    tls ${wildcardOriginCert.certFile} ${wildcardOriginCert.keyFile}`
 }
 
 /**

@@ -1,0 +1,4 @@
+# Timers that must be enabled and active for healthy operation.
+alive-runtime-status.timer
+alive-build-prune.timer
+caddy-acme-rate-limit-alert.timer

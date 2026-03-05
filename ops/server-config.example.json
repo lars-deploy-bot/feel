@@ -19,6 +19,12 @@
       "https://staging.example.com"
     ]
   },
+  "tls": {
+    "wildcardOriginCert": {
+      "certFile": "/etc/ssl/caddy/origin-wildcard.crt",
+      "keyFile": "/etc/ssl/caddy/origin-wildcard.key"
+    }
+  },
   "urls": {
     "prod": "https://app.example.com",
     "staging": "https://staging.example.com",
