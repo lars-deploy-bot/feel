@@ -7,8 +7,7 @@ import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
 import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
-import { restartSystemdService } from "@/lib/workspace-execution/systemd-restart"
-import { domainToServiceName } from "@/lib/workspace-service-manager"
+import { domainToServiceName, restartSystemdService } from "@/lib/workspace-execution/systemd-restart"
 
 /**
  * POST /api/manager/restart-service

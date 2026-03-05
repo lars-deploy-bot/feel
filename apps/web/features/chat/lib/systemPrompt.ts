@@ -5,13 +5,10 @@ type EmailProvider = "gmail" | "outlook"
 
 interface SystemPromptParams {
   projectId?: string
-  userId?: string
-  workspaceFolder?: string
   hasStripeMcpAccess?: boolean
   /** Connected email providers (replaces gmail-only hasGmailAccess) */
   connectedEmailProviders?: EmailProvider[]
   additionalContext?: string
-  isProduction?: boolean
 }
 
 /** MCP compose tool name per email provider */
@@ -27,20 +24,12 @@ const EMAIL_COMPOSE_TOOL: Record<EmailProvider, string> = {
 const EMAIL_COMPOSE_PIPELINE_READY = new Set<EmailProvider>(["gmail", "outlook"])
 
 export function getSystemPrompt(params: SystemPromptParams = {}): string {
-  const {
-    projectId,
-    userId,
-    workspaceFolder,
-    hasStripeMcpAccess,
-    connectedEmailProviders = [],
-    additionalContext,
-    isProduction,
-  } = params
+  const { projectId, hasStripeMcpAccess, connectedEmailProviders = [], additionalContext } = params
 
   const now = new Date()
   const currentDate = `${now.getDate()} ${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][now.getMonth()]} ${now.getFullYear()}`
 
-  let prompt = `Date: ${currentDate}. Current time: ${now.toISOString()}. Read CLAUDE.md first. Read the current project structure before making changes. The user is usually looking at a specific page — find which one.`
+  let prompt = `Date: ${currentDate}. Current time: ${now.toISOString()}. Read the current project structure before making changes. The user is usually looking at a specific page — find which one.`
 
   if (hasStripeMcpAccess) {
     prompt +=
@@ -62,28 +51,12 @@ export function getSystemPrompt(params: SystemPromptParams = {}): string {
       " MULTIPLE EMAIL ACCOUNTS: The user has multiple email accounts connected. When they ask to send or compose an email without specifying which account, ask which one to use. Never pick one silently."
   }
 
-  prompt +=
-    " Before debugging, installing packages, or implementing features: call list_workflows() then get_workflow() and follow the steps."
-
   if (projectId) {
     prompt += ` Project: ${projectId}.`
   }
 
-  if (userId) {
-    prompt += ` User: ${userId}.`
-  }
-
-  if (workspaceFolder && workspaceFolder !== "/src") {
-    prompt += ` Workspace: ${workspaceFolder}.`
-  }
-
   if (additionalContext) {
     prompt += ` ${additionalContext}`
-  }
-
-  if (isProduction) {
-    prompt +=
-      " PRODUCTION MODE: Changes are not live until you rebuild. Make all changes first, then run switch_serve_mode({ mode: 'build' }) once. Or switch to dev mode for live editing."
   }
 
   prompt += ` ${coreInstructionsReminder}`

@@ -42,13 +42,8 @@ import {
   SandboxManager,
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, SENTRY, STREAM_MODES } from "@webalive/shared"
-import {
-  emailInternalMcp,
-  toolsInternalMcp,
-  withSearchToolsConnectedProviders,
-  workspaceInternalMcp,
-} from "@webalive/tools"
+import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
+import { emailInternalMcp, streamInternalMcpServers, withSearchToolsConnectedProviders } from "@webalive/tools"
 import { E2B_INFRASTRUCTURE_ENV_KEYS, prepareRequestEnv } from "../dist/env-isolation.js"
 
 // Initialize Sentry for error reporting in the worker process.
@@ -654,7 +649,7 @@ async function handleQuery(ipc, requestId, payload) {
 
   timing("query_received")
 
-  // NOTE: query, isOAuthMcpTool, workspaceInternalMcp, toolsInternalMcp are imported
+  // NOTE: query, isOAuthMcpTool, streamInternalMcpServers are imported
   // at the top level BEFORE privilege drop. After dropping privileges, the worker
   // can't read /root/alive/node_modules/
 
@@ -827,10 +822,17 @@ async function handleQuery(ipc, requestId, payload) {
 
     // Stream mode: determines tool availability
     const rawStreamMode = typeof agentConfig.streamMode === "string" ? agentConfig.streamMode : null
-    const streamMode = rawStreamMode && Object.hasOwn(STREAM_MODES, rawStreamMode) ? rawStreamMode : "default"
+    const requestedStreamMode = rawStreamMode && Object.hasOwn(STREAM_MODES, rawStreamMode) ? rawStreamMode : "default"
+    const streamMode = resolveStreamMode(requestedStreamMode, {
+      isAdmin: !!agentConfig.isAdmin,
+      isSuperadmin: !!agentConfig.isSuperadmin,
+    })
     const modeConfig = STREAM_MODES[streamMode]
-    if (rawStreamMode && rawStreamMode !== streamMode) {
-      console.error(`[worker] Invalid streamMode "${rawStreamMode}", falling back to "${streamMode}"`)
+    if (rawStreamMode && rawStreamMode !== requestedStreamMode) {
+      console.error(`[worker] Invalid streamMode "${rawStreamMode}", falling back to "${requestedStreamMode}"`)
+    }
+    if (requestedStreamMode !== streamMode) {
+      console.error(`[worker] Unauthorized streamMode "${requestedStreamMode}", falling back to "${streamMode}"`)
     }
     if (streamMode !== "default") {
       console.error(`[worker] Stream mode: ${streamMode} (MCP enabled: ${modeConfig.mcpEnabled})`)
@@ -851,7 +853,7 @@ async function handleQuery(ipc, requestId, payload) {
     const canUseTool = undefined
 
     // Build MCP servers: internal (created locally) + global HTTP + OAuth (received via IPC)
-    // Internal SDK MCP servers (workspaceInternalMcp, toolsInternalMcp) cannot be
+    // Internal SDK MCP servers (streamInternalMcpServers) cannot be
     // serialized via IPC because createSdkMcpServer returns function objects.
     // They must be imported and created locally in the worker.
 
@@ -884,8 +886,7 @@ async function handleQuery(ipc, requestId, payload) {
 
     const mcpServers = modeConfig.mcpEnabled
       ? {
-          "alive-workspace": workspaceInternalMcp,
-          "alive-tools": toolsInternalMcp,
+          ...streamInternalMcpServers,
           ...optionalMcpServers,
           ...globalMcpServers,
           ...(oauthMcpServers || {}),

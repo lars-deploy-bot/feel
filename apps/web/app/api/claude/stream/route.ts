@@ -1,10 +1,10 @@
 import { statSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
-import { SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
 import {
   DEFAULTS,
   isRetiredModel,
   isValidClaudeModel,
+  resolveStreamMode,
   STREAM_MODES,
   type StreamMode,
   SUPERADMIN,
@@ -71,7 +71,6 @@ import { createRLSAppClient } from "@/lib/supabase/server-rls"
 import type { TokenSource } from "@/lib/tokens"
 import { getOrgCredits } from "@/lib/tokens"
 import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
-import { detectServeMode } from "@/lib/workspace-execution/command-runner"
 import { BodySchema } from "@/types/guards/api"
 import { logRetryContract } from "./retry-observability"
 
@@ -206,7 +205,6 @@ export async function POST(req: NextRequest) {
       tabId,
       model: userModel,
       projectId,
-      userId,
       additionalContext,
       analyzeImageUrls,
       streamMode: rawStreamMode,
@@ -523,11 +521,6 @@ export async function POST(req: NextRequest) {
       logger.log(`OAuth warnings: ${oauthWarnings.map(w => w.provider).join(", ")}`)
     }
 
-    // Detect if workspace is running in production mode (build) vs dev mode
-    const serveMode = detectServeMode(cwd)
-    const isProductionMode = serveMode === "build"
-    logger.log(`Serve mode: ${serveMode} (isProduction: ${isProductionMode})`)
-
     // Handle analyze mode images: fetch from photobook and save to workspace
     // This allows Claude to use the Read tool to visually analyze the images
     let finalMessage = message
@@ -555,16 +548,11 @@ export async function POST(req: NextRequest) {
     if (hasGmailConnection) connectedEmailProviders.push("gmail")
     if (hasOutlookConnection) connectedEmailProviders.push("outlook")
 
-    const isE2b = domainRecord.execution_mode === "e2b"
-
     const systemPrompt = getSystemPrompt({
       projectId,
-      userId,
-      workspaceFolder: isE2b ? SANDBOX_WORKSPACE_ROOT : cwd,
       hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName, hasStripeConnection),
       connectedEmailProviders,
       additionalContext,
-      isProduction: isProductionMode,
     })
 
     logger.log("Spawning child process runner")
@@ -576,10 +564,13 @@ export async function POST(req: NextRequest) {
     let childStream: ReadableStream<Uint8Array>
 
     // Stream mode: determines tool availability and SDK permission mode
-    let streamMode: StreamMode = rawStreamMode ?? "default"
-    // Superadmin mode requires actual superadmin in superadmin workspace
-    if (streamMode === "superadmin" && !(user.isSuperadmin && isSuperadminWorkspace)) {
-      streamMode = "default"
+    const requestedStreamMode: StreamMode = rawStreamMode ?? "default"
+    const streamMode = resolveStreamMode(requestedStreamMode, {
+      isAdmin: user.isAdmin,
+      isSuperadmin: user.isSuperadmin,
+    })
+    if (requestedStreamMode !== streamMode) {
+      logger.log(`Stream mode fallback: requested=${requestedStreamMode}, effective=${streamMode}`)
     }
     const modeConfig = STREAM_MODES[streamMode]
     const effectivePermissionMode = modeConfig.permissionMode
@@ -614,7 +605,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Build agent config to pass to worker (worker doesn't import from apps/web)
-      // Note: Internal MCP servers (alive-workspace, alive-tools) are created locally
+      // Note: Internal MCP servers (alive-workspace, alive-sandboxed-fs, alive-tools) are created locally
       // in the worker because createSdkMcpServer returns function objects that cannot
       // be serialized via IPC. Only OAuth HTTP servers are passed here.
       const allowedTools = getAllowedTools(cwd, user.isAdmin, user.isSuperadmin, isSuperadminWorkspace, streamMode)

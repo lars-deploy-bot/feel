@@ -63,11 +63,12 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
   const currentDir = dirname(fileURLToPath(import.meta.url))
   const runnerPath = resolve(currentDir, "../../scripts/run-agent.mjs")
 
-  // SUPERADMIN: Skip privilege drop - run as root
-  // Only applies when user is superadmin AND workspace is alive
+  // SUPERADMIN: Skip privilege drop only in the alive superadmin workspace.
+  // Superadmins operating on site workspaces still run as workspace user.
+  const runAsRoot = payload.isSuperadmin && payload.isSuperadminWorkspace
   let uid: number
   let gid: number
-  if (payload.isSuperadmin) {
+  if (runAsRoot) {
     uid = 0
     gid = 0
     console.log("[agent-child] 🔓 SUPERADMIN MODE: Running as root (no privilege drop)")
@@ -92,8 +93,8 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
   const normalizedRoot = workspaceRoot.replace(/\/+$/, "")
   const workspaceHome = normalizedRoot.endsWith("/user") ? dirname(normalizedRoot) : normalizedRoot
 
-  // Build env — superadmin gets full access, regular users get sandbox allowlist only
-  const sandboxBase = payload.isSuperadmin ? process.env : createSandboxEnv()
+  // Build env — root superadmin workspace gets full env, all other contexts use sandbox allowlist.
+  const sandboxBase = runAsRoot ? process.env : createSandboxEnv()
 
   const child = spawn(process.execPath, [runnerPath], {
     env: {
@@ -102,7 +103,7 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),
       TARGET_CWD: workspaceRoot,
-      ...(!payload.isSuperadmin && { TARGET_HOME: workspaceHome }),
+      ...(!runAsRoot && { TARGET_HOME: workspaceHome }),
       // Never allow CLI auth discovery from workspace .env.
       ANTHROPIC_API_KEY: "",
       CLAUDE_CODE_OAUTH_TOKEN: oauthAccessToken,

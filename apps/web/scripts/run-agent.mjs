@@ -15,14 +15,7 @@ import { chownSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import process from "node:process"
 import { query } from "@anthropic-ai/claude-agent-sdk"
-import {
-  createStreamCanUseTool,
-  createStreamToolContext,
-  DEFAULTS,
-  isOAuthMcpTool,
-  isStreamClientVisibleTool,
-  STREAM_MODES,
-} from "@webalive/shared"
+import { DEFAULTS, isOAuthMcpTool, isStreamClientVisibleTool, resolveStreamMode, STREAM_MODES } from "@webalive/shared"
 import { withSearchToolsConnectedProviders } from "@webalive/tools"
 import {
   getAllowedTools,
@@ -122,19 +115,24 @@ async function readStdinJson() {
         : request.permissionMode === "bypassPermissions"
           ? "superadmin"
           : "default"
-    const streamMode =
+    const requestedOrFallbackMode =
       requestedStreamMode && Object.hasOwn(STREAM_MODES, requestedStreamMode) ? requestedStreamMode : fallbackMode
+    const streamMode = resolveStreamMode(requestedOrFallbackMode, { isAdmin, isSuperadmin })
     const modeConfig = STREAM_MODES[streamMode] || STREAM_MODES.default
     const effectivePermissionMode = request.permissionMode || modeConfig.permissionMode
-    if (requestedStreamMode && requestedStreamMode !== streamMode) {
-      console.error(`[runner] Invalid streamMode "${requestedStreamMode}", falling back to "${streamMode}"`)
+    if (requestedStreamMode && requestedStreamMode !== requestedOrFallbackMode) {
+      console.error(
+        `[runner] Invalid streamMode "${requestedStreamMode}", falling back to "${requestedOrFallbackMode}"`,
+      )
+    }
+    if (requestedOrFallbackMode !== streamMode) {
+      console.error(`[runner] Unauthorized streamMode "${requestedOrFallbackMode}", falling back to "${streamMode}"`)
     }
     if (streamMode !== "default") {
       console.error(`[runner] Stream mode: ${streamMode} (MCP enabled: ${modeConfig.mcpEnabled})`)
     }
 
     // Get base allowed tools (SDK + internal MCP tools)
-    // OAuth MCP tools are allowed dynamically in canUseTool
     // Admin users get TaskStop; superadmin re-enables Task/WebSearch.
     // Member-only MCP resource tools remain hidden for elevated roles.
     // isSuperadmin is also used as isSuperadminWorkspace — the alive workspace
@@ -167,27 +165,6 @@ async function readStdinJson() {
     } else if (isAdmin) {
       const hasTaskStop = baseAllowedTools.includes("TaskStop")
       console.error(`[runner] Admin tools: TaskStop=${hasTaskStop}, disallowed=${disallowedTools.length}`)
-    }
-
-    const toolContext = createStreamToolContext({
-      isAdmin,
-      isSuperadmin,
-      isSuperadminWorkspace: isSuperadmin,
-      mode: streamMode,
-      connectedProviders,
-    })
-
-    /**
-     * Tool permission handler - delegated to shared stream policy registry.
-     * @type {import('@anthropic-ai/claude-agent-sdk').CanUseTool}
-     */
-    const baseCanUseTool = createStreamCanUseTool(toolContext, baseAllowedTools)
-    const canUseTool = async (toolName, input, options) => {
-      const result = await baseCanUseTool(toolName, input, options)
-      if (result.behavior === "deny") {
-        console.error(`[runner] SECURITY: Blocked ${toolName}`)
-      }
-      return result
     }
 
     // MCP tools use process.cwd() which is set by process.chdir() above
@@ -256,7 +233,6 @@ async function readStdinJson() {
           ...(effectivePermissionMode === "bypassPermissions" ? { allowDangerouslySkipPermissions: true } : {}),
           allowedTools: baseAllowedTools,
           disallowedTools, // Dynamic based on admin status
-          canUseTool,
           settingSources: SETTINGS_SOURCES,
           mcpServers: workspaceMcpServers,
           systemPrompt: request.systemPrompt,

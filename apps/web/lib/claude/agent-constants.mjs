@@ -12,7 +12,7 @@ import {
   STREAM_SYNTHETIC_MESSAGE_TYPES,
   STREAM_TYPES,
 } from "@webalive/shared"
-import { getEnabledMcpToolNames, toolsInternalMcp, workspaceInternalMcp } from "@webalive/tools"
+import { getEnabledMcpToolNames, streamInternalMcpServers } from "@webalive/tools"
 
 // Re-export stream types
 export { STREAM_TYPES, STREAM_SYNTHETIC_MESSAGE_TYPES, STREAM_INTERRUPT_SOURCES }
@@ -77,10 +77,7 @@ export function getDisallowedTools(
  * @returns {Object} MCP servers configuration
  */
 export function getMcpServers(_workspacePath, options = {}) {
-  return getStreamMcpServers(
-    { "alive-workspace": workspaceInternalMcp, "alive-tools": toolsInternalMcp },
-    options.oauthTokens || {},
-  )
+  return getStreamMcpServers(streamInternalMcpServers, options.oauthTokens || {})
 }
 
 /**

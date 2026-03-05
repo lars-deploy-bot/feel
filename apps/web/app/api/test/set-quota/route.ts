@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   // Look up user by email
   const { data: user, error: userError } = await iam
     .from("users")
-    .select("user_id")
+    .select("user_id, is_test_env")
     .eq("email", email.toLowerCase())
     .single()
 
@@ -51,6 +51,14 @@ export async function POST(req: Request) {
     return structuredErrorResponse(ErrorCodes.USER_NOT_FOUND, {
       status: 404,
       details: { email },
+    })
+  }
+
+  // SAFETY: Never modify quotas for production users
+  if (!user.is_test_env) {
+    return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {
+      status: 409,
+      details: { message: `Refusing to modify quota for non-test user: ${email}` },
     })
   }
 

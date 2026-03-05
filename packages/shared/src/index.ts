@@ -61,7 +61,6 @@ export {
   REFERRAL,
   RESERVED_USER_ENV_KEYS,
   SESSION_MAX_AGE,
-  STORE_STORAGE_KEYS,
   STREAM_INTERRUPT_SOURCES,
   STREAM_SYNTHETIC_MESSAGE_TYPES,
   STREAM_TYPES,
@@ -82,8 +81,6 @@ export {
 } from "./constants.js"
 export {
   type CorsDomainsConfig,
-  checkGetAllowedOrigin,
-  checkOriginAllowed,
   getAllowedOrigin,
   isAllowedOrigin,
 } from "./cors.js"
@@ -98,11 +95,7 @@ export {
   type Environment,
   type EnvironmentKey,
   environments,
-  getAllEnvironments,
   getEnvironment,
-  getEnvironmentByDomain,
-  getEnvironmentByPort,
-  getEnvironmentByProcessName,
 } from "./environments.js"
 export {
   // Error utilities
@@ -142,13 +135,8 @@ export {
   type GlobalMcpProviderKey,
   type GlobalMcpProviderRegistry,
   getAllOAuthProviderKeys,
-  getGlobalMcpProviderKeys,
-  getGlobalMcpToolNames,
   getMcpToolFriendlyName,
   getOAuthKeyForProvider,
-  getOAuthMcpProviderConfig,
-  getOAuthMcpProviderKeys,
-  getOAuthOnlyProviderKeys,
   isOAuthMcpTool,
   isValidOAuthMcpProviderKey,
   isValidOAuthProviderKey,
@@ -191,7 +179,6 @@ export {
   isOrgRole,
   isOrgRoleWithViewer,
   ORG_ROLES,
-  ORG_ROLES_WITH_VIEWER,
   type OrgMembershipLike,
   type OrgRole,
   type OrgRoleMap,
@@ -199,8 +186,6 @@ export {
   type SessionOrgClaims,
 } from "./org-roles.js"
 export {
-  DEFAULT_MAX_CHARS,
-  DEFAULT_MAX_LINES,
   type TruncateOptions,
   // Output limiting utilities
   truncateOutput,
@@ -217,7 +202,7 @@ export {
   retryAsync,
   sleepWithAbort,
 } from "./retry.js"
-export { parseServerConfig, type ServerConfig, serverConfigSchema } from "./server-config-schema.js"
+export { parseServerConfig, type ServerConfig } from "./server-config-schema.js"
 export {
   parseSiteMetadata,
   SITE_METADATA_FILENAME,
@@ -231,8 +216,6 @@ export {
   type ErrorCode,
   type InterruptSource,
   isStreamEvent,
-  STREAM_EVENT_TYPES,
-  STREAM_PROTOCOL_VERSION,
   type StreamChunkEvent,
   type StreamCompleteEvent,
   type StreamErrorEvent,
@@ -245,24 +228,20 @@ export {
   type StreamState,
   type StreamStateEvent,
 } from "./stream-events.js"
-export {
+export type {
   // Stream token types
-  type CancelResponse,
-  type ReplayResponse,
-  type StreamStartRequest,
-  type StreamStartResponse,
-  type StreamTokenPayload,
-  TOKEN_CONFIG,
-  type TokenRequest,
-  type TokenResponse,
+  CancelResponse,
+  ReplayResponse,
+  StreamStartRequest,
+  StreamStartResponse,
+  StreamTokenPayload,
+  TokenRequest,
+  TokenResponse,
 } from "./stream-tokens.js"
 export { SUPER_TEMPLATE_CATEGORIES } from "./super-template-categories.js"
 export {
-  getTemplateById,
   getTemplateIdsInline,
   getTemplateListForDocs,
-  isValidTemplateId,
-  TEMPLATE_IDS,
   // Website templates - SINGLE SOURCE OF TRUTH
   TEMPLATES,
   type Template,
@@ -274,7 +253,6 @@ export {
   truncateMarkdown,
 } from "./text-utils.js"
 export {
-  getDescriptorsByServer,
   getInternalMcpToolNames,
   INTERNAL_TOOL_DESCRIPTORS,
   type InternalMcpServer,
@@ -300,19 +278,14 @@ export {
   WEBSITE_SLUG_MIN_LENGTH,
 } from "./tools/mcp-settings.js"
 export {
-  allowTool,
   buildStreamToolRuntimeConfig,
   createStreamCanUseTool,
   createStreamToolContext,
-  denyTool,
-  filterToolsForMode,
   getAccessibleStreamModes,
   getStreamAllowedTools,
   getStreamDisallowedTools,
   getStreamMcpServers,
   getStreamToolDecision,
-  getStreamToolRole,
-  getStreamWorkspaceKind,
   getToolActionLabel,
   getToolDetail,
   isHeavyBashCommand,
@@ -320,17 +293,16 @@ export {
   isStreamInitVisibleTool,
   isStreamPolicyTool,
   isUserApprovalTool,
+  resolveStreamMode,
   SDK_TOOL,
   SDK_TOOL_LOWER,
   type SdkToolKey,
-  STREAM_INTERNAL_MCP_TOOLS,
   STREAM_MODE_KEYS,
   STREAM_MODES,
   STREAM_PERMISSION_MODE,
   STREAM_SDK_TOOL_NAMES,
   STREAM_SETTINGS_SOURCES,
   STREAM_TOOL_POLICY_REGISTRY,
-  type StreamInternalMcpToolName,
   type StreamMcpServerConfig,
   type StreamMode,
   type StreamModeConfig,
@@ -348,10 +320,7 @@ export {
 export { getWorkspacePath } from "./tools/stream-tools-server.js"
 export {
   getRequiredDirectories,
-  WORKSPACE_DIRS,
-  WORKSPACE_MIGRATIONS,
   WORKSPACE_SCHEMA_VERSION,
   WORKSPACE_SCHEMA_VERSION_FILE,
-  type WorkspaceDir,
   type WorkspaceMigration,
 } from "./workspace-schema.js"

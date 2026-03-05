@@ -171,7 +171,8 @@ export interface AgentConfig {
   /**
    * OAuth MCP server configurations (HTTP-based, JSON-serializable).
    *
-   * Internal MCP servers (alive-workspace, alive-tools) are NOT included here
+   * Internal MCP servers (alive-workspace, alive-sandboxed-fs, alive-tools)
+   * are NOT included here
    * because createSdkMcpServer returns function objects that cannot be serialized
    * via IPC. The worker imports and creates those locally from @webalive/tools.
    */

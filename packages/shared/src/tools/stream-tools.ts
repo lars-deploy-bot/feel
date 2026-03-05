@@ -47,8 +47,8 @@ export interface StreamModeConfig {
   description: string
   /** Minimum role required to use this mode. */
   requiredRole: StreamToolRole
-  /** SDK tools allowed in this mode. null = use role/workspace policy (no mode filter). */
-  sdkTools: readonly StreamSdkToolName[] | null
+  /** Tools allowed in this mode. null = use role/workspace policy (no mode filter). */
+  modeTools: readonly string[] | null
   /** Whether MCP servers should be registered. */
   mcpEnabled: boolean
   /** SDK permission mode string passed to Claude Agent SDK. */
@@ -221,6 +221,26 @@ export const STREAM_SDK_TOOL_NAMES = defineSdkToolNames(
 type MissingSdkToolNames = Exclude<StreamSdkToolName, (typeof STREAM_SDK_TOOL_NAMES)[number]>
 const _assertAllSdkToolNamesListed: MissingSdkToolNames extends never ? true : never = true
 
+// SDK tools disabled for non-superadmin users in site workspaces.
+// These users must use the sandboxed FS MCP aliases instead.
+const SITE_SANDBOXED_FS_DISABLED_SDK_TOOLS = [
+  SDK_TOOL.READ,
+  SDK_TOOL.WRITE,
+  SDK_TOOL.EDIT,
+  SDK_TOOL.GLOB,
+  SDK_TOOL.GREP,
+  SDK_TOOL.BASH,
+  SDK_TOOL.NOTEBOOK_EDIT,
+] as const
+
+const SITE_SANDBOXED_FS_DISABLED_SDK_TOOL_SET = new Set<string>(SITE_SANDBOXED_FS_DISABLED_SDK_TOOLS)
+
+const PLAN_MODE_SANDBOXED_FS_TOOLS = [
+  "mcp__alive-sandboxed-fs__Read",
+  "mcp__alive-sandboxed-fs__Glob",
+  "mcp__alive-sandboxed-fs__Grep",
+] as const
+
 /**
  * Stream Mode Registry — defines allowed tools per mode.
  *
@@ -232,7 +252,7 @@ export const STREAM_MODES: Record<StreamMode, StreamModeConfig> = {
     label: "Default",
     description: "Full tool access",
     requiredRole: "member",
-    sdkTools: null,
+    modeTools: null,
     mcpEnabled: true,
     permissionMode: "default",
   },
@@ -240,10 +260,8 @@ export const STREAM_MODES: Record<StreamMode, StreamModeConfig> = {
     label: "Plan",
     description: "Read-only exploration",
     requiredRole: "member",
-    sdkTools: [
-      SDK_TOOL.READ,
-      SDK_TOOL.GLOB,
-      SDK_TOOL.GREP,
+    modeTools: [
+      ...PLAN_MODE_SANDBOXED_FS_TOOLS,
       SDK_TOOL.BASH_OUTPUT,
       SDK_TOOL.TASK_OUTPUT,
       SDK_TOOL.WEB_FETCH,
@@ -253,14 +271,14 @@ export const STREAM_MODES: Record<StreamMode, StreamModeConfig> = {
       SDK_TOOL.SKILL,
       SDK_TOOL.EXIT_PLAN_MODE,
     ],
-    mcpEnabled: false,
+    mcpEnabled: true,
     permissionMode: "plan",
   },
   superadmin: {
     label: "Terminal",
     description: "Bash only",
     requiredRole: "superadmin",
-    sdkTools: [SDK_TOOL.BASH, SDK_TOOL.BASH_OUTPUT, SDK_TOOL.ASK_USER_QUESTION],
+    modeTools: [SDK_TOOL.BASH, SDK_TOOL.BASH_OUTPUT, SDK_TOOL.ASK_USER_QUESTION],
     mcpEnabled: false,
     permissionMode: "bypassPermissions",
   },
@@ -277,6 +295,29 @@ export function getAccessibleStreamModes(role: StreamToolRole): { key: StreamMod
     key,
     config: STREAM_MODES[key],
   }))
+}
+
+/**
+ * Resolve requested stream mode against role requirements.
+ * Falls back to "default" when mode is invalid or role is insufficient.
+ */
+export function resolveStreamMode(
+  requestedMode: unknown,
+  input: Pick<StreamToolContextInput, "isAdmin" | "isSuperadmin"> = {},
+): StreamMode {
+  const normalizedMode =
+    typeof requestedMode === "string" && Object.hasOwn(STREAM_MODES, requestedMode)
+      ? (requestedMode as StreamMode)
+      : "default"
+
+  const role = getStreamToolRole(!!input.isAdmin, !!input.isSuperadmin)
+  const modeRole = STREAM_MODES[normalizedMode].requiredRole
+
+  if (ROLE_HIERARCHY[role] < ROLE_HIERARCHY[modeRole]) {
+    return "default"
+  }
+
+  return normalizedMode
 }
 
 /**
@@ -695,7 +736,7 @@ export function getStreamToolDecision(toolName: string, context: StreamToolConte
   }
 
   const modeConfig = STREAM_MODES[context.mode]
-  if (modeConfig.sdkTools !== null && !modeConfig.sdkTools.some(modeTool => modeTool === toolName)) {
+  if (modeConfig.modeTools !== null && !modeConfig.modeTools.some(modeTool => modeTool === toolName)) {
     return {
       executable: false,
       visibleToClient,
@@ -733,14 +774,24 @@ export function buildStreamToolRuntimeConfig(
   const sdkTools = getSdkToolsForPolicyEvaluation()
   const internalMcpTools = getInternalMcpToolsForPolicyEvaluation(getEnabledMcpToolNames)
 
-  const allowedSdkTools = sdkTools.filter(
+  let allowedSdkTools = sdkTools.filter(
     tool => getStreamToolDecision(tool, context).executable || isUserApprovalTool(tool),
   )
-  const disallowedSdkTools = sdkTools.filter(
+  let disallowedSdkTools = sdkTools.filter(
     tool => !getStreamToolDecision(tool, context).executable && !isUserApprovalTool(tool),
   )
 
   const allowedInternalMcpTools = internalMcpTools.filter(tool => getStreamToolDecision(tool, context).executable)
+
+  // One clear security gate for site users:
+  // non-superadmin roles must use sandboxed MCP file/shell tools, never SDK built-ins.
+  if (context.workspaceKind === "site" && context.role !== "superadmin") {
+    allowedSdkTools = allowedSdkTools.filter(tool => !SITE_SANDBOXED_FS_DISABLED_SDK_TOOL_SET.has(tool))
+    disallowedSdkTools = dedupeStrings([
+      ...disallowedSdkTools,
+      ...SITE_SANDBOXED_FS_DISABLED_SDK_TOOLS.filter(tool => !isUserApprovalTool(tool)),
+    ])
+  }
 
   const allowedGlobalMcpTools = getGlobalMcpToolNames().filter(tool => getStreamToolDecision(tool, context).executable)
 
@@ -936,7 +987,7 @@ export function getStreamDisallowedTools(
  */
 export function filterToolsForMode(allowedTools: string[], mode: StreamMode): string[] {
   const modeConfig = STREAM_MODES[mode]
-  const modeTools = modeConfig.sdkTools
+  const modeTools = modeConfig.modeTools
   if (modeTools === null) return allowedTools
 
   return allowedTools.filter(tool => modeTools.some(modeTool => modeTool === tool))
@@ -955,12 +1006,13 @@ export interface StreamMcpServerConfig {
  * Get MCP servers configuration for Stream mode.
  */
 export function getStreamMcpServers<T>(
-  internalMcpServers: { "alive-workspace": T; "alive-tools": T },
+  internalMcpServers: { "alive-workspace": T; "alive-tools": T; "alive-sandboxed-fs": T },
   oauthTokens: Record<string, string> = {},
 ): Record<string, T | StreamMcpServerConfig> {
   const servers: Record<string, T | StreamMcpServerConfig> = {
     "alive-workspace": internalMcpServers["alive-workspace"],
     "alive-tools": internalMcpServers["alive-tools"],
+    "alive-sandboxed-fs": internalMcpServers["alive-sandboxed-fs"],
   }
 
   // Add OAuth MCP servers for connected providers

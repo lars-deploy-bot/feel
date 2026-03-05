@@ -8,6 +8,7 @@
  * This file adds discovery metadata (description, parameters, contextCost, category).
  * External MCP entries are auto-generated from GLOBAL_MCP_PROVIDERS.
  */
+
 import {
   CLARIFICATION_MAX_QUESTIONS,
   CLARIFICATION_OPTIONS_PER_QUESTION,
@@ -22,12 +23,22 @@ import {
 import { z } from "zod"
 import { askAutomationConfigParamsSchema } from "../ai/ask-automation-config.js"
 import { listAutomationsParamsSchema } from "../automations/list-automations.js"
+import {
+  sandboxedFsBashParamsSchema,
+  sandboxedFsEditParamsSchema,
+  sandboxedFsGlobParamsSchema,
+  sandboxedFsGrepParamsSchema,
+  sandboxedFsNotebookEditParamsSchema,
+  sandboxedFsReadParamsSchema,
+  sandboxedFsWriteParamsSchema,
+} from "../sandboxed-fs/index.js"
 
 /**
  * SDK Built-in Tools
  *
  * These are Claude Agent SDK's built-in file operation tools.
- * They are NOT included in the tool registry but are always available.
+ * In site workspaces for non-superadmin users, they are intentionally replaced
+ * by sandboxed MCP aliases (`mcp__alive-sandboxed-fs__*`).
  */
 export const SDK_TOOLS = [SDK_TOOL.READ, SDK_TOOL.WRITE, SDK_TOOL.EDIT, SDK_TOOL.GLOB, SDK_TOOL.GREP] as const
 
@@ -448,6 +459,61 @@ const INTERNAL_TOOL_METADATA: Array<Omit<ToolMetadata, "enabled">> = [
       "Runs TypeScript type checking (tsc) and ESLint to verify code quality. Use BEFORE committing code, after making changes, or when debugging type errors. Returns detailed information about any TypeScript errors or lint warnings found.",
     contextCost: "medium",
     parameters: [],
+  },
+  {
+    name: "Read",
+    category: "workspace",
+    description:
+      "Read a text file from the current workspace through the sandboxed filesystem gate. Enforces workspace-boundary path checks.",
+    contextCost: "low",
+    parameters: zodToParams(sandboxedFsReadParamsSchema),
+  },
+  {
+    name: "Write",
+    category: "workspace",
+    description:
+      "Write UTF-8 text to a workspace file through the sandboxed filesystem gate. Enforces workspace-boundary path checks.",
+    contextCost: "low",
+    parameters: zodToParams(sandboxedFsWriteParamsSchema),
+  },
+  {
+    name: "Edit",
+    category: "workspace",
+    description:
+      "Apply exact string replacement in a workspace file through the sandboxed filesystem gate with workspace-boundary checks.",
+    contextCost: "low",
+    parameters: zodToParams(sandboxedFsEditParamsSchema),
+  },
+  {
+    name: "Glob",
+    category: "workspace",
+    description:
+      "Find files by glob pattern within the current workspace through the sandboxed filesystem gate and path validation.",
+    contextCost: "low",
+    parameters: zodToParams(sandboxedFsGlobParamsSchema),
+  },
+  {
+    name: "Grep",
+    category: "workspace",
+    description: "Search file contents within the workspace through the sandboxed filesystem gate and path validation.",
+    contextCost: "low",
+    parameters: zodToParams(sandboxedFsGrepParamsSchema),
+  },
+  {
+    name: "Bash",
+    category: "workspace",
+    description:
+      "Run a shell command in the workspace through the sandboxed command gate with heavy-command blocking and workspace scoping.",
+    contextCost: "medium",
+    parameters: zodToParams(sandboxedFsBashParamsSchema),
+  },
+  {
+    name: "NotebookEdit",
+    category: "workspace",
+    description:
+      "Edit notebook JSON content inside the workspace through the sandboxed filesystem gate with workspace-boundary checks.",
+    contextCost: "low",
+    parameters: zodToParams(sandboxedFsNotebookEditParamsSchema),
   },
   {
     name: "restart_dev_server",

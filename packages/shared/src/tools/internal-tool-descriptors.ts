@@ -17,14 +17,14 @@
 // Types (self-contained to avoid circular deps with stream-tools.ts)
 // ---------------------------------------------------------------------------
 
-export type InternalMcpServer = "alive-tools" | "alive-workspace"
+export type InternalMcpServer = "alive-tools" | "alive-workspace" | "alive-sandboxed-fs"
 
 type WorkspaceKind = "site" | "platform"
 type ToolVisibility = "visible" | "silent"
 type ToolRole = "member" | "admin" | "superadmin"
 
 export interface InternalToolDescriptor {
-  /** snake_case tool name (e.g. "search_tools") */
+  /** Tool name as registered in MCP (usually snake_case, but may be SDK-compatible PascalCase aliases like "Read"). */
   name: string
   /** Which MCP server this tool belongs to */
   mcpServer: InternalMcpServer
@@ -181,6 +181,66 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     reason: "Browser control is available in site and platform workspaces.",
     workspaceKinds: ["site", "platform"],
   },
+
+  // =========================================================================
+  // alive-sandboxed-fs server (SDK-compatible file/shell gate for site mode)
+  // =========================================================================
+  {
+    name: "Read",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace file reads must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Write",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace file writes must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Edit",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace file edits must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Glob",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace glob queries must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Grep",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace grep queries must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Bash",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace shell commands must go through heavy-command safeguards.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "NotebookEdit",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Notebook edits in site workspaces must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
 ] as const
 
 // ---------------------------------------------------------------------------
@@ -213,6 +273,7 @@ export function getDescriptorsByServer(): Record<InternalMcpServer, InternalTool
   const result: Record<InternalMcpServer, InternalToolDescriptor[]> = {
     "alive-tools": [],
     "alive-workspace": [],
+    "alive-sandboxed-fs": [],
   }
   for (const d of INTERNAL_TOOL_DESCRIPTORS) {
     result[d.mcpServer].push(d)

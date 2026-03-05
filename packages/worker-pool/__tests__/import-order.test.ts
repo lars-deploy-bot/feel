@@ -79,7 +79,7 @@ describe("Import Order Check", () => {
   it("should detect if @webalive/tools import is missing", () => {
     // Remove the tools import
     const badContent = originalContent.replace(
-      /import\s+\{[\s\S]*?workspaceInternalMcp[\s\S]*?\}\s+from\s+"@webalive\/tools"\s*;?/m,
+      /import\s+\{[\s\S]*?streamInternalMcpServers[\s\S]*?\}\s+from\s+"@webalive\/tools"\s*;?/m,
       "",
     )
     writeFileSync(tempWorkerPath, badContent)

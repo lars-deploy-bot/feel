@@ -13,10 +13,12 @@ import type { OnPersistMessage } from "@webalive/automation-engine"
 import {
   buildSessionOrgClaims,
   CLAUDE_MODELS,
+  type ExternalContentSource,
   getWorkspacePath,
   isAliveWorkspace,
   PATHS,
   SUPERADMIN,
+  wrapExternalContent,
 } from "@webalive/shared"
 import { getSkillById, listSuperadminSkills, type SkillListItem } from "@webalive/tools"
 import { createSessionToken } from "@/features/auth/lib/jwt"
@@ -51,6 +53,8 @@ export interface AutomationJobParams {
   responseToolName?: string
   /** Action type of the automation job (prompt, sync, publish) */
   actionType?: string
+  /** Trigger type — "webhook" and "email" triggers wrap prompt with injection protection */
+  triggerType?: string
   /** Optional callback to persist each SDK message into app.messages */
   onPersistMessage?: OnPersistMessage
 }
@@ -186,7 +190,17 @@ async function executeWithWorkerPoolOnly(ctx: ExecutionContext): Promise<Attempt
  * Callers (CronService, trigger routes) own all DB state updates.
  */
 export async function runAutomationJob(params: AutomationJobParams): Promise<AutomationJobResult> {
-  const { jobId, workspace, prompt, timeoutSeconds = 300, model, thinkingPrompt, skills, actionType } = params
+  const {
+    jobId,
+    workspace,
+    prompt,
+    timeoutSeconds = 300,
+    model,
+    thinkingPrompt,
+    skills,
+    actionType,
+    triggerType,
+  } = params
   const requestId = generateRequestId()
   const startTime = Date.now()
   const isAlive = isAliveWorkspace(workspace)
@@ -215,6 +229,14 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
     console.log(`[Automation ${requestId}] Loaded ${skillIds.length} skill(s)`)
   }
 
+  // Wrap external triggers (webhook, email) with prompt injection protection
+  const EXTERNAL_TRIGGER_TYPES: Record<string, ExternalContentSource> = {
+    webhook: "webhook",
+    email: "email",
+  }
+  const externalSource = triggerType ? EXTERNAL_TRIGGER_TYPES[triggerType] : undefined
+  const safePrompt = externalSource ? wrapExternalContent(prompt, { source: externalSource }) : prompt
+
   // For sync actions, automatically prepend deduplication instructions
   const deduplicationNote =
     actionType === "sync"
@@ -222,8 +244,8 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
       : ""
 
   const fullPrompt = skillContext
-    ? `${skillContext}\n\n---\n\n${deduplicationNote}Now, please complete the following task:\n\n${prompt}`
-    : `${deduplicationNote}${prompt}`
+    ? `${skillContext}\n\n---\n\n${deduplicationNote}Now, please complete the following task:\n\n${safePrompt}`
+    : `${deduplicationNote}${safePrompt}`
 
   try {
     let userProfile: AutomationUserProfile | null = null

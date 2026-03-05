@@ -1,4 +1,14 @@
 #!/bin/sh
 # .husky/post-checkout
+# Args: $1=prev_ref, $2=new_ref, $3=branch_flag (1=branch checkout, 0=file checkout)
+
+# Skip file checkouts — only run on branch switches
+[ "$3" = "0" ] && exit 0
 
 bun run sync:skills
+
+# Auto-install if lockfile differs between branches
+if [ "$(git rev-parse "$1:bun.lock" 2>/dev/null)" != "$(git rev-parse "$2:bun.lock" 2>/dev/null)" ]; then
+    echo "📦 bun.lock changed — running bun install..."
+    bun install
+fi
