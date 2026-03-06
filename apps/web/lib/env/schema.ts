@@ -1,5 +1,5 @@
-import { z } from "zod"
 import { supabasePublishableKey, supabaseSecretKey, supabaseUrl } from "@webalive/env"
+import { z } from "zod"
 
 // Server-side Supabase config
 export const supabaseServerSchema = z.object({

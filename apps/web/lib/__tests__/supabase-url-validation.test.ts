@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
 import { supabaseUrl } from "@webalive/env"
+import { describe, expect, it } from "vitest"
 import { supabaseClientSchema, supabaseServerSchema } from "@/lib/env/schema"
 
 describe("supabase URL validation", () => {
