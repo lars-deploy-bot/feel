@@ -24,6 +24,27 @@ Before running ANY SQL:
 4. **Limit scope** - Always use WHERE clauses, never update entire tables
 5. **Double-check** - Read the query twice before executing
 
+## Bash Tool Gotchas
+
+**The Bash tool escapes `!` to `\!`**, which silently breaks:
+- `!=` → `\!=` (SQL not-equal) — **use `<>` instead**
+- `NOT IN (...)` is unaffected and always works
+
+```sql
+-- BAD (will error from Bash tool):
+SELECT * FROM iam.users WHERE status != 'active';
+
+-- GOOD:
+SELECT * FROM iam.users WHERE status <> 'active';
+```
+
+For complex queries with special characters, use `--stdin` mode or `--file`:
+```bash
+cat << 'EOF' | scripts/database/sql.sh --target staging --stdin
+SELECT * FROM iam.users WHERE status != 'active';
+EOF
+```
+
 ## Connection Details
 
 **Location:** `apps/web/.env.production`
@@ -98,6 +119,23 @@ These columns are frequently confused. Always use the correct names:
 | `iam.org_memberships` | (`org_id`, `user_id`) composite | `role` (owner/admin/member) | — | `org_id` |
 | `app.servers` | `server_id` | `name`, `hostname`, `ip` | — | — |
 
+## Enum Values (for WHERE clauses)
+
+**`automation_jobs` has TWO status columns — don't confuse them:**
+
+| Column | Enum Type | Valid Values | Meaning |
+|--------|-----------|--------------|---------|
+| `status` | `app.automation_job_status` | `idle`, `running`, `paused`, `disabled` | Job lifecycle state |
+| `last_run_status` | `app.automation_run_status` | `pending`, `running`, `success`, `failure`, `skipped` | Outcome of last run |
+
+Other enums:
+
+| Enum Type | Valid Values |
+|-----------|--------------|
+| `app.automation_trigger_type` | `cron`, `webhook`, `one-time`, `email` |
+| `app.automation_action_type` | `prompt`, `sync`, `publish` |
+| `app.execution_mode` | `systemd`, `e2b` |
+
 ## Common Joins
 
 ### Automation jobs with domain hostname
@@ -121,6 +159,17 @@ ORDER BY r.started_at DESC LIMIT 20;
 SELECT d.hostname, d.port, d.execution_mode, o.name AS org_name
 FROM app.domains d
 JOIN iam.orgs o ON d.org_id = o.org_id;
+```
+
+### Full automation debugging (runs + jobs + domains, 3-way join)
+```sql
+SELECT r.id, r.status, r.started_at, r.duration_ms, r.error,
+       j.name AS job_name, d.hostname
+FROM app.automation_runs r
+JOIN app.automation_jobs j ON r.job_id = j.id
+JOIN app.domains d ON j.site_id = d.domain_id
+WHERE r.status = 'failure'
+ORDER BY r.started_at DESC LIMIT 10;
 ```
 
 ### User's domains (user → org_memberships → orgs → domains)

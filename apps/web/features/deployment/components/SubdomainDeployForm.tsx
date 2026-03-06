@@ -5,7 +5,7 @@ import type { AppDatabase } from "@webalive/database"
 import { motion } from "framer-motion"
 import { ArrowLeft, LogIn } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
@@ -55,8 +55,10 @@ export function SubdomainDeployForm() {
   // Onboarding store - need early access for initial state
   const onboardingState = useOnboardingStore()
 
-  // Skip template selection if user already picked one (persisted in store)
-  const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(() => !onboardingState.templateId)
+  // Always show template selection first — persisted store shouldn't auto-skip
+  // Only skip if a template was explicitly passed via URL param (e.g., from ChatEmptyState)
+  const templateFromUrl = searchParams.get("template")
+  const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(() => !templateFromUrl)
   const [pendingSubmit, setPendingSubmit] = useState<DeploySubdomainForm | null>(null)
   const [iframeLoading, setIframeLoading] = useState(false)
   const [loadingDots, setLoadingDots] = useState("")
@@ -101,14 +103,12 @@ export function SubdomainDeployForm() {
     }
   }, [siteIdeasFromUrl, siteIdea, setSiteIdea])
 
-  // Skip template selection if store rehydrates with a selected template (one-time only)
-  const hasAutoSkipped = useRef(false)
+  // If template was passed via URL, sync it to the store
   useEffect(() => {
-    if (templateId && showIdeaConfirmation && !hasAutoSkipped.current) {
-      hasAutoSkipped.current = true
-      setShowIdeaConfirmation(false)
+    if (templateFromUrl && templateFromUrl !== templateId) {
+      setTemplateId(templateFromUrl)
     }
-  }, [templateId, showIdeaConfirmation])
+  }, [templateFromUrl, templateId, setTemplateId])
 
   // Sync URL with current state (preserve existing params like 'mode')
   useEffect(() => {

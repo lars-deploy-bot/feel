@@ -301,6 +301,28 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       )
     })
 
+    // Mock /api/user/preferences — syncFromServer() calls this during HydrationManager init.
+    // Without this mock, a real Supabase call stalls under parallel load,
+    // delaying _appHydrated and causing workspace-ready timeout.
+    await page.route("**/api/user/preferences**", route =>
+      route.fulfill(
+        buildJsonMockResponse({
+          currentWorkspace: null,
+          selectedOrgId: null,
+          recentWorkspaces: [],
+          updatedAt: null,
+        }),
+      ),
+    )
+
+    // Mock Flowglad billing to prevent crashes for test users
+    await page.route("**/api/flowglad/**", route => route.fulfill(buildJsonMockResponse({ data: null, error: null })))
+
+    // Mock /api/tokens to prevent credit-fetching errors
+    await page.route("**/api/tokens**", route =>
+      route.fulfill(buildJsonMockResponse({ ok: true, credits: 100, tokens: 100000 })),
+    )
+
     let useError: unknown
     try {
       await use(page)

@@ -208,6 +208,18 @@ const test = base.extend<
       )
     })
 
+    // Mock /api/user/preferences — prevents slow Supabase call during hydration
+    await page.route("**/api/user/preferences**", route =>
+      route.fulfill(
+        buildJsonMockResponse({
+          currentWorkspace: null,
+          selectedOrgId: null,
+          recentWorkspaces: [],
+          updatedAt: null,
+        }),
+      ),
+    )
+
     // Mock Flowglad billing to prevent crashes for test users
     await page.route("**/api/flowglad/**", route => route.fulfill(buildJsonMockResponse({ data: null, error: null })))
 
