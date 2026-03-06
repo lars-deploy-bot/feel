@@ -4,12 +4,12 @@ import { motion } from "framer-motion"
 import { ArrowLeft, Github, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { type FormEvent, useEffect, useMemo, useState } from "react"
+import { useAuth } from "@/features/deployment/hooks/useAuth"
 import {
   buildGithubSlugAttempt,
   deriveGithubImportSlug,
   isSupportedGithubRepoInput,
 } from "@/features/deployment/lib/github-import-client"
-import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { trackGithubImportFailed, trackGithubImportOpened, trackGithubImportStarted } from "@/lib/analytics/events"
 import { ErrorCodes } from "@/lib/error-codes"
 import { useAuthModalActions } from "@/lib/stores/authModalStore"
@@ -50,8 +50,7 @@ export default function DeployGithubPage() {
   const { user, isAuthenticated, loading: authLoading, refetch: refetchAuth } = useAuth()
   const { open: openAuthModal } = useAuthModalActions()
 
-  const [repoUrl, setRepoUrl] = useState("")
-  const [branch, setBranch] = useState("")
+  const [repoUrl, setRepoUrl] = useState("https://github.com/")
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,10 +59,11 @@ export default function DeployGithubPage() {
   }, [])
 
   const trimmedRepoUrl = repoUrl.trim()
-  const branchValue = branch.trim()
   const isValidRepoInput = isSupportedGithubRepoInput(trimmedRepoUrl)
   const slugPreview = useMemo(() => deriveGithubImportSlug(trimmedRepoUrl), [trimmedRepoUrl])
 
+  // Don't show validation error for the default pre-fill
+  const showValidationHint = trimmedRepoUrl !== "" && trimmedRepoUrl !== "https://github.com/" && !isValidRepoInput
   const submitDisabled = !trimmedRepoUrl || !isValidRepoInput || isImporting
 
   const performImport = async () => {
@@ -85,7 +85,6 @@ export default function DeployGithubPage() {
           body: JSON.stringify({
             slug,
             repoUrl: trimmedRepoUrl,
-            branch: branchValue || undefined,
           }),
         })
 
@@ -125,17 +124,16 @@ export default function DeployGithubPage() {
     }
   }, [pendingImport, isAuthenticated, authLoading, isImporting])
 
-  // Set pending flag when auth modal opens
   const handleSubmitWithAuth = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (!trimmedRepoUrl) {
-      setError("Repository URL is required.")
+    if (!trimmedRepoUrl || trimmedRepoUrl === "https://github.com/") {
+      setError("Paste a GitHub repository URL to import.")
       return
     }
 
     if (!isValidRepoInput) {
-      setError('Use a GitHub URL or shorthand like "owner/repo".')
+      setError('Enter a GitHub URL like "https://github.com/owner/repo" or shorthand "owner/repo".')
       return
     }
 
@@ -174,7 +172,7 @@ export default function DeployGithubPage() {
               <Github size={24} className="text-black/70 dark:text-white/70" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-black dark:text-white mb-2">Import from GitHub</h1>
-            <p className="text-black/50 dark:text-white/50">We'll create a new workspace from your repository.</p>
+            <p className="text-black/50 dark:text-white/50">Paste a repo URL and we'll set up a workspace from it.</p>
           </motion.div>
 
           <motion.div
@@ -184,20 +182,21 @@ export default function DeployGithubPage() {
             <form onSubmit={handleSubmitWithAuth} className="p-6 space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="github-repo-url" className="text-sm font-medium text-black/80 dark:text-white/80">
-                  Repository
+                  Repository URL
                 </label>
                 <input
                   id="github-repo-url"
                   type="text"
                   value={repoUrl}
                   onChange={event => setRepoUrl(event.target.value)}
-                  placeholder="https://github.com/owner/repo or owner/repo"
+                  placeholder="https://github.com/owner/repo"
                   disabled={isImporting}
+                  // biome-ignore lint/a11y/noAutofocus: intentional UX for primary input
                   autoFocus
                   className="w-full h-11 px-3 rounded-lg border border-black/15 dark:border-white/15 bg-transparent text-sm text-black dark:text-white placeholder:text-black/35 dark:placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-black/15 dark:focus:ring-white/20 disabled:opacity-60"
                 />
-                {trimmedRepoUrl && !isValidRepoInput && (
-                  <p className="text-xs text-red-600 dark:text-red-400">Use a valid GitHub URL or owner/repo format.</p>
+                {showValidationHint && (
+                  <p className="text-xs text-red-600 dark:text-red-400">Enter a GitHub URL or owner/repo shorthand.</p>
                 )}
                 {trimmedRepoUrl && isValidRepoInput && (
                   <p className="text-xs text-black/50 dark:text-white/50">
@@ -206,20 +205,10 @@ export default function DeployGithubPage() {
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="github-branch" className="text-sm font-medium text-black/80 dark:text-white/80">
-                  Branch (optional)
-                </label>
-                <input
-                  id="github-branch"
-                  type="text"
-                  value={branch}
-                  onChange={event => setBranch(event.target.value)}
-                  placeholder="main"
-                  disabled={isImporting}
-                  className="w-full h-11 px-3 rounded-lg border border-black/15 dark:border-white/15 bg-transparent text-sm text-black dark:text-white placeholder:text-black/35 dark:placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-black/15 dark:focus:ring-white/20 disabled:opacity-60"
-                />
-              </div>
+              <p className="text-xs text-black/40 dark:text-white/40">
+                The default branch will be detected automatically. Private repos require a connected GitHub account
+                (Settings &gt; Integrations).
+              </p>
 
               {error && (
                 <div className="rounded-lg border border-red-200 dark:border-red-800/60 bg-red-50 dark:bg-red-900/20 px-3 py-2">

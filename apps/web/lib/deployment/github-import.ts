@@ -15,6 +15,7 @@ import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync }
 import { join, resolve } from "node:path"
 
 const DOWNLOAD_TIMEOUT_MS = 60_000
+const REPO_INFO_TIMEOUT_MS = 15_000
 const GITHUB_IMPORT_PREFIX = "/tmp/github-import-"
 
 /**
@@ -23,6 +24,88 @@ const GITHUB_IMPORT_PREFIX = "/tmp/github-import-"
 interface ParsedRepo {
   owner: string
   repo: string
+}
+
+/**
+ * Resolved repository info from GitHub API
+ */
+interface RepoInfo {
+  defaultBranch: string
+  fullName: string
+  isPrivate: boolean
+}
+
+/**
+ * Validate that a repo exists and resolve its default branch via `GET /repos/{owner}/{repo}`.
+ *
+ * This catches 404 (not found), 401/403 (private / no access) early with clean errors,
+ * instead of letting the tarball download fail cryptically.
+ */
+export async function resolveRepoInfo(owner: string, repo: string, githubToken?: string): Promise<RepoInfo> {
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}`
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), REPO_INFO_TIMEOUT_MS)
+
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+  }
+  if (githubToken) {
+    headers.Authorization = `Bearer ${githubToken}`
+  }
+
+  let response: Response
+  try {
+    response = await fetch(apiUrl, { headers, signal: controller.signal })
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Timed out checking repository ${owner}/${repo}. Please try again.`)
+    }
+    throw new Error(`Could not reach GitHub to verify ${owner}/${repo}. Check your connection.`)
+  } finally {
+    clearTimeout(timeout)
+  }
+
+  if (!response.ok) {
+    const status = response.status
+    if (status === 404) {
+      if (githubToken) {
+        throw new Error(
+          `Repository "${owner}/${repo}" not found. Check the name — if it's private, make sure your connected GitHub account has access.`,
+        )
+      }
+      throw new Error(
+        `Repository "${owner}/${repo}" not found. If it's a private repository, connect your GitHub account in Settings > Integrations.`,
+      )
+    }
+    if (status === 401 || status === 403) {
+      if (githubToken) {
+        throw new Error(
+          `Access denied to "${owner}/${repo}". Your GitHub token may have expired — reconnect in Settings > Integrations.`,
+        )
+      }
+      throw new Error(
+        `"${owner}/${repo}" appears to be a private repository. Connect your GitHub account in Settings > Integrations to import it.`,
+      )
+    }
+    if (status === 429) {
+      throw new Error("GitHub API rate limit exceeded. Please wait a minute and try again.")
+    }
+    throw new Error(`GitHub returned an unexpected error (${status}) for ${owner}/${repo}.`)
+  }
+
+  const data = (await response.json()) as { default_branch?: string; full_name?: string; private?: boolean }
+
+  const defaultBranch = data.default_branch
+  if (!defaultBranch) {
+    throw new Error(`Could not determine the default branch for ${owner}/${repo}.`)
+  }
+
+  return {
+    defaultBranch,
+    fullName: data.full_name ?? `${owner}/${repo}`,
+    isPrivate: data.private ?? false,
+  }
 }
 
 /**
@@ -106,15 +189,32 @@ export function parseGithubRepo(repoUrl: string): ParsedRepo {
  * Uses GET /repos/{owner}/{repo}/tarball/{ref} with Bearer token auth.
  * No git CLI required — pure HTTP + tar extraction.
  *
+ * When no branch is specified, resolves the repo's default branch first
+ * via the GitHub API. This also validates the repo exists and is accessible,
+ * giving clean errors for 404/401/403 before attempting the download.
+ *
  * @param repoUrl - GitHub repo URL or owner/repo shorthand
  * @param githubToken - GitHub OAuth token (optional — public repos work without it)
  * @param branch - Optional branch/ref (defaults to repo default branch)
- * @returns Path to the extracted repo directory
+ * @returns Object with path to the extracted repo directory and the resolved branch
  * @throws Error if download or extraction fails
  */
-async function downloadGithubRepo(repoUrl: string, githubToken?: string, branch?: string): Promise<string> {
+async function downloadGithubRepo(
+  repoUrl: string,
+  githubToken?: string,
+  branch?: string,
+): Promise<{ repoDir: string; resolvedBranch: string }> {
   const { owner, repo } = parseGithubRepo(repoUrl)
-  const ref = branch || ""
+
+  // Resolve the default branch if not specified — also validates repo exists
+  let ref: string
+  if (branch) {
+    ref = branch
+  } else {
+    const repoInfo = await resolveRepoInfo(owner, repo, githubToken)
+    ref = repoInfo.defaultBranch
+  }
+
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${ref}`
 
   const tempDir = `${GITHUB_IMPORT_PREFIX}${crypto.randomUUID()}`
@@ -146,21 +246,22 @@ async function downloadGithubRepo(repoUrl: string, githubToken?: string, branch?
     if (!response.ok) {
       const status = response.status
       if (status === 404) {
-        throw new Error(
-          `Repository ${owner}/${repo} not found. Check the name and ensure your GitHub account has access.`,
-        )
+        throw new Error(`Branch "${ref}" not found in ${owner}/${repo}. Check the branch name and try again.`)
       }
       if (status === 401 || status === 403) {
         if (githubToken) {
           throw new Error(
-            `Access denied to ${owner}/${repo}. Reconnect your GitHub account in Settings > Integrations.`,
+            `Access denied to ${owner}/${repo}. Your GitHub token may have expired — reconnect in Settings > Integrations.`,
           )
         }
         throw new Error(
-          `Cannot access ${owner}/${repo}. The repository may be private (connect your GitHub account in Settings > Integrations), or the unauthenticated API rate limit has been exceeded.`,
+          `"${owner}/${repo}" appears to be a private repository. Connect your GitHub account in Settings > Integrations to import it.`,
         )
       }
-      throw new Error(`GitHub API returned ${status} for ${owner}/${repo}`)
+      if (status === 429) {
+        throw new Error("GitHub API rate limit exceeded. Please wait a minute and try again.")
+      }
+      throw new Error(`GitHub returned an unexpected error (${status}) while downloading ${owner}/${repo}.`)
     }
 
     // Write tarball to disk
@@ -180,7 +281,7 @@ async function downloadGithubRepo(repoUrl: string, githubToken?: string, branch?
       throw new Error(`Downloaded tarball was empty for ${owner}/${repo}`)
     }
 
-    return repoDir
+    return { repoDir, resolvedBranch: ref }
   } catch (error) {
     // Clean up on failure
     cleanupImportDir(tempDir)
@@ -276,15 +377,15 @@ export async function importGithubRepo(
   repoUrl: string,
   githubToken?: string,
   branch?: string,
-): Promise<{ templatePath: string; cleanupDir: string }> {
-  const repoDir = await downloadGithubRepo(repoUrl, githubToken, branch)
+): Promise<{ templatePath: string; cleanupDir: string; resolvedBranch: string }> {
+  const { repoDir, resolvedBranch } = await downloadGithubRepo(repoUrl, githubToken, branch)
 
   // The cleanup dir is the parent (the /tmp/github-import-<uuid>/ dir)
   const cleanupDir = join(repoDir, "..")
 
   try {
     const templatePath = prepareImportedRepo(repoDir)
-    return { templatePath, cleanupDir }
+    return { templatePath, cleanupDir, resolvedBranch }
   } catch (error) {
     // Clean up on preparation failure
     cleanupImportDir(cleanupDir)

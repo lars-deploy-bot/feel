@@ -1,6 +1,6 @@
 import { Suspense } from "react"
-import { SubdomainDeployForm } from "@/features/deployment/components/SubdomainDeployForm"
 import { DeploymentHistory } from "@/features/deployment/components/DeploymentHistory"
+import { SubdomainDeployForm } from "@/features/deployment/components/SubdomainDeployForm"
 
 export default function DeployStartPage() {
   return (

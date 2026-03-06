@@ -9,9 +9,15 @@ describe("supabase URL validation", () => {
     expect(() => supabaseUrl.parse("http://localhost:54321")).not.toThrow()
   })
 
-  it("rejects non-loopback HTTP URLs", () => {
-    expect(() => supabaseUrl.parse("http://10.8.0.1:8000")).toThrow(
-      "Must use HTTPS, or HTTP on localhost/127.0.0.1 for local Supabase",
+  it("accepts private network HTTP URLs (RFC1918)", () => {
+    expect(() => supabaseUrl.parse("http://10.8.0.1:8000")).not.toThrow()
+    expect(() => supabaseUrl.parse("http://192.168.1.1:8000")).not.toThrow()
+    expect(() => supabaseUrl.parse("http://172.17.0.1:8000")).not.toThrow()
+  })
+
+  it("rejects non-private HTTP URLs", () => {
+    expect(() => supabaseUrl.parse("http://example.com:8000")).toThrow(
+      "Must use HTTPS, or HTTP on local/private network for local Supabase",
     )
   })
 

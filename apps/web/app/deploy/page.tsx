@@ -5,8 +5,8 @@ import { motion } from "framer-motion"
 import { Github, Zap } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect } from "react"
-import { trackDeployPageViewed } from "@/lib/analytics/events"
 import { ModeOption } from "@/features/deployment/components/ModeOption"
+import { trackDeployPageViewed } from "@/lib/analytics/events"
 
 const containerVariants = {
   hidden: { opacity: 0 },

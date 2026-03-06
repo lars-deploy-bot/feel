@@ -34,8 +34,7 @@ async function parseImportResponse(response: Response): Promise<ImportRepoRespon
 }
 
 export function GithubImportModal({ onClose, onImported, orgId }: GithubImportModalProps) {
-  const [repoUrl, setRepoUrl] = useState("")
-  const [branch, setBranch] = useState("")
+  const [repoUrl, setRepoUrl] = useState("https://github.com/")
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,7 +42,6 @@ export function GithubImportModal({ onClose, onImported, orgId }: GithubImportMo
     trackGithubImportOpened()
   }, [])
   const trimmedRepoUrl = repoUrl.trim()
-  const branchValue = branch.trim()
   const isValidRepoInput = isSupportedGithubRepoInput(trimmedRepoUrl)
   const slugPreview = useMemo(() => deriveGithubImportSlug(trimmedRepoUrl), [trimmedRepoUrl])
 
@@ -62,13 +60,13 @@ export function GithubImportModal({ onClose, onImported, orgId }: GithubImportMo
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (!trimmedRepoUrl) {
-      setError("Repository URL is required.")
+    if (!trimmedRepoUrl || trimmedRepoUrl === "https://github.com/") {
+      setError("Paste a GitHub repository URL to import.")
       return
     }
 
     if (!isValidRepoInput) {
-      setError('Use a GitHub URL or shorthand like "owner/repo".')
+      setError('Enter a GitHub URL like "https://github.com/owner/repo" or shorthand "owner/repo".')
       return
     }
 
@@ -88,7 +86,6 @@ export function GithubImportModal({ onClose, onImported, orgId }: GithubImportMo
           body: JSON.stringify({
             slug,
             repoUrl: trimmedRepoUrl,
-            branch: branchValue || undefined,
             orgId: orgId || undefined,
           }),
         })
@@ -167,8 +164,8 @@ export function GithubImportModal({ onClose, onImported, orgId }: GithubImportMo
               disabled={isImporting}
               className="w-full h-11 px-3 rounded-lg border border-black/15 dark:border-white/15 bg-transparent text-sm text-black dark:text-white placeholder:text-black/35 dark:placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-black/15 dark:focus:ring-white/20 disabled:opacity-60"
             />
-            {trimmedRepoUrl && !isValidRepoInput && (
-              <p className="text-xs text-red-600 dark:text-red-400">Use a valid GitHub URL or `owner/repo` format.</p>
+            {trimmedRepoUrl && trimmedRepoUrl !== "https://github.com/" && !isValidRepoInput && (
+              <p className="text-xs text-red-600 dark:text-red-400">Enter a GitHub URL or owner/repo shorthand.</p>
             )}
             {trimmedRepoUrl && isValidRepoInput && (
               <p className="text-xs text-black/50 dark:text-white/50">
@@ -177,20 +174,9 @@ export function GithubImportModal({ onClose, onImported, orgId }: GithubImportMo
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="github-branch" className="text-sm font-medium text-black/80 dark:text-white/80">
-              Branch (optional)
-            </label>
-            <input
-              id="github-branch"
-              type="text"
-              value={branch}
-              onChange={event => setBranch(event.target.value)}
-              placeholder="main"
-              disabled={isImporting}
-              className="w-full h-11 px-3 rounded-lg border border-black/15 dark:border-white/15 bg-transparent text-sm text-black dark:text-white placeholder:text-black/35 dark:placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-black/15 dark:focus:ring-white/20 disabled:opacity-60"
-            />
-          </div>
+          <p className="text-xs text-black/40 dark:text-white/40">
+            Default branch is detected automatically. Private repos require a connected GitHub account.
+          </p>
 
           {error && (
             <div className="rounded-lg border border-red-200 dark:border-red-800/60 bg-red-50 dark:bg-red-900/20 px-3 py-2">

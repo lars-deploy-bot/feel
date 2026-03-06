@@ -107,10 +107,12 @@ export async function POST(request: NextRequest) {
 
     // Download and prepare the repo via GitHub API
     let templatePath: string
+    let resolvedBranch: string | undefined
     try {
       const result = await importGithubRepo(repoUrl, githubToken, branch)
       templatePath = result.templatePath
       cleanupDir = result.cleanupDir
+      resolvedBranch = result.resolvedBranch
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown download error"
       return structuredErrorResponse(ErrorCodes.GITHUB_CLONE_FAILED, {
@@ -138,7 +140,7 @@ export async function POST(request: NextRequest) {
       siteIdeas,
       source: "github-import",
       sourceRepo: parsedRepo ? parsedRepo.canonicalUrl : repoUrl,
-      sourceBranch: branch?.trim() ? branch.trim() : undefined,
+      sourceBranch: resolvedBranch ?? (branch?.trim() ? branch.trim() : undefined),
       createdAt: Date.now(),
     })
 

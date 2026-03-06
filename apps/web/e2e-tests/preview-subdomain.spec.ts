@@ -11,7 +11,7 @@
  * Tests are environment-agnostic: they work on local, staging, and production.
  */
 
-import { COOKIE_NAMES, TEST_CONFIG } from "@webalive/shared"
+import { COOKIE_NAMES } from "@webalive/shared"
 import jwt from "jsonwebtoken"
 import { expect, test } from "./fixtures"
 
