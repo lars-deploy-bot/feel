@@ -915,6 +915,10 @@ async function handleQuery(ipc, requestId, payload) {
         // This is the SINGLE place E2B tool routing happens — not in agent-constants.mjs.
         disallowedTools.push(...E2B_DISABLED_SDK_TOOLS)
         allowedTools.push(...E2B_MCP_TOOLS)
+        // E2B mode: strip ALL internal/global MCP servers. Only e2b MCP remains.
+        for (const key of Object.keys(mcpServers)) {
+          if (key !== "e2b") delete mcpServers[key]
+        }
         console.error(
           `[worker] E2B mode: template ${template}, sandbox ${sandbox.sandboxId} for ${payload.sandboxDomain.hostname}, workspace at ${SANDBOX_WORKSPACE_ROOT}`,
         )
