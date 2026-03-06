@@ -114,9 +114,11 @@ export function DeployForm() {
     if (mode === "choose") {
       const url = siteIdeas ? `/deploy?q=${encodeURIComponent(siteIdeas)}` : "/deploy"
       router.replace(url)
-    } else {
-      const url = siteIdeas ? `/deploy?mode=${mode}&q=${encodeURIComponent(siteIdeas)}` : `/deploy?mode=${mode}`
+    } else if (mode === "deploy-only") {
+      const url = siteIdeas ? `/deploy/start?q=${encodeURIComponent(siteIdeas)}` : "/deploy/start"
       router.replace(url)
+    } else {
+      router.replace("/deploy")
     }
   }
 

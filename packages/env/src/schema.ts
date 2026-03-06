@@ -19,8 +19,13 @@ export const httpsUrl = z
   .url()
   .regex(/^https:\/\//, "Must use HTTPS")
 
-function isLoopbackHostname(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1"
+function isLocalNetworkHostname(hostname: string): boolean {
+  if (hostname === "localhost" || hostname === "127.0.0.1") return true
+  // Allow RFC1918 private IPs (e.g., WireGuard 10.8.0.1, Docker 172.17.x.x)
+  if (hostname.startsWith("10.")) return true
+  if (hostname.startsWith("192.168.")) return true
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true
+  return false
 }
 
 /**
@@ -46,13 +51,13 @@ export const supabaseUrl = z
       return
     }
 
-    if (parsed.protocol === "http:" && isLoopbackHostname(parsed.hostname)) {
+    if (parsed.protocol === "http:" && isLocalNetworkHostname(parsed.hostname)) {
       return
     }
 
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Must use HTTPS, or HTTP on localhost/127.0.0.1 for local Supabase",
+      message: "Must use HTTPS, or HTTP on local/private network for local Supabase",
     })
   })
 
