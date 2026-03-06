@@ -46,6 +46,7 @@ help:
 	@echo "  make staging-fast    Deploy staging only, skip E2E tests"
 	@echo "  make production      Deploy production only (port 9000)"
 	@echo "  make deploy-status   Check if a deployment is running"
+	@echo "  CLEAN_BUILD=1 ...    Force a full rebuild and clear deploy caches"
 	@echo ""
 	@echo "$(GREEN)Development:$(NC)"
 	@echo "  make dev             Start dev server (port 8997, hot-reload)"

@@ -13,6 +13,7 @@
 # - E2E tests: run against deployed server (skip with SKIP_E2E=1)
 # - Build promotion: PROMOTE_FROM=staging promotes staging's build artifact
 #   to production (skips deps, static checks, and build — all already validated)
+# - CLEAN_BUILD=1 clears deploy caches and forces a full rebuild
 # =============================================================================
 
 set -euo pipefail
@@ -111,6 +112,49 @@ configure_runtime_cache_dirs() {
 
 configure_runtime_tmpdir
 configure_runtime_cache_dirs
+
+INSTALL_FINGERPRINT_DIR="$PROJECT_ROOT/.cache/deploy"
+INSTALL_FINGERPRINT_FILE="$INSTALL_FINGERPRINT_DIR/install-fingerprint.txt"
+
+compute_install_fingerprint() {
+    {
+        printf '%s\n' \
+            "$PROJECT_ROOT/package.json" \
+            "$PROJECT_ROOT/bun.lock"
+
+        find "$PROJECT_ROOT/apps" "$PROJECT_ROOT/packages" -mindepth 2 -maxdepth 2 -type f -name "package.json" 2>/dev/null
+        find "$PROJECT_ROOT/templates/site-template/user" -maxdepth 1 -type f \( -name "package.json" -o -name "bun.lock" \) 2>/dev/null
+        find "$PROJECT_ROOT/patches" -maxdepth 1 -type f -name "*.patch" 2>/dev/null
+    } | sort | while IFS= read -r file; do
+        [ -f "$file" ] || continue
+        sha256sum "$file"
+    done | sha256sum | cut -d' ' -f1
+}
+
+should_skip_bun_install() {
+    [ -d "$PROJECT_ROOT/node_modules" ] || return 1
+    [ -x "$PROJECT_ROOT/node_modules/.bin/turbo" ] || return 1
+    [ -d "$PROJECT_ROOT/templates/site-template/user/node_modules" ] || return 1
+    [ -f "$INSTALL_FINGERPRINT_FILE" ] || return 1
+
+    local current_fingerprint
+    local cached_fingerprint
+
+    current_fingerprint=$(compute_install_fingerprint)
+    cached_fingerprint=$(cat "$INSTALL_FINGERPRINT_FILE" 2>/dev/null || true)
+
+    [ -n "$current_fingerprint" ] || return 1
+    [ "$current_fingerprint" = "$cached_fingerprint" ]
+}
+
+store_install_fingerprint() {
+    local current_fingerprint
+    current_fingerprint=$(compute_install_fingerprint)
+    [ -n "$current_fingerprint" ] || return 1
+
+    mkdir -p "$INSTALL_FINGERPRINT_DIR"
+    printf '%s\n' "$current_fingerprint" > "$INSTALL_FINGERPRINT_FILE"
+}
 
 # =============================================================================
 # Lock Verification
@@ -249,47 +293,32 @@ if [ -n "$PROMOTE_FROM" ]; then
 else
     phase_start "Installing dependencies"
 
-    INSTALL_LOG="/tmp/bun-install-$ENV.log"
-    set +e
-    bun install > "$INSTALL_LOG" 2>&1
-    BUN_EXIT=$?
-    set -e
+    if should_skip_bun_install; then
+        phase_end ok "Dependencies unchanged - skipped bun install"
+    else
+        INSTALL_LOG="/tmp/bun-install-$ENV.log"
+        set +e
+        bun install --frozen-lockfile > "$INSTALL_LOG" 2>&1
+        BUN_EXIT=$?
+        set -e
 
-    if [ $BUN_EXIT -ne 0 ]; then
-        phase_end error "bun install failed (exit $BUN_EXIT)"
-        echo ""
-        banner_error "BUN INSTALL FAILED"
-        echo -e "  ${RED}Log: $INSTALL_LOG${NC}"
-        echo ""
-        grep -E "error|ERR_|ENOENT|EACCES|ENOSPC|resolution|not found" "$INSTALL_LOG" | head -20
-        echo ""
-        exit 1
+        if [ $BUN_EXIT -ne 0 ]; then
+            phase_end error "bun install failed (exit $BUN_EXIT)"
+            echo ""
+            banner_error "BUN INSTALL FAILED"
+            echo -e "  ${RED}Log: $INSTALL_LOG${NC}"
+            echo ""
+            grep -E "error|ERR_|ENOENT|EACCES|ENOSPC|resolution|not found" "$INSTALL_LOG" | head -20
+            echo ""
+            exit 1
+        fi
+
+        if ! store_install_fingerprint; then
+            phase_end error "Failed to store install fingerprint"
+            exit 1
+        fi
+        phase_end ok "Dependencies installed"
     fi
-    phase_end ok "Dependencies installed"
-
-    phase_start "Building workspace libraries"
-
-    LIB_BUILD_LOG="/tmp/build-libs-$ENV.log"
-    set +e
-    bun run build:libs > "$LIB_BUILD_LOG" 2>&1
-    LIB_BUILD_EXIT=$?
-    set -e
-
-    if [ $LIB_BUILD_EXIT -ne 0 ]; then
-        phase_end error "Workspace library build failed (exit $LIB_BUILD_EXIT)"
-        echo ""
-        banner_error "WORKSPACE LIB BUILD FAILED"
-        echo -e "  ${RED}Log: $LIB_BUILD_LOG${NC}"
-        echo ""
-        echo -e "${BOLD}Errors:${NC}"
-        grep -E "error TS|Error:|FAIL|Cannot find|Module not found" "$LIB_BUILD_LOG" | head -20
-        echo ""
-        echo -e "${BOLD}Last 20 lines:${NC}"
-        tail -20 "$LIB_BUILD_LOG"
-        echo ""
-        exit 1
-    fi
-    phase_end ok "Workspace libraries built (log: $LIB_BUILD_LOG)"
 
     # Static analysis: type-check + lint (silent — output in /tmp/static-check-$ENV.log)
     phase_start "Type-checking & linting"

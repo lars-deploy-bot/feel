@@ -4,7 +4,7 @@
  * Tests the actual bug: INVALID_REQUEST error when sending chat messages
  * Uses real API calls to verify the full request/response flow works.
  *
- * Run with: bun run test:e2e:live
+ * Run with: ENV_FILE=.env.staging bun run test:e2e:live
  *
  * Prerequisites:
  * - Live staging base URL in .env.staging (NEXT_PUBLIC_APP_URL)

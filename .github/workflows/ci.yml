@@ -171,41 +171,14 @@ jobs:
       - name: Install Playwright Chromium
         run: bunx playwright install --with-deps chromium
 
-      - name: Create E2E env file
+      - name: Create local E2E env file
         working-directory: apps/web
-        env:
-          E2E_TEST_SECRET: ${{ secrets.E2E_TEST_SECRET }}
-          E2E_STAGING_URL: ${{ vars.E2E_STAGING_URL }}
-          E2E_PREVIEW_BASE: ${{ vars.E2E_PREVIEW_BASE }}
         run: |
-          if [[ -z "${E2E_TEST_SECRET}" ]]; then
-            echo "::error::Missing required secret for critical chat E2E: E2E_TEST_SECRET"
-            exit 1
-          fi
-          if [[ -z "${E2E_STAGING_URL}" ]]; then
-            echo "::error::Missing required variable: E2E_STAGING_URL (set in repo Settings > Variables)"
-            exit 1
-          fi
-          if [[ -z "${E2E_PREVIEW_BASE}" ]]; then
-            echo "::error::Missing required variable: E2E_PREVIEW_BASE (set in repo Settings > Variables)"
-            exit 1
-          fi
-
           {
-            echo "TEST_ENV=staging"
-            printf 'NEXT_PUBLIC_APP_URL=%s\n' "${E2E_STAGING_URL}"
-            printf 'NEXT_PUBLIC_PREVIEW_BASE=%s\n' "${E2E_PREVIEW_BASE}"
-            printf 'E2E_TEST_SECRET=%s\n' "${E2E_TEST_SECRET}"
-          } > .env.staging
-
-      - name: Validate critical E2E secret
-        env:
-          E2E_TEST_SECRET: ${{ secrets.E2E_TEST_SECRET }}
-        run: |
-          if [[ -z "${E2E_TEST_SECRET}" ]]; then
-            echo "::error::Missing required secret for critical chat E2E: E2E_TEST_SECRET"
-            exit 1
-          fi
+            echo "TEST_ENV=local"
+            echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:9547"
+            echo "NEXT_PUBLIC_PREVIEW_BASE=alive.local"
+          } > .env.e2e.local
 
       - name: Run critical chat E2E
         working-directory: apps/web

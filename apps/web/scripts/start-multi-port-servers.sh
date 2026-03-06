@@ -24,7 +24,7 @@ set -euo pipefail
 NUM_WORKERS=${1:-4}
 PORT_BASE=${TEST_WORKER_PORT_BASE:-9100}
 USE_PROD_BUILD=${E2E_USE_PRODUCTION_BUILD:-}
-ENV_FILE_PATH="${ENV_FILE:-.env.staging}"
+ENV_FILE_PATH="${ENV_FILE:-.env.e2e.local}"
 PIDS=()
 
 echo "[Multi-Port Servers] Starting $NUM_WORKERS server instances"
@@ -38,8 +38,9 @@ if [ -f "$ENV_FILE_PATH" ]; then
   echo "[Multi-Port Servers] Loaded environment from $ENV_FILE_PATH"
 fi
 
-if [ "${TEST_ENV:-}" = "production" ]; then
-  echo "[Multi-Port Servers] Production E2E is disabled. Use staging."
+if [ "${TEST_ENV:-}" != "local" ]; then
+  echo "[Multi-Port Servers] Invalid TEST_ENV=${TEST_ENV:-<unset>}"
+  echo "[Multi-Port Servers] Multi-port E2E requires TEST_ENV=local."
   exit 1
 fi
 

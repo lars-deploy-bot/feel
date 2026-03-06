@@ -20,38 +20,12 @@ const ripgrepExcludes = RIPGREP_TARGETS.filter(target => target !== ripgrepTarge
   target => `../../node_modules/@anthropic-ai/claude-agent-sdk/vendor/ripgrep/${target}/**/*`,
 )
 
-// Generate build info file at build time
-function writeBuildInfo() {
-  try {
-    const commit = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim()
-    const branch = execSync("git branch --show-current", { encoding: "utf-8" }).trim()
-    const buildTime = new Date().toISOString()
-    const buildInfo = { commit, branch, buildTime }
-
-    const targetPath = path.join(configDir, "lib", "build-info.json")
-
-    fs.writeFileSync(targetPath, JSON.stringify(buildInfo, null, 2))
-  } catch (error) {
-    // Log errors but don't fail the build
-    // build-info.json is optional and will fall back to "unknown" values
-    if (process.env.DEBUG_BUILD_INFO) {
-      console.warn(
-        "[build-info] Error writing build-info.json:",
-        error instanceof Error ? error.message : String(error),
-      )
-    }
-  }
-}
-
-writeBuildInfo()
-
-// Read build commit for Sentry release tracking
+// Read build commit for Sentry release tracking without mutating the source tree.
 let sentryRelease = "unknown"
 try {
-  const buildInfoPath = path.join(configDir, "lib", "build-info.json")
-  sentryRelease = JSON.parse(fs.readFileSync(buildInfoPath, "utf-8")).commit ?? "unknown"
+  sentryRelease = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim() || "unknown"
 } catch {
-  // dev mode or build-info not yet written — falls back to "unknown"
+  // Build metadata is optional and will fall back to "unknown"
 }
 
 // Read server-config.json for build-time values (avoids hardcoding domains).

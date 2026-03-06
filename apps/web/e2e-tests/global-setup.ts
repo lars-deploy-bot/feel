@@ -7,6 +7,7 @@
 import type { FullConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
 import { requireProjectBaseUrl } from "./lib/base-url"
+import { TEST_ENV } from "./lib/test-env"
 
 const TENANT_VERIFY_TIMEOUT_MS = 30_000
 const TENANT_VERIFY_REQUEST_TIMEOUT_MS = 8_000
@@ -253,6 +254,8 @@ export default async function globalSetup(config: FullConfig) {
 
   console.log(`\n🚀 [Global Setup] Bootstrapping ${workers} worker tenants`)
   console.log(`📝 [Global Setup] Run ID: ${runId}`)
+  console.log(`🌍 [Global Setup] Test env: ${TEST_ENV}`)
+  console.log(`🔗 [Global Setup] Base URL: ${baseUrl}`)
   console.log(`🔧 [Global Setup] Mode: ${isMultiPort ? "multi-port" : "single-server"}\n`)
 
   const bootstrapHeaders = buildTestHeaders(true)

@@ -42,7 +42,7 @@ bun run test:e2e:genuine:headed
 ## Prerequisites
 
 1. **Environment Variables**: Ensure `ASK_LARS_KEY` is available in your shell
-   (or present in the env file loaded via `ENV_FILE`, default `.env.staging`):
+   (or present in the env file loaded via `ENV_FILE`, default `.env.e2e.local`):
    ```bash
    ASK_LARS_KEY=sk-ant-...
    SUPABASE_URL=https://...

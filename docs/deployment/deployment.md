@@ -8,6 +8,7 @@
 
 ```bash
 make staging                      # Full staging deployment (port 8998)
+CLEAN_BUILD=1 make staging        # Full staging deployment, skip deploy caches
 make dev                          # Rebuild tools + restart dev server (port 8997)
 ```
 

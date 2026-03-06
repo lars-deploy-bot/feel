@@ -5,9 +5,10 @@ import "./e2e-tests/lib/load-env"
 import { defineConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
 import { requireEnvAppBaseUrl } from "./e2e-tests/lib/base-url"
-import { isRemoteEnv, TIMEOUTS } from "./e2e-tests/lib/test-env"
+import { TEST_ENV, TIMEOUTS, assertStandardE2ETarget, isRemoteEnv } from "./e2e-tests/lib/test-env"
 
 const APP_BASE_URL = requireEnvAppBaseUrl()
+assertStandardE2ETarget(TEST_ENV, APP_BASE_URL)
 
 // Enforce worker limits against centralized config (single source of truth)
 // - CI: 2 workers (conservative for shared runners)
