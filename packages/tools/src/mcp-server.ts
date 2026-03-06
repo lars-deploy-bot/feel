@@ -10,6 +10,15 @@ import { getWorkflowTool } from "./tools/meta/get-workflow.js"
 import { listWorkflowsTool } from "./tools/meta/list-workflows.js"
 import { searchToolsTool } from "./tools/meta/search-tools.js"
 import { generatePersonaTool } from "./tools/personas/generate-persona.js"
+import {
+  sandboxedFsBashTool,
+  sandboxedFsEditTool,
+  sandboxedFsGlobTool,
+  sandboxedFsGrepTool,
+  sandboxedFsNotebookEditTool,
+  sandboxedFsReadTool,
+  sandboxedFsWriteTool,
+} from "./tools/sandboxed-fs/index.js"
 import { describeTableTool } from "./tools/supabase/describe-table.js"
 import { listProjectsTool } from "./tools/supabase/list-projects.js"
 import { listTablesTool } from "./tools/supabase/list-tables.js"
@@ -98,6 +107,43 @@ export const workspaceInternalMcp = createSdkMcpServer({
     browserTool,
   ],
 })
+
+/**
+ * Sandboxed FS MCP Server
+ *
+ * SDK-compatible filesystem/shell tool aliases for site workspaces.
+ * This is the primary security gate for non-superadmin site sessions:
+ * every file/shell operation is routed through these tools so path and
+ * heavy-command checks are enforced in our code.
+ *
+ * Tool names intentionally match SDK built-ins:
+ * - Read, Write, Edit, Glob, Grep, Bash, NotebookEdit
+ *
+ * Names are exposed as: mcp__alive-sandboxed-fs__<ToolName>
+ */
+export const sandboxedFsInternalMcp = createSdkMcpServer({
+  name: "alive-sandboxed-fs",
+  version: "1.0.0",
+  tools: [
+    sandboxedFsReadTool,
+    sandboxedFsWriteTool,
+    sandboxedFsEditTool,
+    sandboxedFsGlobTool,
+    sandboxedFsGrepTool,
+    sandboxedFsBashTool,
+    sandboxedFsNotebookEditTool,
+  ],
+})
+
+/**
+ * Core internal MCP servers used by Stream runtime.
+ * Kept as a single exported map to prevent drift across call sites.
+ */
+export const streamInternalMcpServers = {
+  "alive-workspace": workspaceInternalMcp,
+  "alive-tools": toolsInternalMcp,
+  "alive-sandboxed-fs": sandboxedFsInternalMcp,
+} as const
 
 /**
  * Supabase MCP Server

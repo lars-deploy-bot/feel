@@ -13,14 +13,35 @@ import type { NextRequest } from "next/server"
  * @returns IP address or 'unknown' if not available
  */
 function extractClientIp(req: NextRequest): string {
-  // Try to get real IP from headers (considering proxies/CDN)
   const forwardedFor = req.headers.get("x-forwarded-for")
+  if (forwardedFor) {
+    // Can be a comma-separated chain: client, proxy1, proxy2
+    for (const part of forwardedFor.split(",")) {
+      const candidate = part.trim()
+      if (candidate && candidate.toLowerCase() !== "unknown") {
+        return candidate
+      }
+    }
+  }
+
+  const cfConnectingIp = req.headers.get("cf-connecting-ip")
+  if (cfConnectingIp?.trim()) {
+    return cfConnectingIp.trim()
+  }
+
   const realIp = req.headers.get("x-real-ip")
+  if (realIp?.trim()) {
+    return realIp.trim()
+  }
 
-  // x-forwarded-for can contain multiple IPs, take the first one (client IP)
-  const ip = forwardedFor?.split(",")[0]?.trim() || realIp || req.headers.get("host") || "unknown"
+  // Available in some runtimes/proxies (not always populated in Next.js Node runtime).
+  const requestIp = (req as NextRequest & { ip?: string | null }).ip
+  if (requestIp?.trim()) {
+    return requestIp.trim()
+  }
 
-  return ip
+  // Never fall back to host/domain: that can collapse all users into one bucket.
+  return "unknown"
 }
 
 /**

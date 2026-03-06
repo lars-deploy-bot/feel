@@ -12,7 +12,7 @@ import {
   STREAM_SYNTHETIC_MESSAGE_TYPES,
   STREAM_TYPES,
 } from "@webalive/shared"
-import { getEnabledMcpToolNames, toolsInternalMcp, workspaceInternalMcp } from "@webalive/tools"
+import { getEnabledMcpToolNames, streamInternalMcpServers } from "@webalive/tools"
 
 // Re-export stream types
 export { STREAM_TYPES, STREAM_SYNTHETIC_MESSAGE_TYPES, STREAM_INTERRUPT_SOURCES }
@@ -38,7 +38,7 @@ export const ALLOWED_MCP_TOOLS = buildStreamToolRuntimeConfig(
  * @param {boolean} [isAdmin=false] - Whether the user is an admin (enables admin-only tools)
  * @param {boolean} [isSuperadmin=false] - Whether the user is a superadmin (re-enables Task/WebSearch, excludes member-only MCP resource tools)
  * @param {boolean} [isSuperadminWorkspace=false] - Whether this is the "alive" workspace (excludes site-specific tools)
- * @param {boolean} [isPlanMode=false] - Whether plan mode is active (read-only policy)
+ * @param {string} [mode="default"] - Stream mode ("default" | "plan" | "superadmin")
  * @returns {string[]} Base allowed tools list
  */
 export function getAllowedTools(
@@ -46,9 +46,9 @@ export function getAllowedTools(
   isAdmin = false,
   isSuperadmin = false,
   isSuperadminWorkspace = false,
-  isPlanMode = false,
+  mode = "default",
 ) {
-  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, isPlanMode })
+  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).allowedTools
 }
 
@@ -56,17 +56,17 @@ export function getAllowedTools(
  * Get disallowed tools based on admin/superadmin status
  * @param {boolean} [isAdmin=false] - Whether the user is an admin
  * @param {boolean} [isSuperadmin=false] - Whether the user is a superadmin (still blocks ExitPlanMode)
- * @param {boolean} [isPlanMode=false] - Whether plan mode is active
+ * @param {string} [mode="default"] - Stream mode ("default" | "plan" | "superadmin")
  * @param {boolean} [isSuperadminWorkspace=false] - Whether this is the platform workspace
  * @returns {string[]} Disallowed tools list
  */
 export function getDisallowedTools(
   isAdmin = false,
   isSuperadmin = false,
-  isPlanMode = false,
+  mode = "default",
   isSuperadminWorkspace = false,
 ) {
-  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, isPlanMode })
+  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).disallowedTools
 }
 
@@ -77,10 +77,7 @@ export function getDisallowedTools(
  * @returns {Object} MCP servers configuration
  */
 export function getMcpServers(_workspacePath, options = {}) {
-  return getStreamMcpServers(
-    { "alive-workspace": workspaceInternalMcp, "alive-tools": toolsInternalMcp },
-    options.oauthTokens || {},
-  )
+  return getStreamMcpServers(streamInternalMcpServers, options.oauthTokens || {})
 }
 
 /**

@@ -1,0 +1,26 @@
+# fail2ban configuration for Alive servers
+# Install: apt install -y fail2ban && cp ops/fail2ban/jail.local /etc/fail2ban/jail.local && systemctl enable --now fail2ban
+
+[DEFAULT]
+# Ban for 1 hour, permanent ban after 3 repeats
+bantime = 1h
+findtime = 10m
+maxretry = 5
+banaction = iptables-multiport
+
+# Whitelist our IPs: WireGuard subnet, localhost
+ignoreip = 127.0.0.1/8 10.8.0.0/24 ::1
+
+[sshd]
+enabled = true
+port = ssh
+maxretry = 3
+bantime = 24h
+
+[sshd-ddos]
+enabled = true
+port = ssh
+filter = sshd
+maxretry = 10
+findtime = 60
+bantime = 48h

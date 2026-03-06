@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -87,14 +88,74 @@ func (pm *portMap) lookup(hostname string) (int, bool) {
 	return port, ok
 }
 
+// sandboxEntry represents an E2B sandbox backend for a domain
+type sandboxEntry struct {
+	SandboxID string `json:"sandboxId"`
+	E2BDomain string `json:"e2bDomain"`
+	Port      int    `json:"port"` // dev server port inside the sandbox
+}
+
+// sandboxMap caches hostname→sandbox mappings, refreshed alongside portMap
+type sandboxMap struct {
+	mu       sync.RWMutex
+	entries  map[string]sandboxEntry
+	filePath string
+}
+
+func newSandboxMap(filePath string) *sandboxMap {
+	sm := &sandboxMap{filePath: filePath, entries: make(map[string]sandboxEntry)}
+	sm.reload()
+	go sm.refreshLoop()
+	return sm
+}
+
+func (sm *sandboxMap) reload() {
+	data, err := os.ReadFile(sm.filePath)
+	if err != nil {
+		// sandbox-map.json may not exist yet — that's fine
+		if !os.IsNotExist(err) {
+			log.Printf("[sandbox-map] failed to read %s: %v", sm.filePath, err)
+		}
+		return
+	}
+	var entries map[string]sandboxEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		log.Printf("[sandbox-map] failed to parse %s: %v", sm.filePath, err)
+		return
+	}
+	sm.mu.Lock()
+	sm.entries = entries
+	sm.mu.Unlock()
+	if len(entries) > 0 {
+		log.Printf("[sandbox-map] loaded %d sandbox domains", len(entries))
+	}
+}
+
+func (sm *sandboxMap) refreshLoop() {
+	ticker := time.NewTicker(portMapRefresh)
+	defer ticker.Stop()
+	for range ticker.C {
+		sm.reload()
+	}
+}
+
+func (sm *sandboxMap) lookup(hostname string) (sandboxEntry, bool) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	entry, ok := sm.entries[hostname]
+	return entry, ok
+}
+
 // config holds server configuration loaded from server-config.json
 type config struct {
-	PreviewBase    string   // e.g. "alive.best"
-	FrameAncestors []string // e.g. ["https://app.alive.best", ...]
-	JWTSecret      []byte
-	PortMapPath    string
-	ListenAddr     string
-	ImagesStorage  string // e.g. "/srv/webalive/storage" — serves /_images/* directly
+	PreviewBase        string   // e.g. "alive.best"
+	FrameAncestors     []string // e.g. ["https://app.alive.best", ...]
+	JWTSecret          []byte
+	PortMapPath        string
+	SandboxMapPath     string
+	ListenAddr         string
+	ImagesStorage      string // e.g. "/srv/webalive/storage" — serves /_images/* directly
+	DefaultSandboxPort int    // default port for E2B sandbox dev servers (e.g. 5173)
 }
 
 func loadConfig() config {
@@ -115,14 +176,17 @@ func loadConfig() config {
 	}
 
 	imagesStorage := envOrDefault("IMAGES_STORAGE", "")
+	sandboxMapPath := envOrDefault("SANDBOX_MAP_PATH", "/var/lib/alive/generated/sandbox-map.json")
 
 	return config{
-		PreviewBase:    previewBase,
-		FrameAncestors: ancestors,
-		JWTSecret:      []byte(jwtSecret),
-		PortMapPath:    portMapPath,
-		ListenAddr:     listenAddr,
-		ImagesStorage:  imagesStorage,
+		PreviewBase:        previewBase,
+		FrameAncestors:     ancestors,
+		JWTSecret:          []byte(jwtSecret),
+		PortMapPath:        portMapPath,
+		SandboxMapPath:     sandboxMapPath,
+		ListenAddr:         listenAddr,
+		ImagesStorage:      imagesStorage,
+		DefaultSandboxPort: 5173, // Vite default — most sandbox sites are Vite
 	}
 }
 
@@ -135,13 +199,21 @@ func main() {
 
 	cfg := loadConfig()
 	ports := newPortMap(cfg.PortMapPath)
+	sandboxes := newSandboxMap(cfg.SandboxMapPath)
 
 	handler := &previewHandler{
-		cfg:   cfg,
-		ports: ports,
+		cfg:       cfg,
+		ports:     ports,
+		sandboxes: sandboxes,
 		transport: &http.Transport{
 			ForceAttemptHTTP2:  false, // HTTP/1.1 for WebSocket compatibility
 			DisableCompression: true,  // Don't add Accept-Encoding; we handle encoding ourselves
+		},
+		// E2B sandboxes use internal TLS certs — skip verification for sandbox backends
+		sandboxTransport: &http.Transport{
+			ForceAttemptHTTP2:  false,
+			DisableCompression: true,
+			TLSClientConfig:    &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // E2B internal certs
 		},
 	}
 
@@ -160,6 +232,7 @@ func main() {
 		for range sighup {
 			log.Printf("[port-map] SIGHUP received — reloading")
 			ports.reload()
+			sandboxes.reload()
 		}
 	}()
 
@@ -175,9 +248,11 @@ func main() {
 }
 
 type previewHandler struct {
-	cfg       config
-	ports     *portMap
-	transport http.RoundTripper // shared transport for connection pooling
+	cfg              config
+	ports            *portMap
+	sandboxes        *sandboxMap
+	transport        http.RoundTripper // shared transport for local backends
+	sandboxTransport http.RoundTripper // TLS-skipping transport for E2B backends
 }
 
 func (h *previewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -224,27 +299,42 @@ func (h *previewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Look up port
-	port, ok := h.ports.lookup(hostname)
-	if !ok {
-		writeHTTPError(w, http.StatusNotFound, "Site not found", "site port lookup failed")
-		return
-	}
-
 	// Strip preview_token from the query before proxying
 	q := r.URL.Query()
 	q.Del("preview_token")
 	r.URL.RawQuery = q.Encode()
 
-	target := &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("localhost:%d", port),
+	// Resolve backend: sandbox (E2B) or local port
+	var target *url.URL
+	var transport http.RoundTripper
+
+	if sbx, ok := h.sandboxes.lookup(hostname); ok {
+		// E2B sandbox backend: proxy to https://{port}-{sandboxId}.{e2bDomain}
+		port := sbx.Port
+		if port == 0 {
+			port = h.cfg.DefaultSandboxPort
+		}
+		target = &url.URL{
+			Scheme: "https",
+			Host:   fmt.Sprintf("%d-%s.%s", port, sbx.SandboxID, sbx.E2BDomain),
+		}
+		transport = h.sandboxTransport
+	} else if port, ok := h.ports.lookup(hostname); ok {
+		// Local systemd site backend
+		target = &url.URL{
+			Scheme: "http",
+			Host:   fmt.Sprintf("localhost:%d", port),
+		}
+		transport = h.transport
+	} else {
+		writeHTTPError(w, http.StatusNotFound, "Site not found", "site port lookup failed")
+		return
 	}
 
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(target)
-			pr.Out.Host = "localhost"
+			pr.Out.Host = target.Host
 			pr.Out.Header.Set("X-Forwarded-Host", hostname)
 			pr.Out.Header.Set("X-Forwarded-Proto", "https")
 			// Strip Accept-Encoding so upstream sends uncompressed responses.
@@ -259,7 +349,7 @@ func (h *previewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				pr.Out.Header.Del("Origin")
 			}
 		},
-		Transport: h.transport,
+		Transport: transport,
 		ModifyResponse: func(resp *http.Response) error {
 			// Remove X-Frame-Options so iframe embedding works
 			resp.Header.Del("X-Frame-Options")
@@ -280,7 +370,7 @@ func (h *previewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return nil
 		},
 		ErrorHandler: func(rw http.ResponseWriter, req *http.Request, err error) {
-			captureError(err, "reverse proxy error method=%s path=%s host=%s", req.Method, req.URL.Path, req.Host)
+			captureError(err, "reverse proxy error method=%s path=%s host=%s target=%s", req.Method, req.URL.Path, req.Host, target.String())
 			writeHTTPError(rw, http.StatusBadGateway, "Bad gateway", "reverse proxy error")
 		},
 	}

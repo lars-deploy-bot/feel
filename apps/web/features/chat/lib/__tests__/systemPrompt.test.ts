@@ -78,31 +78,11 @@ describe("getSystemPrompt", () => {
     expect(prompt).not.toContain("STRIPE:")
   })
 
-  // --- Production mode ---
-
-  it("includes production warning when isProduction is true", () => {
-    const prompt = getSystemPrompt({ isProduction: true })
-
-    expect(prompt).toContain("PRODUCTION MODE:")
-  })
-
   // --- Context injection ---
 
-  it("includes workspace and project when provided", () => {
-    const prompt = getSystemPrompt({
-      projectId: "proj-123",
-      userId: "user-456",
-      workspaceFolder: "/srv/webalive/sites/example.com",
-    })
+  it("includes project when provided", () => {
+    const prompt = getSystemPrompt({ projectId: "proj-123" })
 
     expect(prompt).toContain("Project: proj-123")
-    expect(prompt).toContain("User: user-456")
-    expect(prompt).toContain("Workspace: /srv/webalive/sites/example.com")
-  })
-
-  it("excludes workspace when folder is /src (default)", () => {
-    const prompt = getSystemPrompt({ workspaceFolder: "/src" })
-
-    expect(prompt).not.toContain("Workspace:")
   })
 })

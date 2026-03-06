@@ -130,6 +130,7 @@ export async function executeJob(ctx: RunContext): Promise<{
       systemPromptOverride: ctx.systemPromptOverride,
       extraTools: ctx.extraTools,
       responseToolName: ctx.responseToolName,
+      triggerType: ctx.job.trigger_type,
       onPersistMessage,
     })
 

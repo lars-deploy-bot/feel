@@ -70,12 +70,15 @@ export async function POST(request: NextRequest) {
     // Check site creation limit only after slug conflict checks.
     // Re-deploying an existing slug should consistently return SLUG_TAKEN (409),
     // not SITE_LIMIT_EXCEEDED (403).
-    const quota = await getUserQuota(sessionUser.id)
-    if (!quota.canCreateSite) {
-      return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
-        status: 403,
-        details: { limit: quota.maxSites, currentCount: quota.currentSites },
-      })
+    // Superadmins bypass site limits entirely.
+    if (!sessionUser.isSuperadmin) {
+      const quota = await getUserQuota(sessionUser.id)
+      if (!quota.canCreateSite) {
+        return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
+          status: 403,
+          details: { limit: quota.maxSites, currentCount: quota.currentSites },
+        })
+      }
     }
 
     // Validate template exists in database and on disk

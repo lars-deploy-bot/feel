@@ -19,7 +19,7 @@
 import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, statSync } from "node:fs"
 import { createConnection } from "node:net"
 import { tmpdir } from "node:os"
-import { join, resolve as resolvePath } from "node:path"
+import { join } from "node:path"
 import process from "node:process"
 
 // Base directory for stable session storage
@@ -41,13 +41,8 @@ import {
   SandboxManager,
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamCanUseTool, createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isHeavyBashCommand, isStreamInitVisibleTool, isTransientNetworkError, SDK_TOOL, SENTRY } from "@webalive/shared"
-import {
-  emailInternalMcp,
-  toolsInternalMcp,
-  withSearchToolsConnectedProviders,
-  workspaceInternalMcp,
-} from "@webalive/tools"
+import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
+import { emailInternalMcp, streamInternalMcpServers, withSearchToolsConnectedProviders } from "@webalive/tools"
 import { resolveSandboxTemplate } from "../dist/e2b-template.js"
 import { E2B_INFRASTRUCTURE_ENV_KEYS, prepareRequestEnv } from "../dist/env-isolation.js"
 
@@ -652,7 +647,7 @@ async function handleQuery(ipc, requestId, payload) {
 
   timing("query_received")
 
-  // NOTE: query, isOAuthMcpTool, workspaceInternalMcp, toolsInternalMcp are imported
+  // NOTE: query, isOAuthMcpTool, streamInternalMcpServers are imported
   // at the top level BEFORE privilege drop. After dropping privileges, the worker
   // can't read /root/alive/node_modules/
 
@@ -823,96 +818,40 @@ async function handleQuery(ipc, requestId, payload) {
     console.error(`[worker] Allowed tools count: ${allowedTools.length}`)
     console.error(`[worker] Permission mode: "${permissionMode}"`)
 
-    // Plan mode: block tools that modify files
-    // See docs/architecture/plan-mode.md for full explanation
-    const isPlanMode = permissionMode === "plan"
-    if (isPlanMode) {
-      console.error("[worker] PLAN MODE: Write/Edit/Bash tools will be blocked")
+    // Stream mode: determines tool availability
+    const rawStreamMode = typeof agentConfig.streamMode === "string" ? agentConfig.streamMode : null
+    const requestedStreamMode = rawStreamMode && Object.hasOwn(STREAM_MODES, rawStreamMode) ? rawStreamMode : "default"
+    const streamMode = resolveStreamMode(requestedStreamMode, {
+      isAdmin: !!agentConfig.isAdmin,
+      isSuperadmin: !!agentConfig.isSuperadmin,
+    })
+    const modeConfig = STREAM_MODES[streamMode]
+    if (rawStreamMode && rawStreamMode !== requestedStreamMode) {
+      console.error(`[worker] Invalid streamMode "${rawStreamMode}", falling back to "${requestedStreamMode}"`)
+    }
+    if (requestedStreamMode !== streamMode) {
+      console.error(`[worker] Unauthorized streamMode "${requestedStreamMode}", falling back to "${streamMode}"`)
+    }
+    if (streamMode !== "default") {
+      console.error(`[worker] Stream mode: ${streamMode} (MCP enabled: ${modeConfig.mcpEnabled})`)
     }
 
     const toolContext = createStreamToolContext({
       isAdmin: !!agentConfig.isAdmin,
       isSuperadmin: !!agentConfig.isSuperadmin,
       isSuperadminWorkspace: !!agentConfig.isSuperadminWorkspace,
-      isPlanMode,
+      mode: streamMode,
       connectedProviders,
     })
 
-    const baseCanUseTool = createStreamCanUseTool(toolContext, allowedTools)
-
-    // Tool permission handler
-    const canUseTool = async (toolName, input, options) => {
-      if (disallowedTools.includes(toolName)) {
-        console.error(`[worker] SECURITY: Blocked disallowed tool: ${toolName}`)
-        return {
-          behavior: "deny",
-          message: `Tool "${toolName}" is not allowed in this workspace.`,
-        }
-      }
-
-      // SECURITY: Enforce workspace path boundaries for file-accessing tools.
-      // Superadmins are exempt (they operate on the platform repo itself).
-      if (!agentConfig.isSuperadmin) {
-        const workspaceCwd = process.cwd()
-
-        // Tools that use file_path or notebook_path
-        if ([SDK_TOOL.READ, SDK_TOOL.WRITE, SDK_TOOL.EDIT, SDK_TOOL.NOTEBOOK_EDIT].includes(toolName)) {
-          const filePath = toolName === SDK_TOOL.NOTEBOOK_EDIT ? input?.notebook_path : input?.file_path
-          if (typeof filePath === "string") {
-            const resolved = resolvePath(filePath)
-            if (!resolved.startsWith(`${workspaceCwd}/`) && resolved !== workspaceCwd) {
-              console.error(
-                `[worker] SECURITY: Blocked ${toolName} outside workspace: ${resolved} (workspace: ${workspaceCwd})`,
-              )
-              return {
-                behavior: "deny",
-                message: `Cannot access files outside your workspace. Path must be within ${workspaceCwd}`,
-              }
-            }
-          }
-        }
-
-        // Tools that use path parameter (Glob, Grep)
-        if ([SDK_TOOL.GLOB, SDK_TOOL.GREP].includes(toolName) && typeof input?.path === "string") {
-          const resolved = resolvePath(input.path)
-          if (!resolved.startsWith(`${workspaceCwd}/`) && resolved !== workspaceCwd) {
-            console.error(
-              `[worker] SECURITY: Blocked ${toolName} outside workspace: ${resolved} (workspace: ${workspaceCwd})`,
-            )
-            return {
-              behavior: "deny",
-              message: `Cannot search outside your workspace. Path must be within ${workspaceCwd}`,
-            }
-          }
-        }
-
-        // Bash: validate command doesn't reference paths outside workspace
-        if (toolName === SDK_TOOL.BASH) {
-          const command = typeof input?.command === "string" ? input.command : ""
-
-          // Block heavy commands (computational cost)
-          if (isHeavyBashCommand(command)) {
-            console.error("[worker] SECURITY: Blocked heavy Bash command for non-superadmin")
-            return {
-              behavior: "deny",
-              message:
-                "This Bash command is blocked because it is too heavy for shared capacity. " +
-                "Use narrower commands (single package/file) or ask a superadmin to run full builds/checks.",
-            }
-          }
-        }
-      }
-      // Superadmins bypass all path restrictions (they operate on the platform repo)
-
-      const result = await baseCanUseTool(toolName, input, options)
-      if (result.behavior === "deny") {
-        console.error(`[worker] SECURITY: Blocked unauthorized tool: ${toolName}`)
-      }
-      return result
-    }
+    // SDK canUseTool: DEAD — never called (SDK v0.2.41). See CLAUDE.md rule #24.
+    // Security enforced by: allowedTools/disallowedTools + cwd sandboxing + MCP validateWorkspacePath.
+    // Static analysis enforces this stays empty — see scripts/validation/check-canUseTool-dead.sh
+    // canUseTool:disabled
+    const canUseTool = undefined
 
     // Build MCP servers: internal (created locally) + global HTTP + OAuth (received via IPC)
-    // Internal SDK MCP servers (workspaceInternalMcp, toolsInternalMcp) cannot be
+    // Internal SDK MCP servers (streamInternalMcpServers) cannot be
     // serialized via IPC because createSdkMcpServer returns function objects.
     // They must be imported and created locally in the worker.
 
@@ -943,33 +882,50 @@ async function handleQuery(ipc, requestId, payload) {
       }
     }
 
-    const mcpServers = {
-      "alive-workspace": workspaceInternalMcp,
-      "alive-tools": toolsInternalMcp,
-      ...optionalMcpServers,
-      ...globalMcpServers,
-      ...(oauthMcpServers || {}),
-    }
+    const mcpServers = modeConfig.mcpEnabled
+      ? {
+          ...streamInternalMcpServers,
+          ...optionalMcpServers,
+          ...globalMcpServers,
+          ...(oauthMcpServers || {}),
+        }
+      : {}
 
     // E2B sandbox routing: swap file/shell tools to remote sandbox.
     // The SDK cwd stays local (needed for subprocess), but Claude sees SANDBOX_WORKSPACE_ROOT
     // in the system prompt and all file ops go through the sandbox MCP.
     if (payload.executionMode === "e2b" && payload.sandboxDomain) {
+      if (!modeConfig.mcpEnabled) {
+        throw new Error(
+          `[worker] executionMode=e2b requires MCP routing, but streamMode="${streamMode}" has mcpEnabled=false`,
+        )
+      }
       try {
         const template = resolveSandboxTemplate(payload.sandboxDomain.hostname)
         const manager = getSandboxManager(template)
         const hostWorkspacePath = process.cwd()
         const sandbox = await manager.getOrCreate(payload.sandboxDomain, hostWorkspacePath)
-        mcpServers.e2b = createE2bMcp(sandbox, (error, context) => {
-          Sentry.captureException(error, {
-            tags: { component: "e2b", security: "path_traversal", domain: payload.sandboxDomain.hostname },
-            extra: context,
-          })
-        })
+        mcpServers.e2b = createE2bMcp(
+          sandbox,
+          (error, context) => {
+            Sentry.captureException(error, {
+              tags: { component: "e2b", security: "path_traversal", domain: payload.sandboxDomain.hostname },
+              extra: context,
+            })
+          },
+          {
+            hostname: payload.sandboxDomain.hostname,
+            previewBase: DEFAULTS.PREVIEW_BASE,
+          },
+        )
         // Swap SDK built-in file/shell tools for E2B MCP equivalents.
         // This is the SINGLE place E2B tool routing happens — not in agent-constants.mjs.
         disallowedTools.push(...E2B_DISABLED_SDK_TOOLS)
         allowedTools.push(...E2B_MCP_TOOLS)
+        // E2B mode: strip ALL internal/global MCP servers. Only e2b MCP remains.
+        for (const key of Object.keys(mcpServers)) {
+          if (key !== "e2b") delete mcpServers[key]
+        }
         console.error(
           `[worker] E2B mode: template ${template}, sandbox ${sandbox.sandboxId} for ${payload.sandboxDomain.hostname}, workspace at ${SANDBOX_WORKSPACE_ROOT}`,
         )

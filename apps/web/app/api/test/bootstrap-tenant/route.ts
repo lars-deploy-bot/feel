@@ -25,6 +25,23 @@ import { createIamClient } from "@/lib/supabase/iam"
 const execFileAsync = promisify(execFile)
 const MAX_LINUX_USERNAME_LENGTH = 32
 
+/**
+ * Guard: refuse to upsert a domain if it already exists as a production (non-test) domain.
+ * Returns true if safe to proceed, false if the domain is a production domain that must not be touched.
+ */
+async function isDomainSafeForTestUpsert(
+  app: Awaited<ReturnType<typeof createAppClient>>,
+  hostname: string,
+): Promise<boolean> {
+  const { data } = await app.from("domains").select("hostname, is_test_env").eq("hostname", hostname).single()
+  // No existing domain → safe
+  if (!data) return true
+  // Existing test domain → safe to overwrite
+  if (data.is_test_env) return true
+  // Production domain → NOT safe
+  return false
+}
+
 interface BootstrapRequest {
   runId: string
   workerIndex: number
@@ -101,6 +118,14 @@ async function ensureWorkspaceFilesystem(workspace: string): Promise<void> {
 
   if (linuxUser.length > MAX_LINUX_USERNAME_LENGTH) {
     throw new Error(`Workspace slug too long for linux user: ${linuxUser}`)
+  }
+
+  // SAFETY: Only wipe filesystem for test workspaces (*.alive.local / *.alive.test).
+  // Production workspaces (*.alive.best, custom domains) contain real user data.
+  const isTestWorkspace = workspace.endsWith(`.${TEST_CONFIG.EMAIL_DOMAIN}`) || workspace.endsWith(".alive.test")
+  if (!isTestWorkspace) {
+    console.warn("[Bootstrap] Skipping filesystem wipe for non-test workspace:", workspace)
+    return
   }
 
   const resolvedSitesRoot = path.resolve(PATHS.SITES_ROOT)
@@ -199,7 +224,7 @@ export async function POST(req: Request) {
   // Check if tenant already exists by email (idempotent across test runs)
   const { data: existingUser, error: existingUserError } = await iam
     .from("users")
-    .select("user_id, email")
+    .select("user_id, email, is_test_env")
     .eq("email", email)
     .single()
 
@@ -210,6 +235,124 @@ export async function POST(req: Request) {
   }
 
   if (existingUser) {
+    const existingUserEmail = existingUser.email ?? ""
+    const isManagedE2eUser =
+      existingUserEmail.startsWith(TEST_CONFIG.WORKER_EMAIL_PREFIX) &&
+      existingUserEmail.endsWith(`@${TEST_CONFIG.EMAIL_DOMAIN}`)
+
+    // SAFETY: Real users must NEVER have their password_hash, is_test_env, or test_run_id mutated.
+    // Only managed E2E users (e2e_w*@alive.local) may be fully managed by the bootstrap route.
+    // This guard prevents accidental corruption of production user accounts.
+    if (!isManagedE2eUser) {
+      const isolatedOrgId = randomUUID()
+      const isolatedOrgName = `E2E Isolated Worker ${workerIndex}`
+
+      const { error: isolatedOrgError } = await iam.from("orgs").insert({
+        org_id: isolatedOrgId,
+        name: isolatedOrgName,
+        credits,
+        is_test_env: true,
+        test_run_id: runId,
+      })
+      if (isolatedOrgError) {
+        console.error("[Bootstrap] Failed to create isolated org for existing non-test user:", {
+          error: isolatedOrgError,
+          userId: existingUser.user_id,
+          email,
+          runId,
+        })
+        return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
+      }
+
+      const { error: isolatedMembershipError } = await iam.from("org_memberships").insert({
+        user_id: existingUser.user_id,
+        org_id: isolatedOrgId,
+        role: "owner",
+      })
+      if (isolatedMembershipError) {
+        console.error("[Bootstrap] Failed to create isolated membership for existing non-test user:", {
+          error: isolatedMembershipError,
+          userId: existingUser.user_id,
+          orgId: isolatedOrgId,
+          runId,
+        })
+        await iam.from("orgs").delete().eq("org_id", isolatedOrgId)
+        return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
+      }
+
+      // Guard: never overwrite a production domain
+      if (!(await isDomainSafeForTestUpsert(app, workspace))) {
+        console.error("[Bootstrap] Refusing to overwrite production domain:", {
+          hostname: workspace,
+          userId: existingUser.user_id,
+          orgId: isolatedOrgId,
+          runId,
+        })
+        await Promise.allSettled([
+          iam.from("org_memberships").delete().eq("user_id", existingUser.user_id).eq("org_id", isolatedOrgId),
+          iam.from("orgs").delete().eq("org_id", isolatedOrgId),
+        ])
+        return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 409 })
+      }
+
+      const { error: isolatedDomainError } = await app.from("domains").upsert(
+        {
+          hostname: workspace,
+          org_id: isolatedOrgId,
+          port,
+          is_test_env: true,
+          test_run_id: runId,
+        },
+        { onConflict: "hostname" },
+      )
+      if (isolatedDomainError) {
+        console.error("[Bootstrap] Failed to upsert isolated domain for existing non-test user:", {
+          error: isolatedDomainError,
+          userId: existingUser.user_id,
+          orgId: isolatedOrgId,
+          workspace,
+          runId,
+        })
+        const cleanupResults = await Promise.allSettled([
+          iam.from("org_memberships").delete().eq("user_id", existingUser.user_id).eq("org_id", isolatedOrgId),
+          iam.from("orgs").delete().eq("org_id", isolatedOrgId),
+        ])
+        cleanupResults.forEach((result, index) => {
+          if (result.status === "rejected") {
+            const operation = index === 0 ? "membership" : "org"
+            console.error(`[Bootstrap] Failed to cleanup isolated ${operation} after domain upsert failure:`, {
+              error: result.reason,
+              userId: existingUser.user_id,
+              orgId: isolatedOrgId,
+              runId,
+            })
+          }
+        })
+        return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
+      }
+
+      return buildTenantResponse({
+        userId: existingUser.user_id,
+        email,
+        orgId: isolatedOrgId,
+        orgName: isolatedOrgName,
+        workspace,
+        workerIndex,
+      })
+    }
+
+    // HARD GUARD: If we reach here, the user MUST be a managed E2E user.
+    // This is defense-in-depth — the !isManagedE2eUser block above returns early,
+    // but if the logic ever changes, this prevents corrupting real user accounts.
+    if (!isManagedE2eUser) {
+      console.error("[Bootstrap] BUG: non-managed user fell through to managed-user path:", {
+        email,
+        userId: existingUser.user_id,
+        runId,
+      })
+      return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
+    }
+
     // Get org and return existing tenant
     const { data: membership, error: membershipError } = await iam
       .from("org_memberships")
@@ -253,6 +396,19 @@ export async function POST(req: Request) {
         // Cleanup the org we just created
         await iam.from("orgs").delete().eq("org_id", newOrgId)
         return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
+      }
+
+      // Guard: never overwrite a production domain
+      if (!(await isDomainSafeForTestUpsert(app, workspace))) {
+        console.error("[Bootstrap] Refusing to overwrite production domain for orphaned user:", {
+          hostname: workspace,
+          runId,
+        })
+        await Promise.allSettled([
+          iam.from("org_memberships").delete().eq("user_id", existingUser.user_id).eq("org_id", newOrgId),
+          iam.from("orgs").delete().eq("org_id", newOrgId),
+        ])
+        return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 409 })
       }
 
       // Update user's test_run_id and create domain
@@ -337,6 +493,15 @@ export async function POST(req: Request) {
       })
 
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
+    }
+
+    // Guard: never overwrite a production domain
+    if (!(await isDomainSafeForTestUpsert(app, workspace))) {
+      console.error("[Bootstrap] Refusing to overwrite production domain for managed user:", {
+        hostname: workspace,
+        runId,
+      })
+      return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 409 })
     }
 
     // Update test_run_id and password hash to ensure consistency across test runs
@@ -499,6 +664,17 @@ export async function POST(req: Request) {
   }
 
   // 4. Create/update domain entry (virtual - no actual deployment, idempotent)
+  // Guard: never overwrite a production domain
+  if (!(await isDomainSafeForTestUpsert(app, workspace))) {
+    console.error("[Bootstrap] Refusing to overwrite production domain for new user:", { hostname: workspace, runId })
+    await Promise.allSettled([
+      iam.from("org_memberships").delete().eq("user_id", userId),
+      iam.from("users").delete().eq("user_id", userId),
+      iam.from("orgs").delete().eq("org_id", orgId),
+    ])
+    return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 409 })
+  }
+
   const { error: domainError } = await app.from("domains").upsert(
     {
       hostname: workspace,

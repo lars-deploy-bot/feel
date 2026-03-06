@@ -575,6 +575,19 @@ describe("POST /api/login", () => {
       expect(createIamClient).not.toHaveBeenCalled()
     })
 
+    it("should not apply IP rate limit when client IP is unknown", async () => {
+      vi.mocked(getClientIdentifier).mockReturnValue("login:ip:unknown")
+      vi.mocked(loginRateLimiter.isRateLimited).mockImplementation((id: string) => id.startsWith("login:ip:"))
+
+      const req = createMockRequest({
+        email: "test@example.com",
+        password: "correct-password",
+      })
+      const response = await POST(req)
+
+      expect(response.status).toBe(200)
+    })
+
     it("should return 429 when both IP and email are rate-limited", async () => {
       vi.mocked(loginRateLimiter.isRateLimited).mockReturnValue(true)
       vi.mocked(loginRateLimiter.getBlockedTimeRemaining).mockReturnValue(5 * 60 * 1000)
@@ -642,6 +655,21 @@ describe("POST /api/login", () => {
       expect(response.status).toBe(200)
       expect(loginRateLimiter.reset).toHaveBeenCalledWith("login:ip:127.0.0.1")
       expect(loginRateLimiter.reset).toHaveBeenCalledWith("login:email:test@example.com")
+    })
+
+    it("should only use email rate limiting when client IP is unknown", async () => {
+      vi.mocked(getClientIdentifier).mockReturnValue("login:ip:unknown")
+      vi.mocked(verifyPassword).mockResolvedValue(false)
+
+      const req = createMockRequest({
+        email: "test@example.com",
+        password: "wrong-password",
+      })
+      await POST(req)
+
+      expect(loginRateLimiter.recordFailedAttempt).not.toHaveBeenCalledWith("login:ip:unknown")
+      expect(loginRateLimiter.recordFailedAttempt).toHaveBeenCalledWith("login:email:test@example.com")
+      expect(loginRateLimiter.reset).not.toHaveBeenCalledWith("login:ip:unknown")
     })
 
     it("should NOT call rate limiter methods in standalone mode", async () => {

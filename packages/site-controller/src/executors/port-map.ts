@@ -16,6 +16,7 @@ import { retryAsync } from "@webalive/shared"
 import { PATHS } from "../constants.js"
 
 const PORT_MAP_FILENAME = "port-map.json"
+const SANDBOX_MAP_FILENAME = "sandbox-map.json"
 const PREVIEW_PROXY_SERVICE = "preview-proxy.service"
 
 function getOutputPath(): string {
@@ -67,8 +68,28 @@ function signalPreviewProxy(): void {
   }
 }
 
+/** E2B sandbox entry in sandbox-map.json */
+interface SandboxMapEntry {
+  sandboxId: string
+  e2bDomain: string
+  /** Dev server port inside the sandbox (from DB port column) */
+  port: number
+}
+
+function getSandboxMapPath(): string {
+  const generatedDir = PATHS.GENERATED_DIR
+  if (generatedDir) {
+    return join(generatedDir, SANDBOX_MAP_FILENAME)
+  }
+  return `/var/lib/alive/generated/${SANDBOX_MAP_FILENAME}`
+}
+
 /**
- * Regenerate port-map.json from Supabase, verify it, and signal the Go preview-proxy.
+ * Regenerate port-map.json and sandbox-map.json from Supabase,
+ * verify them, and signal the Go preview-proxy.
+ *
+ * port-map.json: { "hostname": port } — for systemd sites (local port)
+ * sandbox-map.json: { "hostname": { sandboxId, e2bDomain } } — for E2B sites
  *
  * @param requiredHostname - If set, throws if this hostname is missing from the result.
  *                           Used by deploy pipeline to guarantee the new site is routable.
@@ -76,47 +97,73 @@ function signalPreviewProxy(): void {
  * @throws Error if Supabase query fails, required hostname missing, or signal fails
  */
 export async function regeneratePortMap(requiredHostname?: string): Promise<number> {
-  const portMap = await retryAsync(
+  const { portMap, sandboxMap } = await retryAsync(
     async () => {
       const app = getSupabaseClient()
-      const { data, error } = await app.from("domains").select("hostname, port")
+      const { data, error } = await app
+        .from("domains")
+        .select("hostname, port, execution_mode, sandbox_id, sandbox_status")
 
       if (error) {
         throw new Error(`[port-map] Failed to fetch domains: ${error.message}`)
       }
 
-      const map: Record<string, number> = {}
+      const ports: Record<string, number> = {}
+      const sandboxes: Record<string, SandboxMapEntry> = {}
+      const e2bDomain = process.env.E2B_DOMAIN || "e2b.sonno.tech"
+
       for (const row of data || []) {
-        if (row.hostname && row.port) {
-          map[row.hostname] = row.port
+        if (!row.hostname) continue
+
+        if (row.execution_mode === "e2b" && row.sandbox_id && row.sandbox_status === "running") {
+          sandboxes[row.hostname] = {
+            sandboxId: row.sandbox_id,
+            e2bDomain,
+            port: row.port || 5173,
+          }
+        } else if (row.port) {
+          ports[row.hostname] = row.port
         }
       }
 
-      // Strict: if a hostname was just deployed, it MUST be in the DB result
-      if (requiredHostname && !(requiredHostname in map)) {
+      // Strict: if a hostname was just deployed, it MUST be in one of the maps
+      if (requiredHostname && !(requiredHostname in ports) && !(requiredHostname in sandboxes)) {
         throw new Error(
           `[port-map] Required hostname "${requiredHostname}" not found in domains table. ` +
-            `registerDomain() may have failed silently. Got ${Object.keys(map).length} domains.`,
+            `registerDomain() may have failed silently. Got ${Object.keys(ports).length + Object.keys(sandboxes).length} domains.`,
         )
       }
 
-      return map
+      return { portMap: ports, sandboxMap: sandboxes }
     },
     { attempts: requiredHostname ? 3 : 1, minDelayMs: 500, label: "port-map" },
   )
 
-  const outputPath = getOutputPath()
-  mkdirSync(dirname(outputPath), { recursive: true })
-  writeFileSync(outputPath, JSON.stringify(portMap, null, 2), "utf-8")
+  const portMapPath = getOutputPath()
+  const sandboxMapPath = getSandboxMapPath()
+  mkdirSync(dirname(portMapPath), { recursive: true })
+
+  writeFileSync(portMapPath, JSON.stringify(portMap, null, 2), "utf-8")
+  writeFileSync(sandboxMapPath, JSON.stringify(sandboxMap, null, 2), "utf-8")
 
   // Read back and verify the file was written correctly
-  const written: unknown = JSON.parse(readFileSync(outputPath, "utf-8"))
-  if (requiredHostname && (typeof written !== "object" || written === null || !(requiredHostname in written))) {
-    throw new Error(`[port-map] Write verification failed: "${requiredHostname}" not in ${outputPath}`)
+  const written: unknown = JSON.parse(readFileSync(portMapPath, "utf-8"))
+  const writtenSandbox: unknown = JSON.parse(readFileSync(sandboxMapPath, "utf-8"))
+  if (requiredHostname) {
+    const inPorts = typeof written === "object" && written !== null && requiredHostname in written
+    const inSandbox =
+      typeof writtenSandbox === "object" && writtenSandbox !== null && requiredHostname in writtenSandbox
+    if (!inPorts && !inSandbox) {
+      throw new Error(`[port-map] Write verification failed: "${requiredHostname}" not in port-map or sandbox-map`)
+    }
   }
 
   // Signal preview-proxy to reload immediately
   signalPreviewProxy()
 
-  return Object.keys(portMap).length
+  const total = Object.keys(portMap).length + Object.keys(sandboxMap).length
+  if (Object.keys(sandboxMap).length > 0) {
+    console.error(`[port-map] Wrote ${Object.keys(portMap).length} ports + ${Object.keys(sandboxMap).length} sandboxes`)
+  }
+  return total
 }

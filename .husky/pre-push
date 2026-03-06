@@ -1,7 +1,30 @@
 #!/bin/sh
 # .husky/pre-push
 
+# Early exit: skip checks if there's nothing new to push.
+# Git feeds pre-push hook lines: <local_ref> <local_sha> <remote_ref> <remote_sha>
+# If all refs already match the remote, there's nothing to check.
+ZERO="0000000000000000000000000000000000000000"
+has_new_commits=false
+while read local_ref local_sha remote_ref remote_sha; do
+    # Skip branch deletions (local_sha is all zeros)
+    [ "$local_sha" = "$ZERO" ] && continue
+    if [ "$local_sha" != "$remote_sha" ]; then
+        has_new_commits=true
+        break
+    fi
+done
+
+if [ "$has_new_commits" = false ]; then
+    echo "✅ Nothing new to push — skipping checks."
+    exit 0
+fi
+
 LOGFILE="/tmp/pre-push-$(date +%Y%m%d-%H%M%S).log"
+START_TIME=$(date +%s)
+
+# Clean up old log files (keep last 5)
+ls -t /tmp/pre-push-*.log 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null
 
 echo "🔍 Running static checks before push..."
 echo "   Log: $LOGFILE"
@@ -60,5 +83,6 @@ if ! bun run static-check >> "$LOGFILE" 2>&1; then
     exit 1
 fi
 
-echo "✅ All checks passed. Proceeding with push..."
+ELAPSED=$(( $(date +%s) - START_TIME ))
+echo "✅ All checks passed in ${ELAPSED}s. Proceeding with push..."
 echo "   Full log: $LOGFILE"

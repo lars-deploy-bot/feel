@@ -19,7 +19,7 @@ function resolveRepoFile(...segments: string[]): string {
 }
 
 const STREAM_ROUTE_PATH = resolveRepoFile("apps", "web", "app", "api", "claude", "stream", "route.ts")
-const AUTOMATION_EXECUTOR_PATH = resolveRepoFile("apps", "web", "lib", "automation", "executor.ts")
+const AUTOMATION_ATTEMPTS_PATH = resolveRepoFile("apps", "web", "lib", "automation", "attempts.ts")
 
 function extractPoolQueryBlock(code: string): string {
   const queryCallMatch = /pool\.query\(\s*[^,]+,\s*\{/.exec(code)
@@ -62,11 +62,11 @@ describe("Owner key contract", () => {
     expect(block).toContain('workloadClass: "chat"')
   })
 
-  it("automation executor passes ownerKey and workloadClass to pool.query", () => {
-    const code = readFileSync(AUTOMATION_EXECUTOR_PATH, "utf-8")
+  it("automation worker-pool attempt passes ownerKey and workloadClass to pool.query", () => {
+    const code = readFileSync(AUTOMATION_ATTEMPTS_PATH, "utf-8")
     const block = extractPoolQueryBlock(code)
 
-    expect(block).toContain("ownerKey: params.userId")
+    expect(block).toContain("ownerKey: userId")
     expect(block).toContain('workloadClass: "automation"')
   })
 })

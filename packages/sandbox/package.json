@@ -22,6 +22,7 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.34",
     "@webalive/database": "workspace:*",
+    "@webalive/shared": "workspace:*",
     "e2b": "^2.13.0",
     "zod": "^4.1.5"
   },

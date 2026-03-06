@@ -17,15 +17,14 @@
 // Types (self-contained to avoid circular deps with stream-tools.ts)
 // ---------------------------------------------------------------------------
 
-export type InternalMcpServer = "alive-tools" | "alive-workspace"
+export type InternalMcpServer = "alive-tools" | "alive-workspace" | "alive-sandboxed-fs"
 
-type PlanModeBehavior = "allow" | "block"
 type WorkspaceKind = "site" | "platform"
 type ToolVisibility = "visible" | "silent"
 type ToolRole = "member" | "admin" | "superadmin"
 
 export interface InternalToolDescriptor {
-  /** snake_case tool name (e.g. "search_tools") */
+  /** Tool name as registered in MCP (usually snake_case, but may be SDK-compatible PascalCase aliases like "Read"). */
   name: string
   /** Which MCP server this tool belongs to */
   mcpServer: InternalMcpServer
@@ -35,8 +34,6 @@ export interface InternalToolDescriptor {
   reason: string
   /** Workspace kinds the tool is available in. Default: all */
   workspaceKinds?: readonly WorkspaceKind[]
-  /** Plan mode behavior. Default: "allow" */
-  planMode?: PlanModeBehavior
   /** Visibility to client UI. Default: "visible" */
   visibility?: ToolVisibility
   /** Restrict to specific roles. Default: all roles */
@@ -127,7 +124,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Codebase analysis is site-workspace only.",
     workspaceKinds: ["site"],
-    // Note: check_codebase allows plan mode (read-only analysis)
   },
   {
     name: "restart_dev_server",
@@ -135,7 +131,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Dev server restart mutates runtime state and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "install_package",
@@ -143,7 +138,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Package install mutates dependencies and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "delete_file",
@@ -151,7 +145,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "File deletion mutates workspace and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "switch_serve_mode",
@@ -159,7 +152,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Serve mode changes runtime behavior and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "copy_shared_asset",
@@ -167,7 +159,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Copying assets mutates workspace and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "create_website",
@@ -175,7 +166,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Website creation mutates workspace and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "git_push",
@@ -183,7 +173,6 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Git push mutates remote repository and is site-workspace only.",
     workspaceKinds: ["site"],
-    planMode: "block",
   },
   {
     name: "browser",
@@ -191,6 +180,66 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     enabled: true,
     reason: "Browser control is available in site and platform workspaces.",
     workspaceKinds: ["site", "platform"],
+  },
+
+  // =========================================================================
+  // alive-sandboxed-fs server (SDK-compatible file/shell gate for site mode)
+  // =========================================================================
+  {
+    name: "Read",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace file reads must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Write",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace file writes must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Edit",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace file edits must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Glob",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace glob queries must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Grep",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace grep queries must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "Bash",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Site workspace shell commands must go through heavy-command safeguards.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
+  },
+  {
+    name: "NotebookEdit",
+    mcpServer: "alive-sandboxed-fs",
+    enabled: true,
+    reason: "Notebook edits in site workspaces must go through sandboxed path validation.",
+    workspaceKinds: ["site"],
+    roles: ["member", "admin"],
   },
 ] as const
 
@@ -224,6 +273,7 @@ export function getDescriptorsByServer(): Record<InternalMcpServer, InternalTool
   const result: Record<InternalMcpServer, InternalToolDescriptor[]> = {
     "alive-tools": [],
     "alive-workspace": [],
+    "alive-sandboxed-fs": [],
   }
   for (const d of INTERNAL_TOOL_DESCRIPTORS) {
     result[d.mcpServer].push(d)

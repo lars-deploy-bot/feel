@@ -1,7 +1,15 @@
 import { statSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
-import { SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
-import { DEFAULTS, isRetiredModel, isValidClaudeModel, SUPERADMIN, WORKER_POOL } from "@webalive/shared"
+import {
+  DEFAULTS,
+  isRetiredModel,
+  isValidClaudeModel,
+  resolveStreamMode,
+  STREAM_MODES,
+  type StreamMode,
+  SUPERADMIN,
+  WORKER_POOL,
+} from "@webalive/shared"
 import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
@@ -37,7 +45,6 @@ import {
   getDisallowedTools,
   getOAuthMcpServers,
   hasStripeMcpAccess,
-  PERMISSION_MODE,
   SETTINGS_SOURCES,
   STREAM_TYPES,
 } from "@/lib/claude/agent-constants.mjs"
@@ -64,7 +71,6 @@ import { createRLSAppClient } from "@/lib/supabase/server-rls"
 import type { TokenSource } from "@/lib/tokens"
 import { getOrgCredits } from "@/lib/tokens"
 import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
-import { detectServeMode } from "@/lib/workspace-execution/command-runner"
 import { BodySchema } from "@/types/guards/api"
 import { logRetryContract } from "./retry-observability"
 
@@ -199,10 +205,9 @@ export async function POST(req: NextRequest) {
       tabId,
       model: userModel,
       projectId,
-      userId,
       additionalContext,
       analyzeImageUrls,
-      planMode,
+      streamMode: rawStreamMode,
       resumeSessionAt,
     } = parseResult.data
     logger.log("Conversation:", conversationId)
@@ -212,7 +217,6 @@ export async function POST(req: NextRequest) {
     if (userModel) {
       logger.log("Using user-selected model:", userModel)
     }
-    // Plan mode: see docs/architecture/plan-mode.md
 
     // Check input safety (skip for superadmins - they should never be interrupted)
     if (!user.isSuperadmin) {
@@ -517,11 +521,6 @@ export async function POST(req: NextRequest) {
       logger.log(`OAuth warnings: ${oauthWarnings.map(w => w.provider).join(", ")}`)
     }
 
-    // Detect if workspace is running in production mode (build) vs dev mode
-    const serveMode = detectServeMode(cwd)
-    const isProductionMode = serveMode === "build"
-    logger.log(`Serve mode: ${serveMode} (isProduction: ${isProductionMode})`)
-
     // Handle analyze mode images: fetch from photobook and save to workspace
     // This allows Claude to use the Read tool to visually analyze the images
     let finalMessage = message
@@ -549,16 +548,11 @@ export async function POST(req: NextRequest) {
     if (hasGmailConnection) connectedEmailProviders.push("gmail")
     if (hasOutlookConnection) connectedEmailProviders.push("outlook")
 
-    const isE2b = domainRecord.execution_mode === "e2b"
-
     const systemPrompt = getSystemPrompt({
       projectId,
-      userId,
-      workspaceFolder: isE2b ? SANDBOX_WORKSPACE_ROOT : cwd,
       hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName, hasStripeConnection),
       connectedEmailProviders,
       additionalContext,
-      isProduction: isProductionMode,
     })
 
     logger.log("Spawning child process runner")
@@ -569,11 +563,19 @@ export async function POST(req: NextRequest) {
 
     let childStream: ReadableStream<Uint8Array>
 
-    // Plan mode: Claude can only read/explore, not modify files
-    // When enabled, permissionMode is set to 'plan' in the SDK
-    const effectivePermissionMode = planMode ? "plan" : PERMISSION_MODE
-    if (planMode) {
-      logger.log("Plan mode enabled - Claude will only explore, not modify")
+    // Stream mode: determines tool availability and SDK permission mode
+    const requestedStreamMode: StreamMode = rawStreamMode ?? "default"
+    const streamMode = resolveStreamMode(requestedStreamMode, {
+      isAdmin: user.isAdmin,
+      isSuperadmin: user.isSuperadmin,
+    })
+    if (requestedStreamMode !== streamMode) {
+      logger.log(`Stream mode fallback: requested=${requestedStreamMode}, effective=${streamMode}`)
+    }
+    const modeConfig = STREAM_MODES[streamMode]
+    const effectivePermissionMode = modeConfig.permissionMode
+    if (streamMode !== "default") {
+      logger.log(`Stream mode: ${streamMode} (permission: ${effectivePermissionMode})`)
     }
 
     if (WORKER_POOL.ENABLED) {
@@ -603,22 +605,23 @@ export async function POST(req: NextRequest) {
       }
 
       // Build agent config to pass to worker (worker doesn't import from apps/web)
-      // Note: Internal MCP servers (alive-workspace, alive-tools) are created locally
+      // Note: Internal MCP servers (alive-workspace, alive-sandboxed-fs, alive-tools) are created locally
       // in the worker because createSdkMcpServer returns function objects that cannot
       // be serialized via IPC. Only OAuth HTTP servers are passed here.
-      const allowedTools = getAllowedTools(cwd, user.isAdmin, user.isSuperadmin, isSuperadminWorkspace, !!planMode)
-      const disallowedTools = getDisallowedTools(user.isAdmin, user.isSuperadmin, !!planMode, isSuperadminWorkspace)
+      const allowedTools = getAllowedTools(cwd, user.isAdmin, user.isSuperadmin, isSuperadminWorkspace, streamMode)
+      const disallowedTools = getDisallowedTools(user.isAdmin, user.isSuperadmin, streamMode, isSuperadminWorkspace)
 
-      // Log tool counts for debugging
-      if (planMode) {
-        logger.log(`Plan mode: ${allowedTools.length} tools available under registry policy`)
+      if (streamMode !== "default") {
+        logger.log(`${streamMode} mode: ${allowedTools.length} tools available under registry policy`)
       }
 
-      const rawOauthMcpServers = getOAuthMcpServers(oauthTokens)
       const oauthMcpServers: Record<string, unknown> = {}
-      if (rawOauthMcpServers && typeof rawOauthMcpServers === "object") {
-        for (const [providerKey, providerConfig] of Object.entries(rawOauthMcpServers)) {
-          oauthMcpServers[providerKey] = providerConfig
+      if (modeConfig.mcpEnabled) {
+        const rawOauthMcpServers = getOAuthMcpServers(oauthTokens)
+        if (rawOauthMcpServers && typeof rawOauthMcpServers === "object") {
+          for (const [providerKey, providerConfig] of Object.entries(rawOauthMcpServers)) {
+            oauthMcpServers[providerKey] = providerConfig
+          }
         }
       }
 
@@ -629,6 +632,7 @@ export async function POST(req: NextRequest) {
         settingSources: SETTINGS_SOURCES,
         oauthMcpServers,
         streamTypes: STREAM_TYPES,
+        streamMode, // Pass stream mode to worker
         isAdmin: user.isAdmin, // Pass to worker for permission checks
         isSuperadmin: user.isSuperadmin, // Superadmin gets elevated tool policy
         isSuperadminWorkspace, // Whether accessing the alive workspace specifically
@@ -948,6 +952,7 @@ export async function POST(req: NextRequest) {
         isSuperadmin: user.isSuperadmin, // Superadmin gets elevated tool policy
         isSuperadminWorkspace, // Whether accessing the alive workspace specifically
         permissionMode: effectivePermissionMode, // Plan mode: "plan" = read-only exploration
+        streamMode,
       })
     }
 

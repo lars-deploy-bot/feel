@@ -45,7 +45,7 @@ import {
   STREAM_PERMISSION_MODE,
   STREAM_SETTINGS_SOURCES,
 } from "@webalive/shared"
-import { toolsInternalMcp, workspaceInternalMcp } from "../mcp-server.js"
+import { streamInternalMcpServers } from "../mcp-server.js"
 import { getEnabledMcpToolNames, withSearchToolsConnectedProviders } from "../tools/meta/search-tools.js"
 // Import CLAUDE_MODELS from ask-ai.ts - SINGLE SOURCE OF TRUTH
 import { CLAUDE_MODELS, type ClaudeModel } from "./ask-ai.js"
@@ -178,7 +178,7 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
       isAdmin: false,
       isSuperadmin: false,
       isSuperadminWorkspace: false,
-      isPlanMode: permissionMode === "plan",
+      mode: permissionMode === "plan" ? "plan" : "default",
       connectedProviders,
     })
 
@@ -188,10 +188,7 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
     allowedTools = runtimeTools.allowedTools
     disallowedTools = runtimeTools.disallowedTools
 
-    mcpServers = getStreamMcpServers(
-      { "alive-workspace": workspaceInternalMcp, "alive-tools": toolsInternalMcp },
-      oauthTokens,
-    )
+    mcpServers = getStreamMcpServers(streamInternalMcpServers, oauthTokens)
 
     // Cast needed: createStreamCanUseTool returns a compatible shape but @webalive/shared
     // cannot import CanUseTool from the SDK (wrong dependency direction)
