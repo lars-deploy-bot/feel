@@ -175,15 +175,15 @@ export const serverSchema = {
   NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
 
   // Observability API tokens (self-hosted Sentry + PostHog)
-  // REQUIRED — build will fail if missing
-  SENTRY_AUTH_TOKEN: z.string().min(1),
-  POSTHOG_PERSONAL_API_KEY: z.string().min(1),
+  // Optional — only required in production/staging, not in local E2E
+  SENTRY_AUTH_TOKEN: z.string().min(1).optional(),
+  POSTHOG_PERSONAL_API_KEY: z.string().min(1).optional(),
 
-  // Signup access code (required to create new accounts)
-  SIGNUP_ACCESS_CODE: z.string().min(1),
+  // Signup access code (required to create new accounts in production)
+  SIGNUP_ACCESS_CODE: z.string().min(1).optional(),
 
   // E2B Sandbox
-  E2B_API_KEY: e2bApiKey,
+  E2B_API_KEY: e2bApiKey.optional(),
 
   // E2E Testing (optional - only needed for staging E2E tests)
   // MUST NOT be set in production — test routes become accessible if set.
@@ -208,7 +208,7 @@ export const clientSchema = {
   NEXT_PUBLIC_PREVIEW_BASE: z.string().optional().default(""),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
-  NEXT_PUBLIC_CONTACT_EMAIL: z.string().email(),
+  NEXT_PUBLIC_CONTACT_EMAIL: z.string().email().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 } as const
 

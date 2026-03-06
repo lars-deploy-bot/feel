@@ -95,9 +95,8 @@ const test = base.extend<
     page.on("response", responseGuard)
 
     const resolvedBaseUrl = requireProjectBaseUrl(baseURL)
-    const isRemote = resolvedBaseUrl.startsWith("https://")
-    const jwtSecret = isRemote ? process.env.JWT_SECRET : TEST_CONFIG.JWT_SECRET
-    if (!jwtSecret) throw new Error("JWT_SECRET not set")
+    const jwtSecret = process.env.JWT_SECRET
+    if (!jwtSecret) throw new Error("JWT_SECRET not set — add it to .env.e2e.local")
 
     const token = jwt.sign(
       {
@@ -123,7 +122,7 @@ const test = base.extend<
         domain: cookieDomain,
         path: "/",
         httpOnly: true,
-        secure: isRemote,
+        secure: resolvedBaseUrl.startsWith("https://"),
         sameSite: "Lax",
       },
     ])

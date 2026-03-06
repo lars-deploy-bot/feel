@@ -44,8 +44,11 @@ if [ "${TEST_ENV:-}" != "local" ]; then
   exit 1
 fi
 
-# Override JWT secret for E2E tests
-export JWT_SECRET=test-jwt-secret-for-e2e-tests
+# JWT_SECRET must come from .env.e2e.local (same secret as the Supabase instance)
+if [ -z "${JWT_SECRET:-}" ]; then
+  echo "[Multi-Port] ERROR: JWT_SECRET not set in env file"
+  exit 1
+fi
 export STREAM_ENV=local
 export PLAYWRIGHT_TEST=true
 export TEST_MODE=true

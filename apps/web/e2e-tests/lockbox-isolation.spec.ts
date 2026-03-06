@@ -125,10 +125,9 @@ test.describe("Lockbox Cross-Account Isolation", () => {
    */
   test("user A cannot see user B lockbox secrets via /api/user-env-keys", async ({ workerTenant, baseURL }) => {
     const resolvedBaseUrl = requireProjectBaseUrl(baseURL)
-    const isRemote = resolvedBaseUrl.startsWith("https://")
-    const jwtSecret = isRemote ? process.env.JWT_SECRET : TEST_CONFIG.JWT_SECRET
+    const jwtSecret = process.env.JWT_SECRET
     if (!jwtSecret) {
-      throw new Error("JWT_SECRET not set for E2E lockbox isolation test")
+      throw new Error("JWT_SECRET not set — add it to .env.e2e.local")
     }
 
     // --- Set up two real users ---
@@ -224,10 +223,9 @@ test.describe("Lockbox Cross-Account Isolation", () => {
    */
   test("non-existent user JWT cannot see real user secrets", async ({ workerTenant, baseURL }) => {
     const resolvedBaseUrl = requireProjectBaseUrl(baseURL)
-    const isRemote = resolvedBaseUrl.startsWith("https://")
-    const jwtSecret = isRemote ? process.env.JWT_SECRET : TEST_CONFIG.JWT_SECRET
+    const jwtSecret = process.env.JWT_SECRET
     if (!jwtSecret) {
-      throw new Error("JWT_SECRET not set")
+      throw new Error("JWT_SECRET not set — add it to .env.e2e.local")
     }
 
     // Alice stores a key

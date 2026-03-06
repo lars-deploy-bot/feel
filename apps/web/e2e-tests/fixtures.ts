@@ -170,10 +170,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     // Determine if we're running against a remote environment
     const isRemote = resolvedBaseUrl.startsWith("https://")
 
-    // For remote environments, use JWT_SECRET from env; for local use TEST_CONFIG
-    const jwtSecret = isRemote ? process.env.JWT_SECRET : TEST_CONFIG.JWT_SECRET
+    const jwtSecret = process.env.JWT_SECRET
     if (!jwtSecret) {
-      throw new Error("JWT_SECRET not set for E2E tests (required for staging/production)")
+      throw new Error("JWT_SECRET not set — add it to .env.e2e.local or export it before running tests")
     }
 
     const token = jwt.sign(

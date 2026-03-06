@@ -42,7 +42,13 @@ import {
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
 import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
-import { emailInternalMcp, streamInternalMcpServers, withSearchToolsConnectedProviders } from "@webalive/tools"
+import {
+  emailInternalMcp,
+  sandboxedFsInternalMcp,
+  toolsInternalMcp,
+  withSearchToolsConnectedProviders,
+  workspaceInternalMcp,
+} from "@webalive/tools"
 import { resolveSandboxTemplate } from "../dist/e2b-template.js"
 import { E2B_INFRASTRUCTURE_ENV_KEYS, prepareRequestEnv } from "../dist/env-isolation.js"
 
@@ -647,7 +653,7 @@ async function handleQuery(ipc, requestId, payload) {
 
   timing("query_received")
 
-  // NOTE: query, isOAuthMcpTool, streamInternalMcpServers are imported
+  // NOTE: query, isOAuthMcpTool, internal MCP servers are imported
   // at the top level BEFORE privilege drop. After dropping privileges, the worker
   // can't read /root/alive/node_modules/
 
@@ -851,8 +857,8 @@ async function handleQuery(ipc, requestId, payload) {
     const canUseTool = undefined
 
     // Build MCP servers: internal (created locally) + global HTTP + OAuth (received via IPC)
-    // Internal SDK MCP servers (streamInternalMcpServers) cannot be
-    // serialized via IPC because createSdkMcpServer returns function objects.
+    // Internal SDK MCP servers cannot be serialized via IPC because
+    // createSdkMcpServer returns function objects.
     // They must be imported and created locally in the worker.
 
     // Build global HTTP MCP servers (always available, no auth required)
@@ -882,9 +888,16 @@ async function handleQuery(ipc, requestId, payload) {
       }
     }
 
+    // Only register alive-sandboxed-fs when its tools are actually allowed.
+    // Superadmin sessions use SDK built-in file tools directly; registering
+    // the sandboxed-fs MCP server with no allowed tools causes SDK errors.
+    const needsSandboxedFs = allowedTools.some(t => t.startsWith("mcp__alive-sandboxed-fs__"))
+
     const mcpServers = modeConfig.mcpEnabled
       ? {
-          ...streamInternalMcpServers,
+          "alive-workspace": workspaceInternalMcp,
+          "alive-tools": toolsInternalMcp,
+          ...(needsSandboxedFs ? { "alive-sandboxed-fs": sandboxedFsInternalMcp } : {}),
           ...optionalMcpServers,
           ...globalMcpServers,
           ...(oauthMcpServers || {}),

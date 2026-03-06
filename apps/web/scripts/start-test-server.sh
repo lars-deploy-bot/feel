@@ -19,11 +19,12 @@ if [ "${TEST_ENV:-}" != "local" ]; then
   exit 1
 fi
 
-# CRITICAL: Override JWT_SECRET to match TEST_CONFIG.JWT_SECRET from @webalive/shared
-# This ensures JWTs created by fixtures.ts can be verified by the server
-# Single source of truth: packages/shared/src/constants.ts -> TEST_CONFIG.JWT_SECRET
-# If you change this, update the constant in constants.ts.
-export JWT_SECRET=test-jwt-secret-for-e2e-tests
+# JWT_SECRET must come from .env.e2e.local (same secret as the Supabase instance).
+# Never hardcode secrets in scripts — they end up in git.
+if [ -z "${JWT_SECRET:-}" ]; then
+  echo "[Test Server] ERROR: JWT_SECRET not set in $ENV_FILE_PATH"
+  exit 1
+fi
 
 export STREAM_ENV=local
 export PLAYWRIGHT_TEST=true

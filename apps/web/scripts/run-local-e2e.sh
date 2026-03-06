@@ -115,4 +115,7 @@ echo "[E2E] Runtime env file: $RUNTIME_ENV_FILE"
 echo "[E2E] App target: ${NEXT_PUBLIC_APP_URL:-<unset>}"
 echo "[E2E] Supabase target: $SUPABASE_URL"
 
+# Ensure node_modules/.bin is on PATH so `playwright` resolves
+export PATH="$SCRIPT_DIR/../node_modules/.bin:$PATH"
+
 ENV_FILE="$RUNTIME_ENV_FILE" "$@"

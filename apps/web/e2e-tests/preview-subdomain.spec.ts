@@ -77,7 +77,8 @@ test.describe("Preview Subdomain Routing", () => {
     })
 
     test("returns 401 with expired preview token", async ({ request }) => {
-      const jwtSecret = process.env.JWT_SECRET || TEST_CONFIG.JWT_SECRET
+      const jwtSecret = process.env.JWT_SECRET
+      if (!jwtSecret) throw new Error("JWT_SECRET not set")
       const expiredToken = jwt.sign(
         {
           type: "preview",
