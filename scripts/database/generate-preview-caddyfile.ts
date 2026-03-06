@@ -95,17 +95,8 @@ function parseCaddyfile(content: string): DomainMapping[] {
   return mappings
 }
 
-/**
- * Convert domain to preview subdomain label
- * Examples:
- *   protino.sonno.tech → protino-sonno-tech
- *   demo.sonno.tech → demo-sonno-tech
- *
- * Note: Matches domainToPreviewLabel() in apps/web/lib/preview-utils.ts
- */
-function domainToLabel(domain: string): string {
-  return domain.replace(/\./g, "-")
-}
+// Use shared label function — previously duplicated here with a "keep in sync" comment
+import { domainToPreviewLabel as domainToLabel } from "@webalive/shared"
 
 /**
  * Generate preview subdomain block for a workspace + environment

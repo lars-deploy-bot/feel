@@ -369,23 +369,25 @@ async function detectInstallCommand(sandbox: Sandbox): Promise<string | null> {
 
 /**
  * Run the package manager install command inside the sandbox.
+ * Never throws — a failed install is logged but doesn't block sandbox creation.
+ * Claude can retry manually if needed.
  */
 async function runInstall(sandbox: Sandbox, installCmd: string): Promise<void> {
   const startMs = Date.now()
   console.error(`[sandbox-manager] Installing dependencies: ${installCmd}`)
 
-  const result = await sandbox.commands.run(installCmd, {
-    cwd: SANDBOX_WORKSPACE_ROOT,
-    timeoutMs: 120_000, // 2 minutes — large projects can be slow
-  })
-
-  const elapsedMs = Date.now() - startMs
-  if (result.exitCode !== 0) {
-    console.error(
-      `[sandbox-manager] Dependency install failed (exit ${result.exitCode}, ${elapsedMs}ms): ${result.stderr || result.stdout}`,
-    )
-  } else {
-    console.error(`[sandbox-manager] Dependencies installed in ${elapsedMs}ms`)
+  try {
+    const result = await sandbox.commands.run(installCmd, {
+      cwd: SANDBOX_WORKSPACE_ROOT,
+      timeoutMs: 120_000, // 2 minutes — large projects can be slow
+    })
+    const elapsedMs = Date.now() - startMs
+    console.error(`[sandbox-manager] Dependencies installed in ${elapsedMs}ms (exit ${result.exitCode})`)
+  } catch (err: unknown) {
+    const elapsedMs = Date.now() - startMs
+    // CommandExitError has a .result with exitCode/stdout/stderr
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error(`[sandbox-manager] Dependency install failed (${elapsedMs}ms): ${detail}`)
   }
 }
 

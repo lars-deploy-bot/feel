@@ -29,6 +29,29 @@ export const DEFAULT_TEMPLATE_ID = "tmpl_blank"
 /** Preview subdomain prefix (e.g. preview--label.domain) */
 export const PREVIEW_PREFIX = "preview--"
 
+/**
+ * Convert a workspace domain to a preview subdomain label.
+ * Pure function — no env/config dependency.
+ *
+ * @example domainToPreviewLabel("larry.alive.best") → "larry-alive-best"
+ */
+export function domainToPreviewLabel(domain: string): string {
+  return domain.replace(/\./g, "-")
+}
+
+/**
+ * Build a full preview URL from hostname + previewBase.
+ * Pure function — no env/config dependency. Use in Node packages.
+ * For browser code with env access, use getPreviewUrl() from preview-utils.ts instead.
+ *
+ * @example buildPreviewUrl("larry.alive.best", "alive.best") → "https://preview--larry-alive-best.alive.best/"
+ */
+export function buildPreviewUrl(hostname: string, previewBase: string, path = "/"): string {
+  const label = domainToPreviewLabel(hostname)
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`
+  return `https://${PREVIEW_PREFIX}${label}.${previewBase}${normalizedPath}`
+}
+
 // =============================================================================
 // Cookie & Session
 // =============================================================================

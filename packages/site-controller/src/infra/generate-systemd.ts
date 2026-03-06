@@ -300,6 +300,7 @@ async function main() {
         PREVIEW_BASE: previewBase,
         LISTEN_ADDR: `:${previewPort}`,
         PORT_MAP_PATH: portMapPath,
+        SANDBOX_MAP_PATH: `${generatedDir}/sandbox-map.json`,
         FRAME_ANCESTORS: frameAncestors.join(","),
         IMAGES_STORAGE: config.paths.imagesStorage,
       },

@@ -11,6 +11,7 @@
 
 import * as path from "node:path"
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk"
+import { buildPreviewUrl } from "@webalive/shared"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import type { Sandbox } from "e2b"
 import { z } from "zod"
@@ -168,12 +169,41 @@ const editTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
   )
 }
 
-const bashTool = (sandbox: Sandbox) =>
+/** Config for preview URL generation */
+export interface E2bMcpConfig {
+  /** The workspace hostname, e.g. "larry.alive.best" */
+  hostname: string
+  /** The preview base domain, e.g. "alive.best" */
+  previewBase: string
+}
+
+/**
+ * Detect port numbers in command output (e.g. "localhost:3000", "port 5173", ":8080")
+ * and append the preview URL so Claude can share it with the user.
+ */
+function appendPortUrls(output: string, hostname: string, previewBase: string): string {
+  const portPattern = /(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d{2,5})|(?:port\s+)(\d{2,5})/gi
+  const ports = new Set<string>()
+
+  for (const match of output.matchAll(portPattern)) {
+    const port = match[1] || match[2]
+    if (port) ports.add(port)
+  }
+
+  if (ports.size === 0) return output
+
+  const url = buildPreviewUrl(hostname, previewBase)
+  return `${output}\n\nPreview: ${url}\nShare this URL with visitors — NOT localhost.`
+}
+
+const bashTool = (sandbox: Sandbox, mcpConfig: E2bMcpConfig) =>
   tool(
     "Bash",
     "Executes a given bash command and returns its output. " +
       "The working directory persists between commands, but shell state does not. " +
-      "Use background: true for long-running commands (e.g. dev servers) — returns immediately with the PID.",
+      "Use background: true for long-running commands (e.g. dev servers) — returns immediately with the PID. " +
+      "IMPORTANT: This runs inside a cloud sandbox. localhost is NOT accessible to the user. " +
+      "When a server starts, share the preview URL shown in the output, never localhost.",
     {
       command: z.string().describe("The command to execute"),
       timeout: z.number().optional().describe("Optional timeout in milliseconds (max 600000)"),
@@ -207,18 +237,29 @@ const bashTool = (sandbox: Sandbox) =>
         if (result.exitCode !== 0) {
           output += `\nExit code: ${result.exitCode}`
         }
-        return textResult(output || "(no output)")
+        output = output || "(no output)"
+
+        return textResult(appendPortUrls(output, mcpConfig.hostname, mcpConfig.previewBase))
       } catch (err) {
         return errorResult(`Command failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     },
   )
 
-export function createE2bMcp(sandbox: Sandbox, reportError?: E2bErrorReporter) {
+export function createE2bMcp(sandbox: Sandbox, reportError?: E2bErrorReporter, config?: E2bMcpConfig) {
   const report = reportError ?? noopReporter
+  const mcpConfig: E2bMcpConfig = config ?? {
+    hostname: "sandbox",
+    previewBase: process.env.NEXT_PUBLIC_PREVIEW_BASE ?? "alive.best",
+  }
   return createSdkMcpServer({
     name: "e2b",
     version: "1.0.0",
-    tools: [readTool(sandbox, report), writeTool(sandbox, report), editTool(sandbox, report), bashTool(sandbox)],
+    tools: [
+      readTool(sandbox, report),
+      writeTool(sandbox, report),
+      editTool(sandbox, report),
+      bashTool(sandbox, mcpConfig),
+    ],
   })
 }

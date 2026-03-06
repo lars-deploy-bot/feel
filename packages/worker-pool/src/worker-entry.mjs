@@ -905,12 +905,19 @@ async function handleQuery(ipc, requestId, payload) {
         const manager = getSandboxManager(template)
         const hostWorkspacePath = process.cwd()
         const sandbox = await manager.getOrCreate(payload.sandboxDomain, hostWorkspacePath)
-        mcpServers.e2b = createE2bMcp(sandbox, (error, context) => {
-          Sentry.captureException(error, {
-            tags: { component: "e2b", security: "path_traversal", domain: payload.sandboxDomain.hostname },
-            extra: context,
-          })
-        })
+        mcpServers.e2b = createE2bMcp(
+          sandbox,
+          (error, context) => {
+            Sentry.captureException(error, {
+              tags: { component: "e2b", security: "path_traversal", domain: payload.sandboxDomain.hostname },
+              extra: context,
+            })
+          },
+          {
+            hostname: payload.sandboxDomain.hostname,
+            previewBase: DEFAULTS.PREVIEW_BASE,
+          },
+        )
         // Swap SDK built-in file/shell tools for E2B MCP equivalents.
         // This is the SINGLE place E2B tool routing happens — not in agent-constants.mjs.
         disallowedTools.push(...E2B_DISABLED_SDK_TOOLS)
