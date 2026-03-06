@@ -14,16 +14,12 @@ const DEFAULT_ENV_FILE = ".env.e2e.local"
 const ENV_FILE = (process.env.ENV_FILE || DEFAULT_ENV_FILE).trim()
 
 if (ENV_FILE.length === 0) {
-  throw new Error(
-    "\n❌ ENV_FILE must not be empty.\n" + "   Typical values: .env.e2e.local, .env.preview, .env.staging\n",
-  )
+  throw new Error("\n❌ ENV_FILE must not be empty.\n   Typical values: .env.e2e.local, .env.preview, .env.staging\n")
 }
 
 if (!existsSync(ENV_FILE)) {
   throw new Error(
-    `\n❌ Missing env file: ${ENV_FILE}\n` +
-      "   Typical values: .env.e2e.local, .env.preview, .env.staging\n" +
-      "   Example: ENV_FILE=.env.e2e.local bun run test:e2e\n",
+    `\n❌ Missing env file: ${ENV_FILE}\n   Typical values: .env.e2e.local, .env.preview, .env.staging\n   Example: ENV_FILE=.env.e2e.local bun run test:e2e\n`,
   )
 }
 
@@ -36,7 +32,7 @@ if (result.error) {
 // Verify TEST_ENV was loaded
 if (!process.env.TEST_ENV) {
   throw new Error(
-    `\n❌ ${ENV_FILE} is missing TEST_ENV\n` + "   The file must declare one of: TEST_ENV=local|preview|staging\n",
+    `\n❌ ${ENV_FILE} is missing TEST_ENV\n   The file must declare one of: TEST_ENV=local|preview|staging\n`,
   )
 }
 

@@ -5,7 +5,7 @@ import "./e2e-tests/lib/load-env"
 import { defineConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
 import { requireEnvAppBaseUrl } from "./e2e-tests/lib/base-url"
-import { TEST_ENV, TIMEOUTS, assertStandardE2ETarget, isRemoteEnv } from "./e2e-tests/lib/test-env"
+import { assertStandardE2ETarget, isRemoteEnv, TEST_ENV, TIMEOUTS } from "./e2e-tests/lib/test-env"
 
 const APP_BASE_URL = requireEnvAppBaseUrl()
 assertStandardE2ETarget(TEST_ENV, APP_BASE_URL)

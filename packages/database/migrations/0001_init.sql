@@ -36,7 +36,7 @@ RETURNS text
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    rnd text := substr(encode(gen_random_bytes(8), 'hex'), 1, 16);
+    rnd text := substr(encode(extensions.gen_random_bytes(8), 'hex'), 1, 16);
     norm_prefix text := CASE WHEN right(p_prefix, 1) = '_' THEN p_prefix ELSE p_prefix || '_' END;
 BEGIN
     RETURN norm_prefix || rnd;
@@ -101,7 +101,7 @@ CREATE OR REPLACE FUNCTION iam.generate_invite_code() RETURNS text LANGUAGE plpg
 DECLARE candidate text;
 BEGIN
   LOOP
-    candidate := replace(encode(gen_random_bytes(5), 'base64'), '/', 'A');
+    candidate := replace(encode(extensions.gen_random_bytes(5), 'base64'), '/', 'A');
     candidate := replace(candidate, '+', 'B');
     candidate := replace(candidate, '=', '');
     EXIT WHEN NOT EXISTS (SELECT 1 FROM iam.users u WHERE u.invite_code = candidate);
@@ -156,7 +156,7 @@ $$;
 CREATE OR REPLACE FUNCTION app.automation_jobs_generate_webhook_secret() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     IF NEW.trigger_type = 'webhook' AND NEW.webhook_secret IS NULL THEN
-        NEW.webhook_secret = encode(gen_random_bytes(32), 'hex');
+        NEW.webhook_secret = encode(extensions.gen_random_bytes(32), 'hex');
     END IF;
     RETURN NEW;
 END;
@@ -243,7 +243,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'pg_catalog', 'public', 
 $$;
 
 CREATE TABLE iam.sessions (
-    session_id uuid DEFAULT gen_random_uuid() PRIMARY KEY NOT NULL,
+    session_id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY NOT NULL,
     user_id text NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
     domain_id text NOT NULL,
     tab_id text NOT NULL,
@@ -334,7 +334,7 @@ CREATE TABLE app.templates (
 );
 
 CREATE TABLE app.conversations (
-    conversation_id text DEFAULT (gen_random_uuid())::text PRIMARY KEY NOT NULL,
+    conversation_id text DEFAULT (extensions.gen_random_uuid())::text PRIMARY KEY NOT NULL,
     user_id text NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
     org_id text NOT NULL REFERENCES iam.orgs(org_id) ON DELETE CASCADE,
     workspace text NOT NULL,
@@ -351,7 +351,7 @@ CREATE TABLE app.conversations (
 );
 
 CREATE TABLE app.conversation_tabs (
-    tab_id text DEFAULT (gen_random_uuid())::text PRIMARY KEY NOT NULL,
+    tab_id text DEFAULT (extensions.gen_random_uuid())::text PRIMARY KEY NOT NULL,
     conversation_id text NOT NULL REFERENCES app.conversations(conversation_id) ON DELETE CASCADE,
     name text DEFAULT 'current' NOT NULL,
     position integer DEFAULT 0 NOT NULL,
@@ -362,7 +362,7 @@ CREATE TABLE app.conversation_tabs (
 );
 
 CREATE TABLE app.messages (
-    message_id text DEFAULT (gen_random_uuid())::text PRIMARY KEY NOT NULL,
+    message_id text DEFAULT (extensions.gen_random_uuid())::text PRIMARY KEY NOT NULL,
     tab_id text NOT NULL REFERENCES app.conversation_tabs(tab_id) ON DELETE CASCADE,
     seq integer NOT NULL,
     type text NOT NULL CHECK (type IN ('user', 'assistant', 'tool_use', 'tool_result', 'thinking', 'system', 'sdk_message')),
@@ -513,7 +513,7 @@ CREATE TABLE app.errors (
 -- ============================================================================
 
 CREATE TABLE integrations.providers (
-    provider_id uuid DEFAULT gen_random_uuid() PRIMARY KEY NOT NULL,
+    provider_id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY NOT NULL,
     provider_key text NOT NULL UNIQUE,
     display_name text NOT NULL,
     is_active boolean DEFAULT true NOT NULL,
@@ -524,7 +524,7 @@ CREATE TABLE integrations.providers (
 );
 
 CREATE TABLE integrations.access_policies (
-    policy_id uuid DEFAULT gen_random_uuid() PRIMARY KEY NOT NULL,
+    policy_id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY NOT NULL,
     provider_id uuid NOT NULL REFERENCES integrations.providers(provider_id) ON DELETE CASCADE,
     user_id text NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
     created_at timestamptz DEFAULT now(),
@@ -536,7 +536,7 @@ CREATE TABLE integrations.access_policies (
 -- ============================================================================
 
 CREATE TABLE lockbox.user_secrets (
-    user_secret_id uuid DEFAULT gen_random_uuid() PRIMARY KEY NOT NULL,
+    user_secret_id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY NOT NULL,
     user_id text NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
     instance_id text DEFAULT 'default' NOT NULL,
     namespace text DEFAULT 'default' NOT NULL,
@@ -557,7 +557,7 @@ CREATE TABLE lockbox.user_secrets (
 );
 
 CREATE TABLE lockbox.secret_keys (
-    secret_id uuid DEFAULT gen_random_uuid() PRIMARY KEY NOT NULL,
+    secret_id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY NOT NULL,
     user_id text NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
     instance_id text DEFAULT 'default' NOT NULL,
     key_id text NOT NULL UNIQUE,

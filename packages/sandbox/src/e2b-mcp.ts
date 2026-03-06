@@ -1,9 +1,9 @@
 /**
  * E2B MCP Server
  *
- * Provides Read, Write, Edit, and Bash tools that execute against an E2B sandbox
- * instead of the local filesystem. Tool names and input schemas match the SDK
- * built-ins exactly so Claude uses them naturally.
+ * Provides Read, Write, Edit, Glob, Grep, and Bash tools that
+ * execute against an E2B sandbox instead of the local filesystem. Tool names
+ * and input schemas match the SDK built-ins exactly so Claude uses them naturally.
  *
  * The SDK built-in tools are disabled via `disallowedTools` when this server is active.
  * Claude sees `mcp__e2b__Read` etc. with identical schemas to what it's trained on.
@@ -11,11 +11,15 @@
 
 import * as path from "node:path"
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk"
-import { buildPreviewUrl } from "@webalive/shared"
+import { TOOL_LIMITS, buildPreviewUrl, truncateOutput } from "@webalive/shared"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import type { Sandbox } from "e2b"
 import { z } from "zod"
 import { SANDBOX_WORKSPACE_ROOT } from "./manager.js"
+
+// =============================================================================
+// SHARED HELPERS
+// =============================================================================
 
 function textResult(text: string) {
   return { content: [{ type: "text" as const, text }] }
@@ -51,13 +55,44 @@ function resolveWorkspacePath(
   return { resolved }
 }
 
+/** Config for preview URL generation */
+export interface E2bMcpConfig {
+  /** The workspace hostname, e.g. "larry.alive.best" */
+  hostname: string
+  /** The preview base domain, e.g. "alive.best" */
+  previewBase: string
+}
+
+/**
+ * Detect port numbers in command output (e.g. "localhost:3000", "port 5173", ":8080")
+ * and append the preview URL so Claude can share it with the user.
+ */
+function appendPortUrls(output: string, hostname: string, previewBase: string): string {
+  const portPattern = /(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d{2,5})|(?:port\s+)(\d{2,5})/gi
+  const ports = new Set<string>()
+
+  for (const match of output.matchAll(portPattern)) {
+    const port = match[1] || match[2]
+    if (port) ports.add(port)
+  }
+
+  if (ports.size === 0) return output
+
+  const url = buildPreviewUrl(hostname, previewBase)
+  return `${output}\n\nPreview: ${url}\nShare this URL with visitors — NOT localhost.`
+}
+
+// =============================================================================
+// FILE TOOLS
+// =============================================================================
+
 const readTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
   const NAME = "Read"
   return tool(
     NAME,
     "Reads a file from the workspace filesystem. " +
       "The file_path parameter must be an absolute path, not a relative path. " +
-      "By default, it reads up to 2000 lines starting from the beginning of the file. " +
+      `By default, it reads up to ${TOOL_LIMITS.READ_DEFAULT_LINES} lines starting from the beginning of the file. ` +
       "You can optionally specify a line offset and limit (especially handy for long files). " +
       "Results are returned using cat -n format, with line numbers starting at 1.",
     {
@@ -115,6 +150,43 @@ const writeTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
   )
 }
 
+/**
+ * Shared string-edit logic for the Edit tool.
+ * Validates inputs, reads file, performs replacement, writes back.
+ */
+async function performStringEdit(
+  sandbox: Sandbox,
+  resolvedPath: string,
+  displayPath: string,
+  oldString: string,
+  newString: string,
+  replaceAll: boolean,
+) {
+  if (oldString === newString) {
+    return errorResult("old_string and new_string are the same")
+  }
+
+  const content = await sandbox.files.read(resolvedPath)
+
+  if (!content.includes(oldString)) {
+    return errorResult(`old_string not found in ${resolvedPath}`)
+  }
+
+  if (!replaceAll) {
+    const occurrences = content.split(oldString).length - 1
+    if (occurrences > 1) {
+      return errorResult(
+        `old_string appears ${occurrences} times in the file. Use replace_all or provide more context to make it unique.`,
+      )
+    }
+  }
+
+  const updated = replaceAll ? content.replaceAll(oldString, newString) : content.replace(oldString, newString)
+
+  await sandbox.files.write(resolvedPath, updated)
+  return textResult(`Successfully edited ${displayPath}`)
+}
+
 const editTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
   const NAME = "Edit"
   return tool(
@@ -137,31 +209,7 @@ const editTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
       const result = resolveWorkspacePath(file_path, NAME, reportError)
       if ("error" in result) return errorResult(result.error)
       try {
-        if (old_string === new_string) {
-          return errorResult("old_string and new_string are the same")
-        }
-
-        const content = await sandbox.files.read(result.resolved)
-
-        if (!content.includes(old_string)) {
-          return errorResult(`old_string not found in ${result.resolved}`)
-        }
-
-        if (!replace_all) {
-          const occurrences = content.split(old_string).length - 1
-          if (occurrences > 1) {
-            return errorResult(
-              `old_string appears ${occurrences} times in the file. Use replace_all or provide more context to make it unique.`,
-            )
-          }
-        }
-
-        const updated = replace_all
-          ? content.replaceAll(old_string, new_string)
-          : content.replace(old_string, new_string)
-
-        await sandbox.files.write(result.resolved, updated)
-        return textResult(`Successfully edited ${file_path}`)
+        return await performStringEdit(sandbox, result.resolved, file_path, old_string, new_string, replace_all)
       } catch (err) {
         return errorResult(`Failed to edit ${file_path}: ${err instanceof Error ? err.message : String(err)}`)
       }
@@ -169,32 +217,87 @@ const editTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
   )
 }
 
-/** Config for preview URL generation */
-export interface E2bMcpConfig {
-  /** The workspace hostname, e.g. "larry.alive.best" */
-  hostname: string
-  /** The preview base domain, e.g. "alive.best" */
-  previewBase: string
+// =============================================================================
+// SEARCH TOOLS
+// =============================================================================
+
+const globTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
+  const NAME = "Glob"
+  return tool(
+    NAME,
+    "Find files under the workspace using a glob pattern. Returns matching file paths sorted by modification time.",
+    {
+      pattern: z.string().describe("Glob pattern, e.g. **/*.ts"),
+      path: z.string().optional().describe("Optional absolute search root directory (defaults to workspace root)"),
+    },
+    async ({ pattern, path: searchPath }) => {
+      const searchRoot = searchPath ?? SANDBOX_WORKSPACE_ROOT
+      const pathResult = resolveWorkspacePath(searchRoot, NAME, reportError)
+      if ("error" in pathResult) return errorResult(pathResult.error)
+
+      try {
+        const cmd = `rg --files --hidden -g ${JSON.stringify(pattern)} ${JSON.stringify(pathResult.resolved)}`
+        const result = await sandbox.commands.run(cmd, {
+          timeoutMs: TOOL_LIMITS.SEARCH_TIMEOUT_MS,
+          cwd: SANDBOX_WORKSPACE_ROOT,
+        })
+
+        const output = (result.stdout || "").trim()
+        if (!output) return textResult("(no matches)")
+
+        return textResult(truncateOutput(output, TOOL_LIMITS.SEARCH_OUTPUT))
+      } catch (err) {
+        return errorResult(`Glob failed: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    },
+  )
 }
 
-/**
- * Detect port numbers in command output (e.g. "localhost:3000", "port 5173", ":8080")
- * and append the preview URL so Claude can share it with the user.
- */
-function appendPortUrls(output: string, hostname: string, previewBase: string): string {
-  const portPattern = /(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d{2,5})|(?:port\s+)(\d{2,5})/gi
-  const ports = new Set<string>()
+const grepTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
+  const NAME = "Grep"
+  return tool(
+    NAME,
+    "Search file content within the workspace using ripgrep and return matching lines with line numbers.",
+    {
+      pattern: z.string().describe("Regex or plain text pattern to search"),
+      path: z.string().optional().describe("Optional absolute search root directory (defaults to workspace root)"),
+      include: z.string().optional().describe("Optional glob include filter, e.g. *.tsx"),
+      max_results: z
+        .number()
+        .optional()
+        .describe(`Maximum number of matches to return (default ${TOOL_LIMITS.GREP_DEFAULT_MAX_RESULTS})`),
+    },
+    async ({ pattern, path: searchPath, include, max_results }) => {
+      const searchRoot = searchPath ?? SANDBOX_WORKSPACE_ROOT
+      const pathResult = resolveWorkspacePath(searchRoot, NAME, reportError)
+      if ("error" in pathResult) return errorResult(pathResult.error)
 
-  for (const match of output.matchAll(portPattern)) {
-    const port = match[1] || match[2]
-    if (port) ports.add(port)
-  }
+      try {
+        const maxResults = Math.min(TOOL_LIMITS.GREP_MAX_RESULTS, max_results ?? TOOL_LIMITS.GREP_DEFAULT_MAX_RESULTS)
 
-  if (ports.size === 0) return output
+        const args = ["rg", "--line-number", "--no-heading", "--color", "never", "--max-count", String(maxResults)]
+        if (include) args.push("--glob", JSON.stringify(include))
+        args.push(JSON.stringify(pattern), JSON.stringify(pathResult.resolved))
 
-  const url = buildPreviewUrl(hostname, previewBase)
-  return `${output}\n\nPreview: ${url}\nShare this URL with visitors — NOT localhost.`
+        const result = await sandbox.commands.run(args.join(" "), {
+          timeoutMs: TOOL_LIMITS.SEARCH_TIMEOUT_MS,
+          cwd: SANDBOX_WORKSPACE_ROOT,
+        })
+
+        const output = (result.stdout || "").trim()
+        if (!output) return textResult("(no matches)")
+
+        return textResult(truncateOutput(output, TOOL_LIMITS.SEARCH_OUTPUT))
+      } catch (err) {
+        return errorResult(`Grep failed: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    },
+  )
 }
+
+// =============================================================================
+// SHELL TOOL
+// =============================================================================
 
 const bashTool = (sandbox: Sandbox, mcpConfig: E2bMcpConfig) =>
   tool(
@@ -206,7 +309,10 @@ const bashTool = (sandbox: Sandbox, mcpConfig: E2bMcpConfig) =>
       "When a server starts, share the preview URL shown in the output, never localhost.",
     {
       command: z.string().describe("The command to execute"),
-      timeout: z.number().optional().describe("Optional timeout in milliseconds (max 600000)"),
+      timeout: z
+        .number()
+        .optional()
+        .describe(`Optional timeout in milliseconds (max ${TOOL_LIMITS.BASH_MAX_TIMEOUT_MS})`),
       background: z
         .boolean()
         .optional()
@@ -228,7 +334,7 @@ const bashTool = (sandbox: Sandbox, mcpConfig: E2bMcpConfig) =>
           return textResult(`Background process started (PID: ${handle.pid})`)
         }
 
-        const timeoutMs = timeout ? Math.min(timeout, 600_000) : 120_000
+        const timeoutMs = Math.min(TOOL_LIMITS.BASH_MAX_TIMEOUT_MS, timeout ?? TOOL_LIMITS.BASH_TIMEOUT_MS)
         const result = await sandbox.commands.run(command, { timeoutMs, cwd: SANDBOX_WORKSPACE_ROOT })
 
         let output = ""
@@ -239,12 +345,18 @@ const bashTool = (sandbox: Sandbox, mcpConfig: E2bMcpConfig) =>
         }
         output = output || "(no output)"
 
-        return textResult(appendPortUrls(output, mcpConfig.hostname, mcpConfig.previewBase))
+        return textResult(
+          appendPortUrls(truncateOutput(output, TOOL_LIMITS.BASH_OUTPUT), mcpConfig.hostname, mcpConfig.previewBase),
+        )
       } catch (err) {
         return errorResult(`Command failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     },
   )
+
+// =============================================================================
+// SERVER
+// =============================================================================
 
 export function createE2bMcp(sandbox: Sandbox, reportError?: E2bErrorReporter, config?: E2bMcpConfig) {
   const report = reportError ?? noopReporter
@@ -259,6 +371,8 @@ export function createE2bMcp(sandbox: Sandbox, reportError?: E2bErrorReporter, c
       readTool(sandbox, report),
       writeTool(sandbox, report),
       editTool(sandbox, report),
+      globTool(sandbox, report),
+      grepTool(sandbox, report),
       bashTool(sandbox, mcpConfig),
     ],
   })

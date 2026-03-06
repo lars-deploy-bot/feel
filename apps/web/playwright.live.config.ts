@@ -3,7 +3,7 @@ import "./e2e-tests/lib/load-env"
 
 import { defineConfig } from "@playwright/test"
 import { requireEnvAppBaseUrl } from "./e2e-tests/lib/base-url"
-import { TEST_ENV, assertLiveE2ETarget } from "./e2e-tests/lib/test-env"
+import { assertLiveE2ETarget, TEST_ENV } from "./e2e-tests/lib/test-env"
 
 /**
  * Playwright Config - Live Preview/Staging API Integration Tests

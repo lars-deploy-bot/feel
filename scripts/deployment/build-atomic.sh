@@ -169,21 +169,32 @@ if [ -f "$WEB_ENV_FILE" ]; then
     log_step "Loaded env from .env.$ENV"
 fi
 
-log_step "Building web app..."
+log_step "Building web dependencies..."
 BUILD_START=$(date +%s)
 
 BUILD_OUTPUT_LOG="/tmp/alive-nextjs-build-${ENV}.log"
-BUILD_ARGS=(run build --filter=@webalive/web)
+DEPS_BUILD_ARGS=(run build --filter=@webalive/web^...)
 if is_truthy "$CLEAN_BUILD"; then
-    BUILD_ARGS+=(--force)
+    DEPS_BUILD_ARGS+=(--force)
 fi
 
-if ! bun "${BUILD_ARGS[@]}" > "$BUILD_OUTPUT_LOG" 2>&1; then
+if ! bun "${DEPS_BUILD_ARGS[@]}" > "$BUILD_OUTPUT_LOG" 2>&1; then
+    echo ""
+    banner_error "DEPENDENCY BUILD FAILED"
+    echo -e "  ${RED}Log: $BUILD_OUTPUT_LOG${NC}"
+    echo ""
+    grep -E "error TS|Error:|error:|Type error|Module not found|Cannot find" "$BUILD_OUTPUT_LOG" | head -30
+    echo ""
+    exit 1
+fi
+
+log_step "Building web app..."
+if ! bun run --cwd "$WEB_DIR" build >> "$BUILD_OUTPUT_LOG" 2>&1; then
     echo ""
     banner_error "NEXT.JS BUILD FAILED"
     echo -e "  ${RED}Log: $BUILD_OUTPUT_LOG${NC}"
     echo ""
-    grep -E "error TS|Error:|error:|Type error|Module not found|Cannot find" "$BUILD_OUTPUT_LOG" | head -30
+    grep -E "error TS|Error:|error:|Type error|Module not found|Cannot find" "$BUILD_OUTPUT_LOG" | tail -30
     echo ""
     exit 1
 fi

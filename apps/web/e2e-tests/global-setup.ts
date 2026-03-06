@@ -256,6 +256,7 @@ export default async function globalSetup(config: FullConfig) {
   console.log(`📝 [Global Setup] Run ID: ${runId}`)
   console.log(`🌍 [Global Setup] Test env: ${TEST_ENV}`)
   console.log(`🔗 [Global Setup] Base URL: ${baseUrl}`)
+  console.log(`🗄️ [Global Setup] Supabase URL: ${process.env.SUPABASE_URL ?? "<unset>"}`)
   console.log(`🔧 [Global Setup] Mode: ${isMultiPort ? "multi-port" : "single-server"}\n`)
 
   const bootstrapHeaders = buildTestHeaders(true)

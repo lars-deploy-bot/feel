@@ -2,19 +2,13 @@ import { spawn } from "node:child_process"
 import { lstat, mkdir, readFile, realpath, stat, writeFile } from "node:fs/promises"
 import { dirname, isAbsolute, resolve } from "node:path"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { isHeavyBashCommand, truncateOutput } from "@webalive/shared"
+import { TOOL_LIMITS, isHeavyBashCommand, truncateOutput } from "@webalive/shared"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { z } from "zod"
 import type { ToolResult } from "../../lib/api-client.js"
 import { sanitizeSubprocessEnv } from "../../lib/env-sanitizer.js"
 import { safeSpawnSync } from "../../lib/safe-spawn.js"
 import { validateWorkspacePath } from "../../lib/workspace-validator.js"
-
-const DEFAULT_READ_LIMIT = 2000
-const DEFAULT_GREP_MAX_RESULTS = 50
-const MAX_GREP_MAX_RESULTS = 200
-const DEFAULT_BASH_TIMEOUT_MS = 120_000
-const MAX_BASH_TIMEOUT_MS = 600_000
 
 export const sandboxedFsReadParamsSchema = {
   file_path: z.string().describe("Absolute or workspace-relative path to the file"),
@@ -169,7 +163,7 @@ function formatReadOutput(content: string, offset?: number, limit?: number): str
   const lines = content.split("\n")
 
   const startLine = offset && offset > 0 ? offset : 1
-  const maxLines = limit && limit > 0 ? limit : DEFAULT_READ_LIMIT
+  const maxLines = limit && limit > 0 ? limit : TOOL_LIMITS.READ_DEFAULT_LINES
 
   const startIndex = Math.max(0, startLine - 1)
   const slice = lines.slice(startIndex, startIndex + maxLines)
@@ -298,7 +292,7 @@ export const sandboxedFsGlobTool = tool(
       const searchRoot = await assertSearchPath(args.path, workspaceRoot)
       const result = safeSpawnSync("rg", ["--files", "--hidden", "-g", args.pattern, searchRoot], {
         cwd: workspaceRoot,
-        timeout: 30_000,
+        timeout: TOOL_LIMITS.SEARCH_TIMEOUT_MS,
       })
 
       if (result.error) {
@@ -314,7 +308,7 @@ export const sandboxedFsGlobTool = tool(
         return textResult("(no matches)")
       }
 
-      return textResult(truncateOutput(output, { maxLines: 400, maxChars: 20_000 }))
+      return textResult(truncateOutput(output, TOOL_LIMITS.SEARCH_OUTPUT))
     } catch (error) {
       return errorResult("Glob failed", error instanceof Error ? error.message : String(error))
     }
@@ -330,7 +324,10 @@ export const sandboxedFsGrepTool = tool(
 
     try {
       const searchRoot = await assertSearchPath(args.path, workspaceRoot)
-      const maxResults = Math.min(MAX_GREP_MAX_RESULTS, args.max_results ?? DEFAULT_GREP_MAX_RESULTS)
+      const maxResults = Math.min(
+        TOOL_LIMITS.GREP_MAX_RESULTS,
+        args.max_results ?? TOOL_LIMITS.GREP_DEFAULT_MAX_RESULTS,
+      )
 
       const grepArgs = ["--line-number", "--no-heading", "--color", "never", "--max-count", String(maxResults)]
       if (args.include) {
@@ -340,7 +337,7 @@ export const sandboxedFsGrepTool = tool(
 
       const result = safeSpawnSync("rg", grepArgs, {
         cwd: workspaceRoot,
-        timeout: 30_000,
+        timeout: TOOL_LIMITS.SEARCH_TIMEOUT_MS,
       })
 
       if (result.error) {
@@ -360,7 +357,7 @@ export const sandboxedFsGrepTool = tool(
         return textResult("(no matches)")
       }
 
-      return textResult(truncateOutput(output, { maxLines: 400, maxChars: 20_000 }))
+      return textResult(truncateOutput(output, TOOL_LIMITS.SEARCH_OUTPUT))
     } catch (error) {
       return errorResult("Grep failed", error instanceof Error ? error.message : String(error))
     }
@@ -397,7 +394,7 @@ export const sandboxedFsBashTool = tool(
     }
 
     try {
-      const timeoutMs = Math.min(MAX_BASH_TIMEOUT_MS, args.timeout ?? DEFAULT_BASH_TIMEOUT_MS)
+      const timeoutMs = Math.min(TOOL_LIMITS.BASH_MAX_TIMEOUT_MS, args.timeout ?? TOOL_LIMITS.BASH_TIMEOUT_MS)
       const result = safeSpawnSync("bash", ["-lc", args.command], {
         cwd: workspaceRoot,
         timeout: timeoutMs,
@@ -416,12 +413,12 @@ export const sandboxedFsBashTool = tool(
       if (typeof result.status === "number" && result.status !== 0) {
         output = `${output}\n\nExit code: ${result.status}`
         return {
-          content: [{ type: "text", text: truncateOutput(output, { maxLines: 200, maxChars: 20_000 }) }],
+          content: [{ type: "text", text: truncateOutput(output, TOOL_LIMITS.BASH_OUTPUT) }],
           isError: true,
         }
       }
 
-      return textResult(truncateOutput(output, { maxLines: 200, maxChars: 20_000 }))
+      return textResult(truncateOutput(output, TOOL_LIMITS.BASH_OUTPUT))
     } catch (error) {
       return errorResult("Command execution failed", error instanceof Error ? error.message : String(error))
     }

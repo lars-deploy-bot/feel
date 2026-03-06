@@ -55,14 +55,14 @@ Create `.env.e2e.local` with a local app URL and isolated Supabase credentials:
 TEST_ENV=local
 NEXT_PUBLIC_APP_URL=http://127.0.0.1:9547
 NEXT_PUBLIC_PREVIEW_BASE=alive.local
-SUPABASE_URL=https://your-isolated-project.supabase.co
+SUPABASE_URL=http://10.8.0.1:8000
 SUPABASE_ANON_KEY=sb_publishable_...
 SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
-NEXT_PUBLIC_SUPABASE_URL=https://your-isolated-project.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=http://10.8.0.1:8000
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
 ```
 
-`bun run test:e2e` now assumes this local lane. It must not point at shared staging or production data.
+`bun run test:e2e` now assumes this local lane. If `SUPABASE_URL` is a private HTTP target such as `http://10.8.0.1:8000`, the wrapper script opens an SSH tunnel and rewrites the runtime env to loopback before Playwright starts. It must not point at shared staging or production data.
 
 ### Live Deployed Tests
 

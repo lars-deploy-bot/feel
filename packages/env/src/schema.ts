@@ -19,6 +19,43 @@ export const httpsUrl = z
   .url()
   .regex(/^https:\/\//, "Must use HTTPS")
 
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1"
+}
+
+/**
+ * Supabase URLs are HTTPS in shared/deployed environments.
+ * For isolated local E2E and local Supabase CLI/tunnel usage, allow loopback HTTP only.
+ */
+export const supabaseUrl = z
+  .string()
+  .url()
+  .superRefine((value, ctx) => {
+    let parsed: URL
+    try {
+      parsed = new URL(value)
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Must be a valid URL",
+      })
+      return
+    }
+
+    if (parsed.protocol === "https:") {
+      return
+    }
+
+    if (parsed.protocol === "http:" && isLoopbackHostname(parsed.hostname)) {
+      return
+    }
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Must use HTTPS, or HTTP on localhost/127.0.0.1 for local Supabase",
+    })
+  })
+
 export const supabasePublishableKey = z
   .string()
   .regex(/^(eyJ|sb_publishable_)/, "Must be valid Supabase publishable key")
@@ -51,7 +88,7 @@ export const serverSchema = {
   ANTHROPIC_API_KEY: anthropicApiKey.optional(),
 
   // Supabase (server-side)
-  SUPABASE_URL: httpsUrl,
+  SUPABASE_URL: supabaseUrl,
   SUPABASE_ANON_KEY: supabasePublishableKey,
   SUPABASE_SERVICE_ROLE_KEY: supabaseSecretKey.optional(),
   SUPABASE_ACCESS_TOKEN: z.string().optional(),
@@ -165,7 +202,7 @@ export const serverSchema = {
  * These are exposed to the browser (must be prefixed with NEXT_PUBLIC_)
  */
 export const clientSchema = {
-  NEXT_PUBLIC_SUPABASE_URL: httpsUrl,
+  NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: supabasePublishableKey,
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_PREVIEW_BASE: z.string().optional().default(""),

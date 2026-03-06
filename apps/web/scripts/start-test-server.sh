@@ -29,6 +29,10 @@ export STREAM_ENV=local
 export PLAYWRIGHT_TEST=true
 export TEST_MODE=true
 export SKIP_SSL_VALIDATION=true
+export SERVER_CONFIG_PATH=
+export HOME=/tmp/alive-e2e-home
+
+mkdir -p "$HOME"
 
 echo "[Test Server] Starting local test server on port 9547"
 exec bun x --bun next dev -p 9547
