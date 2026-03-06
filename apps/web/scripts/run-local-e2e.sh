@@ -41,6 +41,7 @@ if [[ "${TEST_ENV:-}" != "local" ]]; then
 fi
 
 resolve_supabase_source
+sync_remote_supabase_credentials
 
 bash "$SCRIPT_DIR/reset-e2e-supabase.sh"
 
@@ -97,6 +98,9 @@ if is_remote_http_supabase; then
   export SUPABASE_URL="$local_target"
   export NEXT_PUBLIC_SUPABASE_URL="$local_target"
 
+  upsert_env_var "SUPABASE_ANON_KEY" "$SUPABASE_ANON_KEY"
+  upsert_env_var "SUPABASE_SERVICE_ROLE_KEY" "$SUPABASE_SERVICE_ROLE_KEY"
+  upsert_env_var "NEXT_PUBLIC_SUPABASE_ANON_KEY" "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
   upsert_env_var "SUPABASE_URL" "$SUPABASE_URL"
   upsert_env_var "NEXT_PUBLIC_SUPABASE_URL" "$NEXT_PUBLIC_SUPABASE_URL"
 

@@ -12,6 +12,7 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
+import { getBuildInfo as getBuildMetadata } from "@/lib/build-info"
 
 export interface ErrorLogEntry {
   id: string
@@ -168,36 +169,25 @@ export const errorLogger = {
 // Stream Error Logging (with build info for debugging)
 // ============================================================================
 
-interface BuildInfo {
+interface StreamBuildInfo {
   branch: string
   buildTime: string
   env: string
 }
 
-let buildInfo: BuildInfo | null = null
+let streamBuildInfo: StreamBuildInfo | null = null
 
-function getBuildInfo(): BuildInfo {
-  if (buildInfo) return buildInfo
+function getBuildInfo(): StreamBuildInfo {
+  if (streamBuildInfo) return streamBuildInfo
 
-  let branch = "unknown"
-  let buildTime = "unknown"
-
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const info = require("@/lib/build-info.json") as { branch?: string; buildTime?: string }
-    branch = info.branch ?? "unknown"
-    buildTime = info.buildTime ?? "unknown"
-  } catch {
-    // File may not exist in dev mode
-  }
-
-  buildInfo = {
-    branch,
-    buildTime,
+  const meta = getBuildMetadata()
+  streamBuildInfo = {
+    branch: meta.branch,
+    buildTime: meta.buildTime,
     env: env.STREAM_ENV ?? env.NODE_ENV ?? "unknown",
   }
 
-  return buildInfo
+  return streamBuildInfo
 }
 
 export interface StreamErrorContext {
@@ -339,6 +329,6 @@ export function logStreamError(context: StreamErrorContext): void {
 /**
  * Get build info for health checks or debugging endpoints
  */
-export function getServerBuildInfo(): BuildInfo {
+export function getServerBuildInfo(): StreamBuildInfo {
   return getBuildInfo()
 }

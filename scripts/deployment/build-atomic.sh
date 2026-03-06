@@ -80,26 +80,6 @@ cleanup_failed_build() {
 
 trap cleanup_failed_build EXIT
 
-write_build_info_artifact() {
-    local target_dir="$1"
-    local build_commit="unknown"
-    local build_branch="unknown"
-    local build_time
-    build_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-    build_commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    build_branch=$(git branch --show-current 2>/dev/null || echo "unknown")
-
-    mkdir -p "$target_dir/lib"
-    cat > "$target_dir/lib/build-info.json" <<EOF
-{
-  "commit": "$build_commit",
-  "branch": "$build_branch",
-  "buildTime": "$build_time"
-}
-EOF
-}
-
 # =============================================================================
 # Phase 1: Pre-build Checks
 # =============================================================================
@@ -128,7 +108,6 @@ fi
 # =============================================================================
 log_step "Cleaning build artifacts..."
 rm -rf "${WEB_DIR:?}/dist" 2>/dev/null || true
-rm -f "${WEB_DIR:?}/lib/build-info.json" 2>/dev/null || true
 
 if [ -d "$WEB_NEXT_DIR" ]; then
     find "$WEB_NEXT_DIR" -mindepth 1 -maxdepth 1 ! -name "cache" ! -name "dev" -exec rm -rf {} + 2>/dev/null || true
@@ -286,8 +265,6 @@ STANDALONE_DIR="$TEMP_BUILD_DIR/standalone/apps/web"
 }
 
 [ -d "$WEB_DIR/public" ] && cp -r "$WEB_DIR/public" "$STANDALONE_DIR/public"
-write_build_info_artifact "$STANDALONE_DIR"
-
 # =============================================================================
 # Phase 8: Copy Workspace Packages
 # =============================================================================

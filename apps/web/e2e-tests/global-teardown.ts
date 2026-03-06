@@ -16,6 +16,11 @@ function formatError(error: unknown): string {
   return JSON.stringify(error)
 }
 
+function isMissingLegacyWorkflowTableError(error: unknown): boolean {
+  const message = formatError(error)
+  return message.includes("schema cache") && message.includes("public.Workflow")
+}
+
 export default async function globalTeardown() {
   const runId = process.env.E2E_RUN_ID
 
@@ -163,12 +168,20 @@ export default async function globalTeardown() {
       if (workflowDeleteError) throw workflowDeleteError
       stats.workflows = workflowCount || 0
     } catch (error) {
-      console.error(`⚠️  [Global Teardown] Failed to delete workflow rows for user_ids: ${managedUserIds.join(", ")}`)
-      console.error(`   Error: ${formatError(error)}`)
-      stats.workflows = 0
-      stats.workflowVersions = 0
-      stats.workflowInvocations = 0
-      stats.workflowInvocationEvals = 0
+      if (isMissingLegacyWorkflowTableError(error)) {
+        console.log("✓ Workflows: skipped (legacy public.Workflow tables not present)")
+        stats.workflows = 0
+        stats.workflowVersions = 0
+        stats.workflowInvocations = 0
+        stats.workflowInvocationEvals = 0
+      } else {
+        console.error(`⚠️  [Global Teardown] Failed to delete workflow rows for user_ids: ${managedUserIds.join(", ")}`)
+        console.error(`   Error: ${formatError(error)}`)
+        stats.workflows = 0
+        stats.workflowVersions = 0
+        stats.workflowInvocations = 0
+        stats.workflowInvocationEvals = 0
+      }
     }
   }
 

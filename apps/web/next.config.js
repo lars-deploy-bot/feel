@@ -20,10 +20,13 @@ const ripgrepExcludes = RIPGREP_TARGETS.filter(target => target !== ripgrepTarge
   target => `../../node_modules/@anthropic-ai/claude-agent-sdk/vendor/ripgrep/${target}/**/*`,
 )
 
-// Read build commit for Sentry release tracking without mutating the source tree.
-let sentryRelease = "unknown"
+// Read build metadata at config time (baked into the bundle via env:{}).
+let buildCommit = "unknown"
+let buildBranch = "unknown"
+const buildTime = new Date().toISOString()
 try {
-  sentryRelease = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim() || "unknown"
+  buildCommit = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim() || "unknown"
+  buildBranch = execSync("git branch --show-current", { encoding: "utf-8" }).trim() || "unknown"
 } catch {
   // Build metadata is optional and will fall back to "unknown"
 }
@@ -31,9 +34,9 @@ try {
 // Read server-config.json for build-time values (avoids hardcoding domains).
 // next.config.js is pure JS and can't import @webalive/shared, so we read directly.
 // In production, SERVER_CONFIG_PATH is always set and the file always exists.
-// In local dev, these stay null/empty — Sentry won't init and contact email is blank.
+// In local/test environments, explicit env vars can provide the browser-safe values.
 let sentryConfig = null
-let contactEmail = ""
+let contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || ""
 const SENTRY_HOSTNAME_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i
 
 function readRequiredString(obj, key, context) {
@@ -75,7 +78,7 @@ function normalizeSentryConfig(rawSentry) {
   const configPath = process.env.SERVER_CONFIG_PATH
   if (configPath && fs.existsSync(configPath)) {
     const serverCfg = JSON.parse(fs.readFileSync(configPath, "utf-8"))
-    contactEmail = readRequiredString(serverCfg, "contactEmail", "root")
+    contactEmail ||= readRequiredString(serverCfg, "contactEmail", "root")
     if (serverCfg.sentry) sentryConfig = normalizeSentryConfig(serverCfg.sentry)
   }
 }
@@ -99,10 +102,13 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   env: {
-    NEXT_PUBLIC_SENTRY_RELEASE: sentryRelease,
+    NEXT_PUBLIC_SENTRY_RELEASE: buildCommit,
     NEXT_PUBLIC_STREAM_ENV: process.env.STREAM_ENV || "",
     ...(sentryConfig ? { NEXT_PUBLIC_SENTRY_DSN: sentryConfig.dsn } : {}),
     NEXT_PUBLIC_CONTACT_EMAIL: contactEmail,
+    NEXT_PUBLIC_BUILD_COMMIT: buildCommit,
+    NEXT_PUBLIC_BUILD_BRANCH: buildBranch,
+    NEXT_PUBLIC_BUILD_TIME: buildTime,
   },
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },

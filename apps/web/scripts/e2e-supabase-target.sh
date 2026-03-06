@@ -68,3 +68,46 @@ is_remote_http_supabase() {
   [[ "${E2E_SUPABASE_SOURCE_PROTOCOL:-}" == "http:" ]] && ! is_loopback_host "${E2E_SUPABASE_SOURCE_HOST:-}"
 }
 
+REMOTE_SUPABASE_ENV_PATH="/opt/services/supabase/.env"
+
+fetch_remote_supabase_env_value() {
+  local ssh_target="$1"
+  local key="$2"
+
+  ssh -o BatchMode=yes "$ssh_target" \
+    "grep -E '^${key}=' '$REMOTE_SUPABASE_ENV_PATH' | tail -n 1 | cut -d= -f2-"
+}
+
+sync_remote_supabase_credentials() {
+  if ! is_remote_http_supabase; then
+    return 0
+  fi
+
+  local ssh_target="root@${E2E_SUPABASE_SOURCE_HOST}"
+
+  echo "[E2E Supabase] Syncing anon/service keys from $ssh_target:$REMOTE_SUPABASE_ENV_PATH"
+
+  export SUPABASE_ANON_KEY
+  SUPABASE_ANON_KEY="$(fetch_remote_supabase_env_value "$ssh_target" "ANON_KEY")"
+  if [[ -z "$SUPABASE_ANON_KEY" ]]; then
+    echo "[E2E Supabase] Remote ANON_KEY is empty at $ssh_target:$REMOTE_SUPABASE_ENV_PATH" >&2
+    return 1
+  fi
+
+  export NEXT_PUBLIC_SUPABASE_ANON_KEY
+  NEXT_PUBLIC_SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+
+  export SUPABASE_SERVICE_ROLE_KEY
+  SUPABASE_SERVICE_ROLE_KEY="$(fetch_remote_supabase_env_value "$ssh_target" "SERVICE_ROLE_KEY")"
+  if [[ -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
+    echo "[E2E Supabase] Remote SERVICE_ROLE_KEY is empty at $ssh_target:$REMOTE_SUPABASE_ENV_PATH" >&2
+    return 1
+  fi
+
+  export JWT_SECRET
+  JWT_SECRET="$(fetch_remote_supabase_env_value "$ssh_target" "JWT_SECRET")"
+  if [[ -z "$JWT_SECRET" ]]; then
+    echo "[E2E Supabase] Remote JWT_SECRET is empty at $ssh_target:$REMOTE_SUPABASE_ENV_PATH" >&2
+    return 1
+  fi
+}
