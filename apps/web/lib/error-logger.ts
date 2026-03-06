@@ -12,7 +12,7 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
-import { getBuildInfo as getBuildMetadata } from "@/lib/build-info"
+import { getBuildInfo } from "@/lib/build-info"
 
 export interface ErrorLogEntry {
   id: string
@@ -169,27 +169,6 @@ export const errorLogger = {
 // Stream Error Logging (with build info for debugging)
 // ============================================================================
 
-interface StreamBuildInfo {
-  branch: string
-  buildTime: string
-  env: string
-}
-
-let streamBuildInfo: StreamBuildInfo | null = null
-
-function getBuildInfo(): StreamBuildInfo {
-  if (streamBuildInfo) return streamBuildInfo
-
-  const meta = getBuildMetadata()
-  streamBuildInfo = {
-    branch: meta.branch,
-    buildTime: meta.buildTime,
-    env: env.STREAM_ENV ?? env.NODE_ENV ?? "unknown",
-  }
-
-  return streamBuildInfo
-}
-
 export interface StreamErrorContext {
   requestId: string
   workspace: string
@@ -253,7 +232,8 @@ function safeJsonForLog(value: unknown): string {
  */
 export function logStreamError(context: StreamErrorContext): void {
   const { requestId, workspace, model, error } = context
-  const info = getBuildInfo()
+  const build = getBuildInfo()
+  const streamEnv = env.STREAM_ENV ?? env.NODE_ENV ?? "unknown"
 
   const errorMessage = error instanceof Error ? error.message : String(error)
   const errorStack = error instanceof Error ? error.stack : undefined
@@ -265,7 +245,7 @@ export function logStreamError(context: StreamErrorContext): void {
   // Structured log line for easy grep in journalctl
   console.error(
     `[STREAM_ERROR:${requestId}] ${errorMessage} | ` +
-      `build=${info.branch}@${info.buildTime} env=${info.env} workspace=${workspace} model=${model}`,
+      `build=${build.branch}@${build.buildTime} env=${streamEnv} workspace=${workspace} model=${model}`,
   )
 
   // Claude subprocess stderr - THE ACTUAL ERROR (if available)
@@ -294,12 +274,12 @@ export function logStreamError(context: StreamErrorContext): void {
     scope.setTag("requestId", requestId)
     scope.setTag("workspace", workspace)
     scope.setTag("model", model)
-    scope.setTag("build", `${info.branch}@${info.buildTime}`)
+    scope.setTag("build", `${build.branch}@${build.buildTime}`)
     scope.setContext("stream", {
       workspace,
       model,
-      build: `${info.branch}@${info.buildTime}`,
-      env: info.env,
+      build: `${build.branch}@${build.buildTime}`,
+      env: streamEnv,
       stderr,
       diagnostics,
     })
@@ -317,18 +297,11 @@ export function logStreamError(context: StreamErrorContext): void {
     details: {
       workspace,
       model,
-      build: `${info.branch}@${info.buildTime}`,
-      env: info.env,
+      build: `${build.branch}@${build.buildTime}`,
+      env: streamEnv,
       stderr, // Include stderr in queryable buffer too
       diagnostics,
     },
     stack: errorStack,
   })
-}
-
-/**
- * Get build info for health checks or debugging endpoints
- */
-export function getServerBuildInfo(): StreamBuildInfo {
-  return getBuildInfo()
 }

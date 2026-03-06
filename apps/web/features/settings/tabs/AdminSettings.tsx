@@ -3,7 +3,7 @@
 import { AlertTriangle, CheckCircle, FlaskConical, Loader2, Play, Server, XCircle } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Toggle } from "@/components/ui/Toggle"
-import buildInfo from "@/lib/get-build-info"
+import buildInfo from "@/lib/build-info"
 import { isDevelopment, useDebugActions, useDebugView } from "@/lib/stores/debug-store"
 import { SettingsTabLayout } from "./SettingsTabLayout"
 
