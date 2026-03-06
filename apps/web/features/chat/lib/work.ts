@@ -33,5 +33,4 @@ export const coreInstructionsReminder = `
 - Parallel tool calls when independent.
 - Use semantic tokens (HSL), no direct colors.
 - Be concise. No emojis. No technical jargon to the user.
-- Load workflows via get_workflow when applicable.
 `

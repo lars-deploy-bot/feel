@@ -11,7 +11,7 @@
  * 5. On success → poll `systemctl is-active` to confirm
  */
 
-import { execSync } from "node:child_process"
+import { execSync, spawnSync } from "node:child_process"
 
 export interface RestartResult {
   success: boolean
@@ -107,6 +107,37 @@ function waitForActive(serviceName: string, timeoutMs: number): boolean {
     execSync("sleep 0.5")
   }
   return isServiceActive(serviceName)
+}
+
+/**
+ * Restart a systemd service with automatic recovery from failed state.
+ *
+ * @param serviceName - e.g. "site@example-com.service"
+ * @param options.timeout - Timeout for the restart command (default 10s)
+ * @param options.waitForActive - How long to poll for active state (default 5s)
+ */
+/**
+ * Converts a domain to a systemd service name.
+ * Checks whether the domain runs as a template or site service.
+ *
+ * @throws Error if domain contains invalid characters
+ */
+export function domainToServiceName(domain: string): string {
+  const DOMAIN_FORMAT_REGEX = /^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/
+  if (!domain || !DOMAIN_FORMAT_REGEX.test(domain)) {
+    throw new Error(`Invalid domain format: ${domain}`)
+  }
+
+  const slug = domain.replace(/\./g, "-")
+
+  const templateCheck = spawnSync("systemctl", ["is-enabled", `template@${slug}.service`], {
+    encoding: "utf-8",
+    timeout: 3000,
+    shell: false,
+  })
+  const prefix = templateCheck.status === 0 ? "template" : "site"
+
+  return `${prefix}@${slug}.service`
 }
 
 /**

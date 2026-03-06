@@ -11,6 +11,8 @@
 
 import * as path from "node:path"
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk"
+import { buildPreviewUrl } from "@webalive/shared"
+import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import type { Sandbox } from "e2b"
 import { z } from "zod"
 import { SANDBOX_WORKSPACE_ROOT } from "./manager.js"
@@ -31,17 +33,22 @@ const noopReporter: E2bErrorReporter = () => {}
 
 /**
  * SECURITY: Validate that a file path is within the sandbox workspace root.
- * Resolves symlinks/.. to prevent traversal. Returns error message if outside, null if OK.
+ * Resolves relative paths against SANDBOX_WORKSPACE_ROOT.
+ * Returns { resolved } on success or { error } on traversal attempt.
  * Security violations are reported via the error reporter callback (Sentry in production).
  */
-function assertWorkspacePath(filePath: string, toolName: string, reportError: E2bErrorReporter): string | null {
-  const resolved = path.resolve(filePath)
-  if (resolved !== SANDBOX_WORKSPACE_ROOT && !resolved.startsWith(`${SANDBOX_WORKSPACE_ROOT}/`)) {
+function resolveWorkspacePath(
+  filePath: string,
+  toolName: string,
+  reportError: E2bErrorReporter,
+): { resolved: string } | { error: string } {
+  const resolved = path.isAbsolute(filePath) ? path.resolve(filePath) : path.resolve(SANDBOX_WORKSPACE_ROOT, filePath)
+  if (!isPathWithinWorkspace(resolved, SANDBOX_WORKSPACE_ROOT)) {
     const message = `[E2B_SECURITY] Path traversal blocked: tool=${toolName}, path=${filePath}, resolved=${resolved}`
     reportError(new Error(message), { tool: toolName, path: filePath, resolved, allowed: SANDBOX_WORKSPACE_ROOT })
-    return `Path must be within ${SANDBOX_WORKSPACE_ROOT}. Got: ${filePath}`
+    return { error: `Path must be within ${SANDBOX_WORKSPACE_ROOT}. Got: ${filePath}` }
   }
-  return null
+  return { resolved }
 }
 
 const readTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
@@ -65,10 +72,10 @@ const readTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
         .describe("The number of lines to read. Only provide if the file is too large to read at once."),
     },
     async ({ file_path, offset, limit }) => {
-      const pathError = assertWorkspacePath(file_path, NAME, reportError)
-      if (pathError) return errorResult(pathError)
+      const result = resolveWorkspacePath(file_path, NAME, reportError)
+      if ("error" in result) return errorResult(result.error)
       try {
-        const content = await sandbox.files.read(file_path)
+        const content = await sandbox.files.read(result.resolved)
         const lines = content.split("\n")
 
         const start = offset ? offset - 1 : 0
@@ -84,9 +91,10 @@ const readTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
   )
 }
 
-const writeTool = (sandbox: Sandbox, reportError: E2bErrorReporter) =>
-  tool(
-    "Write",
+const writeTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
+  const NAME = "Write"
+  return tool(
+    NAME,
     "Writes a file to the workspace filesystem. " +
       "This tool will overwrite the existing file if there is one at the provided path. " +
       "Prefer the Edit tool for modifying existing files — it only sends the diff.",
@@ -95,20 +103,22 @@ const writeTool = (sandbox: Sandbox, reportError: E2bErrorReporter) =>
       content: z.string().describe("The content to write to the file"),
     },
     async ({ file_path, content }) => {
-      const pathError = assertWorkspacePath(file_path, "Write", reportError)
-      if (pathError) return errorResult(pathError)
+      const result = resolveWorkspacePath(file_path, NAME, reportError)
+      if ("error" in result) return errorResult(result.error)
       try {
-        await sandbox.files.write(file_path, content)
+        await sandbox.files.write(result.resolved, content)
         return textResult(`Successfully wrote to ${file_path}`)
       } catch (err) {
         return errorResult(`Failed to write ${file_path}: ${err instanceof Error ? err.message : String(err)}`)
       }
     },
   )
+}
 
-const editTool = (sandbox: Sandbox, reportError: E2bErrorReporter) =>
-  tool(
-    "Edit",
+const editTool = (sandbox: Sandbox, reportError: E2bErrorReporter) => {
+  const NAME = "Edit"
+  return tool(
+    NAME,
     "Performs exact string replacements in files. " +
       "The edit will FAIL if old_string is not unique in the file. " +
       "Either provide a larger string with more surrounding context to make it unique or use replace_all. " +
@@ -124,17 +134,17 @@ const editTool = (sandbox: Sandbox, reportError: E2bErrorReporter) =>
         .describe("Replace all occurrences of old_string (default false)"),
     },
     async ({ file_path, old_string, new_string, replace_all }) => {
-      const pathError = assertWorkspacePath(file_path, "Edit", reportError)
-      if (pathError) return errorResult(pathError)
+      const result = resolveWorkspacePath(file_path, NAME, reportError)
+      if ("error" in result) return errorResult(result.error)
       try {
         if (old_string === new_string) {
           return errorResult("old_string and new_string are the same")
         }
 
-        const content = await sandbox.files.read(file_path)
+        const content = await sandbox.files.read(result.resolved)
 
         if (!content.includes(old_string)) {
-          return errorResult(`old_string not found in ${file_path}`)
+          return errorResult(`old_string not found in ${result.resolved}`)
         }
 
         if (!replace_all) {
@@ -150,20 +160,50 @@ const editTool = (sandbox: Sandbox, reportError: E2bErrorReporter) =>
           ? content.replaceAll(old_string, new_string)
           : content.replace(old_string, new_string)
 
-        await sandbox.files.write(file_path, updated)
+        await sandbox.files.write(result.resolved, updated)
         return textResult(`Successfully edited ${file_path}`)
       } catch (err) {
         return errorResult(`Failed to edit ${file_path}: ${err instanceof Error ? err.message : String(err)}`)
       }
     },
   )
+}
 
-const bashTool = (sandbox: Sandbox) =>
+/** Config for preview URL generation */
+export interface E2bMcpConfig {
+  /** The workspace hostname, e.g. "larry.alive.best" */
+  hostname: string
+  /** The preview base domain, e.g. "alive.best" */
+  previewBase: string
+}
+
+/**
+ * Detect port numbers in command output (e.g. "localhost:3000", "port 5173", ":8080")
+ * and append the preview URL so Claude can share it with the user.
+ */
+function appendPortUrls(output: string, hostname: string, previewBase: string): string {
+  const portPattern = /(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d{2,5})|(?:port\s+)(\d{2,5})/gi
+  const ports = new Set<string>()
+
+  for (const match of output.matchAll(portPattern)) {
+    const port = match[1] || match[2]
+    if (port) ports.add(port)
+  }
+
+  if (ports.size === 0) return output
+
+  const url = buildPreviewUrl(hostname, previewBase)
+  return `${output}\n\nPreview: ${url}\nShare this URL with visitors — NOT localhost.`
+}
+
+const bashTool = (sandbox: Sandbox, mcpConfig: E2bMcpConfig) =>
   tool(
     "Bash",
     "Executes a given bash command and returns its output. " +
       "The working directory persists between commands, but shell state does not. " +
-      "Use background: true for long-running commands (e.g. dev servers) — returns immediately with the PID.",
+      "Use background: true for long-running commands (e.g. dev servers) — returns immediately with the PID. " +
+      "IMPORTANT: This runs inside a cloud sandbox. localhost is NOT accessible to the user. " +
+      "When a server starts, share the preview URL shown in the output, never localhost.",
     {
       command: z.string().describe("The command to execute"),
       timeout: z.number().optional().describe("Optional timeout in milliseconds (max 600000)"),
@@ -197,18 +237,29 @@ const bashTool = (sandbox: Sandbox) =>
         if (result.exitCode !== 0) {
           output += `\nExit code: ${result.exitCode}`
         }
-        return textResult(output || "(no output)")
+        output = output || "(no output)"
+
+        return textResult(appendPortUrls(output, mcpConfig.hostname, mcpConfig.previewBase))
       } catch (err) {
         return errorResult(`Command failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     },
   )
 
-export function createE2bMcp(sandbox: Sandbox, reportError?: E2bErrorReporter) {
+export function createE2bMcp(sandbox: Sandbox, reportError?: E2bErrorReporter, config?: E2bMcpConfig) {
   const report = reportError ?? noopReporter
+  const mcpConfig: E2bMcpConfig = config ?? {
+    hostname: "sandbox",
+    previewBase: process.env.NEXT_PUBLIC_PREVIEW_BASE ?? "alive.best",
+  }
   return createSdkMcpServer({
     name: "e2b",
     version: "1.0.0",
-    tools: [readTool(sandbox, report), writeTool(sandbox, report), editTool(sandbox, report), bashTool(sandbox)],
+    tools: [
+      readTool(sandbox, report),
+      writeTool(sandbox, report),
+      editTool(sandbox, report),
+      bashTool(sandbox, mcpConfig),
+    ],
   })
 }

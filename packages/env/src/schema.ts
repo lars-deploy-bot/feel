@@ -148,8 +148,15 @@ export const serverSchema = {
   // E2B Sandbox
   E2B_API_KEY: e2bApiKey,
 
-  // E2E Testing (optional - only needed for E2E tests)
-  E2E_TEST_SECRET: z.string().optional(),
+  // E2E Testing (optional - only needed for staging E2E tests)
+  // MUST NOT be set in production — test routes become accessible if set.
+  E2E_TEST_SECRET: z
+    .string()
+    .optional()
+    .refine(
+      val => !(val && process.env.STREAM_ENV === "production"),
+      "E2E_TEST_SECRET must NOT be set in production — it exposes test routes that can mutate user data",
+    ),
   E2E_RUN_ID: z.string().optional(),
 } as const
 

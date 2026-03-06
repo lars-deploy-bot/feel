@@ -1,3 +1,4 @@
+import { STREAM_MODE_KEYS } from "@webalive/shared"
 import bcrypt from "bcrypt"
 import { z } from "zod"
 
@@ -31,9 +32,9 @@ export const BodySchema = z.object({
   // Image paths to fetch and include for Claude to analyze
   // Can be relative paths (/_images/...) or absolute URLs
   analyzeImageUrls: z.array(z.string().min(1)).optional(),
-  // Plan mode: Claude can only read/explore, not modify files
-  // When enabled, permissionMode is set to 'plan' in the SDK
-  planMode: z.boolean().optional(),
+  // Stream mode: controls which tools are available and SDK permission mode
+  // "plan" = read-only, "superadmin" = bash-only, omit or "default" = normal
+  streamMode: z.enum(STREAM_MODE_KEYS).optional(),
   // Resume session at a specific message UUID (for message deletion/editing)
   // When set, the SDK resumes from this message, excluding all messages after it
   resumeSessionAt: z.string().uuid().optional(),

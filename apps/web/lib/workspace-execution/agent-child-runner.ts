@@ -11,6 +11,7 @@ import { spawn } from "node:child_process"
 import { statSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import type { StreamMode } from "@webalive/shared"
 import { createSandboxEnv } from "./sandbox-env"
 
 interface WorkspaceCredentials {
@@ -32,6 +33,7 @@ interface AgentRequest {
   isSuperadmin?: boolean // Whether the user is a superadmin (all tools, runs as root)
   isSuperadminWorkspace?: boolean // Whether workspace is the alive superadmin workspace
   permissionMode?: string // Plan mode: "plan" = read-only exploration, "default" = full access
+  streamMode?: StreamMode // Explicit mode for tool/MCP policy alignment with worker-pool path
   /** Additional MCP tool names to register (e.g. ["mcp__alive-email__send_reply"]) */
   extraTools?: string[]
 }
@@ -61,11 +63,12 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
   const currentDir = dirname(fileURLToPath(import.meta.url))
   const runnerPath = resolve(currentDir, "../../scripts/run-agent.mjs")
 
-  // SUPERADMIN: Skip privilege drop - run as root
-  // Only applies when user is superadmin AND workspace is alive
+  // SUPERADMIN: Skip privilege drop only in the alive superadmin workspace.
+  // Superadmins operating on site workspaces still run as workspace user.
+  const runAsRoot = payload.isSuperadmin && payload.isSuperadminWorkspace
   let uid: number
   let gid: number
-  if (payload.isSuperadmin) {
+  if (runAsRoot) {
     uid = 0
     gid = 0
     console.log("[agent-child] 🔓 SUPERADMIN MODE: Running as root (no privilege drop)")
@@ -90,8 +93,8 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
   const normalizedRoot = workspaceRoot.replace(/\/+$/, "")
   const workspaceHome = normalizedRoot.endsWith("/user") ? dirname(normalizedRoot) : normalizedRoot
 
-  // Build env — superadmin gets full access, regular users get sandbox allowlist only
-  const sandboxBase = payload.isSuperadmin ? process.env : createSandboxEnv()
+  // Build env — root superadmin workspace gets full env, all other contexts use sandbox allowlist.
+  const sandboxBase = runAsRoot ? process.env : createSandboxEnv()
 
   const child = spawn(process.execPath, [runnerPath], {
     env: {
@@ -100,7 +103,7 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),
       TARGET_CWD: workspaceRoot,
-      ...(!payload.isSuperadmin && { TARGET_HOME: workspaceHome }),
+      ...(!runAsRoot && { TARGET_HOME: workspaceHome }),
       // Never allow CLI auth discovery from workspace .env.
       ANTHROPIC_API_KEY: "",
       CLAUDE_CODE_OAUTH_TOKEN: oauthAccessToken,

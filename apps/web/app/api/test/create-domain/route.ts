@@ -40,6 +40,20 @@ export async function POST(req: Request) {
 
   const app = await createAppClient("service")
 
+  // SAFETY: Never overwrite a production domain
+  const { data: existingDomain } = await app
+    .from("domains")
+    .select("hostname, is_test_env")
+    .eq("hostname", hostname)
+    .single()
+
+  if (existingDomain && !existingDomain.is_test_env) {
+    return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {
+      status: 409,
+      details: { message: `Refusing to overwrite production domain: ${hostname}` },
+    })
+  }
+
   // Create domain entry (test environment only, no actual deployment)
   const { error: domainError } = await app.from("domains").upsert(
     {

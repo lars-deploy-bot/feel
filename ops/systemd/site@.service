@@ -1,0 +1,57 @@
+[Unit]
+Description=WebAlive Site: %i
+After=network.target
+Wants=network.target
+
+[Service]
+Type=exec
+User=site-%i
+Group=site-%i
+WorkingDirectory=/srv/webalive/sites/%i/user
+EnvironmentFile=-/etc/sites/%i.env
+Environment=NODE_ENV=production
+ExecStart=/bin/sh -c 'exec /usr/local/bin/bun run dev'
+
+# Restart policy - aggressive recovery
+Restart=always
+RestartSec=5
+StartLimitInterval=300s
+StartLimitBurst=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=site-%i
+
+# Graceful shutdown
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Security Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/webalive/sites/%i
+MemoryDenyWriteExecute=no
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+RestrictSUIDSGID=yes
+
+# Resource Limits
+LimitNOFILE=65536
+LimitNPROC=100
+MemoryMax=768M
+CPUQuota=50%
+
+# Additional Security
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0027
+
+# Network restrictions - block raw sockets and limit to TCP/UDP only
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=~@raw-io @reboot @swap @clock @module @mount @obsolete
+
+[Install]
+WantedBy=multi-user.target

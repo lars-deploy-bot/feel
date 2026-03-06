@@ -92,21 +92,7 @@ curl -f -s "http://localhost:$DEV_PORT/api/health" > /dev/null 2>&1 && \
 
 systemctl status "$DEV_SERVICE" --no-pager | head -15
 
-# Rebuild and restart shell-server-go (shared across all environments)
-echo ""
-echo "📡 Rebuilding shell-server-go..."
-cd apps/shell-server-go
-if bun run build; then
-    echo "✅ Shell-server built"
-    systemctl restart shell-server-go
-    sleep 2
-    systemctl is-active --quiet shell-server-go && \
-      echo "✅ Shell-server restarted" || \
-      echo "⚠️  Shell-server failed to start (check: journalctl -u shell-server-go -n 20)"
-else
-    echo "⚠️  Shell-server build failed"
-fi
-cd ../..
+# shell-server-go is built separately via `make shell`
 
 # Rebuild and restart preview-proxy (if configured)
 echo ""

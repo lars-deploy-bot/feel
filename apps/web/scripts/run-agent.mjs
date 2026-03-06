@@ -15,19 +15,12 @@ import { chownSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import process from "node:process"
 import { query } from "@anthropic-ai/claude-agent-sdk"
-import {
-  createStreamCanUseTool,
-  createStreamToolContext,
-  DEFAULTS,
-  isOAuthMcpTool,
-  isStreamClientVisibleTool,
-} from "@webalive/shared"
+import { DEFAULTS, isOAuthMcpTool, isStreamClientVisibleTool, resolveStreamMode, STREAM_MODES } from "@webalive/shared"
 import { withSearchToolsConnectedProviders } from "@webalive/tools"
 import {
   getAllowedTools,
   getDisallowedTools,
   getMcpServers,
-  PERMISSION_MODE,
   SETTINGS_SOURCES,
   STREAM_TYPES,
 } from "../lib/claude/agent-constants.mjs"
@@ -114,15 +107,32 @@ async function readStdinJson() {
     const isSuperadmin = request.isSuperadmin === true
     console.error(`[runner] isAdmin: ${isAdmin}, isSuperadmin: ${isSuperadmin}`)
 
-    // Plan mode: use from request or fall back to default
-    const effectivePermissionMode = request.permissionMode || PERMISSION_MODE
-    const isPlanMode = effectivePermissionMode === "plan"
-    if (isPlanMode) {
-      console.error("[runner] 🔒 PLAN MODE ENABLED: Write/Edit/Bash tools will be blocked")
+    // Stream mode: use explicit request.streamMode when valid, otherwise derive from permission mode.
+    const requestedStreamMode = typeof request.streamMode === "string" ? request.streamMode : null
+    const fallbackMode =
+      request.permissionMode === "plan"
+        ? "plan"
+        : request.permissionMode === "bypassPermissions"
+          ? "superadmin"
+          : "default"
+    const requestedOrFallbackMode =
+      requestedStreamMode && Object.hasOwn(STREAM_MODES, requestedStreamMode) ? requestedStreamMode : fallbackMode
+    const streamMode = resolveStreamMode(requestedOrFallbackMode, { isAdmin, isSuperadmin })
+    const modeConfig = STREAM_MODES[streamMode] || STREAM_MODES.default
+    const effectivePermissionMode = request.permissionMode || modeConfig.permissionMode
+    if (requestedStreamMode && requestedStreamMode !== requestedOrFallbackMode) {
+      console.error(
+        `[runner] Invalid streamMode "${requestedStreamMode}", falling back to "${requestedOrFallbackMode}"`,
+      )
+    }
+    if (requestedOrFallbackMode !== streamMode) {
+      console.error(`[runner] Unauthorized streamMode "${requestedOrFallbackMode}", falling back to "${streamMode}"`)
+    }
+    if (streamMode !== "default") {
+      console.error(`[runner] Stream mode: ${streamMode} (MCP enabled: ${modeConfig.mcpEnabled})`)
     }
 
     // Get base allowed tools (SDK + internal MCP tools)
-    // OAuth MCP tools are allowed dynamically in canUseTool
     // Admin users get TaskStop; superadmin re-enables Task/WebSearch.
     // Member-only MCP resource tools remain hidden for elevated roles.
     // isSuperadmin is also used as isSuperadminWorkspace — the alive workspace
@@ -133,18 +143,18 @@ async function readStdinJson() {
       isAdmin,
       isSuperadmin,
       isSuperadmin,
-      isPlanMode,
+      streamMode,
     )
     // Extra tools from trigger request (e.g. email's send_reply)
     if (request.extraTools?.length) {
       baseAllowedTools.push(...request.extraTools)
       console.error(`[runner] Extra tools added: ${request.extraTools.join(", ")}`)
     }
-    const disallowedTools = getDisallowedTools(isAdmin, isSuperadmin, isPlanMode, isSuperadmin)
+    const disallowedTools = getDisallowedTools(isAdmin, isSuperadmin, streamMode, isSuperadmin)
 
     console.error(`[runner] Base allowed tools count: ${baseAllowedTools.length}`)
-    if (isPlanMode) {
-      console.error(`[runner] 🔒 PLAN MODE: ${baseAllowedTools.length} tools available under registry policy`)
+    if (streamMode !== "default") {
+      console.error(`[runner] ${streamMode} mode: ${baseAllowedTools.length} tools available under registry policy`)
     }
     if (isSuperadmin) {
       const hasTask = baseAllowedTools.includes("Task")
@@ -157,33 +167,12 @@ async function readStdinJson() {
       console.error(`[runner] Admin tools: TaskStop=${hasTaskStop}, disallowed=${disallowedTools.length}`)
     }
 
-    const toolContext = createStreamToolContext({
-      isAdmin,
-      isSuperadmin,
-      isSuperadminWorkspace: isSuperadmin,
-      isPlanMode,
-      connectedProviders,
-    })
-
-    /**
-     * Tool permission handler - delegated to shared stream policy registry.
-     * @type {import('@anthropic-ai/claude-agent-sdk').CanUseTool}
-     */
-    const baseCanUseTool = createStreamCanUseTool(toolContext, baseAllowedTools)
-    const canUseTool = async (toolName, input, options) => {
-      const result = await baseCanUseTool(toolName, input, options)
-      if (result.behavior === "deny") {
-        console.error(`[runner] SECURITY: Blocked ${toolName}`)
-      }
-      return result
-    }
-
     // MCP tools use process.cwd() which is set by process.chdir() above
     // No workspace injection needed - tools default to process.cwd()
 
     // Get MCP servers with user-specific OAuth tokens
     // Uses registry from @webalive/shared - add new providers there
-    const workspaceMcpServers = getMcpServers(targetCwd || process.cwd(), { oauthTokens })
+    const workspaceMcpServers = modeConfig.mcpEnabled ? getMcpServers(targetCwd || process.cwd(), { oauthTokens }) : {}
 
     // Load optional MCP servers required by extraTools.
     // Tool names follow mcp__<server-name>__<tool> — we extract server names
@@ -195,7 +184,7 @@ async function readStdinJson() {
       },
     }
 
-    if (request.extraTools?.length) {
+    if (modeConfig.mcpEnabled && request.extraTools?.length) {
       const requiredServers = new Set()
       for (const tool of request.extraTools) {
         const match = tool.match(/^mcp__([^_]+(?:-[^_]+)*)__/)
@@ -208,6 +197,8 @@ async function readStdinJson() {
           console.error(`[runner] Loaded optional MCP server: ${serverName}`)
         }
       }
+    } else if (!modeConfig.mcpEnabled && request.extraTools?.some(tool => tool.startsWith("mcp__"))) {
+      console.error(`[runner] Ignoring MCP extraTools in ${streamMode} mode`)
     }
 
     console.error("[runner] MCP servers enabled:", Object.keys(workspaceMcpServers).join(", "))
@@ -242,7 +233,6 @@ async function readStdinJson() {
           ...(effectivePermissionMode === "bypassPermissions" ? { allowDangerouslySkipPermissions: true } : {}),
           allowedTools: baseAllowedTools,
           disallowedTools, // Dynamic based on admin status
-          canUseTool,
           settingSources: SETTINGS_SOURCES,
           mcpServers: workspaceMcpServers,
           systemPrompt: request.systemPrompt,

@@ -179,6 +179,10 @@ export class SandboxManager {
           }
         }
 
+        // Ensure dependencies are installed — node_modules may be missing if the
+        // sandbox was created before installDependencies existed, or if it was deleted.
+        await ensureDependencies(sandbox)
+
         console.error(`[sandbox-manager] Reconnected to ${domain.sandbox_id} for ${domain.hostname}`)
         return sandbox
       } catch (err) {
@@ -325,8 +329,94 @@ async function syncWorkspaceToSandbox(sandbox: Sandbox, hostWorkspacePath: strin
   // E2B proxy serves on {port}-{sandboxId}.{e2bDomain} which Vite blocks by default.
   await patchViteAllowedHosts(sandbox)
 
+  // Install dependencies if package.json was synced.
+  // node_modules is excluded from sync (too large), so we must install in-sandbox.
+  await installDependencies(sandbox)
+
   const elapsedMs = Date.now() - startMs
   console.error(`[sandbox-manager] Synced ${collected.files.length} files to sandbox in ${elapsedMs}ms`)
+}
+
+/**
+ * Detect the install command for this project.
+ * Checks lock files: bun.lock → bun, pnpm-lock.yaml → pnpm, else npm.
+ * Returns null if no package.json exists.
+ */
+async function detectInstallCommand(sandbox: Sandbox): Promise<string | null> {
+  try {
+    await sandbox.files.read(path.join(SANDBOX_WORKSPACE_ROOT, "package.json"))
+  } catch {
+    return null
+  }
+
+  const lockChecks = [
+    { file: "bun.lock", cmd: "bun install" },
+    { file: "bun.lockb", cmd: "bun install" },
+    { file: "pnpm-lock.yaml", cmd: "pnpm install" },
+  ]
+
+  for (const { file, cmd } of lockChecks) {
+    try {
+      await sandbox.files.read(path.join(SANDBOX_WORKSPACE_ROOT, file))
+      return cmd
+    } catch {
+      // Lock file doesn't exist, try next
+    }
+  }
+
+  return "npm install"
+}
+
+/**
+ * Run the package manager install command inside the sandbox.
+ * Never throws — a failed install is logged but doesn't block sandbox creation.
+ * Claude can retry manually if needed.
+ */
+async function runInstall(sandbox: Sandbox, installCmd: string): Promise<void> {
+  const startMs = Date.now()
+  console.error(`[sandbox-manager] Installing dependencies: ${installCmd}`)
+
+  try {
+    const result = await sandbox.commands.run(installCmd, {
+      cwd: SANDBOX_WORKSPACE_ROOT,
+      timeoutMs: 120_000, // 2 minutes — large projects can be slow
+    })
+    const elapsedMs = Date.now() - startMs
+    console.error(`[sandbox-manager] Dependencies installed in ${elapsedMs}ms (exit ${result.exitCode})`)
+  } catch (err: unknown) {
+    const elapsedMs = Date.now() - startMs
+    // CommandExitError has a .result with exitCode/stdout/stderr
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error(`[sandbox-manager] Dependency install failed (${elapsedMs}ms): ${detail}`)
+  }
+}
+
+/**
+ * Install dependencies after initial file sync.
+ * Called during syncWorkspaceToSandbox — node_modules is excluded from sync.
+ */
+async function installDependencies(sandbox: Sandbox): Promise<void> {
+  const installCmd = await detectInstallCommand(sandbox)
+  if (!installCmd) return
+  await runInstall(sandbox, installCmd)
+}
+
+/**
+ * Ensure node_modules exists on reconnect. If package.json exists but
+ * node_modules doesn't, run the install. Covers sandboxes created before
+ * installDependencies was added, or where node_modules was deleted.
+ */
+async function ensureDependencies(sandbox: Sandbox): Promise<void> {
+  const installCmd = await detectInstallCommand(sandbox)
+  if (!installCmd) return
+
+  try {
+    await sandbox.files.list(path.join(SANDBOX_WORKSPACE_ROOT, "node_modules"))
+    // node_modules exists, skip
+  } catch {
+    console.error("[sandbox-manager] node_modules missing on reconnect, installing")
+    await runInstall(sandbox, installCmd)
+  }
 }
 
 /**

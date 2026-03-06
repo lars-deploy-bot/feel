@@ -276,8 +276,8 @@ export function DeploymentStatus({ status, domain, error, errorCode, errorDetail
                 </p>
                 <p className="text-amber-800 dark:text-amber-200 text-sm leading-relaxed mt-2">
                   If you'd like to create more, you can get an additional website for just 5 euro. Drop us a message at{" "}
-                  <a href="mailto:team@example.com" className="font-medium underline hover:no-underline">
-                    team@example.com
+                  <a href="mailto:team@alive.best" className="font-medium underline hover:no-underline">
+                    team@alive.best
                   </a>{" "}
                   and we'll sort it out for you.
                 </p>

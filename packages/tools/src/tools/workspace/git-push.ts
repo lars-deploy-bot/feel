@@ -26,7 +26,7 @@ export type GitPushParams = {
  *   control plane pushes credentials TO sandbox per-operation
  * - Token never touches disk, never in env file, only in child process memory
  * - API route validates workspace authorization before executing push
- * - planMode: "block" — user must approve plan before Claude can push
+ * - Blocked in plan mode via STREAM_MODES registry
  */
 export async function gitPush(params: GitPushParams): Promise<ToolResult> {
   const workspaceRoot = process.cwd()

@@ -28,6 +28,10 @@ const resolveWorkspaceMock = vi.fn()
 const getValidAccessTokenMock = vi.fn()
 const getOrgCreditsMock = vi.fn()
 const addCorsHeadersMock = vi.fn()
+const runAgentChildMock = vi.fn()
+const createNDJSONStreamMock = vi.fn()
+
+let mockRequestStreamMode: "default" | "plan" | "superadmin" | undefined
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
@@ -146,6 +150,7 @@ vi.mock("@webalive/shared", async () => {
   return {
     ...actual,
     DEFAULTS: { ...(actual.DEFAULTS as Record<string, unknown>), DEFAULT_MODEL: "model-default" },
+    WORKER_POOL: { ENABLED: false },
     isRetiredModel: vi.fn(() => false),
     isValidClaudeModel: vi.fn(() => true),
   }
@@ -179,7 +184,7 @@ vi.mock("@/lib/stream/cancel-intent-registry", () => ({
 }))
 
 vi.mock("@/lib/stream/ndjson-stream-handler", () => ({
-  createNDJSONStream: vi.fn(),
+  createNDJSONStream: (...args: unknown[]) => createNDJSONStreamMock(...args),
 }))
 
 vi.mock("@/lib/stream/stream-buffer", () => ({
@@ -202,7 +207,7 @@ vi.mock("@/lib/tokens", () => ({
 }))
 
 vi.mock("@/lib/workspace-execution/agent-child-runner", () => ({
-  runAgentChild: vi.fn(),
+  runAgentChild: (...args: unknown[]) => runAgentChildMock(...args),
 }))
 
 vi.mock("@/lib/workspace-execution/command-runner", () => ({
@@ -225,7 +230,7 @@ vi.mock("@/types/guards/api", () => ({
         userId: undefined,
         additionalContext: undefined,
         analyzeImageUrls: undefined,
-        planMode: false,
+        streamMode: mockRequestStreamMode,
         resumeSessionAt: undefined,
       },
     })),
@@ -248,6 +253,23 @@ function createRequest(message = "test message"): NextRequest {
       origin: "http://localhost",
     },
     body: JSON.stringify({ message, workspace: "demo.alive.best" }),
+  })
+}
+
+function createSuccessfulStream(): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(
+        new TextEncoder().encode(
+          `${JSON.stringify({
+            type: "message",
+            messageType: "assistant",
+            content: { message: { content: [{ type: "text", text: "ok" }] } },
+          })}\n`,
+        ),
+      )
+      controller.close()
+    },
   })
 }
 
@@ -320,6 +342,7 @@ function expectNoLockedCleanup() {
 describe("POST /api/claude/stream cleanup", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRequestStreamMode = undefined
 
     requireSessionUserMock.mockResolvedValue({
       id: "user-1",
@@ -335,7 +358,7 @@ describe("POST /api/claude/stream cleanup", () => {
     tabKeyMock.mockReturnValue(SESSION_KEY)
     tryLockConversationMock.mockReturnValue(true)
 
-    resolveWorkspaceMock.mockResolvedValue({ success: true, workspace: "/tmp/demo-workspace" })
+    resolveWorkspaceMock.mockResolvedValue({ success: true, workspace: "/tmp" })
     getValidAccessTokenMock.mockResolvedValue({ accessToken: "oauth-token", refreshed: false })
     getOrgCreditsMock.mockResolvedValue(10)
 
@@ -355,6 +378,10 @@ describe("POST /api/claude/stream cleanup", () => {
       warn: vi.fn(),
       error: vi.fn(),
     })
+
+    runAgentChildMock.mockReturnValue(createSuccessfulStream())
+    createNDJSONStreamMock.mockReturnValue(createSuccessfulStream())
+    addCorsHeadersMock.mockImplementation((response: Response) => response)
   })
 
   it("unregisters cancellation and unlocks when a non-auth error happens after lock", async () => {
@@ -496,5 +523,49 @@ describe("POST /api/claude/stream cleanup", () => {
     expect(createStreamBufferMock).not.toHaveBeenCalled()
     expect(sessionStoreGetMock).not.toHaveBeenCalled()
     expect(errorStreamBufferMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps superadmin stream mode for superadmin users in site workspaces", async () => {
+    mockRequestStreamMode = "superadmin"
+    requireSessionUserMock.mockResolvedValueOnce({
+      id: "user-1",
+      email: "superadmin@example.com",
+      name: "Super Admin",
+      isAdmin: true,
+      isSuperadmin: true,
+      enabledModels: ["model-default"],
+    })
+    verifyWorkspaceAccessMock.mockResolvedValueOnce("demo.alive.best")
+
+    const res = await POST(createRequest("mode probe"))
+    expect(res.status).toBe(200)
+    expect(runAgentChildMock).toHaveBeenCalledTimes(1)
+    expect(runAgentChildMock.mock.calls[0]?.[1]).toMatchObject({
+      streamMode: "superadmin",
+      isSuperadmin: true,
+      isSuperadminWorkspace: false,
+    })
+  })
+
+  it("downgrades superadmin stream mode for non-superadmin users", async () => {
+    mockRequestStreamMode = "superadmin"
+    requireSessionUserMock.mockResolvedValueOnce({
+      id: "user-1",
+      email: "user@example.com",
+      name: "User",
+      isAdmin: false,
+      isSuperadmin: false,
+      enabledModels: ["model-default"],
+    })
+    verifyWorkspaceAccessMock.mockResolvedValueOnce("demo.alive.best")
+
+    const res = await POST(createRequest("mode probe"))
+    expect(res.status).toBe(200)
+    expect(runAgentChildMock).toHaveBeenCalledTimes(1)
+    expect(runAgentChildMock.mock.calls[0]?.[1]).toMatchObject({
+      streamMode: "default",
+      isSuperadmin: false,
+      isSuperadminWorkspace: false,
+    })
   })
 })

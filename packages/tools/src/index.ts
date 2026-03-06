@@ -6,12 +6,13 @@
  *
  * @example
  * ```typescript
- * import { toolsInternalMcp, workspaceInternalMcp } from "@webalive/tools"
+ * import { sandboxedFsInternalMcp, toolsInternalMcp, workspaceInternalMcp } from "@webalive/tools"
  *
  * const claudeOptions = {
  *   mcpServers: {
  *     "alive-tools": toolsInternalMcp,
- *     "alive-workspace": workspaceInternalMcp
+ *     "alive-workspace": workspaceInternalMcp,
+ *     "alive-sandboxed-fs": sandboxedFsInternalMcp
  *   },
  *   allowedTools: [
  *     "mcp__alive-tools__search_tools",
@@ -64,7 +65,14 @@ export {
   validateFrontmatter,
 } from "./lib/template-frontmatter.js"
 // MCP servers
-export { emailInternalMcp, supabaseInternalMcp, toolsInternalMcp, workspaceInternalMcp } from "./mcp-server.js"
+export {
+  emailInternalMcp,
+  sandboxedFsInternalMcp,
+  streamInternalMcpServers,
+  supabaseInternalMcp,
+  toolsInternalMcp,
+  workspaceInternalMcp,
+} from "./mcp-server.js"
 export type {
   AITool,
   AutomationTool,
@@ -127,8 +135,6 @@ export {
 } from "./tools/skills/list-skills.js"
 // Template utilities
 export {
-  getTemplateById,
-  getTemplatesByCategory,
   listTemplates,
   TEMPLATE_CATEGORIES,
   type TemplateCategory,

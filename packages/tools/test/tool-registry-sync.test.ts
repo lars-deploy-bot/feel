@@ -16,25 +16,27 @@
 
 import { INTERNAL_TOOL_DESCRIPTORS } from "@webalive/shared"
 import { describe, expect, it } from "vitest"
-import { toolsInternalMcp, workspaceInternalMcp } from "../src/mcp-server.js"
+import { sandboxedFsInternalMcp, toolsInternalMcp, workspaceInternalMcp } from "../src/mcp-server.js"
 import { TOOL_REGISTRY } from "../src/tools/meta/tool-registry.js"
+
+function getInternalMcpToolNames() {
+  const byServer = {
+    "alive-tools": new Set<string>(Object.keys(toolsInternalMcp.instance._registeredTools || {})),
+    "alive-workspace": new Set<string>(Object.keys(workspaceInternalMcp.instance._registeredTools || {})),
+    "alive-sandboxed-fs": new Set<string>(Object.keys(sandboxedFsInternalMcp.instance._registeredTools || {})),
+  }
+
+  const all = new Set<string>([
+    ...byServer["alive-tools"],
+    ...byServer["alive-workspace"],
+    ...byServer["alive-sandboxed-fs"],
+  ])
+  return { byServer, all }
+}
 
 describe("Tool Registry Sync", () => {
   it("should have all MCP server tools in TOOL_REGISTRY with enabled=true or superadminOnly=true", () => {
-    // Get all tool names from MCP servers
-    const mcpToolNames = new Set<string>()
-
-    // Extract tools from alive-tools server
-    const aliveToolsRegistered = Object.keys(toolsInternalMcp.instance._registeredTools || {})
-    for (const toolName of aliveToolsRegistered) {
-      mcpToolNames.add(toolName)
-    }
-
-    // Extract tools from alive-workspace server
-    const aliveWorkspaceRegistered = Object.keys(workspaceInternalMcp.instance._registeredTools || {})
-    for (const toolName of aliveWorkspaceRegistered) {
-      mcpToolNames.add(toolName)
-    }
+    const { all: mcpToolNames } = getInternalMcpToolNames()
 
     // Get all tool names that should be in MCP servers (enabled OR superadminOnly)
     const registryAvailableTools = new Set(
@@ -70,7 +72,7 @@ describe("Tool Registry Sync", () => {
         "Tools enabled/superadminOnly in TOOL_REGISTRY but missing from MCP servers:\n" +
           `   ${missingFromMcp.join(", ")}\n\n` +
           "   Fix: Either:\n" +
-          "   1. Add these tools to packages/tools/src/mcp-server.ts (toolsInternalMcp or workspaceInternalMcp)\n" +
+          "   1. Add these tools to packages/tools/src/mcp-server.ts (toolsInternalMcp, workspaceInternalMcp, or sandboxedFsInternalMcp)\n" +
           `   2. Or set superadminOnly=false if they're intentionally disabled`,
       )
     }
@@ -124,23 +126,13 @@ describe("Tool Registry Sync", () => {
       expect(tool.contextCost).toMatch(/^(low|medium|high)$/)
       expect(typeof tool.enabled).toBe("boolean")
 
-      // Test name format (snake_case, may include digits for external providers like context7)
-      expect(tool.name).toMatch(/^[a-z0-9_]+$/)
+      // Test name format (snake_case by default, may include PascalCase aliases like Read)
+      expect(tool.name).toMatch(/^[A-Za-z0-9_]+$/)
     }
   })
 
   it("should not include disabled tools in MCP servers (unless superadminOnly)", () => {
-    const mcpToolNames = new Set<string>()
-
-    const aliveToolsRegistered = Object.keys(toolsInternalMcp.instance._registeredTools || {})
-    for (const toolName of aliveToolsRegistered) {
-      mcpToolNames.add(toolName)
-    }
-
-    const aliveWorkspaceRegistered = Object.keys(workspaceInternalMcp.instance._registeredTools || {})
-    for (const toolName of aliveWorkspaceRegistered) {
-      mcpToolNames.add(toolName)
-    }
+    const { all: mcpToolNames } = getInternalMcpToolNames()
 
     // Disabled tools that are NOT superadminOnly should not be in MCP servers
     const disabledTools = TOOL_REGISTRY.filter(tool => !tool.enabled && !tool.superadminOnly).map(tool => tool.name)
@@ -163,26 +155,19 @@ describe("Tool Registry Sync", () => {
     expect(disabledButInMcp).toHaveLength(0)
   })
 
-  it("should map workspace category tools to workspaceInternalMcp and others to toolsInternalMcp", () => {
-    // Get tools from each server
-    const workspaceToolNames = new Set<string>(Object.keys(workspaceInternalMcp.instance._registeredTools || {}))
-    const aliveToolNames = new Set<string>(Object.keys(toolsInternalMcp.instance._registeredTools || {}))
+  it("should map each internal tool to the MCP server declared by its descriptor", () => {
+    const { byServer } = getInternalMcpToolNames()
+    const descriptorByName = new Map(INTERNAL_TOOL_DESCRIPTORS.map(descriptor => [descriptor.name, descriptor]))
 
-    // Check each enabled or superadminOnly tool is in correct server
     const wrongServerTools: string[] = []
 
     for (const tool of TOOL_REGISTRY.filter(t => t.enabled || t.superadminOnly)) {
-      const isInWorkspaceMcp = workspaceToolNames.has(tool.name)
-      const isInToolsMcp = aliveToolNames.has(tool.name)
+      const descriptor = descriptorByName.get(tool.name)
+      if (!descriptor) continue
 
-      if (tool.category === "workspace") {
-        if (!isInWorkspaceMcp) {
-          wrongServerTools.push(`${tool.name} (category: workspace, expected: workspaceInternalMcp)`)
-        }
-      } else {
-        if (!isInToolsMcp) {
-          wrongServerTools.push(`${tool.name} (category: ${tool.category}, expected: toolsInternalMcp)`)
-        }
+      const expectedSet = byServer[descriptor.mcpServer]
+      if (!expectedSet?.has(tool.name)) {
+        wrongServerTools.push(`${tool.name} (expected server: ${descriptor.mcpServer})`)
       }
     }
 
@@ -190,7 +175,7 @@ describe("Tool Registry Sync", () => {
       throw new Error(
         "Tools registered in wrong MCP server:\n" +
           `   ${wrongServerTools.join("\n   ")}\n\n` +
-          "   Fix: Workspace category tools must be in workspaceInternalMcp, others in toolsInternalMcp",
+          "   Fix: Ensure MCP registration matches descriptor mcpServer in internal-tool-descriptors.ts",
       )
     }
 
@@ -198,20 +183,14 @@ describe("Tool Registry Sync", () => {
   })
 
   it("should have MCP server grouping consistent with descriptor mcpServer field", () => {
-    const workspaceToolNames = new Set<string>(Object.keys(workspaceInternalMcp.instance._registeredTools || {}))
-    const aliveToolNames = new Set<string>(Object.keys(toolsInternalMcp.instance._registeredTools || {}))
+    const { byServer } = getInternalMcpToolNames()
 
     const mismatches: string[] = []
 
     for (const d of INTERNAL_TOOL_DESCRIPTORS.filter(d => d.enabled)) {
-      if (d.mcpServer === "alive-workspace") {
-        if (!workspaceToolNames.has(d.name)) {
-          mismatches.push(`${d.name}: descriptor says alive-workspace but not in workspaceInternalMcp`)
-        }
-      } else if (d.mcpServer === "alive-tools") {
-        if (!aliveToolNames.has(d.name)) {
-          mismatches.push(`${d.name}: descriptor says alive-tools but not in toolsInternalMcp`)
-        }
+      const serverTools = byServer[d.mcpServer]
+      if (!serverTools?.has(d.name)) {
+        mismatches.push(`${d.name}: descriptor says ${d.mcpServer} but tool is missing from that MCP server`)
       }
     }
 

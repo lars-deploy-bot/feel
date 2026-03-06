@@ -199,7 +199,7 @@ export async function tryWorkerPool(params: WorkerPoolParams): Promise<AttemptRe
 
   const agentConfig = {
     allowedTools,
-    disallowedTools: getDisallowedTools(useSuperadminTools, useSuperadminTools, false, useSuperadminTools),
+    disallowedTools: getDisallowedTools(useSuperadminTools, useSuperadminTools, "default", useSuperadminTools),
     permissionMode: PERMISSION_MODE,
     settingSources: SETTINGS_SOURCES,
     oauthMcpServers: {} as Record<string, unknown>,

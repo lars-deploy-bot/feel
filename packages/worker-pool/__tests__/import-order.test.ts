@@ -63,8 +63,8 @@ describe("Import Order Check", () => {
   it("should fail if required package is missing from top-level imports", () => {
     // Remove the claude-agent-sdk import
     const badContent = originalContent.replace(
-      /import { query } from "@anthropic-ai\/claude-agent-sdk"/,
-      '// import { query } from "@anthropic-ai/claude-agent-sdk"',
+      /^\s*import\s+\{\s*query\s*\}\s+from\s+"@anthropic-ai\/claude-agent-sdk".*$/m,
+      "",
     )
     writeFileSync(tempWorkerPath, badContent)
 
@@ -79,8 +79,8 @@ describe("Import Order Check", () => {
   it("should detect if @webalive/tools import is missing", () => {
     // Remove the tools import
     const badContent = originalContent.replace(
-      /import { workspaceInternalMcp, toolsInternalMcp } from "@webalive\/tools"/,
-      '// import { workspaceInternalMcp, toolsInternalMcp } from "@webalive/tools"',
+      /import\s+\{[\s\S]*?streamInternalMcpServers[\s\S]*?\}\s+from\s+"@webalive\/tools"\s*;?/m,
+      "",
     )
     writeFileSync(tempWorkerPath, badContent)
 

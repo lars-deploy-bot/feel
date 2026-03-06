@@ -77,10 +77,11 @@ export async function POST(req: NextRequest) {
   // Rate limit check (after standalone/test mode short-circuits, before any DB work)
   const clientIpId = getClientIdentifier(req, "login:ip")
   const emailId = `login:email:${email}`
+  const hasResolvedClientIp = !clientIpId.endsWith(":unknown")
 
-  if (loginRateLimiter.isRateLimited(clientIpId) || loginRateLimiter.isRateLimited(emailId)) {
+  if ((hasResolvedClientIp && loginRateLimiter.isRateLimited(clientIpId)) || loginRateLimiter.isRateLimited(emailId)) {
     const blockedTime = Math.max(
-      loginRateLimiter.getBlockedTimeRemaining(clientIpId),
+      hasResolvedClientIp ? loginRateLimiter.getBlockedTimeRemaining(clientIpId) : 0,
       loginRateLimiter.getBlockedTimeRemaining(emailId),
     )
     const minutesRemaining = Math.max(1, Math.ceil(blockedTime / 1000 / 60))
@@ -94,7 +95,9 @@ export async function POST(req: NextRequest) {
 
   function failLogin(reason: string) {
     console.error(`[Login] ${reason}:`, email)
-    loginRateLimiter.recordFailedAttempt(clientIpId)
+    if (hasResolvedClientIp) {
+      loginRateLimiter.recordFailedAttempt(clientIpId)
+    }
     loginRateLimiter.recordFailedAttempt(emailId)
     return createCorsErrorResponse(origin, ErrorCodes.INVALID_CREDENTIALS, 401, { requestId })
   }
@@ -151,7 +154,9 @@ export async function POST(req: NextRequest) {
   })
 
   // Reset rate limiter on successful login
-  loginRateLimiter.reset(clientIpId)
+  if (hasResolvedClientIp) {
+    loginRateLimiter.reset(clientIpId)
+  }
   loginRateLimiter.reset(emailId)
 
   // Non-blocking: don't fail login if session tracking fails

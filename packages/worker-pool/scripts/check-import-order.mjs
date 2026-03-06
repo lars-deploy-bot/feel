@@ -198,13 +198,13 @@ function main() {
   const requiredTopLevelImports = ["@anthropic-ai/claude-agent-sdk", "@webalive/shared", "@webalive/tools"]
 
   const topLevelImportSection = code.split(/^(async\s+)?function\s+/m)[0]
+  const topLevelWithoutComments = topLevelImportSection.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
   const missingImports = []
 
   for (const pkg of requiredTopLevelImports) {
-    // Check for uncommented import statement
-    // Must match: import ... from "package" (not commented with // or /* */)
-    const importPattern = new RegExp(`^\\s*import[\\s\\S]*?from\\s+["']${pkg.replace(/[/\\]/g, "\\$&")}["']`, "m")
-    if (!importPattern.test(topLevelImportSection)) {
+    // Check for uncommented import statement in top-level section.
+    const importPattern = new RegExp(`\\bimport\\b[\\s\\S]*?\\bfrom\\s+["']${pkg.replace(/[/\\]/g, "\\$&")}["']`)
+    if (!importPattern.test(topLevelWithoutComments)) {
       missingImports.push(pkg)
     }
   }
