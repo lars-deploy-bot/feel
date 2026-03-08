@@ -161,22 +161,28 @@ async function warmupServer(baseUrl: string): Promise<void> {
     }
   }
 
-  // Phase 2: Browser warmup to trigger client-side JS compilation
-  // Turbopack only compiles client bundles when a real browser requests them.
-  console.log("   [Phase 2] Browser warmup (client JS compilation)...")
-  try {
-    const start = Date.now()
-    const browser = await chromium.launch({ args: ["--no-sandbox"] })
-    const page = await browser.newPage()
+  // Phase 2: Browser warmup to trigger Turbopack client-side JS compilation
+  // Only needed for local dev servers — production builds have pre-compiled bundles.
+  // Turbopack lazily compiles client bundles on first real browser visit;
+  // without this warmup, parallel workers all trigger compilation simultaneously.
+  if (TEST_ENV === "local") {
+    console.log("   [Phase 2] Browser warmup (Turbopack client JS compilation)...")
+    try {
+      const start = Date.now()
+      const browser = await chromium.launch({ args: ["--no-sandbox"] })
+      const page = await browser.newPage()
 
-    // Navigate to /chat — this is the heaviest page and triggers all client bundle compilation
-    await page.goto(`${baseUrl}/chat`, { waitUntil: "networkidle", timeout: 60_000 })
+      // Navigate to /chat — this is the heaviest page and triggers all client bundle compilation
+      await page.goto(`${baseUrl}/chat`, { waitUntil: "networkidle", timeout: 60_000 })
 
-    await browser.close()
-    console.log(`   ✓ /chat client bundles compiled (${Date.now() - start}ms)`)
-  } catch (error) {
-    // Non-fatal: tests will still work, just slower on first load
-    console.log(`   ⚠ Browser warmup failed (tests may be slower): ${error}`)
+      await browser.close()
+      console.log(`   ✓ /chat client bundles compiled (${Date.now() - start}ms)`)
+    } catch (error) {
+      // Non-fatal: tests will still work, just slower on first load
+      console.log(`   ⚠ Browser warmup failed (tests may be slower): ${error}`)
+    }
+  } else {
+    console.log("   [Phase 2] Skipped (production build, no Turbopack compilation needed)")
   }
 }
 
