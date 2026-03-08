@@ -30,11 +30,12 @@ export function Button({
   disabled,
   className,
   children,
+  type = "button",
   ...props
 }: ButtonProps) {
   return (
     <button
-      type="button"
+      type={type}
       disabled={disabled || loading}
       className={cn(
         "inline-flex items-center justify-center gap-2 font-medium rounded-button transition-colors duration-100 cursor-pointer",

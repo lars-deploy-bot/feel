@@ -50,7 +50,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       .from("automation_jobs")
       .select(
         `
-        id, user_id, org_id, site_id, name, description,
+        id, user_id, site_id, name, description,
         trigger_type, cron_schedule, cron_timezone, run_at,
         action_type, action_prompt, action_source, action_target_page,
         action_model, action_timeout_seconds, skills, is_active, status,

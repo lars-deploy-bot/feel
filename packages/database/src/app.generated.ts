@@ -42,7 +42,6 @@ export type Database = {
           lease_expires_at: string | null
           name: string
           next_run_at: string | null
-          org_id: string
           run_at: string | null
           run_id: string | null
           running_at: string | null
@@ -80,7 +79,6 @@ export type Database = {
           lease_expires_at?: string | null
           name: string
           next_run_at?: string | null
-          org_id: string
           run_at?: string | null
           run_id?: string | null
           running_at?: string | null
@@ -118,7 +116,6 @@ export type Database = {
           lease_expires_at?: string | null
           name?: string
           next_run_at?: string | null
-          org_id?: string
           run_at?: string | null
           run_id?: string | null
           running_at?: string | null
@@ -762,7 +759,6 @@ export type Database = {
           lease_expires_at: string | null
           name: string
           next_run_at: string | null
-          org_id: string
           run_at: string | null
           run_id: string | null
           running_at: string | null

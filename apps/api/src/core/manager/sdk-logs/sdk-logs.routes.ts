@@ -1,13 +1,13 @@
 import { Hono } from "hono"
 import type { AppBindings } from "../../../types/hono"
 
-const rawPort = process.env.SDK_LOG_PROXY_PORT
-if (!rawPort || Number.isNaN(Number(rawPort))) {
-  throw new Error(`[sdk-logs] SDK_LOG_PROXY_PORT is required (got: ${rawPort})`)
-}
-const PROXY_PORT = Number(rawPort)
-const PROXY_BASE = `http://localhost:${PROXY_PORT}`
 const PROXY_TIMEOUT_MS = 10_000
+
+function getProxyBase(): string | null {
+  const rawPort = process.env.SDK_LOG_PROXY_PORT
+  if (!rawPort || Number.isNaN(Number(rawPort))) return null
+  return `http://localhost:${Number(rawPort)}`
+}
 
 type ProxyResult = { ok: true; data: Record<string, unknown> } | { ok: false; error: string }
 
@@ -24,8 +24,10 @@ export const sdkLogsRoutes = new Hono<AppBindings>()
 
 // GET /api/manager/sdk-logs — list log files
 sdkLogsRoutes.get("/", async c => {
+  const base = getProxyBase()
+  if (!base) return c.json({ error: "SDK_LOG_PROXY_PORT not configured" }, 503)
   try {
-    const result = await proxyJson(`${PROXY_BASE}/_logs`)
+    const result = await proxyJson(`${base}/_logs`)
     if (!result.ok) return c.json({ error: result.error }, 502)
     return c.json({ ok: true, files: result.data.files })
   } catch {
@@ -35,11 +37,13 @@ sdkLogsRoutes.get("/", async c => {
 
 // GET /api/manager/sdk-logs/read?file=<name> — read a specific log file
 sdkLogsRoutes.get("/read", async c => {
+  const base = getProxyBase()
+  if (!base) return c.json({ error: "SDK_LOG_PROXY_PORT not configured" }, 503)
   const file = c.req.query("file")
   if (!file) return c.json({ error: "file param required" }, 400)
 
   try {
-    const result = await proxyJson(`${PROXY_BASE}/_logs/read?file=${encodeURIComponent(file)}`)
+    const result = await proxyJson(`${base}/_logs/read?file=${encodeURIComponent(file)}`)
     if (!result.ok) return c.json({ error: result.error }, 502)
     if (result.data.error) return c.json({ error: result.data.error }, 404)
     return c.json({ ok: true, lines: result.data.lines })
@@ -50,8 +54,10 @@ sdkLogsRoutes.get("/read", async c => {
 
 // GET /api/manager/sdk-logs/health — proxy health check
 sdkLogsRoutes.get("/health", async c => {
+  const base = getProxyBase()
+  if (!base) return c.json({ ok: false, error: "SDK_LOG_PROXY_PORT not configured" }, 503)
   try {
-    const result = await proxyJson(`${PROXY_BASE}/health`)
+    const result = await proxyJson(`${base}/health`)
     if (!result.ok) return c.json({ ok: false, error: result.error }, 502)
     return c.json({ ok: true, logsDir: result.data.logsDir, callCount: result.data.callCount })
   } catch {

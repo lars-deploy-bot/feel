@@ -131,10 +131,9 @@ if [ "$DEPLOY_PRODUCTION" = true ]; then
         # Staging already validated: promote its build, skip checks and E2E
         PROMOTE_FROM=staging SKIP_E2E=1 \
             "$SCRIPT_DIR/build-and-serve.sh" production
-    elif [ "$SKIP_E2E" = true ]; then
-        SKIP_E2E=1 "$SCRIPT_DIR/build-and-serve.sh" production
     else
-        "$SCRIPT_DIR/build-and-serve.sh" production
+        # Production-only deploy: always skip E2E (E2E runs against staging, not production)
+        SKIP_E2E=1 "$SCRIPT_DIR/build-and-serve.sh" production
     fi
 
     log_success "Production deployed"

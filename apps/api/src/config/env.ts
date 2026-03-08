@@ -7,9 +7,10 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   ALIVE_PASSCODE: z.string().min(1),
   E2B_API_KEY: z.string().regex(/^e2b_/, "Must be valid E2B API key (e2b_*)"),
-  POSTHOG_API_KEY: z.string().min(1).optional(),
-  POSTHOG_HOST: z.string().url().optional(),
-  POSTHOG_PROJECT_ID: z.coerce.number().int().positive().optional(),
+  GROQ_API_SECRET: z.string().min(1),
+  POSTHOG_API_KEY: z.string().min(1),
+  POSTHOG_HOST: z.string().url(),
+  POSTHOG_PROJECT_ID: z.coerce.number().int().positive(),
 })
 
 export type EnvConfig = z.infer<typeof envSchema>

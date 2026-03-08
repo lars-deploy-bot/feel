@@ -108,7 +108,7 @@ These columns are frequently confused. Always use the correct names:
 | Table | PK | Name/Label Column | FK to domains | FK to orgs |
 |-------|----|--------------------|---------------|------------|
 | `app.domains` | `domain_id` | **`hostname`** (NOT `domain`) | — | `org_id` |
-| `app.automation_jobs` | `id` | `name` | **`site_id`** (NOT `domain_id`) → `domains.domain_id` | `org_id` |
+| `app.automation_jobs` | `id` | `name` | **`site_id`** (NOT `domain_id`) → `domains.domain_id` | — (join via `site_id` → `domains.org_id`) |
 | `app.automation_runs` | `id` | — | — (join via `job_id` → `automation_jobs.id`) | — |
 | `app.conversations` | `conversation_id` | `title`, `workspace` | — (uses `workspace` text, not FK) | `org_id` |
 | `iam.sessions` | `session_id` | `sdk_session_id`, `tab_id` | **`domain_id`** → `domains.domain_id` | — (join via `user_id`) |

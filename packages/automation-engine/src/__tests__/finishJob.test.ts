@@ -85,7 +85,6 @@ function makeRunContext(opts: MockCtxOpts = {}) {
       name: "test-job",
       site_id: "site_1",
       user_id: "user_1",
-      org_id: "org_1",
       is_active: true,
       status: "running" as const,
       trigger_type: opts.triggerType ?? "cron",

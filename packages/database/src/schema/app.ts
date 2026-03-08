@@ -240,7 +240,6 @@ export const automationJobs = appSchema.table(
     id: text("id").default(sql`gen_prefixed_id('auto_job_'::text)`).primaryKey().notNull(),
     siteId: text("site_id").notNull(),
     userId: text("user_id").notNull(),
-    orgId: text("org_id").notNull(),
     name: text("name").notNull(),
     description: text("description"),
     triggerType: automationTriggerTypeEnum("trigger_type").notNull(),
@@ -285,15 +284,9 @@ export const automationJobs = appSchema.table(
     index("idx_automation_jobs_next_run")
       .on(table.nextRunAt)
       .where(sql`((is_active = true) AND (next_run_at IS NOT NULL))`),
-    index("idx_automation_jobs_org_id").on(table.orgId),
     index("idx_automation_jobs_site_id").on(table.siteId),
     index("idx_automation_jobs_trigger_type").on(table.triggerType),
     index("idx_automation_jobs_user_id").on(table.userId),
-    foreignKey({
-      columns: [table.orgId],
-      foreignColumns: [orgs.orgId],
-      name: "automation_jobs_org_id_fkey",
-    }).onDelete("cascade"),
     foreignKey({
       columns: [table.siteId],
       foreignColumns: [domains.domainId],
@@ -588,10 +581,6 @@ export const automationJobsRelations = relations(automationJobs, ({ one, many })
   user: one(users, {
     fields: [automationJobs.userId],
     references: [users.userId],
-  }),
-  org: one(orgs, {
-    fields: [automationJobs.orgId],
-    references: [orgs.orgId],
   }),
   runs: many(automationRuns),
 }))
