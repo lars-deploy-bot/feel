@@ -45,6 +45,7 @@ help:
 	@echo "  make staging         Deploy staging only (port 8998)"
 	@echo "  make staging-fast    Deploy staging only, skip E2E tests"
 	@echo "  make production      Deploy production only (port 9000)"
+	@echo "  make production-fast Deploy production only, skip E2E tests"
 	@echo "  make deploy-status   Check if a deployment is running"
 	@echo "  CLEAN_BUILD=1 ...    Force a full rebuild and clear deploy caches"
 	@echo ""
@@ -97,6 +98,10 @@ staging-fast:
 # Production only
 production:
 	@./scripts/deployment/ship.sh --production
+
+# Production only, skip E2E
+production-fast:
+	@./scripts/deployment/ship.sh --production --skip-e2e
 
 # Check deployment lock status
 deploy-status:

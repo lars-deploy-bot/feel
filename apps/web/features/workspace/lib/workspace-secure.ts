@@ -1,5 +1,6 @@
 import * as crypto from "node:crypto"
 import * as fs from "node:fs"
+import { chown, mkdir } from "node:fs/promises"
 import * as path from "node:path"
 
 export interface Workspace {
@@ -54,5 +55,32 @@ export function ensurePathWithinWorkspace(filePath: string, workspaceRoot: strin
   const norm = path.normalize(filePath)
   if (!norm.startsWith(workspaceRoot + path.sep)) {
     throw new Error(`Path outside workspace: ${norm}`)
+  }
+}
+
+/**
+ * Ensure a directory tree exists within a workspace and matches workspace ownership.
+ * Used before atomic writes so newly-created parent directories do not end up root-owned.
+ */
+export async function ensureDirectoryAsWorkspaceOwner(
+  directoryPath: string,
+  workspaceRoot: string,
+  workspace: { uid: number; gid: number },
+): Promise<void> {
+  const resolvedWorkspaceRoot = path.resolve(workspaceRoot)
+  const resolvedDirectoryPath = path.resolve(directoryPath)
+
+  ensurePathWithinWorkspace(resolvedDirectoryPath, resolvedWorkspaceRoot)
+
+  const relativePath = path.relative(resolvedWorkspaceRoot, resolvedDirectoryPath)
+  if (relativePath === "" || relativePath === ".") {
+    return
+  }
+
+  let currentPath = resolvedWorkspaceRoot
+  for (const segment of relativePath.split(path.sep).filter(Boolean)) {
+    currentPath = path.join(currentPath, segment)
+    await mkdir(currentPath, { recursive: true })
+    await chown(currentPath, workspace.uid, workspace.gid)
   }
 }
