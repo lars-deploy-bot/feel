@@ -4,7 +4,7 @@
  * Creates isolated tenant for each worker before tests run.
  */
 
-import type { FullConfig } from "@playwright/test"
+import { chromium, type FullConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
 import { requireProjectBaseUrl } from "./lib/base-url"
 import { TEST_ENV } from "./lib/test-env"
@@ -137,12 +137,19 @@ async function fetchTenantStatus(
 }
 
 /**
- * Warm up critical pages to trigger Next.js compilation before parallel tests start
- * This prevents multiple workers from all waiting for initial compilation simultaneously
+ * Warm up critical pages to trigger Next.js compilation before parallel tests start.
+ *
+ * Phase 1: fetch() triggers SSR compilation (fast, no browser needed).
+ * Phase 2: Real browser navigates to /chat to trigger Turbopack client-side JS compilation.
+ *
+ * Without Phase 2, Turbopack lazily compiles client bundles on first real browser visit.
+ * When 4 parallel workers all hit /chat simultaneously as their first test, Turbopack
+ * compiles under contention and hydration takes >10s, exceeding the __E2E_APP_READY__ timeout.
  */
 async function warmupServer(baseUrl: string): Promise<void> {
+  // Phase 1: SSR warmup via fetch (fast, triggers server compilation)
   const criticalPages = ["/", "/chat", "/deploy"]
-  console.log("🔥 [Global Setup] Warming up server pages...")
+  console.log("   [Phase 1] SSR warmup via fetch...")
 
   for (const page of criticalPages) {
     try {
@@ -152,6 +159,27 @@ async function warmupServer(baseUrl: string): Promise<void> {
     } catch (error) {
       console.log(`   ⚠ ${page} warmup failed: ${error}`)
     }
+  }
+
+  // Phase 2: Browser warmup to trigger client-side JS compilation
+  // Turbopack only compiles client bundles when a real browser requests them.
+  console.log("   [Phase 2] Browser warmup (client JS compilation)...")
+  try {
+    const start = Date.now()
+    const browser = await chromium.launch({ args: ["--no-sandbox"] })
+    const page = await browser.newPage()
+
+    // Navigate to /chat — this is the heaviest page and triggers all client bundle compilation
+    await page.goto(`${baseUrl}/chat`, { waitUntil: "networkidle", timeout: 60_000 })
+
+    // Wait briefly for any deferred JS to finish
+    await page.waitForTimeout(1_000)
+
+    await browser.close()
+    console.log(`   ✓ /chat client bundles compiled (${Date.now() - start}ms)`)
+  } catch (error) {
+    // Non-fatal: tests will still work, just slower on first load
+    console.log(`   ⚠ Browser warmup failed (tests may be slower): ${error}`)
   }
 }
 

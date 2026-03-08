@@ -50,8 +50,9 @@ export const TEST_TIMEOUTS = {
   /**
    * Slow operations (React hydration, workspace initialization)
    * This is the PRIMARY wait - put it first, then use fast/medium for confirmations
+   * Turbopack client compilation can take 15s+ under parallel worker load
    */
-  slow: 10_000 * TIMEOUT_MULTIPLIER, // 10s local, 20s remote
+  slow: 15_000 * TIMEOUT_MULTIPLIER, // 15s local, 30s remote
 
   /** Maximum timeout for any single assertion */
   max: 15_000 * TIMEOUT_MULTIPLIER, // 15s local, 30s remote
