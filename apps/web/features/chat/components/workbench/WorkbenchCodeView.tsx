@@ -1,10 +1,12 @@
 "use client"
 
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { FilePlus, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { CodeViewer } from "./CodeViewer"
-import { FileTree } from "./FileTree"
+import { FileTree, invalidateFileCache } from "./FileTree"
 import { useFileWatcher } from "./hooks/useFileWatcher"
+import { getParentFilePath } from "./lib/file-paths"
+import { NewFileInput } from "./NewFileInput"
 import { PanelBar } from "./ui"
 
 interface WorkbenchCodeViewProps {
@@ -38,6 +40,7 @@ export function WorkbenchCodeView({
   onToggleTreeCollapsed,
 }: WorkbenchCodeViewProps) {
   const [isResizing, setIsResizing] = useState(false)
+  const [isCreatingFile, setIsCreatingFile] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Live file watching — invalidates caches and triggers re-renders on file changes
@@ -97,18 +100,40 @@ export function WorkbenchCodeView({
           {/* Tree header */}
           <PanelBar className="justify-between">
             <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Files</span>
-            <button
-              type="button"
-              onClick={onToggleTreeCollapsed}
-              className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
-              title="Collapse sidebar"
-            >
-              <PanelLeftClose size={14} strokeWidth={1.5} />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => setIsCreatingFile(true)}
+                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+                title="New file"
+              >
+                <FilePlus size={14} strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
+                onClick={onToggleTreeCollapsed}
+                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+                title="Collapse sidebar"
+              >
+                <PanelLeftClose size={14} strokeWidth={1.5} />
+              </button>
+            </div>
           </PanelBar>
 
           {/* Tree content */}
           <div className="flex-1 overflow-hidden">
+            {isCreatingFile && (
+              <NewFileInput
+                workspace={workspace}
+                worktree={worktree}
+                onCreated={filePath => {
+                  setIsCreatingFile(false)
+                  invalidateFileCache(workspace, worktree, getParentFilePath(filePath))
+                  onSelectFile(filePath)
+                }}
+                onCancel={() => setIsCreatingFile(false)}
+              />
+            )}
             <FileTree
               workspace={workspace}
               worktree={worktree}

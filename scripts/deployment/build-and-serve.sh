@@ -558,7 +558,11 @@ else
 
     E2E_SECRET=$(grep "^E2E_TEST_SECRET=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- || echo "")
     if [ -z "$E2E_SECRET" ]; then
-        phase_end error "E2E_TEST_SECRET not found in $ENV_FILE"
+        # Production env intentionally omits E2E_TEST_SECRET — read from staging
+        E2E_SECRET=$(grep "^E2E_TEST_SECRET=" "apps/web/.env.staging" 2>/dev/null | cut -d'=' -f2- || echo "")
+    fi
+    if [ -z "$E2E_SECRET" ]; then
+        phase_end error "E2E_TEST_SECRET not found in $ENV_FILE or apps/web/.env.staging"
         exit 1
     fi
 
