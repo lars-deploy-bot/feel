@@ -63,7 +63,8 @@ export async function login(
  * @param context - Playwright browser context
  */
 export async function setAuthCookie(user: TestUser, context: BrowserContext) {
-  const JWT_SECRET = process.env.JWT_SECRET || "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
+  const JWT_SECRET = process.env.JWT_SECRET
+  if (!JWT_SECRET) throw new Error("JWT_SECRET not set — add it to .env.e2e.local")
 
   // Create JWT payload with all required fields
   const payload = {

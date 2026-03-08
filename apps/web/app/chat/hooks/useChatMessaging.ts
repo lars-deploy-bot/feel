@@ -8,7 +8,7 @@ import { ClientError, ClientRequest, useDevTerminal } from "@/features/chat/lib/
 import { type AgentManagerContent, parseStreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
-import { type BridgeWarningContent, isWarningMessage } from "@/features/chat/lib/streaming/ndjson"
+import { type BridgeWarningContent, isQueuedMessage, isWarningMessage } from "@/features/chat/lib/streaming/ndjson"
 import { isCompleteEvent, isDoneEvent, isErrorEvent, isInterruptEvent } from "@/features/chat/types/stream"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { buildPromptWithAttachmentsEx, type PromptBuildResult } from "@/features/chat/utils/prompt-builder"
@@ -548,6 +548,23 @@ export function useChatMessaging({
 
               try {
                 const parsed: unknown = JSON.parse(line)
+
+                // Handle queue status (synthetic message, not a StreamEvent)
+                if (isQueuedMessage(parsed)) {
+                  const reasonText =
+                    parsed.reason === "user_limit"
+                      ? "You have other active sessions"
+                      : parsed.reason === "workspace_limit"
+                        ? "This workspace is busy"
+                        : "Server is busy"
+                  toast(`${reasonText} — your request is queued`, {
+                    id: "stream-queued",
+                    icon: "\u23F3",
+                    duration: 10_000,
+                  })
+                  markStreamAlive()
+                  continue
+                }
 
                 if (!isValidStreamEvent(parsed)) {
                   streamingActions.incrementConsecutiveErrors(targetTabId)

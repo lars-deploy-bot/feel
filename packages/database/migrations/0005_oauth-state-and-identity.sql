@@ -12,7 +12,7 @@
 -- ============================================================================
 
 CREATE TABLE integrations.oauth_states (
-    state_id uuid DEFAULT gen_random_uuid() PRIMARY KEY NOT NULL,
+    state_id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY NOT NULL,
     state_hash text NOT NULL,
     provider text NOT NULL,
     user_id text NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
@@ -30,7 +30,7 @@ CREATE INDEX idx_oauth_states_user_provider ON integrations.oauth_states (user_i
 -- ============================================================================
 
 CREATE TABLE integrations.oauth_external_identities (
-    identity_id uuid DEFAULT gen_random_uuid() PRIMARY KEY NOT NULL,
+    identity_id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY NOT NULL,
     user_id text NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
     provider text NOT NULL,
     provider_user_id text NOT NULL,

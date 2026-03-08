@@ -12,39 +12,13 @@
  *   { status, build, services, system, timestamp, responseTimeMs }
  */
 
-import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
 import * as Sentry from "@sentry/nextjs"
 import { env, getRedisUrl } from "@webalive/env/server"
 import { createRedisClient } from "@webalive/redis"
-import { PATHS } from "@webalive/shared"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { timingSafeCompare } from "@/lib/auth/timing-safe"
+import { getBuildInfo } from "@/lib/build-info"
 import { getSupabaseCredentials } from "@/lib/env/server"
-
-// Read build info at startup (file is generated at build time)
-function getBuildInfo(): { commit: string; branch: string; buildTime: string } {
-  // Try multiple paths since location varies between dev and production
-  const possiblePaths = [
-    join(process.cwd(), "lib/build-info.json"),
-    join(process.cwd(), "apps/web/lib/build-info.json"),
-    join(PATHS.ALIVE_ROOT, ".builds/staging/current/standalone/apps/web/lib/build-info.json"),
-    join(PATHS.ALIVE_ROOT, "apps/web/lib/build-info.json"),
-  ]
-
-  for (const buildInfoPath of possiblePaths) {
-    try {
-      if (existsSync(buildInfoPath)) {
-        const content = readFileSync(buildInfoPath, "utf-8")
-        return JSON.parse(content)
-      }
-    } catch (_err) {
-      // Expected: build info file may not exist or be invalid JSON
-    }
-  }
-
-  return { commit: "not-found", branch: "unknown", buildTime: "unknown" }
-}
 
 const buildInfo = getBuildInfo()
 

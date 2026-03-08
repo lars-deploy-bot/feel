@@ -7,7 +7,7 @@
 import type { ChildProcess } from "node:child_process"
 import type { Socket } from "node:net"
 import type { ExecutionMode, SandboxDomain } from "@webalive/sandbox"
-import { STREAM_TYPES, type StreamType } from "@webalive/shared"
+import { type QueueReason, STREAM_TYPES, type StreamType } from "@webalive/shared"
 
 // Re-export for convenience (canonical source: @webalive/shared)
 export { STREAM_TYPES, type StreamType }
@@ -45,7 +45,7 @@ export const WORKER_STATES = {
 } as const
 
 /** Environment variables used by worker pool */
-export const ENV_VARS = {
+export const WORKER_ENV_VARS = {
   /** Session cookie for MCP tool authentication */
   ALIVE_SESSION_COOKIE: "ALIVE_SESSION_COOKIE",
   /** Target UID for privilege dropping */
@@ -74,7 +74,7 @@ export const EVICTION_STRATEGIES = {
 export type WorkerMessageType = (typeof WORKER_MESSAGE_TYPES)[keyof typeof WORKER_MESSAGE_TYPES]
 export type ParentMessageType = (typeof PARENT_MESSAGE_TYPES)[keyof typeof PARENT_MESSAGE_TYPES]
 export type WorkerState = (typeof WORKER_STATES)[keyof typeof WORKER_STATES]
-export type EnvVarName = (typeof ENV_VARS)[keyof typeof ENV_VARS]
+export type EnvVarName = (typeof WORKER_ENV_VARS)[keyof typeof WORKER_ENV_VARS]
 export type EvictionStrategy = (typeof EVICTION_STRATEGIES)[keyof typeof EVICTION_STRATEGIES]
 
 // ============================================================================
@@ -321,6 +321,11 @@ export interface WorkerPoolConfig {
 }
 
 /** Options for sending a query to a worker */
+export interface QueuedInfo {
+  reason: QueueReason
+  position: number
+}
+
 export interface QueryOptions {
   /** Request ID for tracking */
   requestId: string
@@ -332,6 +337,8 @@ export interface QueryOptions {
   payload: AgentRequest
   /** Callback for streamed messages */
   onMessage: (message: WorkerToParentMessage) => void
+  /** Callback when request is queued (not immediately assigned a worker) */
+  onQueued?: (info: QueuedInfo) => void
   /** Abort signal for cancellation */
   signal?: AbortSignal
 }

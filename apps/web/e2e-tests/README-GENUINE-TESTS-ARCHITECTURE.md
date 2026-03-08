@@ -122,7 +122,7 @@ bun run test:e2e:genuine:headed
 
 ## Prerequisites
 
-1. **Environment Variables** (shell env or `ENV_FILE`, default `.env.staging`):
+1. **Environment Variables** (shell env or `ENV_FILE`, default `.env.e2e.local`):
    ```bash
    ASK_LARS_KEY=sk-ant-...
    SUPABASE_URL=...

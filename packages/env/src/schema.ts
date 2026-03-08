@@ -19,6 +19,48 @@ export const httpsUrl = z
   .url()
   .regex(/^https:\/\//, "Must use HTTPS")
 
+function isLocalNetworkHostname(hostname: string): boolean {
+  if (hostname === "localhost" || hostname === "127.0.0.1") return true
+  // Allow RFC1918 private IPs (e.g., WireGuard 10.8.0.1, Docker 172.17.x.x)
+  if (/^10(?:\.\d{1,3}){3}$/.test(hostname)) return true
+  if (/^192\.168(?:\.\d{1,3}){2}$/.test(hostname)) return true
+  if (/^172\.(1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}$/.test(hostname)) return true
+  return false
+}
+
+/**
+ * Supabase URLs are HTTPS in shared/deployed environments.
+ * For isolated local E2E and local Supabase CLI/tunnel usage, allow loopback HTTP only.
+ */
+export const supabaseUrl = z
+  .string()
+  .url()
+  .superRefine((value, ctx) => {
+    let parsed: URL
+    try {
+      parsed = new URL(value)
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Must be a valid URL",
+      })
+      return
+    }
+
+    if (parsed.protocol === "https:") {
+      return
+    }
+
+    if (parsed.protocol === "http:" && isLocalNetworkHostname(parsed.hostname)) {
+      return
+    }
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Must use HTTPS, or HTTP on local/private network for local Supabase",
+    })
+  })
+
 export const supabasePublishableKey = z
   .string()
   .regex(/^(eyJ|sb_publishable_)/, "Must be valid Supabase publishable key")
@@ -51,7 +93,7 @@ export const serverSchema = {
   ANTHROPIC_API_KEY: anthropicApiKey.optional(),
 
   // Supabase (server-side)
-  SUPABASE_URL: httpsUrl,
+  SUPABASE_URL: supabaseUrl,
   SUPABASE_ANON_KEY: supabasePublishableKey,
   SUPABASE_SERVICE_ROLE_KEY: supabaseSecretKey.optional(),
   SUPABASE_ACCESS_TOKEN: z.string().optional(),
@@ -138,15 +180,15 @@ export const serverSchema = {
   NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
 
   // Observability API tokens (self-hosted Sentry + PostHog)
-  // REQUIRED — build will fail if missing
-  SENTRY_AUTH_TOKEN: z.string().min(1),
-  POSTHOG_PERSONAL_API_KEY: z.string().min(1),
+  // Optional — only required in production/staging, not in local E2E
+  SENTRY_AUTH_TOKEN: z.string().min(1).optional(),
+  POSTHOG_PERSONAL_API_KEY: z.string().min(1).optional(),
 
-  // Signup access code (required to create new accounts)
-  SIGNUP_ACCESS_CODE: z.string().min(1),
+  // Signup access code (required to create new accounts in production)
+  SIGNUP_ACCESS_CODE: z.string().min(1).optional(),
 
   // E2B Sandbox
-  E2B_API_KEY: e2bApiKey,
+  E2B_API_KEY: e2bApiKey.optional(),
 
   // E2E Testing (optional - only needed for staging E2E tests)
   // MUST NOT be set in production — test routes become accessible if set.
@@ -165,13 +207,13 @@ export const serverSchema = {
  * These are exposed to the browser (must be prefixed with NEXT_PUBLIC_)
  */
 export const clientSchema = {
-  NEXT_PUBLIC_SUPABASE_URL: httpsUrl,
+  NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: supabasePublishableKey,
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_PREVIEW_BASE: z.string().optional().default(""),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
-  NEXT_PUBLIC_CONTACT_EMAIL: z.string().email(),
+  NEXT_PUBLIC_CONTACT_EMAIL: z.string().email().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 } as const
 

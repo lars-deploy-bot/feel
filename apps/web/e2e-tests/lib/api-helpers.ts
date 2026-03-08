@@ -12,7 +12,8 @@
  * Tests should ALWAYS use these instead of raw `request.get()`/`request.post()`.
  */
 
-import type { APIRequestContext } from "@playwright/test"
+import type { APIRequestContext, Request } from "@playwright/test"
+import type { ValidatedBody } from "@/types/guards/api"
 
 export interface ApiResult<T = unknown> {
   ok: boolean
@@ -50,4 +51,16 @@ export async function apiPost<T = unknown>(
     status: response.status(),
     data,
   }
+}
+
+/**
+ * Parse a Playwright Request's POST body as the canonical ValidatedBody type.
+ * Use this to inspect intercepted /api/claude/stream requests in E2E tests.
+ */
+export function parseValidatedBody(request: Request): ValidatedBody {
+  const postData = request.postData()
+  if (!postData) {
+    throw new Error("Missing /api/claude/stream request body")
+  }
+  return JSON.parse(postData) as ValidatedBody
 }

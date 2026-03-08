@@ -2,12 +2,9 @@ import {
   buildStreamToolRuntimeConfig,
   createStreamToolContext,
   getStreamMcpServers,
-  getStreamToolDecision,
   OAUTH_MCP_PROVIDERS,
   STREAM_INTERRUPT_SOURCES,
   STREAM_PERMISSION_MODE,
-  // Single source of truth for Stream tool configuration
-  STREAM_SDK_TOOL_NAMES,
   STREAM_SETTINGS_SOURCES,
   STREAM_SYNTHETIC_MESSAGE_TYPES,
   STREAM_TYPES,
@@ -17,20 +14,9 @@ import { getEnabledMcpToolNames, streamInternalMcpServers } from "@webalive/tool
 // Re-export stream types
 export { STREAM_TYPES, STREAM_SYNTHETIC_MESSAGE_TYPES, STREAM_INTERRUPT_SOURCES }
 
-// Re-export SDK tools from shared (single source of truth)
-const defaultMemberContext = createStreamToolContext()
-export const ALLOWED_SDK_TOOLS = STREAM_SDK_TOOL_NAMES.filter(
-  tool => getStreamToolDecision(tool, defaultMemberContext).executable,
-)
 export const PERMISSION_MODE = STREAM_PERMISSION_MODE
 /** @type {import('@anthropic-ai/claude-agent-sdk').SettingSource[]} */
 export const SETTINGS_SOURCES = STREAM_SETTINGS_SOURCES
-
-// MCP tools (auto-generated from TOOL_REGISTRY)
-export const ALLOWED_MCP_TOOLS = buildStreamToolRuntimeConfig(
-  getEnabledMcpToolNames,
-  defaultMemberContext,
-).allowedTools.filter(tool => tool.startsWith("mcp__"))
 
 /**
  * Get base allowed tools (SDK tools + internal MCP tools)

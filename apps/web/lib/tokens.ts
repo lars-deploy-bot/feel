@@ -23,6 +23,7 @@ export {
   getAllOrganizationCredits,
   getOrgCredits,
   hasEnoughCredits,
+  invalidateDomainOrgCache,
   type LLMTokenUsage,
   updateOrgCredits,
   WORKSPACE_CREDIT_DISCOUNT,

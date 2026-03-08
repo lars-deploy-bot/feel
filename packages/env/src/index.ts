@@ -46,4 +46,5 @@ export {
   serverSchema,
   supabasePublishableKey,
   supabaseSecretKey,
+  supabaseUrl,
 } from "./schema"

@@ -8,7 +8,7 @@
  */
 
 import type { SDKMessage, SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
-import type { OAuthWarningContent } from "@webalive/shared"
+import type { OAuthWarningContent, QueueReason } from "@webalive/shared"
 import type { ErrorCode } from "@/lib/error-codes"
 import type { CancelResolutionStatus } from "@/lib/stream/cancel-status"
 
@@ -32,6 +32,7 @@ export type BridgeStreamType = (typeof BridgeStreamType)[keyof typeof BridgeStre
 
 export const BridgeSyntheticMessageType = {
   WARNING: "stream_warning",
+  QUEUED: "stream_queued",
 } as const
 
 export type BridgeSyntheticMessageType = (typeof BridgeSyntheticMessageType)[keyof typeof BridgeSyntheticMessageType]
@@ -48,6 +49,26 @@ export function isWarningMessage(event: unknown): event is BridgeMessageEvent & 
   const data = e.data
   if (!data || typeof data !== "object") return false
   return (data as Record<string, unknown>).messageType === BridgeSyntheticMessageType.WARNING
+}
+
+/**
+ * Shape of a raw stream_queued NDJSON line (not wrapped in BridgeMessageEvent).
+ */
+interface QueuedMessage {
+  type: typeof BridgeSyntheticMessageType.QUEUED
+  reason: QueueReason
+  position: number
+}
+
+/**
+ * Type guard for stream_queued messages sent when a request is waiting for a worker.
+ */
+export function isQueuedMessage(value: unknown): value is QueuedMessage {
+  if (!value || typeof value !== "object") return false
+  if (!("type" in value) || value.type !== BridgeSyntheticMessageType.QUEUED) return false
+  if (!("reason" in value) || typeof value.reason !== "string") return false
+  if (!("position" in value) || typeof value.position !== "number") return false
+  return true
 }
 
 export type BridgeMessageType = SDKMessage["type"] | BridgeSyntheticMessageType

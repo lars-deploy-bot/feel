@@ -140,7 +140,8 @@ export const TEST_CONFIG = {
   WORKER_EMAIL_PREFIX: "e2e_w", // e2e_w0@alive.local
   WORKSPACE_PREFIX: "e2e-w", // e2e-w0.alive.local
   TEST_PASSWORD: "test-password-123", // Password for all E2E test users
-  JWT_SECRET: "test-jwt-secret-for-e2e-tests", // JWT secret used by E2E fixtures/server
+  // JWT_SECRET is read from process.env.JWT_SECRET at runtime (set in .env.e2e.local or start-test-server.sh)
+  // Never hardcode secrets in source code.
   DEFAULT_TEMPLATE_ID: "tmpl_landing", // Default template for deployment tests (must exist in Supabase)
 
   // Worker port configuration (single source of truth)
@@ -179,7 +180,12 @@ export type StreamType = (typeof STREAM_TYPES)[keyof typeof STREAM_TYPES]
  */
 export const STREAM_SYNTHETIC_MESSAGE_TYPES = {
   WARNING: "stream_warning",
+  QUEUED: "stream_queued",
 } as const
+
+/** Reasons a stream request gets queued instead of immediately assigned a worker. */
+export const QUEUE_REASONS = ["user_limit", "workspace_limit", "queue_full", "load_shed"] as const
+export type QueueReason = (typeof QUEUE_REASONS)[number]
 
 /**
  * Stream Interrupt Sources

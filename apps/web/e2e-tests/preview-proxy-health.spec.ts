@@ -10,7 +10,7 @@
  * These tests hit REAL infrastructure (Go proxy, Caddy, running sites).
  * They only run on staging/production — skipped on local (no Go proxy).
  *
- * Run: ENV_FILE=.env.staging bun run test:e2e
+ * Run: ENV_FILE=.env.staging bun run test:e2e:live
  */
 
 import jwt from "jsonwebtoken"

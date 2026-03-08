@@ -55,6 +55,7 @@ import {
   useDexieSession,
 } from "@/lib/db/dexieMessageStore"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
+import { useSessionHeartbeat } from "@/lib/hooks/useSessionHeartbeat"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useDebugVisible, useWorkbench, useWorkbenchFullscreen } from "@/lib/stores/debug-store"
@@ -380,8 +381,9 @@ function ChatPageContent() {
     void syncFromServer(tabWorkspace)
   }, [mounted, tabWorkspace, dexieSession, syncFromServer])
 
-  // Check for session expiry
+  // Check for session expiry (reactive) + proactive heartbeat
   const isSessionExpired = useIsSessionExpired()
+  useSessionHeartbeat()
 
   // Track online/offline status for user feedback
   const isOnline = useOnlineStatus()

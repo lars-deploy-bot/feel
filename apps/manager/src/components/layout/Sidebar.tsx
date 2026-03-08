@@ -4,8 +4,10 @@ const NAV_ITEMS = [
   { id: "organizations", label: "Organizations" },
   { id: "users", label: "Users" },
   { id: "domains", label: "Domains" },
+  { id: "automations", label: "Automations" },
   { id: "templates", label: "Templates" },
   { id: "feedback", label: "Feedback" },
+  { id: "sdk-logs", label: "SDK Logs" },
   { id: "settings", label: "Settings" },
 ]
 

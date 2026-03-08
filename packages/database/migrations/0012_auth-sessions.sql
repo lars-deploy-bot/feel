@@ -2,7 +2,7 @@
 -- Tracks server-side login sessions for session listing and remote revocation.
 
 CREATE TABLE iam.auth_sessions (
-  auth_session_id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  auth_session_id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
   sid text NOT NULL UNIQUE,
   user_id text NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   user_agent text,

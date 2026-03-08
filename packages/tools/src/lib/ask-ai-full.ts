@@ -57,20 +57,9 @@ export { CLAUDE_MODELS, type ClaudeModel }
 // CONSTANTS (only define what's NOT already in ask-ai.ts or shared)
 // =============================================================================
 
-export const PERMISSION_MODES = {
-  BYPASS: "bypassPermissions",
-  DEFAULT: "default",
-  PLAN: "plan",
-  ACCEPT_EDITS: "acceptEdits",
-} as const
-
 export type PermissionMode = SDKPermissionMode
 
-export const SETTINGS_SOURCES = {
-  PROJECT: "project",
-  USER: "user",
-} as const
-
+/** "managed" is valid for the agent SDK but not in TS's SettingSource type */
 export type SettingsSource = "project" | "user" | "managed"
 
 // =============================================================================

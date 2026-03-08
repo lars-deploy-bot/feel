@@ -235,11 +235,13 @@ function renderCaddySites(
         "",
         ...(isEmbeddable
           ? [
-              "    # Template preview host: keep security headers but allow iframe embedding",
+              "    # Template preview host: keep security headers but allow iframe embedding from alive.best",
               "    header {",
               "        X-Content-Type-Options nosniff",
               '        X-XSS-Protection "1; mode=block"',
               "        Referrer-Policy strict-origin-when-cross-origin",
+              `        Content-Security-Policy "frame-ancestors 'self' https://*.alive.best https://alive.best"`,
+              "        -X-Frame-Options",
               "        -Server",
               "        -X-Powered-By",
               "    }",

@@ -21,6 +21,7 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
+import { invalidateDomainOrgCache } from "@/lib/tokens"
 
 const execFileAsync = promisify(execFile)
 const MAX_LINUX_USERNAME_LENGTH = 32
@@ -33,7 +34,12 @@ async function isDomainSafeForTestUpsert(
   app: Awaited<ReturnType<typeof createAppClient>>,
   hostname: string,
 ): Promise<boolean> {
-  const { data } = await app.from("domains").select("hostname, is_test_env").eq("hostname", hostname).single()
+  const { data, error } = await app.from("domains").select("hostname, is_test_env").eq("hostname", hostname).single()
+  // Fail closed: if the lookup itself fails (not "no rows"), refuse the upsert
+  if (error && error.code !== "PGRST116") {
+    console.error("[isDomainSafeForTestUpsert] Lookup failed, failing closed:", { hostname, error })
+    return false
+  }
   // No existing domain → safe
   if (!data) return true
   // Existing test domain → safe to overwrite
@@ -174,6 +180,7 @@ async function buildTenantResponse(tenant: BootstrapTenant): Promise<Response> {
   invalidateUserAuthzCache(tenant.userId)
   invalidateWorkspaceAuthzCache(tenant.workspace)
   invalidateSessionDomainCache(tenant.workspace)
+  invalidateDomainOrgCache(tenant.workspace)
 
   try {
     await ensureWorkspaceFilesystem(tenant.workspace)

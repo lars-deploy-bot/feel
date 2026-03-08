@@ -20,46 +20,23 @@ const ripgrepExcludes = RIPGREP_TARGETS.filter(target => target !== ripgrepTarge
   target => `../../node_modules/@anthropic-ai/claude-agent-sdk/vendor/ripgrep/${target}/**/*`,
 )
 
-// Generate build info file at build time
-function writeBuildInfo() {
-  try {
-    const commit = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim()
-    const branch = execSync("git branch --show-current", { encoding: "utf-8" }).trim()
-    const buildTime = new Date().toISOString()
-    const buildInfo = { commit, branch, buildTime }
-
-    const targetPath = path.join(configDir, "lib", "build-info.json")
-
-    fs.writeFileSync(targetPath, JSON.stringify(buildInfo, null, 2))
-  } catch (error) {
-    // Log errors but don't fail the build
-    // build-info.json is optional and will fall back to "unknown" values
-    if (process.env.DEBUG_BUILD_INFO) {
-      console.warn(
-        "[build-info] Error writing build-info.json:",
-        error instanceof Error ? error.message : String(error),
-      )
-    }
-  }
-}
-
-writeBuildInfo()
-
-// Read build commit for Sentry release tracking
-let sentryRelease = "unknown"
+// Read build metadata at config time (baked into the bundle via env:{}).
+let buildCommit = "unknown"
+let buildBranch = "unknown"
+const buildTime = new Date().toISOString()
 try {
-  const buildInfoPath = path.join(configDir, "lib", "build-info.json")
-  sentryRelease = JSON.parse(fs.readFileSync(buildInfoPath, "utf-8")).commit ?? "unknown"
+  buildCommit = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim() || "unknown"
+  buildBranch = execSync("git branch --show-current", { encoding: "utf-8" }).trim() || "unknown"
 } catch {
-  // dev mode or build-info not yet written — falls back to "unknown"
+  // Build metadata is optional and will fall back to "unknown"
 }
 
 // Read server-config.json for build-time values (avoids hardcoding domains).
 // next.config.js is pure JS and can't import @webalive/shared, so we read directly.
 // In production, SERVER_CONFIG_PATH is always set and the file always exists.
-// In local dev, these stay null/empty — Sentry won't init and contact email is blank.
+// In local/test environments, explicit env vars can provide the browser-safe values.
 let sentryConfig = null
-let contactEmail = ""
+let contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || ""
 const SENTRY_HOSTNAME_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i
 
 function readRequiredString(obj, key, context) {
@@ -101,7 +78,7 @@ function normalizeSentryConfig(rawSentry) {
   const configPath = process.env.SERVER_CONFIG_PATH
   if (configPath && fs.existsSync(configPath)) {
     const serverCfg = JSON.parse(fs.readFileSync(configPath, "utf-8"))
-    contactEmail = readRequiredString(serverCfg, "contactEmail", "root")
+    contactEmail ||= readRequiredString(serverCfg, "contactEmail", "root")
     if (serverCfg.sentry) sentryConfig = normalizeSentryConfig(serverCfg.sentry)
   }
 }
@@ -125,10 +102,13 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   env: {
-    NEXT_PUBLIC_SENTRY_RELEASE: sentryRelease,
+    NEXT_PUBLIC_SENTRY_RELEASE: buildCommit,
     NEXT_PUBLIC_STREAM_ENV: process.env.STREAM_ENV || "",
     ...(sentryConfig ? { NEXT_PUBLIC_SENTRY_DSN: sentryConfig.dsn } : {}),
     NEXT_PUBLIC_CONTACT_EMAIL: contactEmail,
+    NEXT_PUBLIC_BUILD_COMMIT: buildCommit,
+    NEXT_PUBLIC_BUILD_BRANCH: buildBranch,
+    NEXT_PUBLIC_BUILD_TIME: buildTime,
   },
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },

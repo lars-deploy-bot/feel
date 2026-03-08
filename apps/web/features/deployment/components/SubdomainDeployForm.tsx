@@ -3,9 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { AppDatabase } from "@webalive/database"
 import { motion } from "framer-motion"
-import { LogIn } from "lucide-react"
-import { useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { ArrowLeft, LogIn } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
@@ -47,6 +47,7 @@ const itemVariants = {
 
 export function SubdomainDeployForm() {
   const { wildcard } = useDomainConfig()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploymentStatus, setDeploymentStatus] = useState<DeploySubdomainResponse | null>(null)
@@ -54,8 +55,16 @@ export function SubdomainDeployForm() {
   // Onboarding store - need early access for initial state
   const onboardingState = useOnboardingStore()
 
-  // Skip template selection if user already picked one (persisted in store)
-  const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(() => !onboardingState.templateId)
+  // Always show template selection first — persisted store shouldn't auto-skip
+  // Only skip if a template was explicitly passed via URL param (e.g., from ChatEmptyState)
+  const templateFromUrl = searchParams.get("template")
+  const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(true)
+
+  // Sync with template URL param changes (component may not remount on query param changes)
+  useEffect(() => {
+    setShowIdeaConfirmation(!templateFromUrl)
+  }, [templateFromUrl])
+
   const [pendingSubmit, setPendingSubmit] = useState<DeploySubdomainForm | null>(null)
   const [iframeLoading, setIframeLoading] = useState(false)
   const [loadingDots, setLoadingDots] = useState("")
@@ -100,14 +109,12 @@ export function SubdomainDeployForm() {
     }
   }, [siteIdeasFromUrl, siteIdea, setSiteIdea])
 
-  // Skip template selection if store rehydrates with a selected template (one-time only)
-  const hasAutoSkipped = useRef(false)
+  // If template was passed via URL, sync it to the store
   useEffect(() => {
-    if (templateId && showIdeaConfirmation && !hasAutoSkipped.current) {
-      hasAutoSkipped.current = true
-      setShowIdeaConfirmation(false)
+    if (templateFromUrl && templateFromUrl !== templateId) {
+      setTemplateId(templateFromUrl)
     }
-  }, [templateId, showIdeaConfirmation])
+  }, [templateFromUrl, templateId, setTemplateId])
 
   // Sync URL with current state (preserve existing params like 'mode')
   useEffect(() => {
@@ -117,7 +124,7 @@ export function SubdomainDeployForm() {
       if (templateId) params.set("template", templateId)
 
       const newSearch = params.toString()
-      const newUrl = newSearch ? `/deploy?${newSearch}` : "/deploy"
+      const newUrl = newSearch ? `/deploy/start?${newSearch}` : "/deploy/start"
       if (window.location.search !== `?${newSearch}`) {
         window.history.replaceState({}, "", newUrl)
       }
@@ -329,6 +336,22 @@ export function SubdomainDeployForm() {
     return (
       <motion.div className="w-full" variants={containerVariants} initial="hidden" animate="visible">
         <div className="w-full max-w-7xl mx-auto px-6">
+          <motion.div variants={itemVariants} className="mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                const params = new URLSearchParams(searchParams.toString())
+                params.delete("q")
+                params.delete("template")
+                const nextSearch = params.toString()
+                router.push(nextSearch ? `/deploy?${nextSearch}` : "/deploy")
+              }}
+              className="text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 text-xs font-medium inline-flex items-center gap-1 transition-colors uppercase tracking-wide"
+            >
+              <ArrowLeft size={12} />
+              Back to options
+            </button>
+          </motion.div>
           <motion.div variants={itemVariants} className="mb-8 text-center">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Pick a template</h2>
             <p className="text-gray-600 dark:text-gray-400">Choose a starting point for your site</p>

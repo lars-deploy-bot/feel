@@ -19,7 +19,7 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { prepareRequestEnv } from "../src/env-isolation"
 import type { AgentConfig, AgentRequest } from "../src/types"
-import { ENV_VARS } from "../src/types"
+import { WORKER_ENV_VARS } from "../src/types"
 
 // Paths to actual production code
 const ROUTE_PATH = join(__dirname, "../../../apps/web/app/api/claude/stream/route.ts")
@@ -141,11 +141,11 @@ describe("Session Cookie: Static Analysis of Production Code", () => {
    *
    * This is what MCP tools use to call back to Bridge API.
    */
-  it(`api-client.ts MUST use ${ENV_VARS.ALIVE_SESSION_COOKIE} for API auth`, () => {
+  it(`api-client.ts MUST use ${WORKER_ENV_VARS.ALIVE_SESSION_COOKIE} for API auth`, () => {
     const clientCode = readFileSync(API_CLIENT_PATH, "utf-8")
 
     // Must read from process.env.ALIVE_SESSION_COOKIE
-    expect(clientCode).toContain(`process.env.${ENV_VARS.ALIVE_SESSION_COOKIE}`)
+    expect(clientCode).toContain(`process.env.${WORKER_ENV_VARS.ALIVE_SESSION_COOKIE}`)
 
     // Must include it in Cookie header
     expect(clientCode).toContain("Cookie:")
@@ -260,7 +260,7 @@ describe("Session Cookie: Security Considerations", () => {
 
     // Should not log the cookie value
     expect(workerCode).not.toMatch(/console\.(log|error).*sessionCookie/)
-    expect(workerCode).not.toMatch(new RegExp(`console\\.(log|error).*${ENV_VARS.ALIVE_SESSION_COOKIE}`))
+    expect(workerCode).not.toMatch(new RegExp(`console\\.(log|error).*${WORKER_ENV_VARS.ALIVE_SESSION_COOKIE}`))
   })
 
   /**

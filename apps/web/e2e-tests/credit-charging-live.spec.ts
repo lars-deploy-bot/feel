@@ -8,7 +8,7 @@
  * non-zero costs never round to 0, and moved charging to stream end
  * (not per-chunk).
  *
- * Run with: bun run test:e2e:live
+ * Run with: ENV_FILE=.env.staging bun run test:e2e:live
  *
  * Prerequisites:
  * - Live staging base URL in .env.staging (NEXT_PUBLIC_APP_URL)

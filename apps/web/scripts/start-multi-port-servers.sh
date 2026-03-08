@@ -24,7 +24,7 @@ set -euo pipefail
 NUM_WORKERS=${1:-4}
 PORT_BASE=${TEST_WORKER_PORT_BASE:-9100}
 USE_PROD_BUILD=${E2E_USE_PRODUCTION_BUILD:-}
-ENV_FILE_PATH="${ENV_FILE:-.env.staging}"
+ENV_FILE_PATH="${ENV_FILE:-.env.e2e.local}"
 PIDS=()
 
 echo "[Multi-Port Servers] Starting $NUM_WORKERS server instances"
@@ -38,17 +38,25 @@ if [ -f "$ENV_FILE_PATH" ]; then
   echo "[Multi-Port Servers] Loaded environment from $ENV_FILE_PATH"
 fi
 
-if [ "${TEST_ENV:-}" = "production" ]; then
-  echo "[Multi-Port Servers] Production E2E is disabled. Use staging."
+if [ "${TEST_ENV:-}" != "local" ]; then
+  echo "[Multi-Port Servers] Invalid TEST_ENV=${TEST_ENV:-<unset>}"
+  echo "[Multi-Port Servers] Multi-port E2E requires TEST_ENV=local."
   exit 1
 fi
 
-# Override JWT secret for E2E tests
-export JWT_SECRET=test-jwt-secret-for-e2e-tests
+# JWT_SECRET must come from .env.e2e.local (same secret as the Supabase instance)
+if [ -z "${JWT_SECRET:-}" ]; then
+  echo "[Multi-Port] ERROR: JWT_SECRET not set in env file"
+  exit 1
+fi
 export STREAM_ENV=local
 export PLAYWRIGHT_TEST=true
 export TEST_MODE=true
 export SKIP_SSL_VALIDATION=true
+export SERVER_CONFIG_PATH=
+export HOME=/tmp/alive-e2e-home
+
+mkdir -p "$HOME"
 
 # Build once if using production mode
 if [ -n "$USE_PROD_BUILD" ]; then

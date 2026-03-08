@@ -31,7 +31,7 @@ BEGIN
   UPDATE app.automation_jobs j
   SET
     running_at  = now(),
-    run_id      = gen_random_uuid(),
+    run_id      = extensions.gen_random_uuid(),
     claimed_by  = COALESCE(p_claimed_by, p_server_id),
     lease_expires_at = now() + make_interval(secs => COALESCE(j.action_timeout_seconds, 300) + 120)
   FROM due

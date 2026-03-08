@@ -110,6 +110,7 @@ vi.mock("@/features/chat/lib/stream-guards", () => ({
 
 vi.mock("@/features/chat/lib/streaming/ndjson", () => ({
   isWarningMessage: mocks.isWarningMessage,
+  isQueuedMessage: () => false,
 }))
 
 vi.mock("@/features/chat/types/stream", () => ({
