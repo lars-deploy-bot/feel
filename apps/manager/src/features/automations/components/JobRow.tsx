@@ -1,7 +1,7 @@
+import { useState } from "react"
 import type { BadgeVariant } from "@/components/ui/Badge"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
-import { useState } from "react"
 import { automationsApi } from "../automations.api"
 import type { AutomationJob } from "../automations.types"
 
