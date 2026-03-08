@@ -110,12 +110,17 @@ export async function regeneratePortMap(requiredHostname?: string): Promise<numb
 
       const ports: Record<string, number> = {}
       const sandboxes: Record<string, SandboxMapEntry> = {}
-      const e2bDomain = process.env.E2B_DOMAIN || "e2b.sonno.tech"
+      const e2bDomain = process.env.E2B_DOMAIN
 
       for (const row of data || []) {
         if (!row.hostname) continue
 
         if (row.execution_mode === "e2b" && row.sandbox_id && row.sandbox_status === "running") {
+          if (!e2bDomain) {
+            throw new Error(
+              `[port-map] E2B_DOMAIN environment variable is required: found E2B domain "${row.hostname}" but no E2B_DOMAIN configured`,
+            )
+          }
           sandboxes[row.hostname] = {
             sandboxId: row.sandbox_id,
             e2bDomain,
