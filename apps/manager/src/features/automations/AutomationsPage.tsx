@@ -65,7 +65,7 @@ export function AutomationsPage() {
       {/* Org sections */}
       <div className="mt-6">
         {orgSummaries.map(summary => (
-          <OrgSection key={summary.org_id} summary={summary} onJobToggled={refresh} />
+          <OrgSection key={summary.org_id} summary={summary} onChanged={refresh} />
         ))}
       </div>
 

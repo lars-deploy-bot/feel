@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import type { AppBindings } from "../../../types/hono"
-import { listAutomations, toggleJobActive } from "./automations.service"
+import { deleteJob, listAutomations, toggleJobActive } from "./automations.service"
 
 export const automationsRoutes = new Hono<AppBindings>()
 
@@ -18,5 +18,12 @@ automationsRoutes.patch("/:id/active", async c => {
     return c.json({ ok: false, error: "is_active must be a boolean" }, 400)
   }
   await toggleJobActive(id, body.is_active)
+  return c.json({ ok: true })
+})
+
+// DELETE /api/manager/automations/:id - delete a job
+automationsRoutes.delete("/:id", async c => {
+  const id = c.req.param("id")
+  await deleteJob(id)
   return c.json({ ok: true })
 })

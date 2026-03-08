@@ -4,10 +4,10 @@ import { JobRow } from "./JobRow"
 
 interface OrgSectionProps {
   summary: OrgAutomationSummary
-  onJobToggled: () => void
+  onChanged: () => void
 }
 
-export function OrgSection({ summary, onJobToggled }: OrgSectionProps) {
+export function OrgSection({ summary, onChanged }: OrgSectionProps) {
   const [expanded, setExpanded] = useState(true)
   const successRate =
     summary.total_runs_30d > 0 ? Math.round((summary.success_runs_30d / summary.total_runs_30d) * 100) : 0
@@ -51,7 +51,7 @@ export function OrgSection({ summary, onJobToggled }: OrgSectionProps) {
       {expanded && (
         <div className="divide-y divide-border">
           {summary.jobs.map(job => (
-            <JobRow key={job.id} job={job} onToggled={onJobToggled} />
+            <JobRow key={job.id} job={job} onChanged={onChanged} />
           ))}
         </div>
       )}

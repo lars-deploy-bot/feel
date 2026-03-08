@@ -1,10 +1,14 @@
 import type { TriggerType } from "@webalive/database"
 import { domainsRepo, orgsRepo } from "../../../db/repos"
 import * as automationsRepo from "../../../db/repos/automations.repo"
-import type { ManagerAutomationJob, ManagerOrgAutomationSummary } from "./automations.types"
+import type { ManagerAutomationJob, ManagerAutomationRun, ManagerOrgAutomationSummary } from "./automations.types"
 
 export async function toggleJobActive(jobId: string, isActive: boolean): Promise<void> {
   await automationsRepo.setJobActive(jobId, isActive)
+}
+
+export async function deleteJob(jobId: string): Promise<void> {
+  await automationsRepo.deleteJob(jobId)
 }
 
 // Rough cost per run by model (USD). Based on typical automation run token usage.
@@ -14,6 +18,7 @@ const COST_PER_RUN: Record<string, number> = {
   "claude-sonnet-4-6": 0.12,
 }
 const DEFAULT_COST_PER_RUN = 0.12 // default model = sonnet
+const MAX_RECENT_RUNS = 10
 
 function estimateRunsPerMonth(cronSchedule: string | null, triggerType: TriggerType): number {
   if (triggerType !== "cron" || !cronSchedule) return 0
@@ -68,23 +73,14 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
   const orgMap = new Map(orgs.map(o => [o.org_id, o]))
   const domainMap = new Map(domains.map(d => [d.domain_id, d]))
 
-  // Aggregate runs per job
-  const runsByJob = new Map<
-    string,
-    { total: number; success: number; failure: number; totalDurationMs: number; withDuration: number }
-  >()
+  // Group runs per job (already sorted by started_at desc from DB)
+  const runsByJob = new Map<string, typeof runs>()
   for (const run of runs) {
-    let agg = runsByJob.get(run.job_id)
-    if (!agg) {
-      agg = { total: 0, success: 0, failure: 0, totalDurationMs: 0, withDuration: 0 }
-      runsByJob.set(run.job_id, agg)
-    }
-    agg.total++
-    if (run.status === "success") agg.success++
-    if (run.status === "failure") agg.failure++
-    if (run.duration_ms !== null) {
-      agg.totalDurationMs += run.duration_ms
-      agg.withDuration++
+    const existing = runsByJob.get(run.job_id)
+    if (existing) {
+      existing.push(run)
+    } else {
+      runsByJob.set(run.job_id, [run])
     }
   }
 
@@ -93,33 +89,67 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
   for (const job of jobs) {
     const org = orgMap.get(job.org_id)
     const domain = domainMap.get(job.site_id)
-    const agg = runsByJob.get(job.id)
+    const jobRuns = runsByJob.get(job.id) ?? []
+
+    // Aggregate
+    let total = 0
+    let success = 0
+    let failure = 0
+    let totalDurationMs = 0
+    let withDuration = 0
+    for (const run of jobRuns) {
+      total++
+      if (run.status === "success") success++
+      if (run.status === "failure") failure++
+      if (run.duration_ms !== null) {
+        totalDurationMs += run.duration_ms
+        withDuration++
+      }
+    }
 
     const runsPerMonth = job.is_active ? estimateRunsPerMonth(job.cron_schedule, job.trigger_type) : 0
     const costPerRun = COST_PER_RUN[job.action_model ?? ""] ?? DEFAULT_COST_PER_RUN
     const weeklyCost = Math.round(((runsPerMonth * costPerRun) / 30) * 7 * 100) / 100
 
+    const recentRuns: ManagerAutomationRun[] = jobRuns.slice(0, MAX_RECENT_RUNS).map(r => ({
+      id: r.id,
+      status: r.status,
+      started_at: r.started_at,
+      completed_at: r.completed_at,
+      duration_ms: r.duration_ms,
+      error: r.error,
+      triggered_by: r.triggered_by,
+    }))
+
     const enriched: ManagerAutomationJob = {
       id: job.id,
       name: job.name,
+      description: job.description,
       is_active: job.is_active,
       status: job.status,
       trigger_type: job.trigger_type,
       action_model: job.action_model,
+      action_prompt: job.action_prompt,
+      action_target_page: job.action_target_page,
       cron_schedule: job.cron_schedule,
+      cron_timezone: job.cron_timezone,
+      skills: job.skills,
+      email_address: job.email_address,
       last_run_status: job.last_run_status,
       last_run_at: job.last_run_at,
+      last_run_error: job.last_run_error,
       next_run_at: job.next_run_at,
       consecutive_failures: job.consecutive_failures,
       created_at: job.created_at,
       hostname: domain?.hostname ?? "unknown",
       org_id: job.org_id,
       org_name: org?.name ?? "Unknown",
-      runs_30d: agg?.total ?? 0,
-      success_runs_30d: agg?.success ?? 0,
-      failure_runs_30d: agg?.failure ?? 0,
-      avg_duration_ms: agg && agg.withDuration > 0 ? Math.round(agg.totalDurationMs / agg.withDuration) : null,
+      runs_30d: total,
+      success_runs_30d: success,
+      failure_runs_30d: failure,
+      avg_duration_ms: withDuration > 0 ? Math.round(totalDurationMs / withDuration) : null,
       estimated_weekly_cost_usd: weeklyCost,
+      recent_runs: recentRuns,
     }
 
     const existing = orgGroups.get(job.org_id)
