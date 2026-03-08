@@ -200,10 +200,11 @@ jobs:
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
           # SSH tunnel: localhost:18000 → Server 2 Supabase API (port 8000)
+          # Connects as restricted ci-e2e user (gate script + permitopen="127.0.0.1:8000")
           ssh -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
             -i ~/.ssh/ci_e2e_key -N \
             -L 127.0.0.1:18000:127.0.0.1:8000 \
-            "root@${SSH_HOST}" &
+            "ci-e2e@${SSH_HOST}" &
           echo "SSH_TUNNEL_PID=$!" >> "$GITHUB_ENV"
 
           # Wait for tunnel
@@ -221,7 +222,7 @@ jobs:
           SSH_HOST: ${{ secrets.CI_E2E_SSH_HOST }}
         run: |
           MIGRATIONS_DIR="packages/database/migrations"
-          SSH_CMD="ssh -o BatchMode=yes -i ~/.ssh/ci_e2e_key root@${SSH_HOST}"
+          SSH_CMD="ssh -o BatchMode=yes -i ~/.ssh/ci_e2e_key ci-e2e@${SSH_HOST}"
           DB_CMD="docker exec -i supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1"
 
           echo "[CI E2E] Resetting schemas on remote Supabase"
@@ -244,7 +245,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_E2E_SUPABASE_SERVICE_ROLE_KEY }}
           JWT_SECRET: ${{ secrets.CI_E2E_JWT_SECRET }}
         run: |
-          cat > .env.e2e.local <<ENVEOF
+          cat > .env.e2e.local <<EOF
           TEST_ENV=local
           NEXT_PUBLIC_APP_URL=http://127.0.0.1:9547
           NEXT_PUBLIC_PREVIEW_BASE=alive.local
@@ -254,8 +255,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
           SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
           JWT_SECRET=${JWT_SECRET}
-          ENVEOF
-          # Remove leading whitespace from heredoc
+          EOF
           sed -i 's/^[[:space:]]*//' .env.e2e.local
 
       - name: Run critical chat E2E
