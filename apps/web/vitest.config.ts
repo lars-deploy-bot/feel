@@ -103,10 +103,11 @@ export const baseTestConfig = {
     "**/.next-test/**",
     "**/*.spec.{ts,tsx}",
   ],
-  // Use forks instead of threads - native modules (@napi-rs/image) hang with threads
+  // Use forks instead of threads - module mocking (vi.doMock/vi.resetModules) breaks
+  // with threads due to shared module cache, and @napi-rs/image hangs with threads.
   pool: "forks" as const,
-  // Match Vitest 4+ pool semantics for "single fork" stability.
-  maxWorkers: 1,
+  // 4 parallel forks: cuts wall time ~44% (109s → 62s) while leaving cores free.
+  maxWorkers: 4,
   // Timeouts
   testTimeout: 10000,
   hookTimeout: 10000,

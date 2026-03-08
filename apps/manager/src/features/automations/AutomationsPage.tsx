@@ -16,7 +16,7 @@ export function AutomationsPage() {
     )
   }
 
-  if (error) {
+  if (error && orgSummaries.length === 0) {
     return (
       <EmptyState
         title="Failed to load automations"

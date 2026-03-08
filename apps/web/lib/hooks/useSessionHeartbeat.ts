@@ -37,7 +37,10 @@ export function useSessionHeartbeat() {
       }
     }
 
-    timerRef.current = setInterval(refresh, REFRESH_INTERVAL_MS)
+    void refresh()
+    timerRef.current = setInterval(() => {
+      void refresh()
+    }, REFRESH_INTERVAL_MS)
 
     return () => {
       if (timerRef.current) {

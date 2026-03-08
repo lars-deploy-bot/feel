@@ -41,8 +41,8 @@ export interface InternalToolDescriptor {
   enabled: boolean
   /** Stream policy reason string (required) */
   reason: string
-  /** Loading tier. "core" = always loaded, "discoverable" = loaded via search_tools. Default: "core" */
-  tier?: ToolTier
+  /** Loading tier. "core" = always loaded, "discoverable" = loaded via search_tools. */
+  tier: ToolTier
   /** Workspace kinds the tool is available in. Default: all */
   workspaceKinds?: readonly WorkspaceKind[]
   /** Visibility to client UI. Default: "visible" */
@@ -310,7 +310,7 @@ export function getInternalMcpToolNames(filter?: { enabled?: boolean; tier?: Too
     descriptors = descriptors.filter(d => d.enabled === filter.enabled)
   }
   if (filter?.tier !== undefined) {
-    descriptors = descriptors.filter(d => (d.tier ?? "core") === filter.tier)
+    descriptors = descriptors.filter(d => d.tier === filter.tier)
   }
   return descriptors.map(qualifiedMcpName)
 }
@@ -320,7 +320,7 @@ export function getInternalMcpToolNames(filter?: { enabled?: boolean; tier?: Too
  */
 export function isDiscoverableTool(qualifiedName: string): boolean {
   return INTERNAL_TOOL_DESCRIPTORS.some(
-    d => qualifiedMcpName(d) === qualifiedName && d.enabled && (d.tier ?? "core") === "discoverable",
+    d => qualifiedMcpName(d) === qualifiedName && d.enabled && d.tier === "discoverable",
   )
 }
 

@@ -1011,15 +1011,18 @@ async function handleQuery(ipc, requestId, payload) {
       sdkEnv.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 
       // SDK CALL LOGGING: Route API calls through local proxy to capture raw
-      // request/response bodies. Proxy runs at scripts/sdk-log-proxy.ts (port 5099).
-      // Auto-detects: if proxy is listening, use it. Otherwise direct to Anthropic.
-      try {
-        const probe = await fetch("http://localhost:5099/health", { signal: AbortSignal.timeout(200) })
-        if (probe.ok) {
-          sdkEnv.ANTHROPIC_BASE_URL = "http://localhost:5099"
-          console.error("[worker] SDK log proxy detected — routing API calls through localhost:5099")
-        }
-      } catch {}
+      // request/response bodies. Proxy runs at scripts/sdk-log-proxy.ts.
+      // Requires explicit opt-in via ENABLE_SDK_LOG_PROXY=1 (disabled in production).
+      const sdkLogProxyUrl = process.env.SDK_LOG_PROXY_URL
+      if (process.env.ENABLE_SDK_LOG_PROXY === "1" && sdkLogProxyUrl) {
+        try {
+          const probe = await fetch(`${sdkLogProxyUrl}/health`, { signal: AbortSignal.timeout(200) })
+          if (probe.ok) {
+            sdkEnv.ANTHROPIC_BASE_URL = sdkLogProxyUrl
+            console.error(`[worker] SDK log proxy enabled — routing API calls through ${sdkLogProxyUrl}`)
+          }
+        } catch {}
+      }
 
       const agentQuery = query({
         prompt: payload.message,

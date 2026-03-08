@@ -39,9 +39,16 @@ export async function POST(req: Request) {
 
   // Re-fetch org memberships so permission changes propagate without re-login
   const iam = await createIamClient("service")
-  const { data: memberships } = await iam.from("org_memberships").select("org_id, role").eq("user_id", payload.userId)
+  const { data: memberships, error: membershipError } = await iam
+    .from("org_memberships")
+    .select("org_id, role")
+    .eq("user_id", payload.userId)
 
-  const { orgIds, orgRoles } = buildSessionOrgClaims(memberships)
+  if (membershipError) {
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
+  }
+
+  const { orgIds, orgRoles } = buildSessionOrgClaims(memberships ?? [])
 
   // Issue new JWT with same sid, fresh expiry, updated org claims
   const newToken = await createSessionToken({

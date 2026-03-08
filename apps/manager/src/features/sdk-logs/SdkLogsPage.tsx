@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { type LogFile, sdkLogsApi } from "./sdk-logs.api"
 
@@ -7,31 +7,48 @@ export function SdkLogsPage() {
   const [selected, setSelected] = useState<string | null>(null)
   const [lines, setLines] = useState<unknown[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingFile, setLoadingFile] = useState(false)
+  const activeFileRef = useRef<string | null>(null)
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
-    sdkLogsApi
-      .list()
-      .then(setFiles)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+    try {
+      const result = await sdkLogsApi.list()
+      setFiles(result)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
-    refresh()
+    void refresh()
   }, [refresh])
 
-  const openFile = (name: string) => {
+  const openFile = async (name: string) => {
     setSelected(name)
     setLoadingFile(true)
-    sdkLogsApi
-      .read(name)
-      .then(setLines)
-      .catch(e => setLines([{ error: e.message }]))
-      .finally(() => setLoadingFile(false))
+    setFileError(null)
+    activeFileRef.current = name
+    try {
+      const result = await sdkLogsApi.read(name)
+      if (activeFileRef.current === name) {
+        setLines(result)
+      }
+    } catch (e: unknown) {
+      if (activeFileRef.current === name) {
+        setFileError(e instanceof Error ? e.message : String(e))
+        setLines(null)
+      }
+    } finally {
+      if (activeFileRef.current === name) {
+        setLoadingFile(false)
+      }
+    }
   }
 
   return (
@@ -54,7 +71,7 @@ export function SdkLogsPage() {
             <span className="text-xs text-text-tertiary font-mono">{files.length} calls</span>
             <button
               type="button"
-              onClick={refresh}
+              onClick={() => void refresh()}
               className="text-xs text-text-secondary hover:text-text-primary cursor-pointer"
             >
               {loading ? "..." : "refresh"}
@@ -66,7 +83,7 @@ export function SdkLogsPage() {
               <button
                 key={f.name}
                 type="button"
-                onClick={() => openFile(f.name)}
+                onClick={() => void openFile(f.name)}
                 className={`w-full text-left px-3 py-2 text-xs font-mono border-b border-border-primary cursor-pointer transition-colors ${
                   selected === f.name
                     ? "bg-blue-500/10 text-blue-400"
@@ -84,7 +101,8 @@ export function SdkLogsPage() {
         <div className="flex-1 overflow-y-auto border border-border-primary rounded bg-bg-secondary">
           {!selected && <div className="p-8 text-center text-text-tertiary text-sm">Select a log file to inspect</div>}
           {selected && loadingFile && <div className="p-8 text-center text-text-tertiary text-sm">Loading...</div>}
-          {selected && !loadingFile && lines && (
+          {selected && fileError && <div className="p-8 text-center text-red-400 text-sm font-mono">{fileError}</div>}
+          {selected && !loadingFile && !fileError && lines && (
             <div className="divide-y divide-border-primary">
               {lines.map((line, i) => (
                 <LogEntry key={i} data={line} />
@@ -98,7 +116,7 @@ export function SdkLogsPage() {
 }
 
 function LogEntry({ data }: { data: unknown }) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
 
   if (!data || typeof data !== "object") {
     return <pre className="p-3 text-xs font-mono text-text-secondary whitespace-pre-wrap">{String(data)}</pre>

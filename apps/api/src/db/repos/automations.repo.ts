@@ -1,3 +1,4 @@
+import type { JobStatus, RunStatus, TriggerType } from "@webalive/database"
 import { InternalError } from "../../infra/errors"
 import { app } from "../clients"
 
@@ -5,11 +6,11 @@ export interface AutomationJobRow {
   id: string
   name: string
   is_active: boolean
-  status: string
-  trigger_type: string
+  status: JobStatus
+  trigger_type: TriggerType
   action_model: string | null
   cron_schedule: string | null
-  last_run_status: string | null
+  last_run_status: RunStatus | null
   last_run_at: string | null
   next_run_at: string | null
   consecutive_failures: number | null
@@ -21,7 +22,7 @@ export interface AutomationJobRow {
 export interface AutomationRunRow {
   id: string
   job_id: string
-  status: string
+  status: RunStatus
   started_at: string
   completed_at: string | null
   duration_ms: number | null

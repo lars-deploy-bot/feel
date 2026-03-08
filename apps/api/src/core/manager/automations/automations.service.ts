@@ -1,3 +1,4 @@
+import type { TriggerType } from "@webalive/database"
 import { domainsRepo, orgsRepo } from "../../../db/repos"
 import * as automationsRepo from "../../../db/repos/automations.repo"
 import type { ManagerAutomationJob, ManagerOrgAutomationSummary } from "./automations.types"
@@ -10,7 +11,7 @@ const COST_PER_RUN: Record<string, number> = {
 }
 const DEFAULT_COST_PER_RUN = 0.12 // default model = sonnet
 
-function estimateRunsPerMonth(cronSchedule: string | null, triggerType: string): number {
+function estimateRunsPerMonth(cronSchedule: string | null, triggerType: TriggerType): number {
   if (triggerType !== "cron" || !cronSchedule) return 0
 
   const parts = cronSchedule.trim().split(/\s+/)
