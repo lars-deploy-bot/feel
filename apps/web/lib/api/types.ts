@@ -62,14 +62,3 @@ export interface ReferralData {
     creditsEarned: number
   }
 }
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-export function createSuccessResponse<T>(data: T): ApiResponse<T> & { ok: true } {
-  return {
-    ok: true,
-    data,
-  }
-}

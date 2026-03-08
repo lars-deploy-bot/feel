@@ -1,6 +1,6 @@
 /**
  * Single source of truth for standard E2E base URL.
- * Must be present in the loaded env file (.env.staging).
+ * Must be present in the loaded env file.
  */
 export function requireEnvAppBaseUrl(): string {
   const value = process.env.NEXT_PUBLIC_APP_URL?.trim()

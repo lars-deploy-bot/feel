@@ -42,7 +42,13 @@ import {
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
 import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
-import { emailInternalMcp, streamInternalMcpServers, withSearchToolsConnectedProviders } from "@webalive/tools"
+import {
+  emailInternalMcp,
+  sandboxedFsInternalMcp,
+  toolsInternalMcp,
+  withSearchToolsConnectedProviders,
+  workspaceInternalMcp,
+} from "@webalive/tools"
 import { resolveSandboxTemplate } from "../dist/e2b-template.js"
 import { E2B_INFRASTRUCTURE_ENV_KEYS, prepareRequestEnv } from "../dist/env-isolation.js"
 
@@ -647,7 +653,7 @@ async function handleQuery(ipc, requestId, payload) {
 
   timing("query_received")
 
-  // NOTE: query, isOAuthMcpTool, streamInternalMcpServers are imported
+  // NOTE: query, isOAuthMcpTool, internal MCP servers are imported
   // at the top level BEFORE privilege drop. After dropping privileges, the worker
   // can't read /root/alive/node_modules/
 
@@ -851,8 +857,8 @@ async function handleQuery(ipc, requestId, payload) {
     const canUseTool = undefined
 
     // Build MCP servers: internal (created locally) + global HTTP + OAuth (received via IPC)
-    // Internal SDK MCP servers (streamInternalMcpServers) cannot be
-    // serialized via IPC because createSdkMcpServer returns function objects.
+    // Internal SDK MCP servers cannot be serialized via IPC because
+    // createSdkMcpServer returns function objects.
     // They must be imported and created locally in the worker.
 
     // Build global HTTP MCP servers (always available, no auth required)
@@ -882,9 +888,16 @@ async function handleQuery(ipc, requestId, payload) {
       }
     }
 
+    // Only register alive-sandboxed-fs when its tools are actually allowed.
+    // Superadmin sessions use SDK built-in file tools directly; registering
+    // the sandboxed-fs MCP server with no allowed tools causes SDK errors.
+    const needsSandboxedFs = allowedTools.some(t => t.startsWith("mcp__alive-sandboxed-fs__"))
+
     const mcpServers = modeConfig.mcpEnabled
       ? {
-          ...streamInternalMcpServers,
+          "alive-workspace": workspaceInternalMcp,
+          "alive-tools": toolsInternalMcp,
+          ...(needsSandboxedFs ? { "alive-sandboxed-fs": sandboxedFsInternalMcp } : {}),
           ...optionalMcpServers,
           ...globalMcpServers,
           ...(oauthMcpServers || {}),
@@ -953,13 +966,20 @@ async function handleQuery(ipc, requestId, payload) {
 
     timing("before_sdk_query")
 
-    // Capture stderr from agent subprocess for error debugging
+    // Capture stderr from agent subprocess for error debugging.
+    // With ANTHROPIC_LOG=debug, this also captures HTTP request/response logs.
+    // Filter in journalctl: grep "worker:claude-stderr"
+    // Network logs specifically: grep "anthropic:debug"
     const stderrHandler = message => {
       stderrBuffer.push(message)
-      // Keep only last 50 lines to avoid memory bloat
-      if (stderrBuffer.length > 50) stderrBuffer.shift()
-      // Also log to our stderr for journalctl
-      console.error(`[worker:claude-stderr] ${message}`)
+      // Keep last 100 lines (increased from 50 for network debug output)
+      if (stderrBuffer.length > 100) stderrBuffer.shift()
+      // Tag network-related stderr distinctly for easy filtering
+      const isNetworkLog =
+        typeof message === "string" &&
+        (message.includes("request") || message.includes("response") || message.includes("retry"))
+      const tag = isNetworkLog ? "worker:anthropic-net" : "worker:claude-stderr"
+      console.error(`[${tag}] ${message}`)
     }
 
     await withSearchToolsConnectedProviders(connectedProviders, async () => {
@@ -977,6 +997,31 @@ async function handleQuery(ipc, requestId, payload) {
       const sdkEnv = {}
       for (const [key, value] of Object.entries(process.env)) {
         if (value !== undefined && !SDK_STRIP_KEYS.has(key)) sdkEnv[key] = value
+      }
+
+      // NETWORK LOGGING: Disabled — ANTHROPIC_LOG=debug caused the CLI to
+      // leak [log_XXXX] lines to stdout, corrupting JSON stdio communication.
+      // The SDK changed from stderr-only to stdout in recent versions.
+      // Re-enable only after confirming the SDK routes logs to stderr again.
+      // sdkEnv.ANTHROPIC_LOG = "debug"
+
+      // Disable GrowthBook feature flags in SDK subprocess.
+      // Without this, built-in CLI skills (keybindings-help) pollute the system prompt.
+      // Feature flags default to safe values (off) when nonessential traffic is disabled.
+      sdkEnv.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
+
+      // SDK CALL LOGGING: Route API calls through local proxy to capture raw
+      // request/response bodies. Proxy runs at scripts/sdk-log-proxy.ts.
+      // Requires explicit opt-in via ENABLE_SDK_LOG_PROXY=1 (disabled in production).
+      const sdkLogProxyUrl = process.env.SDK_LOG_PROXY_URL
+      if (process.env.ENABLE_SDK_LOG_PROXY === "1" && sdkLogProxyUrl) {
+        try {
+          const probe = await fetch(`${sdkLogProxyUrl}/health`, { signal: AbortSignal.timeout(200) })
+          if (probe.ok) {
+            sdkEnv.ANTHROPIC_BASE_URL = sdkLogProxyUrl
+            console.error(`[worker] SDK log proxy enabled — routing API calls through ${sdkLogProxyUrl}`)
+          }
+        } catch {}
       }
 
       const agentQuery = query({

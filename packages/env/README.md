@@ -71,9 +71,9 @@ import { env } from "@webalive/env/server"  // Will fail with node:fs error
   - Optional in local development mode (`ALIVE_ENV=local`)
 
 **Supabase:**
-- `SUPABASE_URL` - Supabase project URL (must be HTTPS)
+- `SUPABASE_URL` - Supabase project URL (HTTPS, or loopback HTTP for local Supabase)
 - `SUPABASE_ANON_KEY` - Supabase anonymous key (JWT format)
-- `NEXT_PUBLIC_SUPABASE_URL` - Public Supabase URL for client
+- `NEXT_PUBLIC_SUPABASE_URL` - Public Supabase URL for client (HTTPS, or loopback HTTP for local Supabase)
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Public Supabase key for client
 
 ### Optional

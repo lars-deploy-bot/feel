@@ -44,9 +44,7 @@ export {
   ask,
   askAIFull,
   askWorkspace,
-  PERMISSION_MODES,
   type PermissionMode,
-  SETTINGS_SOURCES,
   type SettingsSource,
 } from "./lib/ask-ai-full.js"
 export {

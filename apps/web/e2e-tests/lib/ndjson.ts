@@ -66,7 +66,16 @@ export function extractAssistantTextFromNDJSON(body: string): string {
   }
 
   if (textBlocks.length === 0) {
-    throw new Error("No assistant text blocks found in NDJSON response")
+    const eventTypes = events.map(e => e.type)
+    const hasError = events.some(e => e.type === BridgeStreamType.ERROR)
+    const errorEvents = events.filter(e => e.type === BridgeStreamType.ERROR)
+    const errorDetails = errorEvents.map(e => JSON.stringify(e.data)).join("; ")
+    throw new Error(
+      "No assistant text blocks found in NDJSON response. " +
+        `Events: [${eventTypes.join(", ")}]` +
+        (hasError ? `. Stream errors: ${errorDetails}` : "") +
+        `. Total events: ${events.length}`,
+    )
   }
 
   return textBlocks.join("\n")

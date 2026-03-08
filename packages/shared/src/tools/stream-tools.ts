@@ -22,6 +22,7 @@ import { GLOBAL_MCP_PROVIDERS, getGlobalMcpToolNames, isOAuthMcpTool, OAUTH_MCP_
 import {
   INTERNAL_TOOL_DESCRIPTORS,
   type InternalToolDescriptor,
+  isDiscoverableTool,
   qualifiedMcpName,
 } from "./internal-tool-descriptors.js"
 
@@ -766,6 +767,12 @@ function getInternalMcpToolsForPolicyEvaluation(getEnabledMcpToolNames: () => st
 
 /**
  * Build runtime allowed/disallowed/visible tool lists from the single registry.
+ *
+ * Discoverable tools (tier="discoverable") are excluded from allowedTools by default.
+ * This keeps their descriptions out of Claude's context window, reducing noise.
+ * Claude uses search_tools to discover and invoke them on demand.
+ *
+ * Superadmin always gets all tools (no tier filtering).
  */
 export function buildStreamToolRuntimeConfig(
   getEnabledMcpToolNames: () => string[],
@@ -781,7 +788,22 @@ export function buildStreamToolRuntimeConfig(
     tool => !getStreamToolDecision(tool, context).executable && !isUserApprovalTool(tool),
   )
 
-  const allowedInternalMcpTools = internalMcpTools.filter(tool => getStreamToolDecision(tool, context).executable)
+  let allowedInternalMcpTools = internalMcpTools.filter(tool => getStreamToolDecision(tool, context).executable)
+
+  // Exclude discoverable tools from allowedTools (superadmin gets everything)
+  if (context.role !== "superadmin") {
+    allowedInternalMcpTools = allowedInternalMcpTools.filter(tool => !isDiscoverableTool(tool))
+  }
+
+  // One clear security gate for site users:
+  // non-superadmin roles must use sandboxed MCP file/shell tools, never SDK built-ins.
+  if (context.workspaceKind === "site" && context.role !== "superadmin") {
+    allowedSdkTools = allowedSdkTools.filter(tool => !SITE_SANDBOXED_FS_DISABLED_SDK_TOOL_SET.has(tool))
+    disallowedSdkTools = dedupeStrings([
+      ...disallowedSdkTools,
+      ...SITE_SANDBOXED_FS_DISABLED_SDK_TOOLS.filter(tool => !isUserApprovalTool(tool)),
+    ])
+  }
 
   // One clear security gate for site users:
   // non-superadmin roles must use sandboxed MCP file/shell tools, never SDK built-ins.

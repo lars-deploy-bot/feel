@@ -4,8 +4,12 @@ import { Spinner } from "@/components/ui/Spinner"
 const OrgsPage = lazy(() => import("@/features/orgs/OrgsPage").then(m => ({ default: m.OrgsPage })))
 const UsersPage = lazy(() => import("@/features/users/UsersPage").then(m => ({ default: m.UsersPage })))
 const DomainsPage = lazy(() => import("@/features/domains/DomainsPage").then(m => ({ default: m.DomainsPage })))
+const AutomationsPage = lazy(() =>
+  import("@/features/automations/AutomationsPage").then(m => ({ default: m.AutomationsPage })),
+)
 const TemplatesPage = lazy(() => import("@/features/templates/TemplatesPage").then(m => ({ default: m.TemplatesPage })))
 const FeedbackPage = lazy(() => import("@/features/feedback/FeedbackPage").then(m => ({ default: m.FeedbackPage })))
+const SdkLogsPage = lazy(() => import("@/features/sdk-logs/SdkLogsPage").then(m => ({ default: m.SdkLogsPage })))
 const SettingsPage = lazy(() => import("@/features/settings/SettingsPage").then(m => ({ default: m.SettingsPage })))
 
 interface RouterProps {
@@ -33,11 +37,17 @@ export function Router({ page }: RouterProps) {
     case "domains":
       content = <DomainsPage />
       break
+    case "automations":
+      content = <AutomationsPage />
+      break
     case "templates":
       content = <TemplatesPage />
       break
     case "feedback":
       content = <FeedbackPage />
+      break
+    case "sdk-logs":
+      content = <SdkLogsPage />
       break
     case "settings":
       content = <SettingsPage />

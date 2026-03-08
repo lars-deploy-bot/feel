@@ -60,6 +60,8 @@ export {
   LIMITS,
   PREVIEW_MESSAGES,
   PREVIEW_PREFIX,
+  QUEUE_REASONS,
+  type QueueReason,
   REFERRAL,
   RESERVED_USER_ENV_KEYS,
   SESSION_MAX_AGE,
@@ -192,6 +194,7 @@ export {
   type SessionOrgClaims,
 } from "./org-roles.js"
 export {
+  TOOL_LIMITS,
   type TruncateOptions,
   // Output limiting utilities
   truncateOutput,
@@ -259,11 +262,14 @@ export {
   truncateMarkdown,
 } from "./text-utils.js"
 export {
+  getDiscoverableToolNames,
   getInternalMcpToolNames,
   INTERNAL_TOOL_DESCRIPTORS,
   type InternalMcpServer,
   type InternalToolDescriptor,
+  isDiscoverableTool,
   qualifiedMcpName,
+  type ToolTier,
 } from "./tools/internal-tool-descriptors.js"
 export {
   // MCP tool settings (tunable limits)

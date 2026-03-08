@@ -5,29 +5,21 @@
  * It loads the env file so other modules can read process.env.
  *
  * Usage: import "./e2e-tests/lib/load-env" // First import!
- *
- * E2E is pinned to staging only.
  */
 
 import { existsSync } from "node:fs"
 import dotenv from "dotenv"
 
-const DEFAULT_ENV_FILE = ".env.staging"
+const DEFAULT_ENV_FILE = ".env.e2e.local"
 const ENV_FILE = (process.env.ENV_FILE || DEFAULT_ENV_FILE).trim()
 
-if (ENV_FILE !== DEFAULT_ENV_FILE) {
-  throw new Error(
-    `\n❌ Invalid ENV_FILE=${ENV_FILE} for E2E.\n` +
-      "   E2E is hard-pinned to .env.staging.\n" +
-      "   Use: ENV_FILE=.env.staging bun run test:e2e\n",
-  )
+if (ENV_FILE.length === 0) {
+  throw new Error("\n❌ ENV_FILE must not be empty.\n   Typical values: .env.e2e.local, .env.preview, .env.staging\n")
 }
 
 if (!existsSync(ENV_FILE)) {
   throw new Error(
-    `\n❌ Missing env file: ${ENV_FILE}\n` +
-      "   Available: .env.staging\n" +
-      "   Usage: ENV_FILE=.env.staging bun run test:e2e\n",
+    `\n❌ Missing env file: ${ENV_FILE}\n   Typical values: .env.e2e.local, .env.preview, .env.staging\n   Example: ENV_FILE=.env.e2e.local bun run test:e2e\n`,
   )
 }
 
@@ -39,14 +31,8 @@ if (result.error) {
 
 // Verify TEST_ENV was loaded
 if (!process.env.TEST_ENV) {
-  throw new Error(`\n❌ ${ENV_FILE} is missing TEST_ENV\n   The file must declare: TEST_ENV=staging\n`)
-}
-
-if (process.env.TEST_ENV !== "staging") {
   throw new Error(
-    `\n❌ Invalid TEST_ENV=${process.env.TEST_ENV} for E2E.\n` +
-      "   E2E is pinned to staging only.\n" +
-      "   Use: ENV_FILE=.env.staging bun run test:e2e\n",
+    `\n❌ ${ENV_FILE} is missing TEST_ENV\n   The file must declare one of: TEST_ENV=local|preview|staging\n`,
   )
 }
 

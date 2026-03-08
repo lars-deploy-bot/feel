@@ -118,8 +118,11 @@ async function readStdinJson() {
     const requestedOrFallbackMode =
       requestedStreamMode && Object.hasOwn(STREAM_MODES, requestedStreamMode) ? requestedStreamMode : fallbackMode
     const streamMode = resolveStreamMode(requestedOrFallbackMode, { isAdmin, isSuperadmin })
-    const modeConfig = STREAM_MODES[streamMode] || STREAM_MODES.default
-    const effectivePermissionMode = request.permissionMode || modeConfig.permissionMode
+    const modeConfig = STREAM_MODES[streamMode]
+    if (!modeConfig) {
+      throw new Error(`[runner] Missing config for resolved stream mode "${streamMode}"`)
+    }
+    const effectivePermissionMode = modeConfig.permissionMode
     if (requestedStreamMode && requestedStreamMode !== requestedOrFallbackMode) {
       console.error(
         `[runner] Invalid streamMode "${requestedStreamMode}", falling back to "${requestedOrFallbackMode}"`,

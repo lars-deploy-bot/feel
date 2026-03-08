@@ -2,7 +2,9 @@
 
 ## Overview
 
-E2E tests run against staging using test secret authentication.
+Deployed-environment E2E tests run against staging using test secret authentication.
+
+The default `bun run test:e2e` path no longer targets staging. It now expects `.env.e2e.local` and starts a local app instance on `http://127.0.0.1:9547`.
 
 ## Setup
 
@@ -36,8 +38,8 @@ E2E_TEST_SECRET=your_staging_secret_here
 # Set the secret in your environment
 export E2E_TEST_SECRET="your_staging_secret_here"
 
-# Run tests against staging
-ENV_FILE=.env.staging bun run test:e2e
+# Run the live deployed-environment lane against staging
+ENV_FILE=.env.staging bun run test:e2e:live
 ```
 
 ## How It Works
@@ -78,7 +80,7 @@ ENV_FILE=.env.staging bun run test:e2e
 export E2E_TEST_SECRET="correct_secret"
 
 # Or set in shell
-E2E_TEST_SECRET="correct_secret" ENV_FILE=.env.staging bun run test:e2e
+E2E_TEST_SECRET="correct_secret" ENV_FILE=.env.staging bun run test:e2e:live
 ```
 
 ### Tests Pass Locally But Fail on Staging
@@ -93,4 +95,4 @@ E2E_TEST_SECRET="correct_secret" ENV_FILE=.env.staging bun run test:e2e
 2. **Store the staging secret** in a secure secret manager
 3. **Rotate secrets** periodically
 4. **Limit staging E2E runs** to avoid DB pollution
-5. **Prefer targeted spec runs** before full suite runs
+5. **Prefer targeted live spec runs** before broader staging checks

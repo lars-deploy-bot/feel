@@ -170,10 +170,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     // Determine if we're running against a remote environment
     const isRemote = resolvedBaseUrl.startsWith("https://")
 
-    // For remote environments, use JWT_SECRET from env; for local use TEST_CONFIG
-    const jwtSecret = isRemote ? process.env.JWT_SECRET : TEST_CONFIG.JWT_SECRET
+    const jwtSecret = process.env.JWT_SECRET
     if (!jwtSecret) {
-      throw new Error("JWT_SECRET not set for E2E tests (required for staging/production)")
+      throw new Error("JWT_SECRET not set — add it to .env.e2e.local or export it before running tests")
     }
 
     const token = jwt.sign(
@@ -301,6 +300,28 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         }),
       )
     })
+
+    // Mock /api/user/preferences — syncFromServer() calls this during HydrationManager init.
+    // Without this mock, a real Supabase call stalls under parallel load,
+    // delaying _appHydrated and causing workspace-ready timeout.
+    await page.route("**/api/user/preferences**", route =>
+      route.fulfill(
+        buildJsonMockResponse({
+          currentWorkspace: null,
+          selectedOrgId: null,
+          recentWorkspaces: [],
+          updatedAt: null,
+        }),
+      ),
+    )
+
+    // Mock Flowglad billing to prevent crashes for test users
+    await page.route("**/api/flowglad/**", route => route.fulfill(buildJsonMockResponse({ data: null, error: null })))
+
+    // Mock /api/tokens to prevent credit-fetching errors
+    await page.route("**/api/tokens**", route =>
+      route.fulfill(buildJsonMockResponse({ ok: true, credits: 100, tokens: 100000 })),
+    )
 
     let useError: unknown
     try {

@@ -34,12 +34,6 @@ function extractClientIp(req: NextRequest): string {
     return realIp.trim()
   }
 
-  // Available in some runtimes/proxies (not always populated in Next.js Node runtime).
-  const requestIp = (req as NextRequest & { ip?: string | null }).ip
-  if (requestIp?.trim()) {
-    return requestIp.trim()
-  }
-
   // Never fall back to host/domain: that can collapse all users into one bucket.
   return "unknown"
 }

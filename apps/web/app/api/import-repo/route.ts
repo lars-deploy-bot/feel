@@ -5,7 +5,7 @@ import { DeploymentError } from "@webalive/site-controller"
 import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
-import { createSessionToken, verifySessionToken } from "@/features/auth/lib/jwt"
+import { refreshSessionTokenWithOrg } from "@/features/auth/lib/jwt"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { buildSubdomain } from "@/lib/config"
@@ -107,10 +107,12 @@ export async function POST(request: NextRequest) {
 
     // Download and prepare the repo via GitHub API
     let templatePath: string
+    let resolvedBranch: string | undefined
     try {
       const result = await importGithubRepo(repoUrl, githubToken, branch)
       templatePath = result.templatePath
       cleanupDir = result.cleanupDir
+      resolvedBranch = result.resolvedBranch
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown download error"
       return structuredErrorResponse(ErrorCodes.GITHUB_CLONE_FAILED, {
@@ -138,7 +140,7 @@ export async function POST(request: NextRequest) {
       siteIdeas,
       source: "github-import",
       sourceRepo: parsedRepo ? parsedRepo.canonicalUrl : repoUrl,
-      sourceBranch: branch?.trim() ? branch.trim() : undefined,
+      sourceBranch: resolvedBranch ?? (branch?.trim() ? branch.trim() : undefined),
       createdAt: Date.now(),
     })
 
@@ -163,32 +165,19 @@ export async function POST(request: NextRequest) {
 
     // Regenerate JWT with updated org membership if a new org was associated
     try {
-      const jar = await cookies()
-      const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
-
-      if (sessionCookie?.value) {
-        const payload = await verifySessionToken(sessionCookie.value)
-        if (payload) {
-          const isNewOrg = orgId && !payload.orgIds.includes(orgId)
-          const updatedOrgIds = isNewOrg ? [...payload.orgIds, orgId] : payload.orgIds
-          const updatedOrgRoles = isNewOrg ? { ...payload.orgRoles, [orgId]: "owner" as const } : payload.orgRoles
-
-          const newToken = await createSessionToken({
-            userId: sessionUser.id,
-            email: sessionUser.email,
-            name: sessionUser.name,
-            sid: payload.sid,
-            scopes: payload.scopes,
-            orgIds: updatedOrgIds,
-            orgRoles: updatedOrgRoles,
-          })
-
-          res.cookies.set(COOKIE_NAMES.SESSION, newToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            path: "/",
-          })
+      if (orgId) {
+        const jar = await cookies()
+        const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
+        if (sessionCookie?.value) {
+          const newToken = await refreshSessionTokenWithOrg(sessionCookie.value, sessionUser, orgId)
+          if (newToken) {
+            res.cookies.set(COOKIE_NAMES.SESSION, newToken, {
+              httpOnly: true,
+              secure: true,
+              sameSite: "none",
+              path: "/",
+            })
+          }
         }
       }
     } catch (tokenError) {

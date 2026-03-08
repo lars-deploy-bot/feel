@@ -23,6 +23,7 @@ Scripts for building, deploying, and managing the three Alive environments (prod
 **Usage:**
 ```bash
 make staging         # Staging deployment
+CLEAN_BUILD=1 make staging   # Staging deployment without Turbo/Next cache reuse
 make dev             # Dev restart
 make logs-staging    # Staging logs
 make logs-dev        # Dev logs

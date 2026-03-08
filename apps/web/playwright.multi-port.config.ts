@@ -32,10 +32,11 @@ import "./e2e-tests/lib/load-env"
 // Now safe to import modules that read process.env
 import { defineConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
-import { TIMEOUTS } from "./e2e-tests/lib/test-env"
+import { assertLocalTestEnv, TEST_ENV, TIMEOUTS } from "./e2e-tests/lib/test-env"
 
 const NUM_WORKERS = process.env.CI ? 2 : 4
 const PORT_BASE = TEST_CONFIG.WORKER_PORT_BASE // 9100
+assertLocalTestEnv(TEST_ENV, "Multi-port E2E")
 
 /**
  * Generate projects for each worker, each pointing to its own port.

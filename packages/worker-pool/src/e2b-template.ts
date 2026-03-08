@@ -1,4 +1,4 @@
-import { E2B_DEFAULT_TEMPLATE, E2B_TEMPLATES, type E2bTemplate } from "@webalive/sandbox"
+import { E2B_DEFAULT_TEMPLATE, type E2bTemplate } from "@webalive/sandbox"
 import { TEST_CONFIG } from "@webalive/shared"
 
 function escapeRegex(value: string): string {
@@ -18,11 +18,11 @@ export function isE2eWorkspaceHostname(hostname: string): boolean {
 }
 
 /**
- * Route E2E tenants to a minimal sandbox template for faster/stabler lifecycle checks.
+ * Route hostname to the appropriate sandbox template.
+ *
+ * Note: E2E workspaces previously routed to ALIVE_E2E_MINIMAL, but that
+ * template was never created. All workspaces now use the default template.
  */
-export function resolveSandboxTemplate(hostname: string): E2bTemplate {
-  if (isE2eWorkspaceHostname(hostname)) {
-    return E2B_TEMPLATES.ALIVE_E2E_MINIMAL
-  }
+export function resolveSandboxTemplate(_hostname: string): E2bTemplate {
   return E2B_DEFAULT_TEMPLATE
 }

@@ -2,9 +2,10 @@
  * Security Headers E2E Tests
  *
  * Verifies that the Alive app returns required security response headers.
- * Tests hit the real staging/production infrastructure (Caddy + Next.js).
+ * In remote lanes these tests hit the deployed infrastructure.
+ * In local lanes they verify the same header contract against the local app.
  *
- * Run: ENV_FILE=.env.staging bun run test:e2e
+ * Run: bun run test:e2e
  */
 
 import { expect, test } from "@playwright/test"

@@ -6,6 +6,7 @@
 # Called by build-and-serve.sh - don't run directly.
 #
 # Usage: ./build-atomic.sh <staging|production>
+# Set CLEAN_BUILD=1 to force a full rebuild and clear caches first.
 # =============================================================================
 
 set -euo pipefail
@@ -33,13 +34,26 @@ TEMP_BUILD_DIR="$BUILDS_DIR/dist"
 TIMESTAMPED_DIR="$BUILDS_DIR/dist.$TIMESTAMP"
 WEB_DIR="$PROJECT_ROOT/apps/web"
 WEB_NEXT_DIR="$WEB_DIR/.next"
+CLEAN_BUILD="${CLEAN_BUILD:-0}"
 
 cd "$PROJECT_ROOT"
+
+is_truthy() {
+    case "${1:-}" in
+        1|true|TRUE|yes|YES|on|ON)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
 
 # =============================================================================
 # Cleanup on Failure
 # =============================================================================
 DEV_BACKUP=""
+BUILD_CACHE_BACKUP=""
 
 cleanup_failed_build() {
     local exit_code=$?
@@ -55,6 +69,12 @@ cleanup_failed_build() {
         mkdir -p "$WEB_NEXT_DIR"
         mv "$DEV_BACKUP" "$WEB_NEXT_DIR/dev" 2>/dev/null || true
         log_step "Dev server files restored"
+    fi
+
+    if [ -n "$BUILD_CACHE_BACKUP" ] && [ -d "$BUILD_CACHE_BACKUP" ]; then
+        mkdir -p "$WEB_NEXT_DIR"
+        mv "$BUILD_CACHE_BACKUP" "$WEB_NEXT_DIR/cache" 2>/dev/null || true
+        log_step "Next.js cache restored"
     fi
 }
 
@@ -87,8 +107,16 @@ fi
 # Phase 3: Clean & Validate
 # =============================================================================
 log_step "Cleaning build artifacts..."
-rm -rf "${WEB_NEXT_DIR:?}" "${PROJECT_ROOT:?}/.turbo" "${PROJECT_ROOT:?}/node_modules/.cache/turbo"
 rm -rf "${WEB_DIR:?}/dist" 2>/dev/null || true
+
+if [ -d "$WEB_NEXT_DIR" ]; then
+    find "$WEB_NEXT_DIR" -mindepth 1 -maxdepth 1 ! -name "cache" ! -name "dev" -exec rm -rf {} + 2>/dev/null || true
+fi
+
+if is_truthy "$CLEAN_BUILD"; then
+    log_step "Clean rebuild requested - clearing Next.js and Turbo caches..."
+    rm -rf "${WEB_NEXT_DIR:?}/cache" "${PROJECT_ROOT:?}/.turbo" "${PROJECT_ROOT:?}/node_modules/.cache/turbo"
+fi
 
 log_step "Validating workspace..."
 if ! "$SCRIPT_DIR/../validation/detect-workspace-issues.sh" >/dev/null 2>&1; then
@@ -120,16 +148,32 @@ if [ -f "$WEB_ENV_FILE" ]; then
     log_step "Loaded env from .env.$ENV"
 fi
 
-log_step "Building web app..."
+log_step "Building web dependencies..."
 BUILD_START=$(date +%s)
 
 BUILD_OUTPUT_LOG="/tmp/alive-nextjs-build-${ENV}.log"
-if ! bun run build --filter=@webalive/web --force > "$BUILD_OUTPUT_LOG" 2>&1; then
+DEPS_BUILD_ARGS=(run build --filter=@webalive/web^...)
+if is_truthy "$CLEAN_BUILD"; then
+    DEPS_BUILD_ARGS+=(--force)
+fi
+
+if ! bun "${DEPS_BUILD_ARGS[@]}" > "$BUILD_OUTPUT_LOG" 2>&1; then
+    echo ""
+    banner_error "DEPENDENCY BUILD FAILED"
+    echo -e "  ${RED}Log: $BUILD_OUTPUT_LOG${NC}"
+    echo ""
+    grep -E "error TS|Error:|error:|Type error|Module not found|Cannot find" "$BUILD_OUTPUT_LOG" | head -30
+    echo ""
+    exit 1
+fi
+
+log_step "Building web app..."
+if ! bun run --cwd "$WEB_DIR" build >> "$BUILD_OUTPUT_LOG" 2>&1; then
     echo ""
     banner_error "NEXT.JS BUILD FAILED"
     echo -e "  ${RED}Log: $BUILD_OUTPUT_LOG${NC}"
     echo ""
-    grep -E "error TS|Error:|error:|Type error|Module not found|Cannot find" "$BUILD_OUTPUT_LOG" | head -30
+    grep -E "error TS|Error:|error:|Type error|Module not found|Cannot find" "$BUILD_OUTPUT_LOG" | tail -30
     echo ""
     exit 1
 fi
@@ -184,6 +228,14 @@ fi
 # =============================================================================
 # Phase 6: Move to .builds
 # =============================================================================
+# Keep the Next.js compiler cache in the repo so incremental deploys can reuse it,
+# but keep it out of the runtime artifact.
+if [ -d "$WEB_NEXT_DIR/cache" ]; then
+    BUILD_CACHE_BACKUP="$WEB_NEXT_DIR.cache-backup"
+    rm -rf "${BUILD_CACHE_BACKUP:?}" 2>/dev/null || true
+    mv "$WEB_NEXT_DIR/cache" "$BUILD_CACHE_BACKUP"
+fi
+
 # Remove dev server artifacts — the running dev server (alive-dev) recreates
 # .next/dev/ during builds. Without this, 700+MB of dev cache leaks into every build.
 rm -rf "$WEB_NEXT_DIR/dev" 2>/dev/null || true
@@ -197,6 +249,11 @@ if [ -n "$DEV_BACKUP" ] && [ -d "$DEV_BACKUP" ]; then
     mv "$DEV_BACKUP" "$WEB_NEXT_DIR/dev"
 fi
 
+if [ -n "$BUILD_CACHE_BACKUP" ] && [ -d "$BUILD_CACHE_BACKUP" ]; then
+    mkdir -p "$WEB_NEXT_DIR"
+    mv "$BUILD_CACHE_BACKUP" "$WEB_NEXT_DIR/cache"
+fi
+
 # =============================================================================
 # Phase 7: Copy Static Assets
 # =============================================================================
@@ -208,7 +265,6 @@ STANDALONE_DIR="$TEMP_BUILD_DIR/standalone/apps/web"
 }
 
 [ -d "$WEB_DIR/public" ] && cp -r "$WEB_DIR/public" "$STANDALONE_DIR/public"
-
 # =============================================================================
 # Phase 8: Copy Workspace Packages
 # =============================================================================

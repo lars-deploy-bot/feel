@@ -24,6 +24,25 @@ Before running ANY SQL:
 4. **Limit scope** - Always use WHERE clauses, never update entire tables
 5. **Double-check** - Read the query twice before executing
 
+## Bash Tool Gotchas
+
+**The Bash tool escapes `!` to `\!`**, which silently breaks:
+- `!=` → `\!=` (SQL not-equal) — **use `<>` instead**
+- `NOT IN (...)` is unaffected and always works
+
+```sql
+-- BAD (will error from Bash tool):
+SELECT * FROM iam.users WHERE status != 'active';
+
+-- GOOD:
+SELECT * FROM iam.users WHERE status <> 'active';
+```
+
+For queries with special characters like `!=`, use `--file` to avoid Bash tool escaping:
+```bash
+scripts/database/sql.sh --target staging --file /tmp/query.sql
+```
+
 ## Connection Details
 
 **Location:** `apps/web/.env.production`
@@ -48,9 +67,19 @@ SELECT * FROM iam.users LIMIT 5;
 EOF
 ```
 
+### From SQL File
+```bash
+scripts/database/sql.sh --target staging --file /tmp/check.sql
+```
+
 ### Interactive Session
 ```bash
 scripts/database/sql.sh --target staging --interactive
+```
+
+### Custom DB URL (bypass env lookup)
+```bash
+scripts/database/sql.sh --target production --url "postgresql://..." --query "SELECT 1;"
 ```
 
 ### Production Write (explicit confirm required)
@@ -64,14 +93,101 @@ scripts/database/sql.sh \
 
 ## Database Schemas
 
-| Schema | Purpose | Tables |
-|--------|---------|--------|
-| `iam` | Identity & Access | `users`, `orgs`, `org_memberships`, `sessions` |
-| `app` | Application data | `domains`, `templates`, `feedback`, `scheduled_jobs` |
-| `integrations` | OAuth & MCP | `providers`, `user_tokens` |
+| Schema | Purpose | Key Tables |
+|--------|---------|------------|
+| `iam` | Identity & Access | `users`, `orgs`, `org_memberships`, `sessions`, `auth_sessions`, `email_invites`, `org_invites`, `referrals`, `user_preferences` |
+| `app` | Application data | `domains`, `automation_jobs`, `automation_runs`, `conversations`, `messages`, `conversation_tabs`, `templates`, `feedback`, `servers`, `user_quotas`, `user_profile`, `user_onboarding`, `errors`, `gateway_settings` |
+| `integrations` | OAuth | `providers`, `oauth_external_identities`, `oauth_states`, `access_policies` |
 | `lockbox` | Encrypted secrets | `secret_keys`, `user_secrets` |
-| `mcp` | MCP access control | `beta_access`, `org_access` |
-| `public` | Supabase default | Various workflow tables |
+| `mcp` | MCP marketplace | `servers`, `server_versions`, `server_transports`, `server_transport_secrets`, `server_instances`, `tools`, `prompts`, `resources`, `tags`, `server_tags`, `user_server_configs`, `org_access`, `beta_access`, `approvals`, `review_events`, `health_checks` |
+
+## Key Column Names (IMPORTANT — avoid wrong column names)
+
+These columns are frequently confused. Always use the correct names:
+
+| Table | PK | Name/Label Column | FK to domains | FK to orgs |
+|-------|----|--------------------|---------------|------------|
+| `app.domains` | `domain_id` | **`hostname`** (NOT `domain`) | — | `org_id` |
+| `app.automation_jobs` | `id` | `name` | **`site_id`** (NOT `domain_id`) → `domains.domain_id` | `org_id` |
+| `app.automation_runs` | `id` | — | — (join via `job_id` → `automation_jobs.id`) | — |
+| `app.conversations` | `conversation_id` | `title`, `workspace` | — (uses `workspace` text, not FK) | `org_id` |
+| `iam.sessions` | `session_id` | `sdk_session_id`, `tab_id` | **`domain_id`** → `domains.domain_id` | — (join via `user_id`) |
+| `iam.users` | `user_id` | `email`, `display_name` | — | — (join via `org_memberships`) |
+| `iam.orgs` | `org_id` | `name` | — | — |
+| `iam.org_memberships` | (`org_id`, `user_id`) composite | `role` (owner/admin/member) | — | `org_id` |
+| `app.servers` | `server_id` | `name`, `hostname`, `ip` | — | — |
+
+## Enum Values (for WHERE clauses)
+
+**`automation_jobs` has TWO status columns — don't confuse them:**
+
+| Column | Enum Type | Valid Values | Meaning |
+|--------|-----------|--------------|---------|
+| `status` | `app.automation_job_status` | `idle`, `running`, `paused`, `disabled` | Job lifecycle state |
+| `last_run_status` | `app.automation_run_status` | `pending`, `running`, `success`, `failure`, `skipped` | Outcome of last run |
+
+Other enums:
+
+| Enum Type | Valid Values |
+|-----------|--------------|
+| `app.automation_trigger_type` | `cron`, `webhook`, `one-time`, `email` |
+| `app.automation_action_type` | `prompt`, `sync`, `publish` |
+| `app.execution_mode` | `systemd`, `e2b` |
+
+## Common Joins
+
+### Automation jobs with domain hostname
+```sql
+SELECT j.id, j.name, j.trigger_type, j.is_active, j.next_run_at, d.hostname
+FROM app.automation_jobs j
+JOIN app.domains d ON j.site_id = d.domain_id
+ORDER BY j.next_run_at;
+```
+
+### Automation runs with job name
+```sql
+SELECT r.id, r.status, r.started_at, r.duration_ms, j.name AS job_name
+FROM app.automation_runs r
+JOIN app.automation_jobs j ON r.job_id = j.id
+ORDER BY r.started_at DESC LIMIT 20;
+```
+
+### Domains with org name
+```sql
+SELECT d.hostname, d.port, d.execution_mode, o.name AS org_name
+FROM app.domains d
+JOIN iam.orgs o ON d.org_id = o.org_id;
+```
+
+### Full automation debugging (runs + jobs + domains, 3-way join)
+```sql
+SELECT r.id, r.status, r.started_at, r.duration_ms, r.error,
+       j.name AS job_name, d.hostname
+FROM app.automation_runs r
+JOIN app.automation_jobs j ON r.job_id = j.id
+JOIN app.domains d ON j.site_id = d.domain_id
+WHERE r.status = 'failure'
+ORDER BY r.started_at DESC LIMIT 10;
+```
+
+### User's domains (user → org_memberships → orgs → domains)
+```sql
+SELECT u.email, o.name AS org_name, d.hostname, d.port
+FROM iam.users u
+JOIN iam.org_memberships m ON u.user_id = m.user_id
+JOIN iam.orgs o ON m.org_id = o.org_id
+JOIN app.domains d ON d.org_id = o.org_id
+WHERE u.email = 'user@example.com';
+```
+
+### Active sessions with domain hostname
+```sql
+SELECT s.session_id, s.user_id, s.tab_id, d.hostname, s.last_activity
+FROM iam.sessions s
+JOIN app.domains d ON s.domain_id = d.domain_id
+WHERE s.expires_at > now()
+ORDER BY s.last_activity DESC LIMIT 10;
+```
 
 ## Common Safe Operations
 

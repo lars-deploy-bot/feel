@@ -4,9 +4,10 @@
  * Creates isolated tenant for each worker before tests run.
  */
 
-import type { FullConfig } from "@playwright/test"
+import { chromium, type FullConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
 import { requireProjectBaseUrl } from "./lib/base-url"
+import { TEST_ENV } from "./lib/test-env"
 
 const TENANT_VERIFY_TIMEOUT_MS = 30_000
 const TENANT_VERIFY_REQUEST_TIMEOUT_MS = 8_000
@@ -136,12 +137,19 @@ async function fetchTenantStatus(
 }
 
 /**
- * Warm up critical pages to trigger Next.js compilation before parallel tests start
- * This prevents multiple workers from all waiting for initial compilation simultaneously
+ * Warm up critical pages to trigger Next.js compilation before parallel tests start.
+ *
+ * Phase 1: fetch() triggers SSR compilation (fast, no browser needed).
+ * Phase 2: Real browser navigates to /chat to trigger Turbopack client-side JS compilation.
+ *
+ * Without Phase 2, Turbopack lazily compiles client bundles on first real browser visit.
+ * When 4 parallel workers all hit /chat simultaneously as their first test, Turbopack
+ * compiles under contention and hydration takes >10s, exceeding the __E2E_APP_READY__ timeout.
  */
 async function warmupServer(baseUrl: string): Promise<void> {
+  // Phase 1: SSR warmup via fetch (fast, triggers server compilation)
   const criticalPages = ["/", "/chat", "/deploy"]
-  console.log("🔥 [Global Setup] Warming up server pages...")
+  console.log("   [Phase 1] SSR warmup via fetch...")
 
   for (const page of criticalPages) {
     try {
@@ -151,6 +159,30 @@ async function warmupServer(baseUrl: string): Promise<void> {
     } catch (error) {
       console.log(`   ⚠ ${page} warmup failed: ${error}`)
     }
+  }
+
+  // Phase 2: Browser warmup to trigger Turbopack client-side JS compilation
+  // Only needed for local dev servers — production builds have pre-compiled bundles.
+  // Turbopack lazily compiles client bundles on first real browser visit;
+  // without this warmup, parallel workers all trigger compilation simultaneously.
+  if (TEST_ENV === "local") {
+    console.log("   [Phase 2] Browser warmup (Turbopack client JS compilation)...")
+    try {
+      const start = Date.now()
+      const browser = await chromium.launch({ args: ["--no-sandbox"] })
+      const page = await browser.newPage()
+
+      // Navigate to /chat — this is the heaviest page and triggers all client bundle compilation
+      await page.goto(`${baseUrl}/chat`, { waitUntil: "networkidle", timeout: 60_000 })
+
+      await browser.close()
+      console.log(`   ✓ /chat client bundles compiled (${Date.now() - start}ms)`)
+    } catch (error) {
+      // Non-fatal: tests will still work, just slower on first load
+      console.log(`   ⚠ Browser warmup failed (tests may be slower): ${error}`)
+    }
+  } else {
+    console.log("   [Phase 2] Skipped (production build, no Turbopack compilation needed)")
   }
 }
 
@@ -253,6 +285,9 @@ export default async function globalSetup(config: FullConfig) {
 
   console.log(`\n🚀 [Global Setup] Bootstrapping ${workers} worker tenants`)
   console.log(`📝 [Global Setup] Run ID: ${runId}`)
+  console.log(`🌍 [Global Setup] Test env: ${TEST_ENV}`)
+  console.log(`🔗 [Global Setup] Base URL: ${baseUrl}`)
+  console.log(`🗄️ [Global Setup] Supabase URL: ${process.env.SUPABASE_URL ?? "<unset>"}`)
   console.log(`🔧 [Global Setup] Mode: ${isMultiPort ? "multi-port" : "single-server"}\n`)
 
   const bootstrapHeaders = buildTestHeaders(true)

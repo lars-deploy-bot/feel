@@ -67,6 +67,11 @@ export async function POST(_req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.AUTOMATION_JOB_NOT_FOUND, { status: 404 })
     }
 
+    // Reject disabled jobs — prevents "ghost runs" after deactivation
+    if (!job.is_active) {
+      return structuredErrorResponse(ErrorCodes.AUTOMATION_JOB_DISABLED, { status: 400, details: { jobId: id } })
+    }
+
     // Extract domain info from FK join with runtime validation (no `as` casts)
     const siteData = isDomainJoin(job.domains) ? job.domains : null
     const hostname = siteData?.hostname

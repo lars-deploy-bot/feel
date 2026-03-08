@@ -34,7 +34,7 @@ Each worker gets isolated user/org/domain - no shared state, true parallelizatio
 ## Running Tests
 
 ```bash
-# Run all tests in parallel (4 workers)
+# Run the standard suite against a local app + isolated Supabase target
 bun run test:e2e
 
 # Run with UI mode
@@ -47,16 +47,33 @@ bun run test:e2e:headed
 bun run test:e2e:debug
 ```
 
-### Staging Environment Tests
+### Local E2E Env
 
-Tests can run against staging ([https://staging.terminal.alive.best](https://staging.terminal.alive.best)):
+Create `.env.e2e.local` with a local app URL and isolated Supabase credentials:
 
 ```bash
-# Default test:e2e already targets staging
-bun run test:e2e
+TEST_ENV=local
+NEXT_PUBLIC_APP_URL=http://127.0.0.1:9547
+NEXT_PUBLIC_PREVIEW_BASE=alive.local
+SUPABASE_URL=http://10.8.0.1:8000
+SUPABASE_ANON_KEY=sb_publishable_...
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
+NEXT_PUBLIC_SUPABASE_URL=http://10.8.0.1:8000
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
 ```
 
-**Note:** Staging tests use real data, not isolated worker tenants.
+`bun run test:e2e` now assumes this local lane. If `SUPABASE_URL` is a private HTTP target such as `http://10.8.0.1:8000`, the wrapper script opens an SSH tunnel and rewrites the runtime env to loopback before Playwright starts. It must not point at shared staging or production data.
+
+### Live Deployed Tests
+
+Use deployed environments only for the explicit live lane:
+
+```bash
+# Preview or staging, depending on the env file you pass
+ENV_FILE=.env.staging bun run test:e2e:live
+```
+
+Staging/preview live tests are intentionally separate from the default suite because they hit deployed infrastructure.
 
 ## Test Files
 
@@ -140,16 +157,16 @@ Some tests depend on proper org/workspace auto-selection. The flow:
 
 This process takes ~3-4 seconds. Tests use `waitForTimeout` to ensure completion.
 
-### Debugging Staging Tests
+### Debugging Live Deployed Tests
 
-To debug issues against staging:
+To debug issues against preview/staging:
 
 ```bash
-# Run in headed mode to see what's happening
+# Run local standard E2E in headed mode
 bun run test:e2e:headed org-workspace-selection.spec.ts
 
-# Or use debug mode
-bun run test:e2e:debug org-workspace-selection.spec.ts
+# Or run the live lane explicitly
+ENV_FILE=.env.staging bun run test:e2e:live:headed chat-live.spec.ts
 ```
 
 ## How It Works
