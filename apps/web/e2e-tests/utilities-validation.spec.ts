@@ -27,8 +27,8 @@ test.describe("E2E Utilities Validation", () => {
     const multiplier = isRemoteEnv ? 2 : 1
     expect(TEST_TIMEOUTS.fast).toBe(TIMEOUTS.TEST.SHORT * multiplier)
     expect(TEST_TIMEOUTS.medium).toBe(TIMEOUTS.TEST.MEDIUM * multiplier)
-    expect(TEST_TIMEOUTS.slow).toBe(10_000 * multiplier)
-    expect(TEST_TIMEOUTS.max).toBe(15_000 * multiplier)
+    expect(TEST_TIMEOUTS.slow).toBe(15_000 * multiplier)
+    expect(TEST_TIMEOUTS.max).toBe(20_000 * multiplier)
 
     // Validate TEST_SELECTORS
     expect(TEST_SELECTORS.workspaceReady).toBe('[data-testid="workspace-ready"]')

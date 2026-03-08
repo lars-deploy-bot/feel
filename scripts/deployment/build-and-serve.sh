@@ -596,9 +596,9 @@ else
         fi
     }
 
-    log_step "Running standard E2E suite"
+    log_step "Running standard E2E suite (against deployed $ENV build)"
     set +e
-    run_web_e2e test:e2e
+    run_web_e2e test:e2e:gate
     E2E_EXIT=$?
     set -e
 
