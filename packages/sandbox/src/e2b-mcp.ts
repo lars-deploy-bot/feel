@@ -360,10 +360,6 @@ const bashTool = (sandbox: Sandbox, mcpConfig: E2bMcpConfig) =>
 
 export function createE2bMcp(sandbox: Sandbox, reportError: E2bErrorReporter | undefined, config: E2bMcpConfig) {
   const report = reportError ?? noopReporter
-  const mcpConfig: E2bMcpConfig = config ?? {
-    hostname: "sandbox",
-    previewBase: process.env.NEXT_PUBLIC_PREVIEW_BASE ?? "alive.best",
-  }
   return createSdkMcpServer({
     name: "e2b",
     version: "1.0.0",
