@@ -16,17 +16,17 @@ import Anthropic from "@anthropic-ai/sdk"
 import { expect, type Page, type Request, test } from "@playwright/test"
 import { CLAUDE_MODELS, DEFAULT_CLAUDE_MODEL } from "@webalive/shared"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
-import { PATTERNS, TEST_MESSAGES } from "./fixtures/test-constants"
-import { TEST_TIMEOUTS } from "./fixtures/test-data"
+import { PATTERNS, TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
 import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
 
 /**
- * Type-safe chat request body
+ * Type-safe chat request body — must match what the app actually sends
  */
 interface ChatRequest {
   message: string
   tabId: string
+  tabGroupId: string
   model: string
   workspace: string
 }
@@ -47,8 +47,8 @@ interface LLMJudgeResult {
 }
 
 async function sendMessage(page: Page, message: string): Promise<void> {
-  const messageInput = page.locator('[data-testid="message-input"]')
-  const sendButton = page.locator('[data-testid="send-button"]')
+  const messageInput = page.locator(TEST_SELECTORS.messageInput)
+  const sendButton = page.locator(TEST_SELECTORS.sendButton)
 
   await messageInput.fill(message)
   await expect(sendButton).toBeEnabled({ timeout: TEST_TIMEOUTS.slow })
@@ -124,14 +124,14 @@ test.describe("Chat API - Request Validation", () => {
     await loginLiveStaging(page, user)
 
     // Verify chat interface is ready (using data-testids)
-    await expect(page.locator('[data-testid="message-input"]')).toBeVisible({
+    await expect(page.locator(TEST_SELECTORS.messageInput)).toBeVisible({
       timeout: TEST_TIMEOUTS.max,
     })
-    await expect(page.locator('[data-testid="send-button"]')).toBeVisible()
+    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeVisible()
 
     // Type a simple message (using constant, not hardcoded)
-    const messageInput = page.locator('[data-testid="message-input"]')
-    await messageInput.fill(TEST_MESSAGES.SIMPLE)
+    const messageInput = page.locator(TEST_SELECTORS.messageInput)
+    await messageInput.fill(TEST_MESSAGES.simple)
 
     // Setup request/response promises BEFORE clicking send (event-based approach)
     const requestPromise = page.waitForRequest(isClaudeStreamPostRequest)
@@ -139,7 +139,7 @@ test.describe("Chat API - Request Validation", () => {
     const responsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
     // Get the captured request and response
-    await sendMessage(page, TEST_MESSAGES.SIMPLE)
+    await sendMessage(page, TEST_MESSAGES.simple)
     const request = await requestPromise
     const response = await responsePromise
 
@@ -150,9 +150,10 @@ test.describe("Chat API - Request Validation", () => {
     const requestBody: ChatRequest = JSON.parse(postData!)
     console.log("📤 Request body:", requestBody)
 
-    // Verify request structure (using constants)
-    expect(requestBody.message).toBe(TEST_MESSAGES.SIMPLE)
+    // Verify request structure
+    expect(requestBody.message).toBe(TEST_MESSAGES.simple)
     expect(requestBody.tabId).toMatch(PATTERNS.UUID)
+    expect(requestBody.tabGroupId).toMatch(PATTERNS.UUID)
     expect(requestBody.model).toBe(DEFAULT_CLAUDE_MODEL)
     expect(requestBody.workspace).toBe(user.workspace)
     console.log("✅ Request structure valid")
@@ -174,32 +175,38 @@ test.describe("Chat API - Request Validation", () => {
     }
 
     // Verify user message appears in UI
-    // Note: Using data-testid would be better, but getByText is acceptable for message content
-    await expect(page.getByText(TEST_MESSAGES.SIMPLE).first()).toBeVisible({
+    await expect(page.getByText(TEST_MESSAGES.simple).first()).toBeVisible({
       timeout: TEST_TIMEOUTS.slow,
     })
     console.log("✅ User message displayed")
 
-    // Verify Claude starts thinking (using data-testid, not brittle text selector)
-    await expect(page.locator('[data-testid="thinking-indicator"]')).toBeVisible({
-      timeout: TEST_TIMEOUTS.slow,
+    // Wait for stream to complete: send-button re-enabled means response finished
+    // (during streaming it switches to stop-button, then back to send-button)
+    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
+      timeout: TEST_TIMEOUTS.max,
     })
-    console.log("✅ Claude response started (no INVALID_REQUEST error)")
+    console.log("✅ Stream completed (send button re-enabled)")
 
-    console.log("✅ Test passed - chat works without INVALID_REQUEST error")
+    // Verify no stream error shown in UI
+    const errorVisible = await page.getByText("Something went wrong").isVisible()
+    if (errorVisible) {
+      const errorText = await page.getByText("Something went wrong").textContent()
+      throw new Error(`Stream error shown in UI: ${errorText}`)
+    }
+    console.log("✅ No stream errors — chat works without INVALID_REQUEST error")
   })
 
   test("handles insufficient tokens gracefully", async ({ page }) => {
     const user = await getLiveStagingUser(test.info().workerIndex, getProjectBaseUrl(test.info()))
     await loginLiveStaging(page, user)
 
-    await expect(page.locator('[data-testid="message-input"]')).toBeVisible({
+    await expect(page.locator(TEST_SELECTORS.messageInput)).toBeVisible({
       timeout: TEST_TIMEOUTS.max,
     })
 
     const responsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
-    await sendMessage(page, TEST_MESSAGES.SIMPLE)
+    await sendMessage(page, TEST_MESSAGES.simple)
 
     const response = await responsePromise
     const status = response.status()
@@ -222,7 +229,7 @@ test.describe("Chat API - Request Validation", () => {
     const user = await getLiveStagingUser(test.info().workerIndex, getProjectBaseUrl(test.info()))
     await loginLiveStaging(page, user)
 
-    await expect(page.locator('[data-testid="message-input"]')).toBeVisible({
+    await expect(page.locator(TEST_SELECTORS.messageInput)).toBeVisible({
       timeout: TEST_TIMEOUTS.max,
     })
 
@@ -242,13 +249,20 @@ test.describe("Chat API - Request Validation", () => {
 
     expect(firstRequestBody.message).toBe(firstPrompt)
     expect(firstRequestBody.tabId).toMatch(PATTERNS.UUID)
+    expect(firstRequestBody.tabGroupId).toMatch(PATTERNS.UUID)
     expect(firstRequestBody.model).toBe(DEFAULT_CLAUDE_MODEL)
     expect(firstRequestBody.workspace).toBe(user.workspace)
     expect(firstResponse.status()).toBe(200)
 
+    // Wait for stream to complete before parsing NDJSON body
+    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
+      timeout: TEST_TIMEOUTS.max,
+    })
+
     const firstNDJSON = await firstResponse.text()
     const firstAssistantText = extractAssistantTextFromNDJSON(firstNDJSON)
     expect(firstAssistantText.length).toBeGreaterThan(20)
+    console.log(`[Turn 1] Assistant: ${firstAssistantText.slice(0, 100)}...`)
 
     const secondRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
     const secondResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
@@ -261,13 +275,20 @@ test.describe("Chat API - Request Validation", () => {
 
     expect(secondRequestBody.message).toBe(secondPrompt)
     expect(secondRequestBody.tabId).toBe(firstRequestBody.tabId)
+    expect(secondRequestBody.tabGroupId).toBe(firstRequestBody.tabGroupId)
     expect(secondRequestBody.model).toBe(DEFAULT_CLAUDE_MODEL)
     expect(secondRequestBody.workspace).toBe(user.workspace)
     expect(secondResponse.status()).toBe(200)
 
+    // Wait for stream to complete before parsing NDJSON body
+    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
+      timeout: TEST_TIMEOUTS.max,
+    })
+
     const secondNDJSON = await secondResponse.text()
     const secondAssistantText = extractAssistantTextFromNDJSON(secondNDJSON)
     expect(secondAssistantText.length).toBeGreaterThan(10)
+    console.log(`[Turn 2] Assistant: ${secondAssistantText.slice(0, 100)}...`)
 
     const judgeResult = await judgeContextRetention(firstAssistantText, secondAssistantText)
     console.log(`[LLM Judge] verdict=${judgeResult.verdict}; rationale=${judgeResult.rationale}`)
