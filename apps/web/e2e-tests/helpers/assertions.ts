@@ -49,9 +49,6 @@ interface E2EReadiness {
   totalDurationMs?: number
 }
 
-// Alias for backwards compatibility
-type E2EMetrics = E2EReadiness
-
 interface WorkspaceStorageSnapshot {
   workspace: string | null
   orgId: string | null
@@ -74,7 +71,7 @@ function isWorkspaceStorageSnapshot(value: unknown): value is WorkspaceStorageSn
   return isNullableString(workspace) && isNullableString(orgId)
 }
 
-function isE2EMetrics(value: unknown): value is E2EMetrics {
+function isE2EReadiness(value: unknown): value is E2EReadiness {
   if (!isObjectRecord(value)) return false
   return Reflect.has(value, "appReady") || Reflect.has(value, "chatReady") || Reflect.has(value, "stores")
 }
@@ -124,27 +121,19 @@ export async function waitForAppReady(page: Page) {
     throw new Error(`App ready marker timeout after ${Date.now() - startedAt}ms`)
   } catch (error) {
     // On timeout, dump E2E metrics for debugging
-    const metrics = await getE2EMetrics(page)
+    const metrics = await getE2EReadiness(page)
     console.error("[waitForAppReady] Timeout waiting for app ready. Metrics:", JSON.stringify(metrics, null, 2))
     throw error
   }
 }
 
 /**
- * @deprecated Use waitForAppReady instead
- * Kept for backwards compatibility during migration
- */
-export async function waitForAppHydrated(page: Page) {
-  return waitForAppReady(page)
-}
-
-/**
  * Get E2E metrics from the page (for debugging failed tests)
  */
-export async function getE2EMetrics(page: Page): Promise<E2EMetrics | null> {
+export async function getE2EReadiness(page: Page): Promise<E2EReadiness | null> {
   try {
     const metrics = await page.evaluate(() => Reflect.get(window, "__E2E__") ?? null)
-    return isE2EMetrics(metrics) ? metrics : null
+    return isE2EReadiness(metrics) ? metrics : null
   } catch {
     return null
   }
@@ -277,7 +266,7 @@ async function waitForAppReadySafe(page: Page): Promise<void> {
       throw error
     }
 
-    const metrics = await getE2EMetrics(page)
+    const metrics = await getE2EReadiness(page)
     console.warn("[waitForAppReadySafe] App ready marker timeout; falling back to DOM checks.", {
       error: error instanceof Error ? error.message : String(error),
       metrics,
@@ -367,7 +356,7 @@ export async function waitForAppReadyPromise(page: Page) {
       { timeout: TEST_TIMEOUTS.max },
     )
   } catch (error) {
-    const metrics = await getE2EMetrics(page)
+    const metrics = await getE2EReadiness(page)
     console.error("[waitForAppReadyPromise] Timeout. Metrics:", JSON.stringify(metrics, null, 2))
     throw error
   }

@@ -13,33 +13,14 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk"
-import { expect, type Page, type Request, test } from "@playwright/test"
+import { expect, type Page, test } from "@playwright/test"
 import { CLAUDE_MODELS, DEFAULT_CLAUDE_MODEL } from "@webalive/shared"
+import type { StructuredError } from "@/lib/error-codes"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
 import { PATTERNS, TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
+import { parseValidatedBody } from "./lib/api-helpers"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
 import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
-
-/**
- * Type-safe chat request body — must match what the app actually sends
- */
-interface ChatRequest {
-  message: string
-  tabId: string
-  tabGroupId: string
-  model: string
-  workspace: string
-}
-
-/**
- * Type-safe error response
- */
-interface ErrorResponse {
-  ok: false
-  error: string
-  message: string
-  category?: string
-}
 
 interface LLMJudgeResult {
   verdict: "PASS" | "FAIL"
@@ -53,14 +34,6 @@ async function sendMessage(page: Page, message: string): Promise<void> {
   await messageInput.fill(message)
   await expect(sendButton).toBeEnabled({ timeout: TEST_TIMEOUTS.slow })
   await sendButton.click()
-}
-
-function parseChatRequest(request: Request): ChatRequest {
-  const postData = request.postData()
-  if (!postData) {
-    throw new Error("Missing chat request payload")
-  }
-  return JSON.parse(postData) as ChatRequest
 }
 
 function getJudgeApiKey(): string {
@@ -123,31 +96,20 @@ test.describe("Chat API - Request Validation", () => {
     const user = await getLiveStagingUser(test.info().workerIndex, getProjectBaseUrl(test.info()))
     await loginLiveStaging(page, user)
 
-    // Verify chat interface is ready (using data-testids)
+    // Verify chat interface is ready
     await expect(page.locator(TEST_SELECTORS.messageInput)).toBeVisible({
       timeout: TEST_TIMEOUTS.max,
     })
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeVisible()
 
-    // Type a simple message (using constant, not hardcoded)
-    const messageInput = page.locator(TEST_SELECTORS.messageInput)
-    await messageInput.fill(TEST_MESSAGES.simple)
-
-    // Setup request/response promises BEFORE clicking send (event-based approach)
+    // Setup request/response interception BEFORE sending
     const requestPromise = page.waitForRequest(isClaudeStreamPostRequest)
-
     const responsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
-    // Get the captured request and response
     await sendMessage(page, TEST_MESSAGES.simple)
     const request = await requestPromise
     const response = await responsePromise
 
-    // Parse request body (type-safe)
-    const postData = request.postData()
-    expect(postData).toBeTruthy()
-
-    const requestBody: ChatRequest = JSON.parse(postData!)
+    const requestBody = parseValidatedBody(request)
     console.log("📤 Request body:", requestBody)
 
     // Verify request structure
@@ -164,7 +126,7 @@ test.describe("Chat API - Request Validation", () => {
 
     // If error response, parse and fail explicitly
     if (responseStatus !== 200) {
-      const errorBody: ErrorResponse = await response.json()
+      const errorBody: StructuredError = await response.json()
       console.error("❌ Error response:", errorBody)
 
       if (errorBody.error === "INVALID_REQUEST") {
@@ -180,12 +142,13 @@ test.describe("Chat API - Request Validation", () => {
     })
     console.log("✅ User message displayed")
 
-    // Wait for stream to complete: send-button re-enabled means response finished
+    // Wait for stream to complete: send-button reappears in DOM after streaming ends
     // (during streaming it switches to stop-button, then back to send-button)
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
+    // Note: send-button is disabled when input is empty, so we check toBeAttached() not toBeEnabled()
+    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeAttached({
       timeout: TEST_TIMEOUTS.max,
     })
-    console.log("✅ Stream completed (send button re-enabled)")
+    console.log("✅ Stream completed (send button re-attached)")
 
     // Verify no stream error shown in UI
     const errorVisible = await page.getByText("Something went wrong").isVisible()
@@ -216,7 +179,7 @@ test.describe("Chat API - Request Validation", () => {
     if (status === 200) {
       console.log("✅ Request succeeded (user has credits)")
     } else if (status === 402 || status === 403) {
-      const errorBody: ErrorResponse = await response.json()
+      const errorBody: StructuredError = await response.json()
       console.log("✅ Request blocked due to insufficient tokens (expected):", errorBody.error)
       expect(errorBody.error).toMatch(/INSUFFICIENT_TOKENS|TEST_MODE_BLOCK/)
     } else {
@@ -245,7 +208,7 @@ test.describe("Chat API - Request Validation", () => {
 
     const firstRequest = await firstRequestPromise
     const firstResponse = await firstResponsePromise
-    const firstRequestBody = parseChatRequest(firstRequest)
+    const firstRequestBody = parseValidatedBody(firstRequest)
 
     expect(firstRequestBody.message).toBe(firstPrompt)
     expect(firstRequestBody.tabId).toMatch(PATTERNS.UUID)
@@ -254,8 +217,9 @@ test.describe("Chat API - Request Validation", () => {
     expect(firstRequestBody.workspace).toBe(user.workspace)
     expect(firstResponse.status()).toBe(200)
 
-    // Wait for stream to complete before parsing NDJSON body
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
+    // Wait for stream to complete: send-button reappears in DOM after streaming ends
+    // (disabled when input is empty, so check toBeAttached() not toBeEnabled())
+    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeAttached({
       timeout: TEST_TIMEOUTS.max,
     })
 
@@ -271,7 +235,7 @@ test.describe("Chat API - Request Validation", () => {
 
     const secondRequest = await secondRequestPromise
     const secondResponse = await secondResponsePromise
-    const secondRequestBody = parseChatRequest(secondRequest)
+    const secondRequestBody = parseValidatedBody(secondRequest)
 
     expect(secondRequestBody.message).toBe(secondPrompt)
     expect(secondRequestBody.tabId).toBe(firstRequestBody.tabId)
@@ -280,8 +244,8 @@ test.describe("Chat API - Request Validation", () => {
     expect(secondRequestBody.workspace).toBe(user.workspace)
     expect(secondResponse.status()).toBe(200)
 
-    // Wait for stream to complete before parsing NDJSON body
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
+    // Wait for stream to complete: send-button reappears in DOM after streaming ends
+    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeAttached({
       timeout: TEST_TIMEOUTS.max,
     })
 

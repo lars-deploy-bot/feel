@@ -16,31 +16,19 @@
  * - No timing-based assertions
  */
 
-import { expect, type Request } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 import { test } from "./fixtures"
-import { TEST_API } from "./fixtures/test-constants"
-import { TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
+import { TEST_API, TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
 import { waitForChatReady } from "./helpers/assertions"
+import { parseValidatedBody } from "./lib/api-helpers"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
-
-/** Extract tabId from request body */
-function getTabIdFromRequest(request: Request): string | null {
-  const postData = request.postData()
-  if (!postData) return null
-  try {
-    const body = JSON.parse(postData)
-    return body.tabId || null
-  } catch {
-    return null
-  }
-}
 
 /**
  * Send a message and wait for response - matches working test pattern
  */
 async function sendAndWaitForResponse(
-  page: import("@playwright/test").Page,
+  page: Page,
   chatPage: ChatPage,
   message: string,
   expectedResponse: string | RegExp,
@@ -63,8 +51,7 @@ test.describe("Tab Isolation", () => {
     // Mock API and capture tabId from each request
     let responseIndex = 0
     await page.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
-      const tabId = getTabIdFromRequest(route.request())
-      if (tabId) capturedTabIds.push(tabId)
+      capturedTabIds.push(parseValidatedBody(route.request()).tabId)
       responseIndex++
       await handlers.text(`Response ${responseIndex}`)(route)
     })
@@ -117,10 +104,8 @@ test.describe("Tab Isolation", () => {
 
     let responseIndex = 0
     await page.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
-      const tabId = getTabIdFromRequest(route.request())
-      if (tabId) {
-        tabIdRequestCounts.set(tabId, (tabIdRequestCounts.get(tabId) || 0) + 1)
-      }
+      const { tabId } = parseValidatedBody(route.request())
+      tabIdRequestCounts.set(tabId, (tabIdRequestCounts.get(tabId) || 0) + 1)
       responseIndex++
       await handlers.text(`Response ${responseIndex}`)(route)
     })
@@ -176,10 +161,10 @@ test.describe("Tab Isolation", () => {
     const page = authenticatedPage
     const chatPage = new ChatPage(page)
 
-    let capturedTabId: string | null = null
+    const capturedTabIds: string[] = []
 
     await page.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
-      capturedTabId = getTabIdFromRequest(route.request())
+      capturedTabIds.push(parseValidatedBody(route.request()).tabId)
       await handlers.text("Response")(route)
     })
 
@@ -189,7 +174,7 @@ test.describe("Tab Isolation", () => {
     await sendAndWaitForResponse(page, chatPage, "Test message", "Response")
 
     // Verify tabId is a valid UUID
-    expect(capturedTabId).toBeTruthy()
-    expect(capturedTabId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    expect(capturedTabIds).toHaveLength(1)
+    expect(capturedTabIds[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
   })
 })

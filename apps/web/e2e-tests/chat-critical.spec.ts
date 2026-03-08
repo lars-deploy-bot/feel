@@ -18,54 +18,13 @@
 
 import { BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
+import type { ValidatedBody } from "@/types/guards/api"
 import { expect, test } from "./fixtures"
-import { TEST_API } from "./fixtures/test-constants"
-import { TEST_TIMEOUTS } from "./fixtures/test-data"
+import { TEST_API, TEST_TIMEOUTS } from "./fixtures/test-data"
+import { parseValidatedBody } from "./lib/api-helpers"
 import { parseNDJSONEventTypes } from "./lib/ndjson"
 import { StreamBuilder } from "./lib/stream-builder"
 import { ChatPage } from "./pages/ChatPage"
-
-interface ChatStreamRequestBody {
-  message: string
-  tabId: string
-  tabGroupId: string
-  model: string
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
-
-function parseChatStreamRequestBody(rawBody: string | null): ChatStreamRequestBody {
-  if (!rawBody) {
-    throw new Error("Missing /api/claude/stream request body")
-  }
-
-  const parsed: unknown = JSON.parse(rawBody)
-  if (!isRecord(parsed)) {
-    throw new Error("Invalid /api/claude/stream request payload")
-  }
-
-  const message = parsed.message
-  const tabId = parsed.tabId
-  const tabGroupId = parsed.tabGroupId
-  const model = parsed.model
-
-  if (typeof message !== "string" || message.length === 0) {
-    throw new Error("Invalid /api/claude/stream payload: missing message")
-  }
-  if (typeof tabId !== "string" || tabId.length === 0) {
-    throw new Error("Invalid /api/claude/stream payload: missing tabId")
-  }
-  if (typeof tabGroupId !== "string" || tabGroupId.length === 0) {
-    throw new Error("Invalid /api/claude/stream payload: missing tabGroupId")
-  }
-  if (typeof model !== "string" || model.length === 0) {
-    throw new Error("Invalid /api/claude/stream payload: missing model")
-  }
-
-  return { message, tabId, tabGroupId, model }
-}
 
 function expectLifecycleOrder(eventTypes: string[]): void {
   const startIdx = eventTypes.indexOf(BridgeStreamType.START)
@@ -88,12 +47,12 @@ test.describe("Critical Chat Path", () => {
     const assistantResponse = "I received your message. Everything works."
 
     // Track request payloads for contract verification
-    const capturedRequestBodies: ChatStreamRequestBody[] = []
+    const capturedRequestBodies: ValidatedBody[] = []
 
     await authenticatedPage.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
       const request = route.request()
       expect(isClaudeStreamPostRequest(request)).toBe(true)
-      const requestBody = parseChatStreamRequestBody(request.postData())
+      const requestBody = parseValidatedBody(request)
       capturedRequestBodies.push(requestBody)
 
       const ndjsonBody = new StreamBuilder().start().text(assistantResponse).complete().toNDJSON()
@@ -153,12 +112,12 @@ test.describe("Critical Chat Path", () => {
     const secondUserMessage = "What is my name?"
     const secondAssistantResponse = "Your name is Alice, as you told me."
 
-    const capturedRequestBodies: ChatStreamRequestBody[] = []
+    const capturedRequestBodies: ValidatedBody[] = []
 
     await authenticatedPage.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
       const request = route.request()
       expect(isClaudeStreamPostRequest(request)).toBe(true)
-      const requestBody = parseChatStreamRequestBody(request.postData())
+      const requestBody = parseValidatedBody(request)
       capturedRequestBodies.push(requestBody)
 
       const turnCount = capturedRequestBodies.length
