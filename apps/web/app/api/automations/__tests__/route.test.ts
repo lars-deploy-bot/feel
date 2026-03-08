@@ -74,19 +74,6 @@ let insertedRow: Record<string, unknown> | null = null
 
 const mockServiceAppClient = vi.fn(() => ({
   from: (table: string) => {
-    if (table === "domains") {
-      return {
-        select: () => ({
-          eq: () => ({
-            single: () =>
-              Promise.resolve({
-                data: { org_id: "org-alive" },
-                error: null,
-              }),
-          }),
-        }),
-      }
-    }
     if (table === "automation_jobs") {
       return {
         insert: (row: Record<string, unknown>) => {
@@ -199,9 +186,10 @@ describe("POST /api/automations", () => {
     expect(insertedRow).toMatchObject({
       site_id: "dom_normal_site",
       user_id: "u1",
-      org_id: "org-alive",
       name: "Test Automation",
     })
+    // org_id should NOT be in the insert — it's derived from the domain
+    expect(insertedRow).not.toHaveProperty("org_id")
   })
 
   it("returns 403 when non-superadmin creates alive workspace automation", async () => {

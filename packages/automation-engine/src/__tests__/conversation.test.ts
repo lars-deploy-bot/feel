@@ -6,7 +6,7 @@ import type { RunContext } from "../types"
 // Helpers
 // =============================================================================
 
-function mockSupabase() {
+function mockSupabase(domainOrgId = "org_xyz") {
   const inserted: Record<string, Record<string, unknown>[]> = {
     conversations: [],
     conversation_tabs: [],
@@ -16,18 +16,29 @@ function mockSupabase() {
   }
 
   const supabase = {
-    from: vi.fn((table: string) => ({
-      insert: vi.fn((data: Record<string, unknown>) => {
-        inserted[table]?.push(data)
-        return Promise.resolve({ error: null })
-      }),
-      delete: vi.fn(() => ({
-        eq: vi.fn((col: string, val: string) => {
-          deleted[table]?.push({ eq: [col, val] })
+    from: vi.fn((table: string) => {
+      if (table === "domains") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => Promise.resolve({ data: { org_id: domainOrgId }, error: null })),
+            })),
+          })),
+        }
+      }
+      return {
+        insert: vi.fn((data: Record<string, unknown>) => {
+          inserted[table]?.push(data)
           return Promise.resolve({ error: null })
         }),
-      })),
-    })),
+        delete: vi.fn(() => ({
+          eq: vi.fn((col: string, val: string) => {
+            deleted[table]?.push({ eq: [col, val] })
+            return Promise.resolve({ error: null })
+          }),
+        })),
+      }
+    }),
   }
 
   return { supabase, inserted, deleted }
@@ -41,7 +52,6 @@ function makeCtx(supabase: unknown): RunContext {
       name: "Daily sync",
       site_id: "site_1",
       user_id: "user_abc",
-      org_id: "org_xyz",
       is_active: true,
       status: "running" as const,
       trigger_type: "cron" as const,
@@ -147,16 +157,49 @@ describe("bootstrapRunConversation", () => {
     })
   })
 
+  it("returns null when domain lookup fails", async () => {
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === "domains") {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                single: vi.fn(() => Promise.resolve({ data: null, error: { message: "not found" } })),
+              })),
+            })),
+          }
+        }
+        return { insert: vi.fn(() => Promise.resolve({ error: null })) }
+      }),
+    }
+    const ctx = makeCtx(supabase)
+
+    const result = await bootstrapRunConversation(ctx)
+
+    expect(result).toBeNull()
+  })
+
   it("returns null on conversation insert error without throwing", async () => {
     const supabase = {
-      from: vi.fn((table: string) => ({
-        insert: vi.fn(() => {
-          if (table === "conversations") {
-            return Promise.resolve({ error: { message: "DB down", code: "500" } })
+      from: vi.fn((table: string) => {
+        if (table === "domains") {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                single: vi.fn(() => Promise.resolve({ data: { org_id: "org_xyz" }, error: null })),
+              })),
+            })),
           }
-          return Promise.resolve({ error: null })
-        }),
-      })),
+        }
+        return {
+          insert: vi.fn(() => {
+            if (table === "conversations") {
+              return Promise.resolve({ error: { message: "DB down", code: "500" } })
+            }
+            return Promise.resolve({ error: null })
+          }),
+        }
+      }),
     }
     const ctx = makeCtx(supabase)
 
@@ -168,20 +211,31 @@ describe("bootstrapRunConversation", () => {
   it("returns null and cleans up conversation on tab insert error", async () => {
     let deleteEqCalled = false
     const supabase = {
-      from: vi.fn((table: string) => ({
-        insert: vi.fn(() => {
-          if (table === "conversation_tabs") {
-            return Promise.resolve({ error: { message: "tab error", code: "500" } })
+      from: vi.fn((table: string) => {
+        if (table === "domains") {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                single: vi.fn(() => Promise.resolve({ data: { org_id: "org_xyz" }, error: null })),
+              })),
+            })),
           }
-          return Promise.resolve({ error: null })
-        }),
-        delete: vi.fn(() => ({
-          eq: vi.fn(() => {
-            deleteEqCalled = true
+        }
+        return {
+          insert: vi.fn(() => {
+            if (table === "conversation_tabs") {
+              return Promise.resolve({ error: { message: "tab error", code: "500" } })
+            }
             return Promise.resolve({ error: null })
           }),
-        })),
-      })),
+          delete: vi.fn(() => ({
+            eq: vi.fn(() => {
+              deleteEqCalled = true
+              return Promise.resolve({ error: null })
+            }),
+          })),
+        }
+      }),
     }
     const ctx = makeCtx(supabase)
 

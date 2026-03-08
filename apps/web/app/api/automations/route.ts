@@ -38,7 +38,7 @@ type AutomationListRow = {
   last_run_status: string | null
   next_run_at: string | null
   created_at: string
-  domains?: { hostname: string } | null
+  domains?: { hostname: string; org_id: string } | null
 }
 
 /**
@@ -57,7 +57,7 @@ export const GET = protectedRoute(async ({ user, req }) => {
 
   const supabase = await createRLSAppClient()
 
-  // Build query - join with domains to get hostname
+  // Build query - join with domains to get hostname and org_id
   let jobsQuery = supabase
     .from("automation_jobs")
     .select(
@@ -84,7 +84,7 @@ export const GET = protectedRoute(async ({ user, req }) => {
         last_run_status,
         next_run_at,
         created_at,
-        domains:site_id (hostname)
+        domains:site_id (hostname, org_id)
       `,
     )
     .eq("user_id", user.id)
@@ -92,7 +92,7 @@ export const GET = protectedRoute(async ({ user, req }) => {
     .limit(limit)
 
   if (orgId) {
-    jobsQuery = jobsQuery.eq("org_id", orgId)
+    jobsQuery = jobsQuery.eq("domains.org_id", orgId)
   }
 
   if (siteId) {
@@ -193,13 +193,6 @@ export const POST = protectedRoute(async ({ user, req }) => {
 
   const supabase = createServiceAppClient()
 
-  // Get org_id from the site
-  const { data: domain } = await supabase.from("domains").select("org_id").eq("domain_id", parsed.site_id).single()
-
-  if (!domain?.org_id) {
-    return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, { status: 404 })
-  }
-
   // Validate and compute cron schedule if present
   let nextRunAt: string | null = null
   if (parsed.trigger_type === "cron" && parsed.cron_schedule) {
@@ -227,7 +220,6 @@ export const POST = protectedRoute(async ({ user, req }) => {
     .insert({
       site_id: parsed.site_id,
       user_id: user.id,
-      org_id: domain.org_id,
       name: parsed.name,
       description: parsed.description ?? null,
       trigger_type: parsed.trigger_type,

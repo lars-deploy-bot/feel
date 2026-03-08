@@ -30,7 +30,6 @@ export function AutomationsPage() {
   const activeJobs = orgSummaries.reduce((s, o) => s + o.active_jobs, 0)
   const totalRuns = orgSummaries.reduce((s, o) => s + o.total_runs_30d, 0)
   const totalCost = orgSummaries.reduce((s, o) => s + o.estimated_monthly_cost_usd, 0)
-  const maxCost = Math.max(...orgSummaries.map(o => o.estimated_monthly_cost_usd), 1)
 
   return (
     <>
@@ -40,7 +39,7 @@ export function AutomationsPage() {
       />
 
       {/* Stats */}
-      <div className="flex gap-8 mb-6">
+      <div className="flex gap-10 pb-8 border-b border-border">
         <div>
           <p className="text-2xl font-semibold text-text-primary tabular-nums tracking-tight">{activeJobs}</p>
           <p className="text-[12px] text-text-tertiary mt-1">Active jobs</p>
@@ -53,14 +52,20 @@ export function AutomationsPage() {
           <p className="text-2xl font-semibold text-text-primary tabular-nums tracking-tight">
             ${totalCost.toFixed(2)}
           </p>
-          <p className="text-[12px] text-text-tertiary mt-1">Est. monthly cost</p>
+          <p className="text-[12px] text-text-tertiary mt-1">Est. monthly</p>
+        </div>
+        <div>
+          <p className="text-2xl font-semibold text-text-primary tabular-nums tracking-tight">
+            ${activeJobs > 0 ? (totalCost / activeJobs).toFixed(2) : "0.00"}
+          </p>
+          <p className="text-[12px] text-text-tertiary mt-1">Avg / job</p>
         </div>
       </div>
 
       {/* Org sections */}
-      <div className="space-y-4">
+      <div className="mt-6">
         {orgSummaries.map(summary => (
-          <OrgSection key={summary.org_id} summary={summary} maxCost={maxCost} />
+          <OrgSection key={summary.org_id} summary={summary} onChanged={refresh} />
         ))}
       </div>
 
