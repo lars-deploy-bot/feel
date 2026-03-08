@@ -59,47 +59,71 @@ export function JobRow({ job, onToggled }: JobRowProps) {
   }
 
   return (
-    <tr className="border-b border-border last:border-b-0 hover:bg-surface-secondary/30 transition-colors">
-      <td className="py-2 px-3">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[13px] text-text-primary font-medium">{job.name}</span>
-          <span className="text-[11px] text-text-tertiary">{job.hostname}</span>
-        </div>
-      </td>
-      <td className="py-2 px-3">
+    <div className="flex items-center gap-6 py-3 hover:bg-surface-secondary/30 transition-colors duration-100 -mx-2 px-2 rounded-lg">
+      {/* Name + hostname */}
+      <div className="w-48 min-w-0 flex-shrink-0">
+        <p className="text-[13px] text-text-primary font-medium truncate">{job.name}</p>
+        <p className="text-[11px] text-text-tertiary truncate">{job.hostname}</p>
+      </div>
+
+      {/* Status */}
+      <div className="w-20 flex-shrink-0">
         <Badge variant={status.variant}>{status.label}</Badge>
-      </td>
-      <td className="py-2 px-3">
+      </div>
+
+      {/* Trigger */}
+      <div className="w-36 flex-shrink-0 min-w-0">
         <span className="text-[12px] text-text-secondary">{job.trigger_type}</span>
         {job.cron_schedule && <span className="text-[11px] text-text-tertiary ml-1.5">{job.cron_schedule}</span>}
-      </td>
-      <td className="py-2 px-3">
+      </div>
+
+      {/* Model */}
+      <div className="w-24 flex-shrink-0">
         <span className="text-[12px] text-text-secondary tabular-nums">{job.action_model ?? "default"}</span>
-      </td>
-      <td className="py-2 px-3">
+      </div>
+
+      {/* Last run status */}
+      <div className="w-20 flex-shrink-0">
         <Badge variant={lastRun.variant}>{lastRun.label}</Badge>
-      </td>
-      <td className="py-2 px-3">
+      </div>
+
+      {/* Last run at */}
+      <div className="w-20 flex-shrink-0">
         <span className="text-[12px] text-text-secondary tabular-nums">{timeAgo(job.last_run_at)}</span>
-      </td>
-      <td className="py-2 px-3">
+      </div>
+
+      {/* Runs (30d) */}
+      <div className="w-16 flex-shrink-0">
         <span className="text-[12px] text-text-secondary tabular-nums">{job.runs_30d}</span>
-      </td>
-      <td className="py-2 px-3">
+      </div>
+
+      {/* Avg duration */}
+      <div className="w-20 flex-shrink-0">
         <span className="text-[12px] text-text-secondary tabular-nums">{formatDuration(job.avg_duration_ms)}</span>
-      </td>
-      <td className="py-2 px-3">
+      </div>
+
+      {/* Failures */}
+      <div className="w-16 flex-shrink-0">
         {job.failure_runs_30d > 0 ? (
           <span className="text-[12px] text-red-600 tabular-nums">{job.failure_runs_30d}</span>
         ) : (
           <span className="text-[12px] text-text-tertiary">0</span>
         )}
-      </td>
-      <td className="py-2 px-3">
-        <Button variant={job.is_active ? "ghost" : "secondary"} size="sm" loading={toggling} onClick={handleToggle}>
+      </div>
+
+      {/* Est. weekly cost */}
+      <div className="w-16 flex-shrink-0">
+        <span className="text-[12px] text-text-secondary tabular-nums">
+          {job.estimated_weekly_cost_usd > 0 ? `$${job.estimated_weekly_cost_usd.toFixed(2)}` : "-"}
+        </span>
+      </div>
+
+      {/* Action */}
+      <div className="flex-shrink-0 ml-auto">
+        <Button variant="ghost" size="sm" loading={toggling} onClick={handleToggle}>
           {job.is_active ? "Pause" : "Resume"}
         </Button>
-      </td>
-    </tr>
+      </div>
+    </div>
   )
 }

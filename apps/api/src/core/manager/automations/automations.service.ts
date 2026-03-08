@@ -95,6 +95,10 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
     const domain = domainMap.get(job.site_id)
     const agg = runsByJob.get(job.id)
 
+    const runsPerMonth = job.is_active ? estimateRunsPerMonth(job.cron_schedule, job.trigger_type) : 0
+    const costPerRun = COST_PER_RUN[job.action_model ?? ""] ?? DEFAULT_COST_PER_RUN
+    const weeklyCost = Math.round(((runsPerMonth * costPerRun) / 30) * 7 * 100) / 100
+
     const enriched: ManagerAutomationJob = {
       id: job.id,
       name: job.name,
@@ -115,6 +119,7 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
       success_runs_30d: agg?.success ?? 0,
       failure_runs_30d: agg?.failure ?? 0,
       avg_duration_ms: agg && agg.withDuration > 0 ? Math.round(agg.totalDurationMs / agg.withDuration) : null,
+      estimated_weekly_cost_usd: weeklyCost,
     }
 
     const existing = orgGroups.get(job.org_id)

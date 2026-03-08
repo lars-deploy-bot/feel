@@ -18,6 +18,7 @@ export interface AutomationJob {
   success_runs_30d: number
   failure_runs_30d: number
   avg_duration_ms: number | null
+  estimated_weekly_cost_usd: number
 }
 
 export interface OrgAutomationSummary {
