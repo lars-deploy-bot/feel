@@ -103,7 +103,13 @@ describe("Security - AES-256-GCM", () => {
 
     it("should fail with corrupted ciphertext", () => {
       const { ciphertext, iv, authTag } = Security.encrypt("test")
-      const corrupted = `${ciphertext.slice(0, -2)}ff`
+      // Flip a byte in the middle of the ciphertext to guarantee corruption
+      const prefix = ciphertext.startsWith("\\x") ? "\\x" : ""
+      const hex = ciphertext.startsWith("\\x") ? ciphertext.slice(2) : ciphertext
+      const midpoint = Math.floor(hex.length / 2) & ~1 // align to byte boundary
+      const originalByte = parseInt(hex.slice(midpoint, midpoint + 2), 16)
+      const flippedByte = (originalByte ^ 0xff).toString(16).padStart(2, "0")
+      const corrupted = `${prefix}${hex.slice(0, midpoint)}${flippedByte}${hex.slice(midpoint + 2)}`
 
       expect(() => Security.decrypt(corrupted, iv, authTag)).toThrow()
     })
