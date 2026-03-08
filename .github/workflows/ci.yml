@@ -161,13 +161,11 @@ jobs:
       - name: Check E2E infrastructure
         id: infra
         env:
-          SUPABASE_URL: ${{ secrets.CI_E2E_SUPABASE_URL }}
+          SSH_KEY: ${{ secrets.CI_E2E_SSH_KEY }}
+          SSH_HOST: ${{ secrets.CI_E2E_SSH_HOST }}
         run: |
-          if [[ -z "$SUPABASE_URL" ]]; then
-            echo "::warning::CI_E2E_SUPABASE_URL not configured — skipping critical chat E2E (runs on staging deploy instead)"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          elif [[ "$SUPABASE_URL" == *"supabase.co"* ]]; then
-            echo "::warning::CI_E2E_SUPABASE_URL points to cloud Supabase — E2E tests require self-hosted (runs on staging deploy instead)"
+          if [[ -z "$SSH_KEY" || -z "$SSH_HOST" ]]; then
+            echo "::warning::CI_E2E_SSH_KEY or CI_E2E_SSH_HOST not configured — skipping critical chat E2E (runs on staging deploy instead)"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -190,29 +188,99 @@ jobs:
         if: steps.infra.outputs.skip != 'true'
         run: bunx playwright install --with-deps chromium
 
+      - name: Setup SSH tunnel to self-hosted Supabase
+        if: steps.infra.outputs.skip != 'true'
+        env:
+          SSH_KEY: ${{ secrets.CI_E2E_SSH_KEY }}
+          SSH_HOST: ${{ secrets.CI_E2E_SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/ci_e2e_key
+          chmod 600 ~/.ssh/ci_e2e_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # SSH tunnel: localhost:18000 → Server 2 Supabase API (port 8000)
+          ssh -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
+            -i ~/.ssh/ci_e2e_key -N \
+            -L 127.0.0.1:18000:127.0.0.1:8000 \
+            "root@${SSH_HOST}" &
+          echo "SSH_TUNNEL_PID=$!" >> "$GITHUB_ENV"
+
+          # Wait for tunnel
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/18000) 2>/dev/null; then
+              echo "SSH tunnel ready on localhost:18000"
+              break
+            fi
+            sleep 0.5
+          done
+
+      - name: Reset E2E database schemas
+        if: steps.infra.outputs.skip != 'true'
+        env:
+          SSH_HOST: ${{ secrets.CI_E2E_SSH_HOST }}
+        run: |
+          MIGRATIONS_DIR="packages/database/migrations"
+          SSH_CMD="ssh -o BatchMode=yes -i ~/.ssh/ci_e2e_key root@${SSH_HOST}"
+          DB_CMD="docker exec -i supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1"
+
+          echo "[CI E2E] Resetting schemas on remote Supabase"
+          echo "DROP SCHEMA IF EXISTS app CASCADE; DROP SCHEMA IF EXISTS iam CASCADE; DROP SCHEMA IF EXISTS integrations CASCADE; DROP SCHEMA IF EXISTS lockbox CASCADE; NOTIFY pgrst, 'reload schema';" \
+            | $SSH_CMD "$DB_CMD" > /dev/null
+
+          for migration in $(find "$MIGRATIONS_DIR" -maxdepth 1 -name '*.sql' | sort -V); do
+            echo "[CI E2E] Applying $(basename "$migration")"
+            $SSH_CMD "$DB_CMD" < "$migration" > /dev/null
+          done
+
+          echo "NOTIFY pgrst, 'reload schema';" | $SSH_CMD "$DB_CMD" > /dev/null
+          echo "[CI E2E] Schema reset complete"
+
       - name: Create local E2E env file
         if: steps.infra.outputs.skip != 'true'
         working-directory: apps/web
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.CI_E2E_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_E2E_SUPABASE_SERVICE_ROLE_KEY }}
+          JWT_SECRET: ${{ secrets.CI_E2E_JWT_SECRET }}
         run: |
-          {
-            echo "TEST_ENV=local"
-            echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:9547"
-            echo "NEXT_PUBLIC_PREVIEW_BASE=alive.local"
-          } > .env.e2e.local
+          cat > .env.e2e.local <<ENVEOF
+          TEST_ENV=local
+          NEXT_PUBLIC_APP_URL=http://127.0.0.1:9547
+          NEXT_PUBLIC_PREVIEW_BASE=alive.local
+          SUPABASE_URL=http://127.0.0.1:18000
+          NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:18000
+          SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+          SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+          JWT_SECRET=${JWT_SECRET}
+          ENVEOF
+          # Remove leading whitespace from heredoc
+          sed -i 's/^[[:space:]]*//' .env.e2e.local
 
       - name: Run critical chat E2E
         if: steps.infra.outputs.skip != 'true'
         working-directory: apps/web
         env:
-          SUPABASE_URL: ${{ secrets.CI_E2E_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.CI_E2E_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_E2E_SUPABASE_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CI_E2E_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CI_E2E_SUPABASE_ANON_KEY }}
-          JWT_SECRET: ${{ secrets.CI_E2E_JWT_SECRET }}
           STREAM_ENV: local
           SKIP_ENV_VALIDATION: "1"
-        run: bun run test:e2e:critical
+        run: |
+          # Run directly with env file (tunnel is already set up, schemas already reset)
+          export PATH="./node_modules/.bin:$PATH"
+          set -a; source .env.e2e.local; set +a
+          export STREAM_ENV=local PLAYWRIGHT_TEST=true TEST_MODE=true
+          export SKIP_SSL_VALIDATION=true SERVER_CONFIG_PATH=
+          export HOME=/tmp/alive-e2e-home
+          mkdir -p "$HOME"
+          E2E_STRICT_API_GUARD=1 playwright test chat-critical.spec.ts
+
+      - name: Cleanup SSH tunnel
+        if: always() && steps.infra.outputs.skip != 'true'
+        run: |
+          if [[ -n "${SSH_TUNNEL_PID:-}" ]]; then
+            kill "$SSH_TUNNEL_PID" 2>/dev/null || true
+          fi
+          rm -f ~/.ssh/ci_e2e_key
 
   required-checks:
     name: Required Checks ✅
