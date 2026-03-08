@@ -966,13 +966,20 @@ async function handleQuery(ipc, requestId, payload) {
 
     timing("before_sdk_query")
 
-    // Capture stderr from agent subprocess for error debugging
+    // Capture stderr from agent subprocess for error debugging.
+    // With ANTHROPIC_LOG=debug, this also captures HTTP request/response logs.
+    // Filter in journalctl: grep "worker:claude-stderr"
+    // Network logs specifically: grep "anthropic:debug"
     const stderrHandler = message => {
       stderrBuffer.push(message)
-      // Keep only last 50 lines to avoid memory bloat
-      if (stderrBuffer.length > 50) stderrBuffer.shift()
-      // Also log to our stderr for journalctl
-      console.error(`[worker:claude-stderr] ${message}`)
+      // Keep last 100 lines (increased from 50 for network debug output)
+      if (stderrBuffer.length > 100) stderrBuffer.shift()
+      // Tag network-related stderr distinctly for easy filtering
+      const isNetworkLog =
+        typeof message === "string" &&
+        (message.includes("request") || message.includes("response") || message.includes("retry"))
+      const tag = isNetworkLog ? "worker:anthropic-net" : "worker:claude-stderr"
+      console.error(`[${tag}] ${message}`)
     }
 
     await withSearchToolsConnectedProviders(connectedProviders, async () => {
@@ -991,6 +998,28 @@ async function handleQuery(ipc, requestId, payload) {
       for (const [key, value] of Object.entries(process.env)) {
         if (value !== undefined && !SDK_STRIP_KEYS.has(key)) sdkEnv[key] = value
       }
+
+      // NETWORK LOGGING: Enable Anthropic SDK HTTP request/response logging.
+      // The @anthropic-ai/sdk inside cli.js reads ANTHROPIC_LOG and logs
+      // request method, URL, status, headers, and timing to stderr.
+      // Our stderrHandler captures this into stderrBuffer → journalctl.
+      sdkEnv.ANTHROPIC_LOG = "debug"
+
+      // Disable GrowthBook feature flags in SDK subprocess.
+      // Without this, built-in CLI skills (keybindings-help) pollute the system prompt.
+      // Feature flags default to safe values (off) when nonessential traffic is disabled.
+      sdkEnv.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
+
+      // SDK CALL LOGGING: Route API calls through local proxy to capture raw
+      // request/response bodies. Proxy runs at scripts/sdk-log-proxy.ts (port 5099).
+      // Auto-detects: if proxy is listening, use it. Otherwise direct to Anthropic.
+      try {
+        const probe = await fetch("http://localhost:5099/health", { signal: AbortSignal.timeout(200) })
+        if (probe.ok) {
+          sdkEnv.ANTHROPIC_BASE_URL = "http://localhost:5099"
+          console.error("[worker] SDK log proxy detected — routing API calls through localhost:5099")
+        }
+      } catch {}
 
       const agentQuery = query({
         prompt: payload.message,

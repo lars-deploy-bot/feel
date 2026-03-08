@@ -109,6 +109,7 @@ describe("POST /api/automations/[id]/trigger", () => {
       id: "job_1",
       name: "test-job",
       user_id: "user_1",
+      is_active: true,
       running_at: null,
       action_timeout_seconds: 300,
       action_type: "prompt",
@@ -165,6 +166,43 @@ describe("POST /api/automations/[id]/trigger", () => {
     expect(createServiceAppClientMock).not.toHaveBeenCalled()
   })
 
+  it("returns 400 when job is disabled (is_active=false)", async () => {
+    getSessionUserMock.mockResolvedValueOnce({
+      id: "user_1",
+      email: "owner@example.com",
+      name: "Owner",
+    })
+
+    const mockJob = {
+      id: "job_1",
+      name: "disabled-job",
+      user_id: "user_1",
+      is_active: false,
+      running_at: null,
+      action_timeout_seconds: 300,
+      action_type: "prompt",
+      action_prompt: "Do something",
+      domains: { hostname: "test.example.com", server_id: "srv_test" },
+    }
+
+    createServiceAppClientMock.mockReturnValueOnce({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: mockJob, error: null }),
+          }),
+        }),
+      }),
+    })
+
+    const response = await POST(makeRequest(), { params: Promise.resolve({ id: "job_1" }) })
+
+    expect(response.status).toBe(400)
+    const payload = await response.json()
+    expect(payload.error).toBe(ErrorCodes.AUTOMATION_JOB_DISABLED)
+    expect(claimJobMock).not.toHaveBeenCalled()
+  })
+
   it("returns 403 when non-owner non-superadmin triggers another user's job", async () => {
     getSessionUserMock.mockResolvedValueOnce({
       id: "user_2",
@@ -177,6 +215,7 @@ describe("POST /api/automations/[id]/trigger", () => {
       id: "job_1",
       name: "test-job",
       user_id: "user_1",
+      is_active: true,
       running_at: null,
       action_timeout_seconds: 300,
       action_type: "prompt",
@@ -213,6 +252,7 @@ describe("POST /api/automations/[id]/trigger", () => {
       id: "job_1",
       name: "alive-job",
       user_id: "user_1",
+      is_active: true,
       running_at: null,
       action_timeout_seconds: 300,
       action_type: "prompt",
@@ -261,6 +301,7 @@ describe("POST /api/automations/[id]/trigger", () => {
       id: "job_1",
       name: "other-job",
       user_id: "user_1",
+      is_active: true,
       running_at: null,
       action_timeout_seconds: 300,
       action_type: "prompt",

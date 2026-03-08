@@ -180,7 +180,12 @@ export type StreamType = (typeof STREAM_TYPES)[keyof typeof STREAM_TYPES]
  */
 export const STREAM_SYNTHETIC_MESSAGE_TYPES = {
   WARNING: "stream_warning",
+  QUEUED: "stream_queued",
 } as const
+
+/** Reasons a stream request gets queued instead of immediately assigned a worker. */
+export const QUEUE_REASONS = ["user_limit", "workspace_limit", "queue_full", "load_shed"] as const
+export type QueueReason = (typeof QUEUE_REASONS)[number]
 
 /**
  * Stream Interrupt Sources

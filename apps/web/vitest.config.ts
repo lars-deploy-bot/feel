@@ -102,7 +102,6 @@ export const baseTestConfig = {
     "**/.next/**",
     "**/.next-test/**",
     "**/*.spec.{ts,tsx}",
-    "**/lib/__tests__/claude-tool-permissions.test.ts",
   ],
   // Use forks instead of threads - native modules (@napi-rs/image) hang with threads
   pool: "forks" as const,

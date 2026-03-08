@@ -157,4 +157,184 @@ describe("LockboxAdapter", () => {
       p_name: "google",
     })
   })
+
+  it("exists returns false when RPC returns false", async () => {
+    rpcMock.mockResolvedValueOnce({ data: false, error: null })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    await expect(adapter.exists("user_123", "oauth_connections", "google")).resolves.toBe(false)
+  })
+
+  it("exists throws when RPC fails", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: null,
+      error: { code: "42P01", message: "relation does not exist" },
+    })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    await expect(adapter.exists("user_123", "oauth_connections", "google")).rejects.toThrow(
+      "Exists check failed: relation does not exist",
+    )
+  })
+
+  it("deletes via lockbox_delete RPC", async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: null })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    await adapter.delete("user_123", "oauth_connections", "google")
+
+    expect(rpcMock).toHaveBeenCalledWith("lockbox_delete", {
+      p_user_id: "user_123",
+      p_instance_id: "google:prod",
+      p_namespace: "oauth_connections",
+      p_name: "google",
+    })
+  })
+
+  it("delete throws when RPC fails", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: null,
+      error: { code: "P0001", message: "permission denied" },
+    })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    await expect(adapter.delete("user_123", "oauth_connections", "google")).rejects.toThrow(
+      "Delete failed: permission denied",
+    )
+  })
+
+  it("save throws descriptive error for non-23505 failures", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: null,
+      error: { code: "42501", message: "insufficient privilege" },
+    })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    await expect(adapter.save("user_123", "oauth_connections", "google", "value")).rejects.toThrow(
+      "Save failed: insufficient privilege",
+    )
+  })
+
+  it("get returns null when decryption fails (corrupted data)", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    rpcMock.mockResolvedValueOnce({
+      data: [{ ciphertext: "\\xdeadbeef", iv: `\\x${"aa".repeat(12)}`, auth_tag: `\\x${"bb".repeat(16)}` }],
+      error: null,
+    })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    const result = await adapter.get("user_123", "oauth_connections", "google")
+
+    expect(result).toBeNull()
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Decryption failed"))
+    errorSpy.mockRestore()
+  })
+
+  it("list throws when RPC fails", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: null,
+      error: { code: "P0001", message: "access denied" },
+    })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    await expect(adapter.list("user_123", "oauth_connections")).rejects.toThrow("List failed")
+  })
+
+  it("list returns empty array when no data", async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: null })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    const result = await adapter.list("user_123", "oauth_connections")
+    expect(result).toStrictEqual([])
+  })
+
+  it("save omits p_expires_at when no defaultTtlSeconds configured", async () => {
+    rpcMock.mockResolvedValueOnce({ data: "secret-id", error: null })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" }) // no defaultTtlSeconds
+
+    await adapter.save("user_123", "oauth_connections", "google", "value")
+
+    const payload = rpcMock.mock.calls[0]?.[1]
+    expect(payload.p_expires_at).toBeUndefined()
+  })
+
+  it("defaults instanceId to 'default' when not provided", async () => {
+    rpcMock.mockResolvedValueOnce({ data: true, error: null })
+    const adapter = new LockboxAdapter()
+
+    await adapter.exists("user_123", "oauth_connections", "google")
+
+    expect(rpcMock).toHaveBeenCalledWith("lockbox_exists", {
+      p_user_id: "user_123",
+      p_instance_id: "default",
+      p_namespace: "oauth_connections",
+      p_name: "google",
+    })
+  })
+
+  it("list normalizes object scope to JSON string", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [
+        {
+          user_secret_id: "s1",
+          user_id: "user_123",
+          instance_id: "google:prod",
+          namespace: "oauth_connections",
+          name: "google",
+          ciphertext: "\\x1234",
+          iv: `\\x${"aa".repeat(12)}`,
+          auth_tag: `\\x${"bb".repeat(16)}`,
+          version: 1,
+          is_current: true,
+          scope: { key: "value" },
+          expires_at: null,
+          last_used_at: null,
+          deleted_at: null,
+          created_at: "2025-01-01T00:00:00Z",
+          updated_at: "2025-01-01T00:00:00Z",
+          created_by: null,
+          updated_by: null,
+        },
+      ],
+      error: null,
+    })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    const result = await adapter.list("user_123", "oauth_connections")
+
+    expect(result[0]?.scope).toBe('{"key":"value"}')
+  })
+
+  it("list preserves string scope as-is", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [
+        {
+          user_secret_id: "s1",
+          user_id: "user_123",
+          instance_id: "google:prod",
+          namespace: "oauth_connections",
+          name: "google",
+          ciphertext: "\\x1234",
+          iv: `\\x${"aa".repeat(12)}`,
+          auth_tag: `\\x${"bb".repeat(16)}`,
+          version: 1,
+          is_current: true,
+          scope: "read write",
+          expires_at: null,
+          last_used_at: null,
+          deleted_at: null,
+          created_at: "2025-01-01T00:00:00Z",
+          updated_at: "2025-01-01T00:00:00Z",
+          created_by: null,
+          updated_by: null,
+        },
+      ],
+      error: null,
+    })
+    const adapter = new LockboxAdapter({ instanceId: "google:prod" })
+
+    const result = await adapter.list("user_123", "oauth_connections")
+
+    expect(result[0]?.scope).toBe("read write")
+  })
 })

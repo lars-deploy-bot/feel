@@ -1,3 +1,4 @@
+export * as automationsRepo from "./automations.repo"
 export * as domainsRepo from "./domains.repo"
 export * as feedbackRepo from "./feedback.repo"
 export * as membersRepo from "./members.repo"

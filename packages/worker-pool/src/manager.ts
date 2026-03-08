@@ -12,7 +12,7 @@ import { cpus, loadavg, platform } from "node:os"
 import * as path from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { promisify } from "node:util"
-import { PATHS, SUPERADMIN } from "@webalive/shared"
+import { PATHS, type QueueReason, SUPERADMIN } from "@webalive/shared"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { createConfig } from "./config.js"
 import { createWorkerSpawnEnv } from "./env-isolation.js"
@@ -894,15 +894,31 @@ export class WorkerPoolManager extends EventEmitter {
 
       this.enqueueRequest(workspaceKey, queuedRequest)
 
+      const ownerQueue = this.queuedByOwner.get(ownerKey) ?? 0
+
       console.log("[pool] request_queued", {
         requestId: options.requestId,
         ownerKey,
         workspaceKey,
         reason,
         workspaceQueue: this.queuedByWorkspace.get(workspaceKey) ?? 0,
-        ownerQueue: this.queuedByOwner.get(ownerKey) ?? 0,
+        ownerQueue,
         totalQueued: this.totalQueued,
       })
+
+      // Notify caller that request is queued (so UI can show status)
+      if (options.onQueued) {
+        const queueReasonMap: Record<WorkerPoolLimitCode, QueueReason> = {
+          USER_LIMIT: "user_limit",
+          WORKSPACE_LIMIT: "workspace_limit",
+          QUEUE_FULL: "queue_full",
+          LOAD_SHED: "load_shed",
+        }
+        options.onQueued({
+          reason: queueReasonMap[reason],
+          position: ownerQueue,
+        })
+      }
 
       options.signal?.addEventListener("abort", onAbort, { once: true })
       if (options.signal?.aborted) {

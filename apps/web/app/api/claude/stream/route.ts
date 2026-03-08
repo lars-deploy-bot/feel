@@ -6,11 +6,12 @@ import {
   isValidClaudeModel,
   resolveStreamMode,
   STREAM_MODES,
+  STREAM_SYNTHETIC_MESSAGE_TYPES,
   type StreamMode,
   SUPERADMIN,
   WORKER_POOL,
 } from "@webalive/shared"
-import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
+import { getWorkerPool, type QueuedInfo, type WorkerToParentMessage } from "@webalive/worker-pool"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import {
@@ -701,6 +702,15 @@ export async function POST(req: NextRequest) {
                   controller.enqueue(new TextEncoder().encode(sessionLine))
                   logger.log("[SESSION DEBUG] Enqueued stream_session line to childStream")
                 }
+              },
+              onQueued: (info: QueuedInfo) => {
+                const queueLine = `${JSON.stringify({
+                  type: STREAM_SYNTHETIC_MESSAGE_TYPES.QUEUED,
+                  reason: info.reason,
+                  position: info.position,
+                })}\n`
+                controller.enqueue(new TextEncoder().encode(queueLine))
+                logger.log(`[QUEUE] Request queued: reason=${info.reason} position=${info.position}`)
               },
               signal: workerAbortController.signal,
             })

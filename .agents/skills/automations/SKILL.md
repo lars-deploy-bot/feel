@@ -13,18 +13,18 @@ Use the `/sql` skill for all database queries. It handles connection strings, en
 
 ```bash
 # List all automations
-bash scripts/database/sql.sh --target production -c "
+bash scripts/database/sql.sh --target production --query "
   SELECT id, name, is_active, status, last_run_status, cron_schedule, next_run_at
   FROM app.automation_jobs ORDER BY name
 "
 
 # Get full details of one job
-bash scripts/database/sql.sh --target production -c "
+bash scripts/database/sql.sh --target production --query "
   SELECT * FROM app.automation_jobs WHERE id = 'auto_job_xxx'
 "
 
 # Update a cron schedule (recalculates next_run_at — see Scheduling section)
-bash scripts/database/sql.sh --target production -c "
+bash scripts/database/sql.sh --target production --query "
   UPDATE app.automation_jobs
   SET cron_schedule = '*/20 * * * *',
       next_run_at = '2026-03-06T16:00:00+00:00'
@@ -101,7 +101,7 @@ journalctl -u automation-worker -n 100 --no-pager | grep "${JOB_ID}"
 **But if you update `cron_schedule` directly via SQL (bypassing the app API), you MUST also update `next_run_at`:**
 
 ```bash
-bash scripts/database/sql.sh --target production -c "
+bash scripts/database/sql.sh --target production --query "
   UPDATE app.automation_jobs
   SET cron_schedule = '*/20 * * * *',
       next_run_at = '$(date -u -d '+5 minutes' +%Y-%m-%dT%H:%M:00+00:00)'

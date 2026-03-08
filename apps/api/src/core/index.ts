@@ -3,9 +3,11 @@ import { authMiddleware } from "../middleware/auth"
 import type { AppBindings } from "../types/hono"
 import { authRoutes } from "./auth/auth.routes"
 import { healthRoutes } from "./health/health.routes"
+import { automationsRoutes } from "./manager/automations/automations.routes"
 import { domainsRoutes } from "./manager/domains/domains.routes"
 import { feedbackRoutes } from "./manager/feedback/feedback.routes"
 import { orgsRoutes } from "./manager/orgs/orgs.routes"
+import { sdkLogsRoutes } from "./manager/sdk-logs/sdk-logs.routes"
 import { templatesRoutes } from "./manager/templates/templates.routes"
 import { transfersRoutes } from "./manager/transfers/transfers.routes"
 import { usersRoutes } from "./manager/users/users.routes"
@@ -31,12 +33,14 @@ export function buildRoutes(): Hono<AppBindings> {
   // Protected manager routes
   const manager = new Hono<AppBindings>()
   manager.use("/*", authMiddleware)
+  manager.route("/automations", automationsRoutes)
   manager.route("/orgs", orgsRoutes)
   manager.route("/users", usersRoutes)
   manager.route("/domains", domainsRoutes)
   manager.route("/feedback", feedbackRoutes)
   manager.route("/templates", templatesRoutes)
   manager.route("/transfers", transfersRoutes)
+  manager.route("/sdk-logs", sdkLogsRoutes)
 
   apiGroup.route("/manager", manager)
 

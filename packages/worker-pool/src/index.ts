@@ -49,6 +49,7 @@ export type {
   ParentToWorkerMessage,
   QueryOptions,
   QueryResult,
+  QueuedInfo,
   // Stream
   StreamType,
   WorkerHandle,
@@ -70,7 +71,6 @@ export type {
 // Constants
 // Type Guards
 export {
-  ENV_VARS,
   EVICTION_STRATEGIES,
   filterMessagesByType,
   findMessageByType,
@@ -87,6 +87,7 @@ export {
   isShutdownMessage,
   PARENT_MESSAGE_TYPES,
   STREAM_TYPES,
+  WORKER_ENV_VARS,
   WORKER_MESSAGE_TYPES,
   WORKER_STATES,
 } from "./types.js"
