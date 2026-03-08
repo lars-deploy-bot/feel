@@ -3,6 +3,10 @@ import { domainsRepo, orgsRepo } from "../../../db/repos"
 import * as automationsRepo from "../../../db/repos/automations.repo"
 import type { ManagerAutomationJob, ManagerOrgAutomationSummary } from "./automations.types"
 
+export async function toggleJobActive(jobId: string, isActive: boolean): Promise<void> {
+  await automationsRepo.setJobActive(jobId, isActive)
+}
+
 // Rough cost per run by model (USD). Based on typical automation run token usage.
 // These are estimates — a typical run uses ~20k input + ~4k output tokens.
 const COST_PER_RUN: Record<string, number> = {

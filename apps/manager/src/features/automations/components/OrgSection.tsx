@@ -6,9 +6,10 @@ import { JobRow } from "./JobRow"
 interface OrgSectionProps {
   summary: OrgAutomationSummary
   maxCost: number
+  onJobToggled: () => void
 }
 
-export function OrgSection({ summary, maxCost }: OrgSectionProps) {
+export function OrgSection({ summary, maxCost, onJobToggled }: OrgSectionProps) {
   const [expanded, setExpanded] = useState(true)
   const successRate =
     summary.total_runs_30d > 0 ? Math.round((summary.success_runs_30d / summary.total_runs_30d) * 100) : 0
@@ -83,11 +84,14 @@ export function OrgSection({ summary, maxCost }: OrgSectionProps) {
               <th className="text-left py-1.5 px-3 text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
                 Failures
               </th>
+              <th className="text-left py-1.5 px-3 text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {summary.jobs.map(job => (
-              <JobRow key={job.id} job={job} />
+              <JobRow key={job.id} job={job} onToggled={onJobToggled} />
             ))}
           </tbody>
         </table>

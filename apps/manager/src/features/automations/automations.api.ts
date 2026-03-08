@@ -7,4 +7,5 @@ interface AutomationsListResponse {
 
 export const automationsApi = {
   list: () => api.get<AutomationsListResponse>("/manager/automations").then(r => r.data),
+  setActive: (id: string, isActive: boolean) => api.patch(`/manager/automations/${id}/active`, { is_active: isActive }),
 }

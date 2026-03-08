@@ -57,3 +57,11 @@ export async function findRunsByJobIds(jobIds: string[], since: Date): Promise<A
   }
   return data ?? []
 }
+
+export async function setJobActive(jobId: string, isActive: boolean): Promise<void> {
+  const { error } = await app.from("automation_jobs").update({ is_active: isActive }).eq("id", jobId)
+
+  if (error) {
+    throw new InternalError(`Failed to update automation job: ${error.message}`)
+  }
+}

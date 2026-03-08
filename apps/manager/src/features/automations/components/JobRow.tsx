@@ -1,5 +1,8 @@
 import type { BadgeVariant } from "@/components/ui/Badge"
 import { Badge } from "@/components/ui/Badge"
+import { Button } from "@/components/ui/Button"
+import { useState } from "react"
+import { automationsApi } from "../automations.api"
 import type { AutomationJob } from "../automations.types"
 
 function statusBadge(job: AutomationJob): { label: string; variant: BadgeVariant } {
@@ -37,11 +40,23 @@ function timeAgo(dateStr: string | null): string {
 
 interface JobRowProps {
   job: AutomationJob
+  onToggled: () => void
 }
 
-export function JobRow({ job }: JobRowProps) {
+export function JobRow({ job, onToggled }: JobRowProps) {
+  const [toggling, setToggling] = useState(false)
   const status = statusBadge(job)
   const lastRun = runStatusBadge(job.last_run_status)
+
+  async function handleToggle() {
+    setToggling(true)
+    try {
+      await automationsApi.setActive(job.id, !job.is_active)
+      onToggled()
+    } finally {
+      setToggling(false)
+    }
+  }
 
   return (
     <tr className="border-b border-border last:border-b-0 hover:bg-surface-secondary/30 transition-colors">
@@ -79,6 +94,11 @@ export function JobRow({ job }: JobRowProps) {
         ) : (
           <span className="text-[12px] text-text-tertiary">0</span>
         )}
+      </td>
+      <td className="py-2 px-3">
+        <Button variant={job.is_active ? "ghost" : "secondary"} size="sm" loading={toggling} onClick={handleToggle}>
+          {job.is_active ? "Pause" : "Resume"}
+        </Button>
       </td>
     </tr>
   )

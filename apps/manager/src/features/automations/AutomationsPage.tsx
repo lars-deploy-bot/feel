@@ -55,12 +55,18 @@ export function AutomationsPage() {
           </p>
           <p className="text-[12px] text-text-tertiary mt-1">Est. monthly cost</p>
         </div>
+        <div>
+          <p className="text-2xl font-semibold text-text-primary tabular-nums tracking-tight">
+            ${activeJobs > 0 ? (totalCost / activeJobs).toFixed(2) : "0.00"}
+          </p>
+          <p className="text-[12px] text-text-tertiary mt-1">Avg cost / job</p>
+        </div>
       </div>
 
       {/* Org sections */}
       <div className="space-y-4">
         {orgSummaries.map(summary => (
-          <OrgSection key={summary.org_id} summary={summary} maxCost={maxCost} />
+          <OrgSection key={summary.org_id} summary={summary} maxCost={maxCost} onJobToggled={refresh} />
         ))}
       </div>
 

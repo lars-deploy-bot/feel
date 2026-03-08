@@ -48,7 +48,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               data-1p-ignore
               data-lpignore="true"
             />
-            <Button variant="primary" className="w-full mt-4" disabled={!passcode} loading={loading}>
+            <Button type="submit" variant="primary" className="w-full mt-4" disabled={!passcode} loading={loading}>
               Sign in
             </Button>
           </form>
