@@ -999,11 +999,11 @@ async function handleQuery(ipc, requestId, payload) {
         if (value !== undefined && !SDK_STRIP_KEYS.has(key)) sdkEnv[key] = value
       }
 
-      // NETWORK LOGGING: Enable Anthropic SDK HTTP request/response logging.
-      // The @anthropic-ai/sdk inside cli.js reads ANTHROPIC_LOG and logs
-      // request method, URL, status, headers, and timing to stderr.
-      // Our stderrHandler captures this into stderrBuffer → journalctl.
-      sdkEnv.ANTHROPIC_LOG = "debug"
+      // NETWORK LOGGING: Disabled — ANTHROPIC_LOG=debug caused the CLI to
+      // leak [log_XXXX] lines to stdout, corrupting JSON stdio communication.
+      // The SDK changed from stderr-only to stdout in recent versions.
+      // Re-enable only after confirming the SDK routes logs to stderr again.
+      // sdkEnv.ANTHROPIC_LOG = "debug"
 
       // Disable GrowthBook feature flags in SDK subprocess.
       // Without this, built-in CLI skills (keybindings-help) pollute the system prompt.
