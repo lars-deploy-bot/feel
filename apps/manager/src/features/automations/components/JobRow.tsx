@@ -88,70 +88,72 @@ export function JobRow({ job, onChanged }: JobRowProps) {
   return (
     <div>
       {/* Summary row */}
-      <button
-        type="button"
-        className="w-full flex items-center gap-6 py-3 hover:bg-surface-secondary/30 transition-colors duration-100 -mx-2 px-2 rounded-lg cursor-pointer text-left"
-        onClick={() => setExpanded(!expanded)}
-      >
-        {/* Chevron */}
-        <svg
-          className={`w-3 h-3 text-text-tertiary transition-transform duration-200 flex-shrink-0 ${expanded ? "rotate-90" : ""}`}
-          viewBox="0 0 16 16"
-          fill="currentColor"
+      <div className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-lg hover:bg-surface-secondary/30 transition-colors duration-100">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-6 cursor-pointer text-left"
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
         >
-          <path d="M6 3l5 5-5 5V3z" />
-        </svg>
+          {/* Chevron */}
+          <svg
+            className={`w-3 h-3 text-text-tertiary transition-transform duration-200 flex-shrink-0 ${expanded ? "rotate-90" : ""}`}
+            viewBox="0 0 16 16"
+            fill="currentColor"
+          >
+            <path d="M6 3l5 5-5 5V3z" />
+          </svg>
 
-        {/* Name + hostname */}
-        <div className="w-44 min-w-0 flex-shrink-0">
-          <p className="text-[13px] text-text-primary font-medium truncate">{job.name}</p>
-          <p className="text-[11px] text-text-tertiary truncate">{job.hostname}</p>
-        </div>
+          {/* Name + hostname */}
+          <div className="w-44 min-w-0 flex-shrink-0">
+            <p className="text-[13px] text-text-primary font-medium truncate">{job.name}</p>
+            <p className="text-[11px] text-text-tertiary truncate">{job.hostname}</p>
+          </div>
 
-        {/* Status */}
-        <div className="w-20 flex-shrink-0">
-          <Badge variant={status.variant}>{status.label}</Badge>
-        </div>
+          {/* Status */}
+          <div className="w-20 flex-shrink-0">
+            <Badge variant={status.variant}>{status.label}</Badge>
+          </div>
 
-        {/* Schedule (human-readable) */}
-        <div className="w-36 flex-shrink-0 min-w-0">
-          <span className="text-[12px] text-text-secondary">
-            {job.trigger_type === "cron" ? formatCron(job.cron_schedule, job.cron_timezone) : job.trigger_type}
-          </span>
-        </div>
+          {/* Schedule (human-readable) */}
+          <div className="w-36 flex-shrink-0 min-w-0">
+            <span className="text-[12px] text-text-secondary">
+              {job.trigger_type === "cron" ? formatCron(job.cron_schedule, job.cron_timezone) : job.trigger_type}
+            </span>
+          </div>
 
-        {/* Last run status */}
-        <div className="w-20 flex-shrink-0">
-          <Badge variant={lastRun.variant}>{lastRun.label}</Badge>
-        </div>
+          {/* Last run status */}
+          <div className="w-20 flex-shrink-0">
+            <Badge variant={lastRun.variant}>{lastRun.label}</Badge>
+          </div>
 
-        {/* Last run at */}
-        <div className="w-20 flex-shrink-0">
-          <span className="text-[12px] text-text-secondary tabular-nums">{timeAgo(job.last_run_at)}</span>
-        </div>
+          {/* Last run at */}
+          <div className="w-20 flex-shrink-0">
+            <span className="text-[12px] text-text-secondary tabular-nums">{timeAgo(job.last_run_at)}</span>
+          </div>
 
-        {/* Runs (30d) / Failures */}
-        <div className="w-20 flex-shrink-0">
-          <span className="text-[12px] text-text-secondary tabular-nums">{job.runs_30d}</span>
-          {job.failure_runs_30d > 0 && (
-            <span className="text-[12px] text-red-600 tabular-nums ml-1">({job.failure_runs_30d})</span>
-          )}
-        </div>
+          {/* Runs (30d) / Failures */}
+          <div className="w-20 flex-shrink-0">
+            <span className="text-[12px] text-text-secondary tabular-nums">{job.runs_30d}</span>
+            {job.failure_runs_30d > 0 && (
+              <span className="text-[12px] text-red-600 tabular-nums ml-1">({job.failure_runs_30d})</span>
+            )}
+          </div>
 
-        {/* Avg duration */}
-        <div className="w-16 flex-shrink-0">
-          <span className="text-[12px] text-text-secondary tabular-nums">{formatDuration(job.avg_duration_ms)}</span>
-        </div>
+          {/* Avg duration */}
+          <div className="w-16 flex-shrink-0">
+            <span className="text-[12px] text-text-secondary tabular-nums">{formatDuration(job.avg_duration_ms)}</span>
+          </div>
 
-        {/* Est. weekly cost */}
-        <div className="w-16 flex-shrink-0">
-          <span className="text-[12px] text-text-secondary tabular-nums">
-            {job.estimated_weekly_cost_usd > 0 ? `$${job.estimated_weekly_cost_usd.toFixed(2)}` : "-"}
-          </span>
-        </div>
+          {/* Est. weekly cost */}
+          <div className="w-16 flex-shrink-0">
+            <span className="text-[12px] text-text-secondary tabular-nums">
+              {job.estimated_weekly_cost_usd > 0 ? `$${job.estimated_weekly_cost_usd.toFixed(2)}` : "-"}
+            </span>
+          </div>
+        </button>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <Button variant="ghost" size="sm" loading={toggling} onClick={handleToggle}>
             {job.is_active ? "Pause" : "Resume"}
           </Button>
@@ -170,7 +172,7 @@ export function JobRow({ job, onChanged }: JobRowProps) {
             </Button>
           )}
         </div>
-      </button>
+      </div>
 
       {/* Expanded detail */}
       {expanded && <JobDetail job={job} onChanged={onChanged} />}

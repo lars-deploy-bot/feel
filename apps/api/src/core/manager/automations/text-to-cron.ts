@@ -1,3 +1,4 @@
+import { validateCronExpression } from "@webalive/automation"
 import { z } from "zod"
 import { env } from "../../../config/env"
 
@@ -24,7 +25,25 @@ interface TextToCronResult {
   timezone: string | null
 }
 
+const GROQ_TIMEOUT_MS = 10_000
+
+function validateTimezone(timezone: string | null): string | null {
+  if (!timezone) {
+    return null
+  }
+
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone })
+    return timezone
+  } catch {
+    throw new Error(`Invalid timezone from LLM: "${timezone}"`)
+  }
+}
+
 export async function textToCron(text: string): Promise<TextToCronResult> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS)
+
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -40,6 +59,9 @@ export async function textToCron(text: string): Promise<TextToCronResult> {
       temperature: 0,
       max_tokens: 50,
     }),
+    signal: controller.signal,
+  }).finally(() => {
+    clearTimeout(timeout)
   })
 
   if (!response.ok) {
@@ -52,15 +74,21 @@ export async function textToCron(text: string): Promise<TextToCronResult> {
     .parse(await response.json())
 
   const raw = groqResponse.choices[0].message.content.trim()
-  const lines = raw.split("\n").filter(l => l.trim().length > 0)
+  const lines = raw
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
 
-  const cron = lines[0].trim()
-  const timezone = lines.length > 1 ? lines[1].trim() : null
+  if (lines.length === 0 || lines.length > 2) {
+    throw new Error(`Unexpected scheduler response format: "${raw}"`)
+  }
 
-  // Basic validation: 5 fields
-  const fields = cron.split(/\s+/)
-  if (fields.length !== 5) {
-    throw new Error(`Invalid cron expression from LLM: "${cron}"`)
+  const cron = lines[0]
+  const timezone = validateTimezone(lines[1] ?? null)
+
+  const validation = validateCronExpression(cron, timezone)
+  if (!validation.valid) {
+    throw new Error(validation.error ?? `Invalid cron expression from LLM: "${cron}"`)
   }
 
   return { cron, timezone }

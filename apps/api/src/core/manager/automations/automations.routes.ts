@@ -1,9 +1,45 @@
-import { Hono } from "hono"
+import { type Context, Hono } from "hono"
+import { z } from "zod"
+import { ValidationError } from "../../../infra/errors"
+import { validate } from "../../../shared/validation"
 import type { AppBindings } from "../../../types/hono"
 import { deleteJob, listAutomations, toggleJobActive, updateJob } from "./automations.service"
 import { textToCron } from "./text-to-cron"
 
 export const automationsRoutes = new Hono<AppBindings>()
+
+const toggleJobActiveSchema = z.object({
+  is_active: z.boolean(),
+})
+
+const updateJobSchema = z
+  .object({
+    name: z.string().trim().min(1).optional(),
+    description: z.string().trim().min(1).nullable().optional(),
+    action_prompt: z.string().trim().min(1).nullable().optional(),
+    action_model: z.string().trim().min(1).nullable().optional(),
+    action_target_page: z.string().trim().min(1).nullable().optional(),
+    cron_schedule: z.string().trim().min(1).nullable().optional(),
+    cron_timezone: z.string().trim().min(1).nullable().optional(),
+  })
+  .strict()
+  .refine(fields => Object.keys(fields).length > 0, {
+    message: "At least one field is required",
+  })
+
+const textToCronSchema = z
+  .object({
+    text: z.string().trim().min(1).max(200),
+  })
+  .strict()
+
+async function readJson(c: Context<AppBindings>): Promise<unknown> {
+  try {
+    return await c.req.json()
+  } catch {
+    throw new ValidationError("Invalid JSON body")
+  }
+}
 
 // GET /api/manager/automations - list all automations grouped by org
 automationsRoutes.get("/", async c => {
@@ -14,10 +50,7 @@ automationsRoutes.get("/", async c => {
 // PATCH /api/manager/automations/:id/active - toggle job active state
 automationsRoutes.patch("/:id/active", async c => {
   const id = c.req.param("id")
-  const body = await c.req.json<{ is_active: boolean }>()
-  if (typeof body.is_active !== "boolean") {
-    return c.json({ ok: false, error: "is_active must be a boolean" }, 400)
-  }
+  const body = validate(toggleJobActiveSchema, await readJson(c))
   await toggleJobActive(id, body.is_active)
   return c.json({ ok: true })
 })
@@ -25,39 +58,15 @@ automationsRoutes.patch("/:id/active", async c => {
 // PATCH /api/manager/automations/:id - update job fields
 automationsRoutes.patch("/:id", async c => {
   const id = c.req.param("id")
-  const body = await c.req.json<Record<string, unknown>>()
-
-  const allowed = [
-    "name",
-    "description",
-    "action_prompt",
-    "action_model",
-    "action_target_page",
-    "cron_schedule",
-    "cron_timezone",
-  ]
-  const fields: Record<string, unknown> = {}
-  for (const key of allowed) {
-    if (key in body) {
-      fields[key] = body[key]
-    }
-  }
-
-  if (Object.keys(fields).length === 0) {
-    return c.json({ ok: false, error: "No valid fields to update" }, 400)
-  }
-
+  const fields = validate(updateJobSchema, await readJson(c))
   await updateJob(id, fields)
   return c.json({ ok: true })
 })
 
 // POST /api/manager/automations/text-to-cron - convert natural language to cron
 automationsRoutes.post("/text-to-cron", async c => {
-  const body = await c.req.json<{ text: string }>()
-  if (typeof body.text !== "string" || body.text.trim().length === 0) {
-    return c.json({ ok: false, error: "text is required" }, 400)
-  }
-  const result = await textToCron(body.text.trim())
+  const body = validate(textToCronSchema, await readJson(c))
+  const result = await textToCron(body.text)
   return c.json({ ok: true, data: result })
 })
 

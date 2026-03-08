@@ -1,4 +1,4 @@
-import type { RunStatus } from "@webalive/database"
+import type { JobStatus, RunStatus, TriggerType } from "@webalive/database"
 
 export interface AutomationRun {
   id: string
@@ -15,8 +15,8 @@ export interface AutomationJob {
   name: string
   description: string | null
   is_active: boolean
-  status: string
-  trigger_type: string
+  status: JobStatus
+  trigger_type: TriggerType
   action_model: string | null
   action_prompt: string | null
   action_target_page: string | null
@@ -24,7 +24,7 @@ export interface AutomationJob {
   cron_timezone: string | null
   skills: string[] | null
   email_address: string | null
-  last_run_status: string | null
+  last_run_status: RunStatus | null
   last_run_at: string | null
   last_run_error: string | null
   next_run_at: string | null

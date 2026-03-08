@@ -1,5 +1,5 @@
 import type { JobStatus, RunStatus, TriggerType } from "@webalive/database"
-import { InternalError } from "../../infra/errors"
+import { InternalError, NotFoundError } from "../../infra/errors"
 import { app } from "../clients"
 
 export interface AutomationJobRow {
@@ -67,9 +67,17 @@ export async function findRunsByJobIds(jobIds: string[], since: Date): Promise<A
 }
 
 export async function setJobActive(jobId: string, isActive: boolean): Promise<void> {
-  const { error } = await app.from("automation_jobs").update({ is_active: isActive }).eq("id", jobId)
+  const { error } = await app
+    .from("automation_jobs")
+    .update({ is_active: isActive })
+    .eq("id", jobId)
+    .select("id")
+    .single()
 
   if (error) {
+    if (error.code === "PGRST116") {
+      throw new NotFoundError(`Automation job ${jobId} not found`)
+    }
     throw new InternalError(`Failed to update automation job: ${error.message}`)
   }
 }
@@ -85,16 +93,22 @@ export interface UpdateJobFields {
 }
 
 export async function updateJob(jobId: string, fields: UpdateJobFields): Promise<void> {
-  const { error } = await app.from("automation_jobs").update(fields).eq("id", jobId)
+  const { error } = await app.from("automation_jobs").update(fields).eq("id", jobId).select("id").single()
   if (error) {
+    if (error.code === "PGRST116") {
+      throw new NotFoundError(`Automation job ${jobId} not found`)
+    }
     throw new InternalError(`Failed to update automation job: ${error.message}`)
   }
 }
 
 export async function deleteJob(jobId: string): Promise<void> {
-  const { error } = await app.from("automation_jobs").delete().eq("id", jobId)
+  const { error } = await app.from("automation_jobs").delete().eq("id", jobId).select("id").single()
 
   if (error) {
+    if (error.code === "PGRST116") {
+      throw new NotFoundError(`Automation job ${jobId} not found`)
+    }
     throw new InternalError(`Failed to delete automation job: ${error.message}`)
   }
 }

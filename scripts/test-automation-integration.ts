@@ -17,6 +17,7 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { computeNextRunAtMs } from "@webalive/automation"
+import { z } from "zod"
 
 // ── Config ──────────────────────────────────────────────────
 const JOB_ID = "auto_job_a32f0f84b872ad29"
@@ -30,6 +31,26 @@ if (!url || !key) {
   process.exit(1)
 }
 const supabase = createClient(url, key, { db: { schema: "app" } })
+
+const jobSchema = z.object({
+  user_id: z.string(),
+  is_active: z.boolean(),
+  consecutive_failures: z.number().nullable(),
+  running_at: z.string().nullable(),
+  next_run_at: z.string().nullable(),
+  last_run_status: z.string().nullable(),
+  last_run_error: z.string().nullable(),
+  last_run_duration_ms: z.number().nullable(),
+  trigger_type: z.string(),
+  cron_schedule: z.string().nullable(),
+  cron_timezone: z.string().nullable(),
+  domains: z
+    .object({
+      hostname: z.string(),
+      org_id: z.string(),
+    })
+    .nullable(),
+})
 
 let passed = 0
 let failed = 0
@@ -59,7 +80,7 @@ async function getJob(jobId: string) {
     .select("*, domains:site_id (hostname, org_id)")
     .eq("id", jobId)
     .single()
-  return data
+  return jobSchema.parse(data)
 }
 
 // ════════════════════════════════════════════════════════════
@@ -75,8 +96,10 @@ async function testDbContract() {
 
   const job = await getJob(JOB_ID)
   if (!job) throw new Error(`Job ${JOB_ID} not found`)
-  const hostname = (job.domains as any)?.hostname
+  const hostname = job.domains?.hostname
+  const orgId = job.domains?.org_id
   if (!hostname) throw new Error("Site not found")
+  if (!orgId) throw new Error("Org not found")
 
   // Save original state
   const originalState = {
@@ -109,7 +132,7 @@ async function testDbContract() {
     const result = await runAutomationJob({
       jobId: JOB_ID,
       userId: job.user_id,
-      orgId: (job.domains as any)?.org_id,
+      orgId,
       workspace: hostname,
       prompt: TRIVIAL_PROMPT,
       timeoutSeconds: 10, // Short — we just need it to return
