@@ -94,7 +94,6 @@ export function EditableSchedule({ jobId, cronSchedule, cronTimezone, onSaved }:
           onKeyDown={handleKeyDown}
           disabled={saving}
           placeholder="e.g. every weekday at 9am amsterdam time"
-          autoFocus
         />
         {preview && (
           <p className="text-[11px] text-text-secondary mt-1">
