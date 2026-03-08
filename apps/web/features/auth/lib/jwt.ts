@@ -420,3 +420,32 @@ export async function verifySessionToken(token: string): Promise<SessionPayloadV
     return null
   }
 }
+
+/**
+ * Refresh the session JWT to include a newly-created org.
+ *
+ * If the org is already in the token, returns the existing token unchanged.
+ * Returns the new (or existing) token string, or null if the current token is invalid.
+ */
+export async function refreshSessionTokenWithOrg(
+  currentToken: string,
+  user: { id: string; email: string; name: string | null },
+  newOrgId: string,
+): Promise<string | null> {
+  const payload = await verifySessionToken(currentToken)
+  if (!payload) return null
+
+  const isNewOrg = !payload.orgIds.includes(newOrgId)
+  const orgIds = isNewOrg ? [...payload.orgIds, newOrgId] : payload.orgIds
+  const orgRoles: SessionOrgRoles = isNewOrg ? { ...payload.orgRoles, [newOrgId]: "owner" as const } : payload.orgRoles
+
+  return createSessionToken({
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    sid: payload.sid,
+    scopes: payload.scopes,
+    orgIds,
+    orgRoles,
+  })
+}
