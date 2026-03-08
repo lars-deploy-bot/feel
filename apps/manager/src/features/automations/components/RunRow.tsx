@@ -1,12 +1,14 @@
+import type { RunStatus } from "@webalive/database"
 import type { BadgeVariant } from "@/components/ui/Badge"
 import { Badge } from "@/components/ui/Badge"
 import type { AutomationRun } from "../automations.types"
 
-function runBadge(status: string): { label: string; variant: BadgeVariant } {
+function runBadge(status: RunStatus): { label: string; variant: BadgeVariant } {
   if (status === "success") return { label: "success", variant: "success" }
   if (status === "failure") return { label: "failure", variant: "danger" }
   if (status === "running") return { label: "running", variant: "accent" }
   if (status === "pending") return { label: "pending", variant: "default" }
+  if (status === "skipped") return { label: "skipped", variant: "warning" }
   return { label: status, variant: "warning" }
 }
 

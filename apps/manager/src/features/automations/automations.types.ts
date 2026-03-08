@@ -1,6 +1,8 @@
+import type { RunStatus } from "@webalive/database"
+
 export interface AutomationRun {
   id: string
-  status: string
+  status: RunStatus
   started_at: string
   completed_at: string | null
   duration_ms: number | null

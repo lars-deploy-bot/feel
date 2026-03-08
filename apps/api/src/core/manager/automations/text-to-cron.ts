@@ -46,11 +46,20 @@ export async function textToCron(text: string): Promise<TextToCronResult> {
     throw new Error(`Groq API error (${response.status}): ${body}`)
   }
 
-  const data = (await response.json()) as {
-    choices: Array<{ message: { content: string } }>
+  const data: unknown = await response.json()
+
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !("choices" in data) ||
+    !Array.isArray(data.choices) ||
+    data.choices.length === 0 ||
+    typeof data.choices[0]?.message?.content !== "string"
+  ) {
+    throw new Error("Unexpected Groq API response structure")
   }
 
-  const raw = data.choices[0].message.content.trim()
+  const raw = String(data.choices[0].message.content).trim()
   const lines = raw.split("\n").filter(l => l.trim().length > 0)
 
   const cron = lines[0].trim()

@@ -117,11 +117,15 @@ export async function executeJob(ctx: RunContext): Promise<{
       : undefined
 
     // Look up org_id from domain (source of truth — automation_jobs no longer stores org_id)
-    const { data: domain } = await ctx.supabase
+    const { data: domain, error: domainError } = await ctx.supabase
       .from("domains")
       .select("org_id")
       .eq("domain_id", ctx.job.site_id)
-      .single()
+      .maybeSingle()
+
+    if (domainError) {
+      throw new Error(`Failed to resolve org for domain ${ctx.job.site_id}: ${domainError.message}`)
+    }
 
     if (!domain?.org_id) {
       throw new Error(`Domain ${ctx.job.site_id} not found or has no org_id`)

@@ -13,11 +13,18 @@ export function EditableField({ label, value, onSave, placeholder, multiline }: 
   const [draft, setDraft] = useState(value ?? "")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (editing) inputRef.current?.focus()
-  }, [editing])
+    if (editing) {
+      if (multiline) {
+        textareaRef.current?.focus()
+      } else {
+        inputRef.current?.focus()
+      }
+    }
+  }, [editing, multiline])
 
   function startEditing() {
     setDraft(value ?? "")
@@ -78,7 +85,7 @@ export function EditableField({ label, value, onSave, placeholder, multiline }: 
       <div className="flex-1 min-w-0">
         {multiline ? (
           <textarea
-            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+            ref={textareaRef}
             className="w-full text-[12px] text-text-primary border border-border rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-text-primary/10 focus:border-text-primary/30 outline-none transition-all duration-100 resize-none"
             value={draft}
             onChange={e => setDraft(e.target.value)}
@@ -88,7 +95,7 @@ export function EditableField({ label, value, onSave, placeholder, multiline }: 
           />
         ) : (
           <input
-            ref={inputRef as React.RefObject<HTMLInputElement>}
+            ref={inputRef}
             type="text"
             className="w-full text-[12px] text-text-primary border border-border rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-text-primary/10 focus:border-text-primary/30 outline-none transition-all duration-100"
             value={draft}
