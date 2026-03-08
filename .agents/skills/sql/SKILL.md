@@ -38,11 +38,9 @@ SELECT * FROM iam.users WHERE status != 'active';
 SELECT * FROM iam.users WHERE status <> 'active';
 ```
 
-For complex queries with special characters, use `--stdin` mode or `--file`:
+For queries with special characters like `!=`, use `--file` to avoid Bash tool escaping:
 ```bash
-cat << 'EOF' | scripts/database/sql.sh --target staging --stdin
-SELECT * FROM iam.users WHERE status != 'active';
-EOF
+scripts/database/sql.sh --target staging --file /tmp/query.sql
 ```
 
 ## Connection Details

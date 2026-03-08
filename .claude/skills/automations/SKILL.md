@@ -119,7 +119,7 @@ curl -s -X POST http://localhost:5070/poke -H "X-Internal-Secret: ${JWT_SECRET}"
 
 When multiple jobs share a site, stagger them to avoid concurrent execution (the worker runs one job at a time):
 
-```
+```text
 # 9 jobs, 4 min apart, hourly cycle (36 min active, 24 min quiet):
 Job 1: "0 * * * *"     -> :00
 Job 2: "4 * * * *"     -> :04
