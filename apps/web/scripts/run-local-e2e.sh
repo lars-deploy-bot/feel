@@ -40,6 +40,16 @@ if [[ "${TEST_ENV:-}" != "local" ]]; then
   exit 1
 fi
 
+# SAFETY: Block cloud databases — this script resets schemas via reset-e2e-supabase.sh
+if [[ "${SUPABASE_URL:-}" == *"supabase.co"* ]]; then
+  echo "" >&2
+  echo "FATAL: SUPABASE_URL points to *.supabase.co (cloud/production)." >&2
+  echo "  This script resets ALL schemas. Use self-hosted Supabase only." >&2
+  echo "  Loaded from: $SOURCE_ENV_FILE" >&2
+  echo "" >&2
+  exit 1
+fi
+
 resolve_supabase_source
 sync_remote_supabase_credentials
 
