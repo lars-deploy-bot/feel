@@ -172,9 +172,6 @@ async function warmupServer(baseUrl: string): Promise<void> {
     // Navigate to /chat — this is the heaviest page and triggers all client bundle compilation
     await page.goto(`${baseUrl}/chat`, { waitUntil: "networkidle", timeout: 60_000 })
 
-    // Wait briefly for any deferred JS to finish
-    await page.waitForTimeout(1_000)
-
     await browser.close()
     console.log(`   ✓ /chat client bundles compiled (${Date.now() - start}ms)`)
   } catch (error) {

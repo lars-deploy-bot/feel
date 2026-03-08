@@ -54,8 +54,8 @@ export const TEST_TIMEOUTS = {
    */
   slow: 15_000 * TIMEOUT_MULTIPLIER, // 15s local, 30s remote
 
-  /** Maximum timeout for any single assertion */
-  max: 15_000 * TIMEOUT_MULTIPLIER, // 15s local, 30s remote
+  /** Maximum timeout for any single assertion (must be > slow for fallback paths) */
+  max: 20_000 * TIMEOUT_MULTIPLIER, // 20s local, 40s remote
 } as const
 
 export const TEST_SELECTORS = {

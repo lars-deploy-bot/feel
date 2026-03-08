@@ -159,6 +159,8 @@ export async function hydrateAll(): Promise<void> {
   }
 
   // Hydrate all stores in parallel (they're independent after skipHydration)
+  // Each store gets a 5s timeout to prevent a single hung store from blocking everything
+  const STORE_TIMEOUT_MS = 5_000
   const results = await Promise.allSettled(
     stores.map(async store => {
       const storeMetrics: { hydrationStart: number; hydrationEnd: number; durationMs: number; error?: string } = {
@@ -174,7 +176,15 @@ export async function hydrateAll(): Promise<void> {
 
       try {
         if (!store.hasHydrated()) {
-          await store.rehydrate()
+          await Promise.race([
+            store.rehydrate(),
+            new Promise<never>((_, reject) =>
+              setTimeout(
+                () => reject(new Error(`Store "${store.name}" rehydration timed out after ${STORE_TIMEOUT_MS}ms`)),
+                STORE_TIMEOUT_MS,
+              ),
+            ),
+          ])
         }
 
         if (isE2E) {
