@@ -805,6 +805,16 @@ export function buildStreamToolRuntimeConfig(
     ])
   }
 
+  // One clear security gate for site users:
+  // non-superadmin roles must use sandboxed MCP file/shell tools, never SDK built-ins.
+  if (context.workspaceKind === "site" && context.role !== "superadmin") {
+    allowedSdkTools = allowedSdkTools.filter(tool => !SITE_SANDBOXED_FS_DISABLED_SDK_TOOL_SET.has(tool))
+    disallowedSdkTools = dedupeStrings([
+      ...disallowedSdkTools,
+      ...SITE_SANDBOXED_FS_DISABLED_SDK_TOOLS.filter(tool => !isUserApprovalTool(tool)),
+    ])
+  }
+
   const allowedGlobalMcpTools = getGlobalMcpToolNames().filter(tool => getStreamToolDecision(tool, context).executable)
 
   const allowedTools = dedupeStrings([...allowedSdkTools, ...allowedInternalMcpTools, ...allowedGlobalMcpTools])
