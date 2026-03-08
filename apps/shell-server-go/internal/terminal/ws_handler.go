@@ -873,7 +873,10 @@ func (h *WSHandler) consumeLease(sessionToken, token string) (workspace string, 
 	if now.After(lease.ExpiresAt) {
 		return "", "", false, ErrExpiredLease
 	}
-	if lease.SessionToken != sessionToken {
+	// Internal leases (created via /internal/lease) use the sentinel value
+	// and should be accepted regardless of the browser's cookie. The web app
+	// already validated the user session before issuing the lease.
+	if lease.SessionToken != internalLeaseSessionToken && lease.SessionToken != sessionToken {
 		return "", "", false, ErrLeaseSessionDenied
 	}
 

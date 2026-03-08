@@ -54,6 +54,31 @@ export async function listFiles(
   }
 }
 
+export async function writeFile(
+  workspace: string,
+  path: string,
+  content: string,
+  worktree?: string | null,
+): Promise<ApiResponse<{ path: string }>> {
+  try {
+    const response = await fetch("/api/files/write", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspace, path, content, worktree: worktree || undefined }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.ok) {
+      return { ok: false, error: data.error || "Failed to write file" }
+    }
+
+    return { ok: true, data: { path: data.path } }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to write file" }
+  }
+}
+
 export async function readFile(
   workspace: string,
   path: string,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { invalidateFileCache } from "../FileTree"
 import { notifyFileChange } from "../lib/file-events"
+import { getParentFilePath } from "../lib/file-paths"
 import { invalidateFileContentCache } from "./useFileContent"
 
 type WatcherState = "connecting" | "connected" | "disconnected" | "error"
@@ -27,11 +28,6 @@ interface UseFileWatcherOptions {
 
 const MAX_BACKOFF = 30_000
 const INITIAL_BACKOFF = 1_000
-
-function parentDir(filePath: string): string {
-  const idx = filePath.lastIndexOf("/")
-  return idx > 0 ? filePath.slice(0, idx) : ""
-}
 
 export function useFileWatcher({ workspace, worktree }: UseFileWatcherOptions): { state: WatcherState } {
   const [state, setState] = useState<WatcherState>("connecting")
@@ -180,7 +176,7 @@ function handleEvents(events: FSEvent[], workspace: string, worktree: string | n
       case "remove":
       case "rename":
         // Invalidate both the parent directory listing and the file content
-        invalidateFileCache(workspace, worktree, parentDir(ev.path))
+        invalidateFileCache(workspace, worktree, getParentFilePath(ev.path))
         invalidateFileContentCache(workspace, worktree, ev.path)
         hasChanges = true
         break
