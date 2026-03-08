@@ -39,7 +39,16 @@ interface ImportRepoResponse {
 
 async function parseImportResponse(response: Response): Promise<ImportRepoResponse> {
   try {
-    return (await response.json()) as ImportRepoResponse
+    const json: unknown = await response.json()
+    if (!json || typeof json !== "object") return {}
+    const data = json as Record<string, unknown>
+    return {
+      ok: typeof data.ok === "boolean" ? data.ok : undefined,
+      domain: typeof data.domain === "string" ? data.domain : undefined,
+      message: typeof data.message === "string" ? data.message : undefined,
+      error: typeof data.error === "string" ? data.error : undefined,
+      chatUrl: typeof data.chatUrl === "string" ? data.chatUrl : undefined,
+    }
   } catch {
     return {}
   }
@@ -64,14 +73,14 @@ export default function DeployGithubPage() {
 
   // Don't show validation error for the default pre-fill
   const showValidationHint = trimmedRepoUrl !== "" && trimmedRepoUrl !== "https://github.com/" && !isValidRepoInput
-  const submitDisabled = !trimmedRepoUrl || !isValidRepoInput || isImporting
+  const submitDisabled = !trimmedRepoUrl || !isValidRepoInput || isImporting || authLoading
 
   const performImport = async () => {
     if (!trimmedRepoUrl || !isValidRepoInput) return
 
     setError(null)
     setIsImporting(true)
-    trackGithubImportStarted(trimmedRepoUrl)
+    trackGithubImportStarted(slugPreview)
 
     const baseSlug = slugPreview
 
@@ -100,7 +109,7 @@ export default function DeployGithubPage() {
         }
 
         const errMsg = data.message || "Failed to import repository. Please try again."
-        trackGithubImportFailed(errMsg)
+        trackGithubImportFailed(data.error || "unknown_error")
         setError(errMsg)
         return
       }
@@ -134,6 +143,10 @@ export default function DeployGithubPage() {
 
     if (!isValidRepoInput) {
       setError('Enter a GitHub URL like "https://github.com/owner/repo" or shorthand "owner/repo".')
+      return
+    }
+
+    if (authLoading) {
       return
     }
 
@@ -191,8 +204,6 @@ export default function DeployGithubPage() {
                   onChange={event => setRepoUrl(event.target.value)}
                   placeholder="https://github.com/owner/repo"
                   disabled={isImporting}
-                  // biome-ignore lint/a11y/noAutofocus: intentional UX for primary input
-                  autoFocus
                   className="w-full h-11 px-3 rounded-lg border border-black/15 dark:border-white/15 bg-transparent text-sm text-black dark:text-white placeholder:text-black/35 dark:placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-black/15 dark:focus:ring-white/20 disabled:opacity-60"
                 />
                 {showValidationHint && (

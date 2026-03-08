@@ -58,7 +58,13 @@ export function SubdomainDeployForm() {
   // Always show template selection first — persisted store shouldn't auto-skip
   // Only skip if a template was explicitly passed via URL param (e.g., from ChatEmptyState)
   const templateFromUrl = searchParams.get("template")
-  const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(() => !templateFromUrl)
+  const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(true)
+
+  // Sync with template URL param changes (component may not remount on query param changes)
+  useEffect(() => {
+    setShowIdeaConfirmation(!templateFromUrl)
+  }, [templateFromUrl])
+
   const [pendingSubmit, setPendingSubmit] = useState<DeploySubdomainForm | null>(null)
   const [iframeLoading, setIframeLoading] = useState(false)
   const [loadingDots, setLoadingDots] = useState("")
@@ -333,7 +339,13 @@ export function SubdomainDeployForm() {
           <motion.div variants={itemVariants} className="mb-4">
             <button
               type="button"
-              onClick={() => router.push("/deploy")}
+              onClick={() => {
+                const params = new URLSearchParams(searchParams.toString())
+                params.delete("q")
+                params.delete("template")
+                const nextSearch = params.toString()
+                router.push(nextSearch ? `/deploy?${nextSearch}` : "/deploy")
+              }}
               className="text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 text-xs font-medium inline-flex items-center gap-1 transition-colors uppercase tracking-wide"
             >
               <ArrowLeft size={12} />

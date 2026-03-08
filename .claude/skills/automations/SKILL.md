@@ -23,11 +23,11 @@ bash scripts/database/sql.sh --target production --query "
   SELECT * FROM app.automation_jobs WHERE id = 'auto_job_xxx'
 "
 
-# Update a cron schedule (recalculates next_run_at — see Scheduling section)
+# Update a cron schedule (also set a matching next_run_at — see Scheduling section)
 bash scripts/database/sql.sh --target production --query "
   UPDATE app.automation_jobs
   SET cron_schedule = '*/20 * * * *',
-      next_run_at = '2026-03-06T16:00:00+00:00'
+      next_run_at = now() + interval '5 minutes'
   WHERE id = 'auto_job_xxx'
   RETURNING name, cron_schedule, next_run_at
 "

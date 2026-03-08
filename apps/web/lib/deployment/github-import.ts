@@ -94,17 +94,18 @@ export async function resolveRepoInfo(owner: string, repo: string, githubToken?:
     throw new Error(`GitHub returned an unexpected error (${status}) for ${owner}/${repo}.`)
   }
 
-  const data = (await response.json()) as { default_branch?: string; full_name?: string; private?: boolean }
+  const json: unknown = await response.json()
+  const data = (json && typeof json === "object" ? json : {}) as Record<string, unknown>
 
-  const defaultBranch = data.default_branch
+  const defaultBranch = typeof data.default_branch === "string" ? data.default_branch : undefined
   if (!defaultBranch) {
     throw new Error(`Could not determine the default branch for ${owner}/${repo}.`)
   }
 
   return {
     defaultBranch,
-    fullName: data.full_name ?? `${owner}/${repo}`,
-    isPrivate: data.private ?? false,
+    fullName: typeof data.full_name === "string" ? data.full_name : `${owner}/${repo}`,
+    isPrivate: typeof data.private === "boolean" ? data.private : false,
   }
 }
 
@@ -246,6 +247,18 @@ async function downloadGithubRepo(
     if (!response.ok) {
       const status = response.status
       if (status === 404) {
+        // If a branch was explicitly provided, verify the repo actually exists
+        // before blaming the branch name (the 404 could be repo-level)
+        if (branch) {
+          try {
+            await resolveRepoInfo(owner, repo, githubToken)
+          } catch {
+            // If resolveRepoInfo also fails, the repo itself is the problem — let it throw
+            throw new Error(
+              `Repository "${owner}/${repo}" not found. If it's a private repository, connect your GitHub account in Settings > Integrations.`,
+            )
+          }
+        }
         throw new Error(`Branch "${ref}" not found in ${owner}/${repo}. Check the branch name and try again.`)
       }
       if (status === 401 || status === 403) {

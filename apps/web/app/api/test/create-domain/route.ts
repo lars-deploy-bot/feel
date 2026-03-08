@@ -40,12 +40,21 @@ export async function POST(req: Request) {
 
   const app = await createAppClient("service")
 
-  // SAFETY: Never overwrite a production domain
-  const { data: existingDomain } = await app
+  // SAFETY: Never overwrite a production domain. Fail closed on lookup errors.
+  const { data: existingDomain, error: lookupError } = await app
     .from("domains")
     .select("hostname, is_test_env")
     .eq("hostname", hostname)
     .single()
+
+  // Fail closed: if lookup fails (not "no rows"), abort rather than proceeding blindly
+  if (lookupError && lookupError.code !== "PGRST116") {
+    console.error("[Test Create Domain] Domain lookup failed, aborting:", { hostname, error: lookupError })
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, {
+      status: 500,
+      details: { message: "Domain safety check failed" },
+    })
+  }
 
   if (existingDomain && !existingDomain.is_test_env) {
     return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {

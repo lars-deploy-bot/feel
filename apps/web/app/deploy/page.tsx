@@ -1,6 +1,6 @@
 "use client"
 
-import { FREE_CREDITS } from "@webalive/shared"
+import { FREE_CREDITS } from "@webalive/shared/constants"
 import { motion } from "framer-motion"
 import { Github, Zap } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"

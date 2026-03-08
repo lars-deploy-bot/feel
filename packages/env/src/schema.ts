@@ -22,9 +22,9 @@ export const httpsUrl = z
 function isLocalNetworkHostname(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "127.0.0.1") return true
   // Allow RFC1918 private IPs (e.g., WireGuard 10.8.0.1, Docker 172.17.x.x)
-  if (hostname.startsWith("10.")) return true
-  if (hostname.startsWith("192.168.")) return true
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true
+  if (/^10(?:\.\d{1,3}){3}$/.test(hostname)) return true
+  if (/^192\.168(?:\.\d{1,3}){2}$/.test(hostname)) return true
+  if (/^172\.(1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}$/.test(hostname)) return true
   return false
 }
 

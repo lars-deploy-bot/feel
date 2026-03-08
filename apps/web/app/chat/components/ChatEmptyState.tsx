@@ -96,7 +96,7 @@ function NewUserWelcome({ onImportGithub }: { onImportGithub?: () => void }) {
   function handleTemplateClick(templateId: string) {
     trackEmptyStateLaunchTemplate()
     setTemplateId(templateId)
-    router.push("/deploy/start")
+    router.push(`/deploy/start?template=${encodeURIComponent(templateId)}`)
   }
 
   return (
