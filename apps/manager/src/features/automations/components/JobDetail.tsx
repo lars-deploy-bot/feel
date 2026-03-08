@@ -1,9 +1,12 @@
+import { automationsApi } from "../automations.api"
 import type { AutomationJob } from "../automations.types"
-import { formatCron } from "./format-cron"
+import { EditableField } from "./EditableField"
+import { EditableSchedule } from "./EditableSchedule"
 import { RunRow } from "./RunRow"
 
 interface JobDetailProps {
   job: AutomationJob
+  onChanged: () => void
 }
 
 function DetailField({ label, value }: { label: string; value: string | null | undefined }) {
@@ -16,26 +19,46 @@ function DetailField({ label, value }: { label: string; value: string | null | u
   )
 }
 
-export function JobDetail({ job }: JobDetailProps) {
+export function JobDetail({ job, onChanged }: JobDetailProps) {
+  async function saveField(field: string, value: string) {
+    await automationsApi.update(job.id, { [field]: value || null })
+    onChanged()
+  }
+
   return (
     <div className="pl-6 pb-4 pt-1">
       {/* Config */}
       <div className="mb-4">
-        {job.description && <DetailField label="Description" value={job.description} />}
-        {job.action_prompt && (
-          <div className="flex gap-4 py-1.5">
-            <span className="text-[12px] text-text-tertiary w-20 flex-shrink-0">Prompt</span>
-            <span className="text-[12px] text-text-primary min-w-0 line-clamp-3 whitespace-pre-wrap">
-              {job.action_prompt}
-            </span>
-          </div>
-        )}
-        <DetailField label="Model" value={job.action_model ?? "default"} />
+        <EditableField label="Name" value={job.name} onSave={v => saveField("name", v)} />
+        <EditableField
+          label="Description"
+          value={job.description}
+          onSave={v => saveField("description", v)}
+          placeholder="No description"
+        />
+        <EditableField
+          label="Prompt"
+          value={job.action_prompt}
+          onSave={v => saveField("action_prompt", v)}
+          placeholder="No prompt"
+          multiline
+        />
+        <EditableField label="Model" value={job.action_model ?? "default"} onSave={v => saveField("action_model", v)} />
         {job.trigger_type === "cron" && (
-          <DetailField label="Schedule" value={formatCron(job.cron_schedule, job.cron_timezone)} />
+          <EditableSchedule
+            jobId={job.id}
+            cronSchedule={job.cron_schedule}
+            cronTimezone={job.cron_timezone}
+            onSaved={onChanged}
+          />
         )}
         {job.trigger_type === "email" && <DetailField label="Email" value={job.email_address} />}
-        <DetailField label="Target" value={job.action_target_page} />
+        <EditableField
+          label="Target"
+          value={job.action_target_page}
+          onSave={v => saveField("action_target_page", v)}
+          placeholder="No target page"
+        />
         {job.skills && job.skills.length > 0 && <DetailField label="Skills" value={job.skills.join(", ")} />}
         <DetailField label="Site" value={job.hostname} />
         {job.next_run_at && <DetailField label="Next run" value={new Date(job.next_run_at).toLocaleString()} />}

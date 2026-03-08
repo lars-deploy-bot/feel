@@ -24,11 +24,23 @@ export async function bootstrapRunConversation(ctx: RunContext): Promise<Bootstr
   const title = `[Auto] ${ctx.job.name} — ${timestamp}`
 
   try {
+    // Look up org_id from the domain (source of truth)
+    const { data: domain, error: domainError } = await ctx.supabase
+      .from("domains")
+      .select("org_id")
+      .eq("domain_id", ctx.job.site_id)
+      .single()
+
+    if (domainError || !domain?.org_id) {
+      console.error(`[Engine] Failed to look up org_id for site ${ctx.job.site_id}:`, domainError)
+      return null
+    }
+
     // Insert conversation
     const { error: convError } = await ctx.supabase.from("conversations").insert({
       conversation_id: conversationId,
       user_id: ctx.job.user_id,
-      org_id: ctx.job.org_id,
+      org_id: domain.org_id,
       workspace: ctx.hostname,
       title,
       source: "automation_run",

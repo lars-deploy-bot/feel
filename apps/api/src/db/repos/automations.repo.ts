@@ -23,7 +23,6 @@ export interface AutomationJobRow {
   consecutive_failures: number | null
   created_at: string
   site_id: string
-  org_id: string
 }
 
 export interface AutomationRunRow {
@@ -41,7 +40,7 @@ export async function findAllJobs(): Promise<AutomationJobRow[]> {
   const { data, error } = await app
     .from("automation_jobs")
     .select(
-      "id, name, description, is_active, status, trigger_type, action_model, action_prompt, action_target_page, cron_schedule, cron_timezone, skills, email_address, last_run_status, last_run_at, last_run_error, next_run_at, consecutive_failures, created_at, site_id, org_id",
+      "id, name, description, is_active, status, trigger_type, action_model, action_prompt, action_target_page, cron_schedule, cron_timezone, skills, email_address, last_run_status, last_run_at, last_run_error, next_run_at, consecutive_failures, created_at, site_id",
     )
     .order("name")
 
@@ -70,6 +69,23 @@ export async function findRunsByJobIds(jobIds: string[], since: Date): Promise<A
 export async function setJobActive(jobId: string, isActive: boolean): Promise<void> {
   const { error } = await app.from("automation_jobs").update({ is_active: isActive }).eq("id", jobId)
 
+  if (error) {
+    throw new InternalError(`Failed to update automation job: ${error.message}`)
+  }
+}
+
+export interface UpdateJobFields {
+  name?: string
+  description?: string | null
+  action_prompt?: string | null
+  action_model?: string | null
+  action_target_page?: string | null
+  cron_schedule?: string | null
+  cron_timezone?: string | null
+}
+
+export async function updateJob(jobId: string, fields: UpdateJobFields): Promise<void> {
+  const { error } = await app.from("automation_jobs").update(fields).eq("id", jobId)
   if (error) {
     throw new InternalError(`Failed to update automation job: ${error.message}`)
   }

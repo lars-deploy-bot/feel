@@ -116,11 +116,22 @@ export async function executeJob(ctx: RunContext): Promise<{
         })()
       : undefined
 
+    // Look up org_id from domain (source of truth — automation_jobs no longer stores org_id)
+    const { data: domain } = await ctx.supabase
+      .from("domains")
+      .select("org_id")
+      .eq("domain_id", ctx.job.site_id)
+      .single()
+
+    if (!domain?.org_id) {
+      throw new Error(`Domain ${ctx.job.site_id} not found or has no org_id`)
+    }
+
     const { runAutomationJob } = await import("./executor")
     const result = await runAutomationJob({
       jobId: ctx.job.id,
       userId: ctx.job.user_id,
-      orgId: ctx.job.org_id,
+      orgId: domain.org_id,
       workspace: ctx.hostname,
       prompt: ctx.promptOverride ?? ctx.job.action_prompt ?? "",
       timeoutSeconds: ctx.timeoutSeconds,

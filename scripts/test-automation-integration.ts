@@ -56,7 +56,7 @@ async function getRunCount(jobId: string): Promise<number> {
 async function getJob(jobId: string) {
   const { data } = await supabase
     .from("automation_jobs")
-    .select("*, domains:site_id (hostname)")
+    .select("*, domains:site_id (hostname, org_id)")
     .eq("id", jobId)
     .single()
   return data
@@ -109,7 +109,7 @@ async function testDbContract() {
     const result = await runAutomationJob({
       jobId: JOB_ID,
       userId: job.user_id,
-      orgId: job.org_id,
+      orgId: (job.domains as any)?.org_id,
       workspace: hostname,
       prompt: TRIVIAL_PROMPT,
       timeoutSeconds: 10, // Short — we just need it to return

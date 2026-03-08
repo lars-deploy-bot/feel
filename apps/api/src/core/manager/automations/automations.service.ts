@@ -7,6 +7,10 @@ export async function toggleJobActive(jobId: string, isActive: boolean): Promise
   await automationsRepo.setJobActive(jobId, isActive)
 }
 
+export async function updateJob(jobId: string, fields: automationsRepo.UpdateJobFields): Promise<void> {
+  await automationsRepo.updateJob(jobId, fields)
+}
+
 export async function deleteJob(jobId: string): Promise<void> {
   await automationsRepo.deleteJob(jobId)
 }
@@ -84,11 +88,12 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
     }
   }
 
-  // Build per-job data grouped by org
+  // Build per-job data grouped by the domain's org (source of truth)
   const orgGroups = new Map<string, ManagerAutomationJob[]>()
   for (const job of jobs) {
-    const org = orgMap.get(job.org_id)
     const domain = domainMap.get(job.site_id)
+    const domainOrgId = domain?.org_id ?? null
+    const org = domainOrgId ? orgMap.get(domainOrgId) : null
     const jobRuns = runsByJob.get(job.id) ?? []
 
     // Aggregate
@@ -142,7 +147,7 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
       consecutive_failures: job.consecutive_failures,
       created_at: job.created_at,
       hostname: domain?.hostname ?? "unknown",
-      org_id: job.org_id,
+      org_id: domainOrgId ?? "unknown",
       org_name: org?.name ?? "Unknown",
       runs_30d: total,
       success_runs_30d: success,
@@ -152,11 +157,12 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
       recent_runs: recentRuns,
     }
 
-    const existing = orgGroups.get(job.org_id)
+    const groupKey = domainOrgId ?? "unknown"
+    const existing = orgGroups.get(groupKey)
     if (existing) {
       existing.push(enriched)
     } else {
-      orgGroups.set(job.org_id, [enriched])
+      orgGroups.set(groupKey, [enriched])
     }
   }
 

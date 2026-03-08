@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
   const { data: job, error: jobError } = await app
     .from("automation_jobs")
-    .select("id, name, site_id, user_id, org_id")
+    .select("id, name, site_id, user_id")
     .eq("id", jobId)
     .single()
 
@@ -69,11 +69,11 @@ export async function POST(req: Request) {
 
   const { data: site, error: siteError } = await app
     .from("domains")
-    .select("hostname")
+    .select("hostname, org_id")
     .eq("domain_id", job.site_id)
     .single()
 
-  if (siteError || !site?.hostname) {
+  if (siteError || !site?.hostname || !site.org_id) {
     return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, { status: 404 })
   }
 
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
   const conversationInsert: ConversationInsert = {
     conversation_id: conversationId,
     user_id: job.user_id,
-    org_id: job.org_id,
+    org_id: site.org_id,
     workspace: site.hostname,
     title,
     visibility: "private",

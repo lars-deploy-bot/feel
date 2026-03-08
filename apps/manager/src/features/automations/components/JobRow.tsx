@@ -173,7 +173,7 @@ export function JobRow({ job, onChanged }: JobRowProps) {
       </button>
 
       {/* Expanded detail */}
-      {expanded && <JobDetail job={job} />}
+      {expanded && <JobDetail job={job} onChanged={onChanged} />}
     </div>
   )
 }

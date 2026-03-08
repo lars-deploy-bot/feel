@@ -39,6 +39,20 @@ export function formatCron(cron: string | null, timezone?: string | null): strin
     return `Hourly at :${minute.padStart(2, "0")}${tz}`
   }
 
+  // Multiple specific hours (e.g. 9,17 → "Daily at 09:00, 17:00")
+  if (/^\d+$/.test(minute) && /^\d+(,\d+)+$/.test(hour)) {
+    const m = minute.padStart(2, "0")
+    const times = hour.split(",").map(h => `${h.padStart(2, "0")}:${m}`)
+
+    if (dayOfWeek !== "*") {
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+      const days = dayOfWeek.split(",").map(d => dayNames[Number(d)] ?? d)
+      return `${days.join(", ")} at ${times.join(", ")}${tz}`
+    }
+
+    return `Daily at ${times.join(", ")}${tz}`
+  }
+
   // Specific time
   if (/^\d+$/.test(minute) && /^\d+$/.test(hour)) {
     const h = hour.padStart(2, "0")
@@ -46,10 +60,8 @@ export function formatCron(cron: string | null, timezone?: string | null): strin
     const time = `${h}:${m}`
 
     if (dayOfWeek !== "*") {
-      const days = dayOfWeek.split(",").map(d => {
-        const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-        return names[Number(d)] ?? d
-      })
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+      const days = dayOfWeek.split(",").map(d => dayNames[Number(d)] ?? d)
       return `${days.join(", ")} at ${time}${tz}`
     }
 
