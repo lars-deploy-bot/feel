@@ -88,8 +88,9 @@ export function JobRow({ job, onChanged }: JobRowProps) {
   return (
     <div>
       {/* Summary row */}
-      <div
-        className="flex items-center gap-6 py-3 hover:bg-surface-secondary/30 transition-colors duration-100 -mx-2 px-2 rounded-lg cursor-pointer"
+      <button
+        type="button"
+        className="w-full flex items-center gap-6 py-3 hover:bg-surface-secondary/30 transition-colors duration-100 -mx-2 px-2 rounded-lg cursor-pointer text-left"
         onClick={() => setExpanded(!expanded)}
       >
         {/* Chevron */}
@@ -169,7 +170,7 @@ export function JobRow({ job, onChanged }: JobRowProps) {
             </Button>
           )}
         </div>
-      </div>
+      </button>
 
       {/* Expanded detail */}
       {expanded && <JobDetail job={job} />}
