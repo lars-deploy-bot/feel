@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 interface EditableFieldProps {
   label: string
@@ -13,6 +13,11 @@ export function EditableField({ label, value, onSave, placeholder, multiline }: 
   const [draft, setDraft] = useState(value ?? "")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
 
   function startEditing() {
     setDraft(value ?? "")
@@ -73,16 +78,17 @@ export function EditableField({ label, value, onSave, placeholder, multiline }: 
       <div className="flex-1 min-w-0">
         {multiline ? (
           <textarea
+            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
             className="w-full text-[12px] text-text-primary border border-border rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-text-primary/10 focus:border-text-primary/30 outline-none transition-all duration-100 resize-none"
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={3}
             disabled={saving}
-            autoFocus
           />
         ) : (
           <input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
             type="text"
             className="w-full text-[12px] text-text-primary border border-border rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-text-primary/10 focus:border-text-primary/30 outline-none transition-all duration-100"
             value={draft}
@@ -90,7 +96,6 @@ export function EditableField({ label, value, onSave, placeholder, multiline }: 
             onKeyDown={handleKeyDown}
             disabled={saving}
             placeholder={placeholder}
-            autoFocus
           />
         )}
         {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
