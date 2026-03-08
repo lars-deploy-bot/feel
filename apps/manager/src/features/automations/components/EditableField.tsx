@@ -55,7 +55,8 @@ export function EditableField({ label, value, onSave, placeholder, multiline }: 
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.nativeEvent.isComposing) return
+    if (e.key === "Enter" && !e.shiftKey && !multiline) {
       e.preventDefault()
       save()
     }
