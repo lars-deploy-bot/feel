@@ -610,6 +610,14 @@ else
         set -e
     fi
 
+    if [ $E2E_EXIT -eq 0 ]; then
+        log_step "Running full live E2E suite (all *-live.spec.ts)"
+        set +e
+        run_web_e2e test:e2e:live
+        E2E_EXIT=$?
+        set -e
+    fi
+
     if [ $E2E_EXIT -ne 0 ]; then
         phase_end error "E2E tests failed (exit $E2E_EXIT)"
         echo ""
