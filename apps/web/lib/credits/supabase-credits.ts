@@ -99,6 +99,14 @@ const domainOrgCache = new Map<string, CacheEntry>()
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 /**
+ * Invalidate the domain → org_id cache for a specific domain.
+ * Call this when the domain's org mapping changes (e.g., E2E bootstrap re-creating orgs).
+ */
+export function invalidateDomainOrgCache(domain: string): void {
+  domainOrgCache.delete(domain)
+}
+
+/**
  * Get org ID for a domain with caching
  * Cache entries expire after 5 minutes to ensure fresh data
  *

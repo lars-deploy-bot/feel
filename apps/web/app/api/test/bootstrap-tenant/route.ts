@@ -16,6 +16,7 @@ import { PATHS, TEST_CONFIG } from "@webalive/shared"
 import { hash } from "bcrypt"
 import { invalidateUserAuthzCache, invalidateWorkspaceAuthzCache } from "@/features/auth/lib/auth"
 import { invalidateSessionDomainCache } from "@/features/auth/lib/sessionStore"
+import { invalidateDomainOrgCache } from "@/lib/tokens"
 import { domainToSlug } from "@/features/manager/lib/domain-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -179,6 +180,7 @@ async function buildTenantResponse(tenant: BootstrapTenant): Promise<Response> {
   invalidateUserAuthzCache(tenant.userId)
   invalidateWorkspaceAuthzCache(tenant.workspace)
   invalidateSessionDomainCache(tenant.workspace)
+  invalidateDomainOrgCache(tenant.workspace)
 
   try {
     await ensureWorkspaceFilesystem(tenant.workspace)
