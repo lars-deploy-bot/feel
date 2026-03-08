@@ -14,8 +14,9 @@
 
 import Anthropic from "@anthropic-ai/sdk"
 import { expect, type Page, type Request, test } from "@playwright/test"
+import { CLAUDE_MODELS, DEFAULT_CLAUDE_MODEL } from "@webalive/shared"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
-import { PATTERNS, TEST_MESSAGES, TEST_MODELS } from "./fixtures/test-constants"
+import { PATTERNS, TEST_MESSAGES } from "./fixtures/test-constants"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
 import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
@@ -93,7 +94,7 @@ Second assistant response:
 `.trim()
 
   const result = await client.messages.create({
-    model: TEST_MODELS.HAIKU,
+    model: CLAUDE_MODELS.HAIKU_4_5,
     max_tokens: 120,
     temperature: 0,
     messages: [{ role: "user", content: evaluationPrompt }],
@@ -152,7 +153,7 @@ test.describe("Chat API - Request Validation", () => {
     // Verify request structure (using constants)
     expect(requestBody.message).toBe(TEST_MESSAGES.SIMPLE)
     expect(requestBody.tabId).toMatch(PATTERNS.UUID)
-    expect(requestBody.model).toBe(TEST_MODELS.HAIKU)
+    expect(requestBody.model).toBe(DEFAULT_CLAUDE_MODEL)
     expect(requestBody.workspace).toBe(user.workspace)
     console.log("✅ Request structure valid")
 
@@ -241,7 +242,7 @@ test.describe("Chat API - Request Validation", () => {
 
     expect(firstRequestBody.message).toBe(firstPrompt)
     expect(firstRequestBody.tabId).toMatch(PATTERNS.UUID)
-    expect(firstRequestBody.model).toBe(TEST_MODELS.HAIKU)
+    expect(firstRequestBody.model).toBe(DEFAULT_CLAUDE_MODEL)
     expect(firstRequestBody.workspace).toBe(user.workspace)
     expect(firstResponse.status()).toBe(200)
 
@@ -260,7 +261,7 @@ test.describe("Chat API - Request Validation", () => {
 
     expect(secondRequestBody.message).toBe(secondPrompt)
     expect(secondRequestBody.tabId).toBe(firstRequestBody.tabId)
-    expect(secondRequestBody.model).toBe(TEST_MODELS.HAIKU)
+    expect(secondRequestBody.model).toBe(DEFAULT_CLAUDE_MODEL)
     expect(secondRequestBody.workspace).toBe(user.workspace)
     expect(secondResponse.status()).toBe(200)
 
