@@ -51,4 +51,12 @@ if [[ $seed_count -eq 0 ]]; then
   echo "[seed] No seed files found in $SEEDS_DIR"
 else
   echo "[seed] Applied $seed_count seed(s) successfully"
+
+  # Reload PostgREST schema cache so new tables/data are immediately queryable
+  # via the Supabase REST API. Without this, PostgREST may serve stale schema
+  # and the app fails startup checks (e.g. app.servers not found).
+  echo "[seed] Reloading PostgREST schema cache..."
+  psql "$DATABASE_URL" -c "NOTIFY pgrst, 'reload schema';" > /dev/null 2>&1 && \
+    echo "[seed] PostgREST schema cache reloaded" || \
+    echo "[seed] WARN: Could not notify PostgREST (non-fatal)"
 fi
