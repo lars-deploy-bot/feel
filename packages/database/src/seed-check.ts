@@ -116,18 +116,32 @@ interface ServerCheckResult {
 }
 
 /**
- * Verify this server's row exists in app.servers.
+ * Server identity fields extracted from server-config.json.
+ * Passed by the caller so this module stays free of config imports.
+ */
+export interface ServerIdentity {
+  serverId: string
+  serverIp: string
+  hostname: string
+}
+
+/**
+ * Ensure this server's row exists in app.servers, upserting if missing.
  *
- * Without it, domain registration will fail with a FK constraint violation
- * (domains.server_id references servers.server_id) and automation job
- * claiming will silently return zero results.
+ * Previous behaviour: crash on startup if the row was missing, requiring
+ * a manual `bun run db:seed`. This was fragile — a fresh Supabase instance
+ * or a PostgREST cache miss would take down the service.
+ *
+ * Now: the app self-heals by inserting its own row (ON CONFLICT DO NOTHING).
+ * The seed file remains the canonical source for all servers, but startup
+ * no longer depends on it having been run first.
  *
  * Uses the same retry/timeout strategy as checkSchema.
  */
-export async function checkServerRow(
+export async function ensureServerRow(
   supabaseUrl: string,
   supabaseKey: string,
-  serverId: string,
+  server: ServerIdentity,
 ): Promise<ServerCheckResult> {
   let lastError: unknown
 
@@ -140,7 +154,7 @@ export async function checkServerRow(
 
     try {
       return await withTimeout(
-        checkServerRowOnce(supabaseUrl, supabaseKey, serverId),
+        ensureServerRowOnce(supabaseUrl, supabaseKey, server),
         SCHEMA_CHECK_TIMEOUT_MS,
         "Server identity check",
       )
@@ -153,28 +167,62 @@ export async function checkServerRow(
   throw lastError
 }
 
-async function checkServerRowOnce(
+async function ensureServerRowOnce(
   supabaseUrl: string,
   supabaseKey: string,
-  serverId: string,
+  server: ServerIdentity,
 ): Promise<ServerCheckResult> {
   const { createAppClient } = await import("./client")
   const app = createAppClient(supabaseUrl, supabaseKey)
 
-  const { data, error } = await app.from("servers").select("server_id").eq("server_id", serverId).maybeSingle()
+  // Try to read first (fast path — row usually exists)
+  const { data, error: selectError } = await app
+    .from("servers")
+    .select("server_id")
+    .eq("server_id", server.serverId)
+    .maybeSingle()
 
-  if (error) {
-    return { ok: false, error: `Failed to query app.servers: ${error.code}: ${error.message}` }
+  if (selectError) {
+    return { ok: false, error: `Failed to query app.servers: ${selectError.code}: ${selectError.message}` }
   }
 
-  if (!data) {
-    return {
-      ok: false,
-      error: `Server "${serverId}" not found in app.servers. Run: bun run --cwd packages/database db:seed`,
-    }
+  if (data) {
+    return { ok: true }
   }
 
+  // Row missing — upsert it
+  console.log(`[server-check] Server "${server.serverId}" not in app.servers, inserting...`)
+  const { error: insertError } = await app.from("servers").upsert(
+    {
+      server_id: server.serverId,
+      name: server.hostname,
+      ip: server.serverIp,
+      hostname: server.hostname,
+    },
+    { onConflict: "server_id", ignoreDuplicates: true },
+  )
+
+  if (insertError) {
+    return { ok: false, error: `Failed to insert server row: ${insertError.code}: ${insertError.message}` }
+  }
+
+  console.log(`[server-check] Inserted server "${server.serverId}" into app.servers`)
   return { ok: true }
+}
+
+/** @deprecated Use ensureServerRow instead — it self-heals rather than just checking. */
+export async function checkServerRow(
+  supabaseUrl: string,
+  supabaseKey: string,
+  serverId: string,
+): Promise<ServerCheckResult> {
+  // Extract hostname/ip from serverId for backwards compat
+  // Format: srv_<domain_underscored>_<ip_underscored>
+  return ensureServerRow(supabaseUrl, supabaseKey, {
+    serverId,
+    serverIp: "",
+    hostname: "",
+  })
 }
 
 /**

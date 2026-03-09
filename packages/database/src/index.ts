@@ -59,4 +59,11 @@ export type Database = PublicDatabase
 export * from "./client"
 
 // Export startup verification (schema + server identity)
-export { checkSchema, checkServerRow, formatSchemaFailure, formatServerCheckFailure } from "./seed-check"
+export {
+  checkSchema,
+  checkServerRow,
+  ensureServerRow,
+  formatSchemaFailure,
+  formatServerCheckFailure,
+} from "./seed-check"
+export type { ServerIdentity } from "./seed-check"
