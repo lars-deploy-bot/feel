@@ -154,14 +154,14 @@ test.describe("Chat API - Request Validation", () => {
       timeout: TEST_TIMEOUTS.max,
     })
 
+    const expectedReasonId = CONTEXT_REASON_IDS[Math.floor(Math.random() * CONTEXT_REASON_IDS.length)]
+
     const firstPrompt = `
-Choose exactly one practical reason E2E tests prevent regressions from this list:
-- request-contract
-- integration-boundary
-- user-flow
+Use this exact ReasonId in your reply:
+${expectedReasonId}
 
 Reply in exactly two lines:
-ReasonId: <one id from the list>
+ReasonId: <the exact id above>
 Reason: <one short sentence explaining that reason>
 `.trim()
     const secondPrompt = `
@@ -196,7 +196,7 @@ ReasonId: <the same id>
     const firstAssistantText = extractAssistantTextFromNDJSON(firstNDJSON)
     expect(firstAssistantText).toContain("ReasonId:")
     expect(firstAssistantText).toContain("Reason:")
-    const firstReasonId = extractReasonId(firstAssistantText)
+    expect(extractReasonId(firstAssistantText)).toBe(expectedReasonId)
     console.log(`[Turn 1] Assistant: ${firstAssistantText}`)
 
     const secondRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
@@ -225,9 +225,8 @@ ReasonId: <the same id>
     const secondReasonId = extractReasonId(secondAssistantText)
     console.log(`[Turn 2] Assistant: ${secondAssistantText}`)
 
-    // Deterministic semantic verification: the second response must recall
-    // the same reason the assistant explained on the first turn.
-    expect(secondReasonId).toBe(firstReasonId)
-    console.log(`[Context] Verified: reasonId ${secondReasonId}`)
+    // Context retention: turn two must recall the test-injected reason ID
+    expect(secondReasonId).toBe(expectedReasonId)
+    console.log(`[Context] Verified: reasonId ${secondReasonId} matches injected ${expectedReasonId}`)
   })
 })
