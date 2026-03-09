@@ -29,10 +29,24 @@ async function sendMessage(page: Page, message: string): Promise<void> {
   await sendButton.click()
 }
 
-/** Random code for deterministic context retention verification (no LLM judge needed). */
-function generateMemoryCode(): string {
-  const id = Math.random().toString(36).slice(2, 8).toUpperCase()
-  return `ALIVE-${id}`
+const CONTEXT_REASON_IDS = ["request-contract", "integration-boundary", "user-flow"]
+
+function extractReasonId(responseText: string): string {
+  const match = responseText.match(/ReasonId:\s*([a-z-]+)/i)
+  if (!match) {
+    throw new Error(`Missing ReasonId in assistant response: ${responseText}`)
+  }
+
+  const reasonId = match[1]?.trim().toLowerCase()
+  if (!reasonId) {
+    throw new Error(`Empty ReasonId in assistant response: ${responseText}`)
+  }
+
+  if (!CONTEXT_REASON_IDS.includes(reasonId)) {
+    throw new Error(`Unexpected ReasonId "${reasonId}" in assistant response: ${responseText}`)
+  }
+
+  return reasonId
 }
 
 test.describe("Chat API - Request Validation", () => {
@@ -140,11 +154,21 @@ test.describe("Chat API - Request Validation", () => {
       timeout: TEST_TIMEOUTS.max,
     })
 
-    // Use a unique random code so context retention can be verified deterministically
-    // without an LLM judge (which was the source of flakiness).
-    const memoryCode = generateMemoryCode()
-    const firstPrompt = `Remember this exact code: ${memoryCode}. Reply with only "Stored." and nothing else.`
-    const secondPrompt = "What was the exact code I asked you to remember? Reply with only the code."
+    const firstPrompt = `
+Choose exactly one practical reason E2E tests prevent regressions from this list:
+- request-contract
+- integration-boundary
+- user-flow
+
+Reply in exactly two lines:
+ReasonId: <one id from the list>
+Reason: <one short sentence explaining that reason>
+`.trim()
+    const secondPrompt = `
+What ReasonId did you just explain in your previous answer?
+Reply with exactly one line:
+ReasonId: <the same id>
+`.trim()
 
     const firstRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
     const firstResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
@@ -170,7 +194,9 @@ test.describe("Chat API - Request Validation", () => {
 
     const firstNDJSON = await firstResponse.text()
     const firstAssistantText = extractAssistantTextFromNDJSON(firstNDJSON)
-    expect(firstAssistantText.length).toBeGreaterThan(0)
+    expect(firstAssistantText).toContain("ReasonId:")
+    expect(firstAssistantText).toContain("Reason:")
+    const firstReasonId = extractReasonId(firstAssistantText)
     console.log(`[Turn 1] Assistant: ${firstAssistantText}`)
 
     const secondRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
@@ -196,11 +222,12 @@ test.describe("Chat API - Request Validation", () => {
 
     const secondNDJSON = await secondResponse.text()
     const secondAssistantText = extractAssistantTextFromNDJSON(secondNDJSON)
+    const secondReasonId = extractReasonId(secondAssistantText)
     console.log(`[Turn 2] Assistant: ${secondAssistantText}`)
 
-    // Deterministic verification: the second response must contain the memory code.
-    // This proves context retention without needing an LLM judge.
-    expect(secondAssistantText).toContain(memoryCode)
-    console.log(`[Context] Verified: response contains ${memoryCode}`)
+    // Deterministic semantic verification: the second response must recall
+    // the same reason the assistant explained on the first turn.
+    expect(secondReasonId).toBe(firstReasonId)
+    console.log(`[Context] Verified: reasonId ${secondReasonId}`)
   })
 })
