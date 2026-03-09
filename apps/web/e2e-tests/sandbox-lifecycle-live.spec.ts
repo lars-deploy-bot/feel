@@ -7,16 +7,17 @@
  */
 
 import { expect, type Page, test } from "@playwright/test"
+import type { VerifyTenantSandbox } from "@/app/api/test/test-route-schemas"
 import { isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
-import { getLiveStagingUser, getProjectBaseUrl, getTenantSandboxState, loginLiveStaging } from "./lib/live-tenant"
+import {
+  getLiveStagingUser,
+  getProjectBaseUrl,
+  getTenantSandboxState,
+  loginLiveStaging,
+  updateTestDomainRuntime,
+} from "./lib/live-tenant"
 import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
-
-interface SandboxState {
-  executionMode: "systemd" | "e2b"
-  sandboxId: string | null
-  sandboxStatus: "creating" | "running" | "dead" | null
-}
 
 const SANDBOX_WAIT_TIMEOUT_MS = 30_000
 const SANDBOX_WAIT_INTERVAL_MS = 600
@@ -30,13 +31,9 @@ async function sendMessage(page: Page, message: string): Promise<void> {
   await sendButton.click()
 }
 
-async function waitForSandboxState(
-  baseUrl: string,
-  email: string,
-  predicate: (state: SandboxState) => boolean,
-): Promise<SandboxState> {
+async function waitForSandboxState(baseUrl: string, email: string, predicate: (state: VerifyTenantSandbox) => boolean) {
   const deadline = Date.now() + SANDBOX_WAIT_TIMEOUT_MS
-  let lastState: SandboxState | null = null
+  let lastState: VerifyTenantSandbox | null = null
 
   while (Date.now() < deadline) {
     try {
@@ -60,6 +57,14 @@ test.describe("E2B sandbox lifecycle", () => {
   test("reuses the same sandbox across consecutive chat requests", async ({ page }) => {
     const baseUrl = getProjectBaseUrl(test.info())
     const user = await getLiveStagingUser(test.info().workerIndex, baseUrl)
+
+    await updateTestDomainRuntime(baseUrl, {
+      workspace: user.workspace,
+      executionMode: "e2b",
+      killSandbox: true,
+      resetSandboxFields: true,
+      restartWorkspaceWorkers: true,
+    })
 
     await loginLiveStaging(page, user)
 

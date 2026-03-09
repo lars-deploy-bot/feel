@@ -12,11 +12,13 @@
 
 "use client"
 
+import type { ExecutionMode } from "@webalive/database"
 import { TEMPLATES } from "@webalive/shared"
 import { X } from "lucide-react"
 import { useState } from "react"
 import { WebsiteConfig, type WebsiteConfigResult } from "@/components/ai/WebsiteConfig"
 import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
+import { QUERY_KEYS } from "@/lib/url/queryState"
 
 interface AddWebsiteModalProps {
   onClose: () => void
@@ -27,7 +29,7 @@ export function AddWebsiteModal({ onClose, onSuccess }: AddWebsiteModalProps) {
   const { wildcard } = useDomainConfig()
   const [deploying, setDeploying] = useState(false)
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState<{ domain: string } | null>(null)
+  const [success, setSuccess] = useState<{ domain: string; executionMode: ExecutionMode | null } | null>(null)
 
   const handleComplete = async (result: WebsiteConfigResult) => {
     setError("")
@@ -55,7 +57,7 @@ export function AddWebsiteModal({ onClose, onSuccess }: AddWebsiteModalProps) {
         return
       }
 
-      setSuccess({ domain })
+      setSuccess({ domain, executionMode: data.executionMode ?? null })
       // Call onSuccess after a short delay so user sees the success state
       setTimeout(() => {
         onSuccess()
@@ -98,15 +100,29 @@ export function AddWebsiteModal({ onClose, onSuccess }: AddWebsiteModalProps) {
             </div>
             <h3 className="text-lg font-medium text-black dark:text-white mb-2">Website Created!</h3>
             <p className="text-sm text-black/60 dark:text-white/60">
-              Your site is live at{" "}
-              <a
-                href={`https://${success.domain}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                {success.domain}
-              </a>
+              {success.executionMode === "e2b" ? (
+                <>
+                  Your sandbox workspace is ready for{" "}
+                  <a
+                    href={`/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(success.domain)}`}
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {success.domain}
+                  </a>
+                </>
+              ) : (
+                <>
+                  Your site is live at{" "}
+                  <a
+                    href={`https://${success.domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {success.domain}
+                  </a>
+                </>
+              )}
             </p>
           </div>
         </div>

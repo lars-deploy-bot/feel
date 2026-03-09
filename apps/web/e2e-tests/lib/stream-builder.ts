@@ -7,14 +7,13 @@
 
 import {
   type BridgeCompleteMessage,
+  type BridgeDoneMessage,
   type BridgeErrorMessage,
   type BridgeMessageEvent,
   type BridgeStartMessage,
   BridgeStreamType,
   type StreamMessage,
 } from "@/features/chat/lib/streaming/ndjson"
-
-type StreamEvent = StreamMessage
 
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 
@@ -27,7 +26,7 @@ function nextRequestId(): string {
 }
 
 export class StreamBuilder {
-  private events: StreamEvent[] = []
+  private events: StreamMessage[] = []
   private msgCount = 0
   private messageIdCounter = 0
   private requestId: string
@@ -238,7 +237,7 @@ export class StreamBuilder {
    */
   toNDJSON(): string {
     const lines = this.events.map(e => JSON.stringify(e))
-    const doneMessage: StreamEvent = {
+    const doneMessage: BridgeDoneMessage = {
       type: BridgeStreamType.DONE,
       requestId: this.requestId,
       messageId: this.nextMessageId(),

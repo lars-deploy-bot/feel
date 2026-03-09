@@ -8,7 +8,9 @@ import { NextResponse } from "next/server"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { resolveWorktreePath, WorktreeError } from "@/features/worktrees/lib/worktrees"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
+import { getE2bScratchUserDir } from "@/lib/sandbox/e2b-workspace"
 
 export interface GetWorkspaceParams {
   host: string
@@ -173,6 +175,39 @@ async function getTerminalWorkspace(body: WorkspaceRequestBody, requestId: strin
 
   // Normalize domain name to handle protocols, www, uppercase, etc.
   const normalizedDomain = normalizeDomain(customWorkspace)
+
+  let domainRuntime: Awaited<ReturnType<typeof resolveDomainRuntime>> = null
+  try {
+    domainRuntime = await resolveDomainRuntime(normalizedDomain)
+  } catch (error) {
+    console.error(`[Workspace ${requestId}] Failed to resolve domain runtime for ${normalizedDomain}:`, error)
+    Sentry.captureException(error, { extra: { requestId, normalizedDomain } })
+  }
+
+  if (domainRuntime?.execution_mode === "e2b") {
+    const scratchWorkspace = getE2bScratchUserDir(normalizedDomain)
+    if (!existsSync(scratchWorkspace)) {
+      console.error(`[Workspace ${requestId}] E2B scratch workspace not found: ${scratchWorkspace}`)
+      return {
+        success: false,
+        response: NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.WORKSPACE_NOT_FOUND,
+            message: `E2B workspace directory not found for domain: ${normalizedDomain}`,
+            details: {
+              domain: normalizedDomain,
+              attemptedPaths: [scratchWorkspace],
+              suggestion: `Expected scratch workspace at: ${scratchWorkspace}`,
+            },
+          },
+          { status: 404 },
+        ),
+      }
+    }
+
+    return await resolveWorktreeIfRequested(scratchWorkspace, body, requestId)
+  }
 
   // Try to find the workspace directory using both naming conventions:
   // 1. New convention: domain with dots (e.g., "example.com")

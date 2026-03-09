@@ -10,7 +10,12 @@ import type {
 import { AppConstants, type TriggerType } from "@webalive/database"
 import { CLAUDE_MODELS, ORG_ROLES, RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 import { z } from "zod"
-import { RESERVED_SLUGS } from "@/features/deployment/types/guards"
+import {
+  DeploySiteIdeasSchema,
+  DeploySlugSchema,
+  DeploySubdomainSchema,
+  DeployTemplateIdSchema,
+} from "@/features/deployment/types/guards"
 import { CANCEL_ENDPOINT_STATUS_VALUES } from "@/lib/stream/cancel-status"
 import { OptionalWorktreeSchema, OptionalWorktreeSlugSchema } from "@/types/guards/worktree-schemas"
 
@@ -51,6 +56,36 @@ export type AutomationJobStatus = z.infer<typeof AutomationJobStatusSchema>
 /** Per-run status (did the run succeed, fail, etc.) */
 const AutomationRunStatusSchema = z.enum(AppConstants.app.Enums.automation_run_status)
 export type AutomationRunStatus = z.infer<typeof AutomationRunStatusSchema>
+export const ExecutionModeSchema = z.enum(AppConstants.app.Enums.execution_mode)
+const NewSiteSuccessResponseSchema = z.object({
+  ok: z.literal(true),
+  message: z.string(),
+  domain: z.string(),
+  chatUrl: z.string(),
+  orgId: z.string().optional(),
+  executionMode: ExecutionModeSchema,
+})
+export const FilesUploadResponseSchema = z.object({
+  ok: z.literal(true),
+  path: z.string(),
+  originalName: z.string(),
+  size: z.number(),
+  mimeType: z.string(),
+})
+export const FilesListResponseSchema = z.object({
+  ok: z.literal(true),
+  path: z.string(),
+  workspace: z.string(),
+  files: z.array(
+    z.object({
+      name: z.string(),
+      type: z.enum(["file", "directory"]),
+      size: z.number(),
+      modified: z.string(),
+      path: z.string(),
+    }),
+  ),
+})
 
 // ============================================================================
 // STANDARDIZED RESPONSE ENVELOPES
@@ -548,23 +583,19 @@ export const apiSchemas = {
 
   /**
    * POST /api/deploy
-   * Deploy a site to a custom domain (separate from deploy-subdomain)
+   * Create a new site on the current server wildcard domain
    */
   deploy: {
     req: z
       .object({
         domain: z.string().min(1),
-        orgId: z.string().min(1, "Organization ID is required"),
-        templateId: z.string().optional(),
+        orgId: z.string().min(1, "Organization ID cannot be empty").optional(),
+        siteIdeas: DeploySiteIdeasSchema,
+        templateId: DeployTemplateIdSchema.optional(),
       })
+      .strict()
       .brand<"DeployRequest">(),
-    res: z.object({
-      ok: z.boolean(),
-      message: z.string(),
-      domain: z.string().optional(),
-      orgId: z.string().optional(),
-      errors: z.array(z.string()).optional(),
-    }),
+    res: NewSiteSuccessResponseSchema,
   },
 
   /**
@@ -573,39 +604,8 @@ export const apiSchemas = {
    * Requires authenticated session.
    */
   "deploy-subdomain": {
-    req: z
-      .object({
-        slug: z
-          .string()
-          .min(3, "Slug must be at least 3 characters")
-          .max(16, "Slug must be no more than 16 characters")
-          .regex(/^[a-z0-9]([a-z0-9-]{1,14}[a-z0-9])?$/, "Slug must be lowercase letters, numbers, and hyphens only")
-          .refine(slug => !RESERVED_SLUGS.some(r => r === slug), {
-            message: "This slug is reserved and cannot be used. Please choose a different name.",
-          }),
-        orgId: z.string().min(1, "Organization ID cannot be empty").optional(),
-        siteIdeas: z
-          .string()
-          .max(5000, "Site ideas must be less than 5000 characters")
-          .transform(val => val || "")
-          .optional()
-          .default(""),
-        templateId: z
-          .string()
-          .refine(val => val.startsWith("tmpl_"), {
-            message: "Template ID must start with 'tmpl_'",
-          })
-          .optional(),
-      })
-      .strict()
-      .brand<"DeploySubdomainRequest">(),
-    res: z.object({
-      ok: z.literal(true),
-      message: z.string(),
-      domain: z.string(),
-      chatUrl: z.string(),
-      orgId: z.string().optional(),
-    }),
+    req: DeploySubdomainSchema.brand<"DeploySubdomainRequest">(),
+    res: NewSiteSuccessResponseSchema,
   },
 
   /**
@@ -636,23 +636,11 @@ export const apiSchemas = {
   "import-repo": {
     req: z
       .object({
-        slug: z
-          .string()
-          .min(3, "Slug must be at least 3 characters")
-          .max(16, "Slug must be no more than 16 characters")
-          .regex(/^[a-z0-9]([a-z0-9-]{1,14}[a-z0-9])?$/, "Slug must be lowercase letters, numbers, and hyphens only")
-          .refine(slug => !RESERVED_SLUGS.some(r => r === slug), {
-            message: "This slug is reserved and cannot be used. Please choose a different name.",
-          }),
+        slug: DeploySlugSchema,
         repoUrl: z.string().min(1, "Repository URL is required"),
         branch: z.string().optional(),
         orgId: z.string().min(1, "Organization ID cannot be empty").optional(),
-        siteIdeas: z
-          .string()
-          .max(5000, "Site ideas must be less than 5000 characters")
-          .transform(val => val || "")
-          .optional()
-          .default(""),
+        siteIdeas: DeploySiteIdeasSchema,
       })
       .strict()
       .brand<"ImportRepoRequest">(),
@@ -662,6 +650,7 @@ export const apiSchemas = {
       domain: z.string(),
       chatUrl: z.string(),
       orgId: z.string().optional(),
+      executionMode: ExecutionModeSchema,
     }),
   },
 

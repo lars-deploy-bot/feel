@@ -217,25 +217,27 @@ export const POST = protectedRoute(async ({ user, req }) => {
 
   const { data, error } = await supabase
     .from("automation_jobs")
-    .insert({
-      site_id: parsed.site_id,
-      user_id: user.id,
-      name: parsed.name,
-      description: parsed.description ?? null,
-      trigger_type: parsed.trigger_type,
-      cron_schedule: parsed.cron_schedule ?? null,
-      cron_timezone: parsed.cron_timezone ?? null,
-      run_at: parsed.run_at ?? null,
-      action_type: parsed.action_type,
-      action_prompt: parsed.action_prompt ?? null,
-      action_source: parsed.action_source ?? null,
-      action_target_page: parsed.action_target_page ?? null,
-      skills: parsed.skills.length > 0 ? parsed.skills : [],
-      action_model: parsed.action_model ?? null,
-      email_address: parsed.trigger_type === "email" ? (parsed.email_address ?? null) : null,
-      is_active: parsed.is_active,
-      next_run_at: nextRunAt,
-    })
+    .insert([
+      {
+        site_id: parsed.site_id,
+        user_id: user.id,
+        name: parsed.name,
+        description: parsed.description ?? null,
+        trigger_type: parsed.trigger_type,
+        cron_schedule: parsed.cron_schedule ?? null,
+        cron_timezone: parsed.cron_timezone ?? null,
+        run_at: parsed.run_at ?? null,
+        action_type: parsed.action_type,
+        action_prompt: parsed.action_prompt ?? null,
+        action_source: parsed.action_source ?? null,
+        action_target_page: parsed.action_target_page ?? null,
+        skills: parsed.skills.length > 0 ? parsed.skills : [],
+        action_model: parsed.action_model ?? null,
+        email_address: parsed.trigger_type === "email" ? (parsed.email_address ?? null) : null,
+        is_active: parsed.is_active,
+        next_run_at: nextRunAt,
+      },
+    ])
     .select()
     .single()
 

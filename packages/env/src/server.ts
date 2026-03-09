@@ -119,6 +119,21 @@ export function getRedisUrl(): string | null {
 }
 
 /**
+ * Get validated E2B domain.
+ *
+ * Required whenever E2B-backed workspace execution is enabled.
+ */
+export function getE2bDomain(): string {
+  const domain = env.E2B_DOMAIN
+
+  if (!domain) {
+    throw new Error("E2B_DOMAIN is required. Set the E2B_DOMAIN environment variable.")
+  }
+
+  return domain
+}
+
+/**
  * Get superadmin emails with environment-aware validation
  *
  * - Production/Staging: SUPERADMIN_EMAILS is REQUIRED (throws if missing)
@@ -300,7 +315,11 @@ export function getFlowgladSecretKey(): string | undefined {
 }
 
 /**
- * Get E2B API key — required in all environments, no fallbacks.
+ * Get E2B API key.
+ *
+ * This remains fail-fast once an E2B-backed code path is actually used, but the
+ * env var is optional at process startup because the default execution mode is
+ * still systemd.
  *
  * @throws Error if E2B_API_KEY is not set
  */

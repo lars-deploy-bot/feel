@@ -9,7 +9,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
-import type { AppDatabase, IamDatabase } from "@webalive/database"
+import type { AppDatabase, ExecutionMode, IamDatabase } from "@webalive/database"
 import { assertValidServerId, getServerId } from "@webalive/shared"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
@@ -32,6 +32,7 @@ export interface DomainRegistration {
   email: string
   password?: string // Optional: plain password for new account creation or existing account login
   port: number
+  executionMode?: ExecutionMode
   orgId?: string // Optional: Organization ID to deploy to. If not provided, uses user's default org
   credits?: number // Deprecated: Credits are now managed per-org, not per-domain
 }
@@ -286,7 +287,12 @@ async function validateProvidedOrgId(orgId: string): Promise<void> {
 /**
  * Create domain entry in app schema
  */
-async function createDomainEntry(hostname: string, port: number, orgId: string): Promise<void> {
+async function createDomainEntry(
+  hostname: string,
+  port: number,
+  orgId: string,
+  executionMode: ExecutionMode,
+): Promise<void> {
   // Get server ID for multi-server isolation — validate format to catch placeholder values
   const serverId = getServerId()
   try {
@@ -304,6 +310,7 @@ async function createDomainEntry(hostname: string, port: number, orgId: string):
     hostname,
     port,
     org_id: orgId,
+    execution_mode: executionMode,
     server_id: serverId,
     is_test_env: false,
   })
@@ -371,7 +378,7 @@ export async function isDomainRegistered(hostname: string): Promise<boolean> {
  * @returns true if successful
  */
 export async function registerDomain(config: DomainRegistration): Promise<boolean> {
-  const { hostname, email, password, port, orgId: providedOrgId } = config
+  const { hostname, email, password, port, executionMode = "systemd", orgId: providedOrgId } = config
 
   try {
     // Check if domain already exists
@@ -389,7 +396,7 @@ export async function registerDomain(config: DomainRegistration): Promise<boolea
     const orgId = providedOrgId || (await getUserDefaultOrgId(userId, email))
 
     // Create domain entry
-    await createDomainEntry(hostname, port, orgId)
+    await createDomainEntry(hostname, port, orgId, executionMode)
 
     return true
   } catch (error) {

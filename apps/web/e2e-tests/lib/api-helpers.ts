@@ -15,17 +15,14 @@
 import type { APIRequestContext, Request } from "@playwright/test"
 import type { ValidatedBody } from "@/types/guards/api"
 
-export interface ApiResult<T = unknown> {
-  ok: boolean
-  status: number
-  data: T
-}
-
 /**
  * GET a JSON API endpoint. Returns a plain object with `ok` as a boolean.
  * Throws if the response is not valid JSON (by design — all our API endpoints return JSON).
  */
-export async function apiGet<T = unknown>(request: APIRequestContext, url: string): Promise<ApiResult<T>> {
+export async function apiGet<T = unknown>(
+  request: APIRequestContext,
+  url: string,
+): Promise<{ ok: boolean; status: number; data: T }> {
   const response = await request.get(url)
   const data = (await response.json()) as T
   return {
@@ -43,7 +40,7 @@ export async function apiPost<T = unknown>(
   request: APIRequestContext,
   url: string,
   body: Record<string, unknown>,
-): Promise<ApiResult<T>> {
+): Promise<{ ok: boolean; status: number; data: T }> {
   const response = await request.post(url, { data: body })
   const data = (await response.json()) as T
   return {

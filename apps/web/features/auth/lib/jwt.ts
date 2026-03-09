@@ -1,8 +1,9 @@
 import { env } from "@webalive/env/server"
-import { isOrgRole, ORG_ROLES, type OrgRole, type OrgRoleMap } from "@webalive/shared"
+import { buildSessionOrgClaims, isOrgRole, ORG_ROLES, type OrgRole, type OrgRoleMap } from "@webalive/shared"
 import { importJWK, jwtVerify, SignJWT } from "jose"
 import type { Secret } from "jsonwebtoken"
 import jwt from "jsonwebtoken"
+import { createIamClient } from "@/lib/supabase/iam"
 import { isRecord } from "@/lib/utils"
 
 const { JsonWebTokenError, TokenExpiredError, sign: signHS256, verify: verifyHS256 } = jwt
@@ -424,7 +425,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayloadV
 /**
  * Refresh the session JWT to include a newly-created org.
  *
- * If the org is already in the token, returns the existing token unchanged.
+ * If the org is already in the token, refreshes claims from IAM so roles stay authoritative.
  * Returns the new (or existing) token string, or null if the current token is invalid.
  */
 export async function refreshSessionTokenWithOrg(
@@ -435,9 +436,17 @@ export async function refreshSessionTokenWithOrg(
   const payload = await verifySessionToken(currentToken)
   if (!payload) return null
 
-  const isNewOrg = !payload.orgIds.includes(newOrgId)
-  const orgIds = isNewOrg ? [...payload.orgIds, newOrgId] : payload.orgIds
-  const orgRoles: SessionOrgRoles = isNewOrg ? { ...payload.orgRoles, [newOrgId]: "owner" as const } : payload.orgRoles
+  const iam = await createIamClient("service")
+  const { data: memberships, error } = await iam.from("org_memberships").select("org_id, role").eq("user_id", user.id)
+
+  if (error) {
+    throw new Error(`[JWT] Failed to refresh org memberships for ${user.id}: ${error.message}`)
+  }
+
+  const { orgIds, orgRoles } = buildSessionOrgClaims(memberships)
+  if (!orgIds.includes(newOrgId)) {
+    return currentToken
+  }
 
   return createSessionToken({
     userId: user.id,

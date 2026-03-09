@@ -14,24 +14,20 @@ export const VALID_ENVS = ["local", "preview", "staging"] as const
 export const STANDARD_ENVS = ["local", "preview"] as const
 export const LIVE_ENVS = ["preview", "staging"] as const
 
-export type TestEnv = (typeof VALID_ENVS)[number]
-export type StandardEnv = (typeof STANDARD_ENVS)[number]
-export type LiveEnv = (typeof LIVE_ENVS)[number]
-
-function isTestEnv(value: string): value is TestEnv {
+function isTestEnv(value: string): value is (typeof VALID_ENVS)[number] {
   return VALID_ENVS.some(env => env === value)
 }
 
-function isStandardEnv(value: TestEnv): value is StandardEnv {
+function isStandardEnv(value: (typeof VALID_ENVS)[number]): value is (typeof STANDARD_ENVS)[number] {
   return STANDARD_ENVS.some(env => env === value)
 }
 
-function isLiveEnv(value: TestEnv): value is LiveEnv {
+function isLiveEnv(value: (typeof VALID_ENVS)[number]): value is (typeof LIVE_ENVS)[number] {
   return LIVE_ENVS.some(env => env === value)
 }
 
 /** Validate and return TEST_ENV */
-export function getTestEnv(): TestEnv {
+export function getTestEnv(): (typeof VALID_ENVS)[number] {
   const env = process.env.TEST_ENV
 
   if (!env) {
@@ -48,7 +44,7 @@ export function getTestEnv(): TestEnv {
   return env
 }
 
-export function assertStandardTestEnv(env: TestEnv): asserts env is StandardEnv {
+export function assertStandardTestEnv(env: (typeof VALID_ENVS)[number]): asserts env is (typeof STANDARD_ENVS)[number] {
   if (!isStandardEnv(env)) {
     throw new Error(
       `Standard E2E rejects TEST_ENV="${env}". ` +
@@ -58,13 +54,13 @@ export function assertStandardTestEnv(env: TestEnv): asserts env is StandardEnv 
   }
 }
 
-export function assertLiveTestEnv(env: TestEnv): asserts env is LiveEnv {
+export function assertLiveTestEnv(env: (typeof VALID_ENVS)[number]): asserts env is (typeof LIVE_ENVS)[number] {
   if (!isLiveEnv(env)) {
     throw new Error(`Live E2E rejects TEST_ENV="${env}". Use one of: ${LIVE_ENVS.join(", ")}.`)
   }
 }
 
-export function assertLocalTestEnv(env: TestEnv, laneName: string): void {
+export function assertLocalTestEnv(env: (typeof VALID_ENVS)[number], laneName: string): void {
   if (env !== "local") {
     throw new Error(`${laneName} requires TEST_ENV=local. Loaded TEST_ENV="${env}".`)
   }
@@ -74,7 +70,7 @@ function isLoopbackHostname(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1"
 }
 
-function assertBaseUrlMatchesEnv(env: TestEnv, baseUrl: string): void {
+function assertBaseUrlMatchesEnv(env: (typeof VALID_ENVS)[number], baseUrl: string): void {
   const url = new URL(baseUrl)
 
   if (env === "local") {
@@ -92,12 +88,12 @@ function assertBaseUrlMatchesEnv(env: TestEnv, baseUrl: string): void {
   }
 }
 
-export function assertStandardE2ETarget(env: TestEnv, baseUrl: string): void {
+export function assertStandardE2ETarget(env: (typeof VALID_ENVS)[number], baseUrl: string): void {
   assertStandardTestEnv(env)
   assertBaseUrlMatchesEnv(env, baseUrl)
 }
 
-export function assertLiveE2ETarget(env: TestEnv, baseUrl: string): void {
+export function assertLiveE2ETarget(env: (typeof VALID_ENVS)[number], baseUrl: string): void {
   assertLiveTestEnv(env)
   assertBaseUrlMatchesEnv(env, baseUrl)
 }

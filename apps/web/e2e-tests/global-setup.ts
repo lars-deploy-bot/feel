@@ -6,8 +6,10 @@
 
 import { chromium, type FullConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
+import { VerifyTenantResponseSchema } from "@/app/api/test/test-route-schemas"
 import { requireProjectBaseUrl } from "./lib/base-url"
 import { TEST_ENV } from "./lib/test-env"
+import { buildE2ETestHeaders } from "./lib/test-headers"
 
 const TENANT_VERIFY_TIMEOUT_MS = 30_000
 const TENANT_VERIFY_REQUEST_TIMEOUT_MS = 8_000
@@ -20,37 +22,8 @@ function resolveBaseUrl(config: FullConfig): string {
   return requireProjectBaseUrl(projectBaseUrl)
 }
 
-interface TenantVerifyResponse {
-  ready?: boolean
-  missing?: string
-  reason?: string
-  check?: string
-  error?: string
-  code?: string
-}
-
-interface TenantStatus {
-  ready: boolean
-  reason: string
-  statusCode?: number
-}
-
 function buildWorkerEmail(workerIndex: number): string {
   return `${TEST_CONFIG.WORKER_EMAIL_PREFIX}${workerIndex}@${TEST_CONFIG.EMAIL_DOMAIN}`
-}
-
-function buildTestHeaders(includeJsonContentType: boolean): Record<string, string> {
-  const headers: Record<string, string> = {}
-  if (includeJsonContentType) {
-    headers["Content-Type"] = "application/json"
-  }
-
-  const testSecret = process.env.E2E_TEST_SECRET
-  if (testSecret) {
-    headers["x-test-secret"] = testSecret
-  }
-
-  return headers
 }
 
 function getBackoffDelayMs(attempt: number): number {
@@ -65,7 +38,10 @@ function normalizeErrorMessage(error: unknown): string {
   return String(error)
 }
 
-function formatWorkerStatus(workerIndex: number, status: TenantStatus): string {
+function formatWorkerStatus(
+  workerIndex: number,
+  status: { ready: boolean; reason: string; statusCode?: number },
+): string {
   const statusCode = status.statusCode !== undefined ? ` [${status.statusCode}]` : ""
   return `w${workerIndex}:${status.reason}${statusCode}`
 }
@@ -78,11 +54,7 @@ async function sleep(ms: number): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function fetchTenantStatus(
-  baseUrl: string,
-  email: string,
-  headers: Record<string, string>,
-): Promise<TenantStatus> {
+async function fetchTenantStatus(baseUrl: string, email: string, headers: Record<string, string>) {
   try {
     const res = await fetch(`${baseUrl}/api/test/verify-tenant?email=${encodeURIComponent(email)}`, {
       headers,
@@ -100,7 +72,7 @@ async function fetchTenantStatus(
       }
     }
 
-    const data = (await res.json()) as TenantVerifyResponse
+    const data = VerifyTenantResponseSchema.parse(await res.json())
     if (data.ready === true) {
       return { ready: true, reason: "ready", statusCode: res.status }
     }
@@ -212,7 +184,7 @@ async function verifyTenantReadiness(baseUrl: string, workers: number, headers: 
   const startedAt = Date.now()
   const deadline = startedAt + TENANT_VERIFY_TIMEOUT_MS
   const workerIndices = Array.from({ length: workers }, (_, idx) => idx)
-  const lastStatuses = new Map<number, TenantStatus>()
+  const lastStatuses = new Map<number, Awaited<ReturnType<typeof fetchTenantStatus>>>()
   let attempt = 0
 
   while (Date.now() < deadline) {
@@ -290,8 +262,8 @@ export default async function globalSetup(config: FullConfig) {
   console.log(`🗄️ [Global Setup] Supabase URL: ${process.env.SUPABASE_URL ?? "<unset>"}`)
   console.log(`🔧 [Global Setup] Mode: ${isMultiPort ? "multi-port" : "single-server"}\n`)
 
-  const bootstrapHeaders = buildTestHeaders(true)
-  const verifyHeaders = buildTestHeaders(false)
+  const bootstrapHeaders = buildE2ETestHeaders(true)
+  const verifyHeaders = buildE2ETestHeaders()
 
   try {
     await Promise.all(

@@ -94,6 +94,7 @@ export const serverConfigSchema = z
         sitesRoot: pathStr,
         templatesRoot: pathStr,
         imagesStorage: pathStr,
+        e2bScratchRoot: pathStr.optional(),
       })
       .strict(),
 

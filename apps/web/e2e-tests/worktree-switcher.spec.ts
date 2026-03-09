@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto"
 import { test as base, expect, type Response } from "@playwright/test"
 import { COOKIE_NAMES, createTestStorageState, DOMAINS, TEST_CONFIG } from "@webalive/shared"
 import jwt from "jsonwebtoken"
+import { BootstrapTenantResponseSchema, type TestTenant } from "@/app/api/test/test-route-schemas"
 import { DEFAULT_USER_SCOPES } from "@/features/auth/lib/jwt"
-import type { TestUser } from "./fixtures"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { gotoChatFast } from "./helpers/assertions"
 import { requireProjectBaseUrl } from "./lib/base-url"
@@ -13,6 +13,7 @@ import {
   getStrictApiGuardEnabled,
   isGuardedApiPath,
 } from "./lib/strict-api-guard"
+import { buildE2ETestHeaders } from "./lib/test-headers"
 
 /**
  * Worktree Switcher E2E Tests
@@ -27,8 +28,8 @@ import {
 // ─── Custom fixture: authenticatedPage with WORKTREES enabled ────────────────
 
 const test = base.extend<
-  { authenticatedPage: import("@playwright/test").Page; workerTenant: TestUser },
-  { workerStorageState: TestUser }
+  { authenticatedPage: import("@playwright/test").Page; workerTenant: TestTenant },
+  { workerStorageState: TestTenant }
 >({
   page: async ({ page }, use) => {
     const previewBase = process.env.NEXT_PUBLIC_PREVIEW_BASE || DOMAINS.PREVIEW_BASE
@@ -47,21 +48,17 @@ const test = base.extend<
       if (!runId) throw new Error("E2E_RUN_ID not set")
 
       const baseUrl = requireProjectBaseUrl(workerInfo.project.use.baseURL)
-      const testSecret = process.env.E2E_TEST_SECRET
-      const headers: Record<string, string> = { "Content-Type": "application/json" }
-      if (testSecret) headers["x-test-secret"] = testSecret
 
       const email = `${TEST_CONFIG.WORKER_EMAIL_PREFIX}${workerIndex}@${TEST_CONFIG.EMAIL_DOMAIN}`
       const workspace = `${TEST_CONFIG.WORKSPACE_PREFIX}${workerIndex}.${TEST_CONFIG.EMAIL_DOMAIN}`
 
       const res = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
         method: "POST",
-        headers,
+        headers: buildE2ETestHeaders(true),
         body: JSON.stringify({ runId, workerIndex, email, workspace }),
       })
       if (!res.ok) throw new Error(`Bootstrap failed: ${res.status}`)
-      const data = await res.json()
-      if (!data.ok) throw new Error(`Tenant error: ${data.error}`)
+      const data = BootstrapTenantResponseSchema.parse(await res.json())
       await use(data.tenant)
     },
     { scope: "worker" },

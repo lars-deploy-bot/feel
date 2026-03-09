@@ -1,14 +1,9 @@
 import { randomUUID } from "node:crypto"
-import type { BrowserContext, Page, Response } from "@playwright/test"
+import type { BrowserContext, Page } from "@playwright/test"
 import { COOKIE_NAMES, createWorkspaceStorageValue, TEST_CONFIG, WORKSPACE_STORAGE } from "@webalive/shared"
 import jwt from "jsonwebtoken"
+import type { TestTenant } from "@/app/api/test/test-route-schemas"
 import { DEFAULT_USER_SCOPES } from "@/features/auth/lib/jwt"
-import type { TestUser } from "./fixtures"
-
-interface LoginResult {
-  loginResponse: Response
-  loginData: unknown
-}
 
 /**
  * Login helper for e2e tests
@@ -16,8 +11,8 @@ interface LoginResult {
  */
 export async function login(
   page: Page,
-  tenant: { email: string; workspace: string; orgId?: string },
-): Promise<LoginResult> {
+  tenant: Pick<TestTenant, "email" | "workspace"> & { orgId?: TestTenant["orgId"] },
+) {
   await page.goto("/")
 
   // Set workspace in localStorage using typed helper from @webalive/shared
@@ -62,7 +57,7 @@ export async function login(
  * @param user - Test user from fixture
  * @param context - Playwright browser context
  */
-export async function setAuthCookie(user: TestUser, context: BrowserContext) {
+export async function setAuthCookie(user: TestTenant, context: BrowserContext) {
   const JWT_SECRET = process.env.JWT_SECRET
   if (!JWT_SECRET) throw new Error("JWT_SECRET not set — add it to .env.e2e.local")
 
