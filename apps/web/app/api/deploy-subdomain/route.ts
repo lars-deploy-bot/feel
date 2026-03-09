@@ -1,6 +1,5 @@
-import { existsSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
-import { COOKIE_NAMES, PATHS } from "@webalive/shared"
+import { COOKIE_NAMES } from "@webalive/shared"
 import { DeploymentError } from "@webalive/site-controller"
 import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
@@ -12,6 +11,7 @@ import { buildSubdomain } from "@/lib/config"
 import { runStrictDeployment } from "@/lib/deployment/deploy-pipeline"
 import { DomainRegistrationError } from "@/lib/deployment/domain-registry"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
+import { inspectSiteOccupancy } from "@/lib/deployment/site-occupancy"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
 import { incrementTemplateDeployCount } from "@/lib/deployment/template-stats"
 import { validateTemplateFromDb } from "@/lib/deployment/template-validation"
@@ -58,12 +58,11 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Also check if directory exists (extra safety)
-    const siteDir = `${PATHS.SITES_ROOT}/${fullDomain}`
-    if (existsSync(siteDir)) {
+    const occupancy = inspectSiteOccupancy(slug)
+    if (occupancy.occupied) {
       return structuredErrorResponse(ErrorCodes.SLUG_TAKEN, {
         status: 409,
-        details: { message: "Site directory already exists. Choose a different slug." },
+        details: { message: `Slug "${slug}" is not reusable yet: ${occupancy.reason}. Choose a different slug.` },
       })
     }
 

@@ -249,6 +249,9 @@ export type {
 } from "./stream-tokens.js"
 export { SUPER_TEMPLATE_CATEGORIES } from "./super-template-categories.js"
 export {
+  DEPLOYMENT_TEMPLATES,
+  type DeploymentTemplate,
+  getDeploymentTemplateById,
   getTemplateIdsInline,
   getTemplateListForDocs,
   // Website templates - SINGLE SOURCE OF TRUTH

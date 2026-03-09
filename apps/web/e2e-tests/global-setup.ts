@@ -7,6 +7,7 @@
 import { chromium, type FullConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
 import { requireProjectBaseUrl } from "./lib/base-url"
+import { seedTemplatesForE2E } from "./lib/seed-templates"
 import { TEST_ENV } from "./lib/test-env"
 
 const TENANT_VERIFY_TIMEOUT_MS = 30_000
@@ -294,6 +295,8 @@ export default async function globalSetup(config: FullConfig) {
   const verifyHeaders = buildTestHeaders(false)
 
   try {
+    seedTemplatesForE2E(TEST_ENV)
+
     await Promise.all(
       Array.from({ length: workers }).map(async (_, i) => {
         const email = buildWorkerEmail(i)

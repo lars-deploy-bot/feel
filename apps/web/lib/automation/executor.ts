@@ -330,25 +330,33 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
           }
         }
 
-        if (orgIds.length > 0) {
-          sessionCookie = await createSessionToken({
-            userId: params.userId,
-            email: userProfile.email,
-            name: userProfile.displayName,
-            sid: crypto.randomUUID(),
-            orgIds,
-            orgRoles,
-          })
-        } else {
-          console.warn(
-            `[Automation ${requestId}] User ${params.userId} has no valid membership for org ${params.orgId} — skipping session token`,
+        if (orgIds.length === 0) {
+          throw new Error(
+            `User ${params.userId} is no longer a member of org ${params.orgId}. ` +
+              "Automation cannot run — the creator must be a member of the org that owns this site.",
           )
         }
+
+        sessionCookie = await createSessionToken({
+          userId: params.userId,
+          email: userProfile.email,
+          name: userProfile.displayName,
+          sid: crypto.randomUUID(),
+          orgIds,
+          orgRoles,
+        })
       } else {
-        console.warn(`[Automation ${requestId}] Could not find user ${params.userId} for session token`)
+        throw new Error(
+          `User ${params.userId} has no email address. Automation cannot run without a valid user profile.`,
+        )
       }
     } catch (err) {
-      console.warn(`[Automation ${requestId}] Failed to mint session token:`, err)
+      // Re-throw our own validation errors — only swallow unexpected infra failures
+      if (err instanceof Error && err.message.includes("is no longer a member")) throw err
+      if (err instanceof Error && err.message.includes("has no email address")) throw err
+      throw new Error(
+        `Failed to validate automation user membership: ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
 
     // === Build Prompts ===

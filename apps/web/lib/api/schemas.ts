@@ -1554,6 +1554,7 @@ export const apiSchemas = {
     res: z.object({
       available: z.boolean(),
       slug: z.string().optional(),
+      reason: z.string().optional(),
     }),
   },
 

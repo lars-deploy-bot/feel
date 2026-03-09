@@ -100,7 +100,9 @@ timer_start
 banner "🚀 SHIP: Alive Deployment"
 
 echo -e "Target: ${BOLD}$TARGET_DISPLAY${NC}"
-[ "$SKIP_E2E" = true ] && echo -e "${YELLOW}⚠️  Skipping E2E tests${NC}"
+if [ "$SKIP_E2E" = true ]; then
+    echo -e "${YELLOW}⚠️  Skipping E2E tests${NC}"
+fi
 echo ""
 
 # -----------------------------------------------------------------------------

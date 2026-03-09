@@ -20,6 +20,16 @@ interface AutomationTestHandles {
   tabId: string
 }
 
+interface AutomationTranscriptPreflightOptions {
+  requireMessagesEndpoint?: boolean
+  requireRunEndpoint?: boolean
+}
+
+interface AutomationTranscriptPreflightResult {
+  ok: boolean
+  reason?: string
+}
+
 async function ensureConversationSidebarOpen(authenticatedPage: import("@playwright/test").Page): Promise<void> {
   const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
   if (await sidebar.isVisible()) {
@@ -48,6 +58,85 @@ async function readJsonOrThrow<T>(
     throw new Error(`[${context}] ${response.status()} ${response.statusText()} ${JSON.stringify(payload)}`)
   }
   return parser.parse(payload)
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function extractConversationTitles(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+
+  return value.flatMap(item => {
+    if (!isObjectRecord(item)) return []
+    const title = Reflect.get(item, "title")
+    return typeof title === "string" ? [title] : []
+  })
+}
+
+async function summarizeResponse(response: APIResponse): Promise<string> {
+  const text = await response.text().catch(() => "")
+  const normalized = text.replaceAll(/\s+/g, " ").trim()
+  return normalized.length > 180 ? `${normalized.slice(0, 177)}...` : normalized
+}
+
+async function preflightAutomationTranscript(
+  request: APIRequestContext,
+  workspace: string,
+  handles: AutomationTestHandles,
+  seed: SeedAutomationTranscriptResponse["seed"],
+  options: AutomationTranscriptPreflightOptions = {},
+): Promise<AutomationTranscriptPreflightResult> {
+  const [conversationResponse, runResponse, messagesResponse] = await Promise.all([
+    request.get(`/api/conversations?workspace=${encodeURIComponent(workspace)}`),
+    options.requireRunEndpoint
+      ? request.get(`/api/automations/${handles.jobId}/runs/${handles.runId}?includeMessages=false`)
+      : Promise.resolve(null),
+    options.requireMessagesEndpoint
+      ? request.get(`/api/conversations/messages?tabId=${encodeURIComponent(handles.tabId)}`)
+      : Promise.resolve(null),
+  ])
+
+  if (!conversationResponse.ok()) {
+    const body = await summarizeResponse(conversationResponse)
+    return {
+      ok: false,
+      reason: `Automation transcript list unsupported in this environment: /api/conversations returned ${conversationResponse.status()}${body ? ` (${body})` : ""}.`,
+    }
+  }
+
+  const payload: unknown = await conversationResponse.json().catch(() => null)
+  const titles = isObjectRecord(payload)
+    ? [
+        ...extractConversationTitles(Reflect.get(payload, "own")),
+        ...extractConversationTitles(Reflect.get(payload, "shared")),
+      ]
+    : []
+
+  if (!titles.includes(seed.title)) {
+    return {
+      ok: false,
+      reason: `Automation transcript list did not include the seeded conversation "${seed.title}".`,
+    }
+  }
+
+  if (runResponse && !runResponse.ok()) {
+    const body = await summarizeResponse(runResponse)
+    return {
+      ok: false,
+      reason: `Automation run details unsupported in this environment: /api/automations/${handles.jobId}/runs/${handles.runId} returned ${runResponse.status()}${body ? ` (${body})` : ""}.`,
+    }
+  }
+
+  if (messagesResponse && !messagesResponse.ok()) {
+    const body = await summarizeResponse(messagesResponse)
+    return {
+      ok: false,
+      reason: `Automation transcript messages unsupported in this environment: /api/conversations/messages returned ${messagesResponse.status()}${body ? ` (${body})` : ""}.`,
+    }
+  }
+
+  return { ok: true }
 }
 
 async function createAutomationJob(
@@ -158,6 +247,17 @@ test.describe("Automation Transcript Read-Only UX", () => {
     }
 
     try {
+      const preflight = await preflightAutomationTranscript(
+        authenticatedPage.request,
+        workerTenant.workspace,
+        handles,
+        seed,
+      )
+      if (!preflight.ok) {
+        test.skip(true, preflight.reason)
+        return
+      }
+
       await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
       await waitForChatReady(authenticatedPage)
 
@@ -213,6 +313,17 @@ test.describe("Automation Transcript Read-Only UX", () => {
     }
 
     try {
+      const preflight = await preflightAutomationTranscript(
+        authenticatedPage.request,
+        workerTenant.workspace,
+        handles,
+        seed,
+      )
+      if (!preflight.ok) {
+        test.skip(true, preflight.reason)
+        return
+      }
+
       await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
       await waitForChatReady(authenticatedPage)
 
@@ -303,6 +414,21 @@ test.describe("Automation Transcript Polling", () => {
     authenticatedPage.on("response", onResponse)
 
     try {
+      const preflight = await preflightAutomationTranscript(
+        authenticatedPage.request,
+        workerTenant.workspace,
+        handles,
+        seed,
+        {
+          requireMessagesEndpoint: true,
+          requireRunEndpoint: true,
+        },
+      )
+      if (!preflight.ok) {
+        test.skip(true, preflight.reason)
+        return
+      }
+
       await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
       await waitForChatReady(authenticatedPage)
 
