@@ -392,6 +392,54 @@ export function createWorkspaceStorageValue(workspace: string, orgId: string | n
   return JSON.stringify(storageValue)
 }
 
+function isWorkspaceStorageRecentItem(item: unknown): item is WorkspaceStorageRecentItem {
+  if (typeof item !== "object" || item === null) return false
+  return (
+    typeof Reflect.get(item, "domain") === "string" &&
+    typeof Reflect.get(item, "lastAccessed") === "number" &&
+    typeof Reflect.get(item, "orgId") === "string"
+  )
+}
+
+export function isWorkspaceStorageValue(value: unknown): value is WorkspaceStorageValue {
+  if (typeof value !== "object" || value === null) return false
+
+  const state = Reflect.get(value, "state")
+  if (typeof state !== "object" || state === null) return false
+
+  const currentWorkspace = Reflect.get(state, "currentWorkspace")
+  const selectedOrgId = Reflect.get(state, "selectedOrgId")
+  const recentWorkspaces = Reflect.get(state, "recentWorkspaces")
+  const currentWorktreeByWorkspace = Reflect.get(state, "currentWorktreeByWorkspace")
+  const version = Reflect.get(value, "version")
+
+  if (Array.isArray(currentWorktreeByWorkspace)) return false
+
+  return (
+    (currentWorkspace === null || typeof currentWorkspace === "string") &&
+    (selectedOrgId === null || typeof selectedOrgId === "string") &&
+    Array.isArray(recentWorkspaces) &&
+    recentWorkspaces.every(isWorkspaceStorageRecentItem) &&
+    typeof currentWorktreeByWorkspace === "object" &&
+    currentWorktreeByWorkspace !== null &&
+    Object.values(currentWorktreeByWorkspace).every(worktree => worktree === null || typeof worktree === "string") &&
+    version === WORKSPACE_STORAGE.VERSION
+  )
+}
+
+export function parseWorkspaceStorageValue(raw: string | null): WorkspaceStorageValue {
+  if (!raw) {
+    throw new Error("Workspace storage missing")
+  }
+
+  const parsed: unknown = JSON.parse(raw)
+  if (!isWorkspaceStorageValue(parsed)) {
+    throw new Error("Workspace storage has invalid shape")
+  }
+
+  return parsed
+}
+
 /**
  * Preview Navigation Messages - Single Source of Truth
  *

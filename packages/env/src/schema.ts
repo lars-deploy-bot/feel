@@ -189,6 +189,8 @@ export const serverSchema = {
 
   // E2B Sandbox
   E2B_API_KEY: e2bApiKey.optional(),
+  E2B_DOMAIN: domainName.optional(),
+  NEW_SITE_EXECUTION_MODE: z.enum(["systemd", "e2b"]).default("systemd"),
 
   // E2E Testing (optional - only needed for staging E2E tests)
   // MUST NOT be set in production — test routes become accessible if set.
@@ -275,6 +277,8 @@ export const runtimeEnv = {
   NODE_ENV: process.env.NODE_ENV,
   SIGNUP_ACCESS_CODE: process.env.SIGNUP_ACCESS_CODE,
   E2B_API_KEY: process.env.E2B_API_KEY,
+  E2B_DOMAIN: process.env.E2B_DOMAIN,
+  NEW_SITE_EXECUTION_MODE: process.env.NEW_SITE_EXECUTION_MODE,
   E2E_TEST_SECRET: process.env.E2E_TEST_SECRET,
   E2E_RUN_ID: process.env.E2E_RUN_ID,
   SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,

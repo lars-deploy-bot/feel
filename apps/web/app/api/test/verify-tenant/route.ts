@@ -9,9 +9,9 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
-import type { ExecutionMode, SandboxStatus } from "@webalive/database"
 import { env } from "@webalive/env/server"
 import { PATHS, TEST_CONFIG } from "@webalive/shared"
+import type { VerifyTenantSandbox } from "@/app/api/test/test-route-schemas"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
@@ -22,12 +22,6 @@ type TenantCheck = "user" | "membership" | "org" | "domain"
 interface PostgrestErrorLike {
   code?: string
   message?: string
-}
-
-interface ReadySandboxState {
-  executionMode: ExecutionMode
-  sandboxId: string | null
-  sandboxStatus: SandboxStatus | null
 }
 
 function asPostgrestError(error: unknown): PostgrestErrorLike | null {
@@ -127,7 +121,7 @@ export async function GET(req: Request) {
     // 4. Check if domain exists (extract workspace from email pattern)
     // Email format is e2e_w{N}@alive.local (TEST_CONFIG.WORKER_EMAIL_PREFIX = "e2e_w")
     const workerIndex = email.match(/e2e_w(\d+)@/)?.[1]
-    let sandboxState: ReadySandboxState | undefined
+    let sandboxState: VerifyTenantSandbox | undefined
     if (workerIndex !== undefined) {
       const workspace = `${TEST_CONFIG.WORKSPACE_PREFIX}${workerIndex}.${TEST_CONFIG.EMAIL_DOMAIN}`
       // Use limit(1) instead of single() - we just need to verify at least one domain exists

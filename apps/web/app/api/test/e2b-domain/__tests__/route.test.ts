@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type { TestE2BDomain } from "@/app/api/test/test-route-schemas"
 import { ErrorCodes } from "@/lib/error-codes"
 
 // Proxy env mock to allow vi.stubEnv() control
@@ -18,6 +19,13 @@ vi.mock("@webalive/env/server", () => envMock)
 
 vi.mock("@/lib/supabase/app", () => ({
   createAppClient: vi.fn(),
+}))
+
+const mockResetE2bScratchUserWorkspace = vi.fn(async (_workspace: string, _sourceUserDir?: string) => "/tmp/e2b/user")
+
+vi.mock("@/lib/sandbox/e2b-workspace", () => ({
+  resetE2bScratchUserWorkspace: (workspace: string, sourceUserDir?: string) =>
+    mockResetE2bScratchUserWorkspace(workspace, sourceUserDir),
 }))
 
 const mockWriteFile = vi.fn(async (_path: string, _content: string) => {})
@@ -63,38 +71,30 @@ vi.mock("e2b", () => ({
 const { GET, POST } = await import("../route")
 const { createAppClient } = await import("@/lib/supabase/app")
 
-function isExecutionMode(v: unknown): v is DomainState["execution_mode"] {
+function isExecutionMode(v: unknown): v is TestE2BDomain["execution_mode"] {
   return v === "systemd" || v === "e2b"
 }
 
-function isSandboxStatus(v: unknown): v is DomainState["sandbox_status"] {
+function isSandboxStatus(v: unknown): v is TestE2BDomain["sandbox_status"] {
   return v === "creating" || v === "running" || v === "dead" || v === null
 }
 
 /** Concentrate the mock-to-SupabaseClient type mismatch in one place.
  * The mock only implements the `.from("domains")` chain used by the route.
  * `as never` bridges the partial mock to the full SupabaseClient return type. */
-function mockAppClient(options: MockOptions): void {
+function mockAppClient(options: {
+  domain: TestE2BDomain | null
+  selectError?: { code?: string; message?: string } | null
+  updateError?: { code?: string; message?: string } | null
+}): void {
   vi.mocked(createAppClient).mockResolvedValue(createMockAppClient(options) as never)
 }
 
-interface DomainState {
-  domain_id: string
-  hostname: string
-  org_id: string | null
-  is_test_env: boolean
-  execution_mode: "systemd" | "e2b"
-  sandbox_id: string | null
-  sandbox_status: "creating" | "running" | "dead" | null
-}
-
-interface MockOptions {
-  domain: DomainState | null
+function createMockAppClient(options: {
+  domain: TestE2BDomain | null
   selectError?: { code?: string; message?: string } | null
   updateError?: { code?: string; message?: string } | null
-}
-
-function createMockAppClient(options: MockOptions) {
+}) {
   let domainState = options.domain
   const selectError = options.selectError ?? null
   const updateError = options.updateError ?? null
@@ -142,7 +142,7 @@ function createMockAppClient(options: MockOptions) {
   }
 }
 
-function makeDomain(overrides: Partial<DomainState> = {}): DomainState {
+function makeDomain(overrides: Partial<TestE2BDomain> = {}): TestE2BDomain {
   return {
     domain_id: "dom_1",
     hostname: "e2e-w0.alive.local",
@@ -315,6 +315,11 @@ describe("POST /api/test/e2b-domain", () => {
     expect(json.domain.execution_mode).toBe("e2b")
     expect(json.domain.sandbox_id).toBeNull()
     expect(json.domain.sandbox_status).toBeNull()
+    expect(mockResetE2bScratchUserWorkspace).toHaveBeenCalledWith(
+      "e2e-w0.alive.local",
+      "/srv/webalive/sites/e2e-w0.alive.local/user",
+    )
+    expect(json.scratchWorkspace).toBe("/tmp/e2b/user")
   })
 
   it("kills active sandbox when killSandbox=true", async () => {
@@ -416,6 +421,20 @@ describe("POST /api/test/e2b-domain", () => {
       "/srv/webalive/sites/e2e-w0.alive.local/user/vite.config.ts",
       "export default {}",
     )
+  })
+
+  it("does not prepare E2B scratch workspace for systemd updates", async () => {
+    const res = await POST(
+      makePostRequest({
+        workspace: "e2e-w0.alive.local",
+        executionMode: "systemd",
+      }),
+    )
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(mockResetE2bScratchUserWorkspace).not.toHaveBeenCalled()
+    expect(json.scratchWorkspace).toBeNull()
   })
 
   it("blocks path traversal in seedHostFiles", async () => {

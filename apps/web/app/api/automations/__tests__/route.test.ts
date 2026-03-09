@@ -76,13 +76,14 @@ const mockServiceAppClient = vi.fn(() => ({
   from: (table: string) => {
     if (table === "automation_jobs") {
       return {
-        insert: (row: Record<string, unknown>) => {
-          insertedRow = row
+        insert: (rows: Record<string, unknown> | Record<string, unknown>[]) => {
+          const row = Array.isArray(rows) ? rows[0] : rows
+          insertedRow = row ?? null
           return {
             select: () => ({
               single: () =>
                 Promise.resolve({
-                  data: { id: "job-new", ...row },
+                  data: row ? { id: "job-new", ...row } : null,
                   error: null,
                 }),
             }),

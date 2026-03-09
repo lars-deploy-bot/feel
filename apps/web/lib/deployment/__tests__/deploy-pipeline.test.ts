@@ -2,6 +2,8 @@ import { PATHS } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
 
+const MOCK_E2B_SCRATCH = "/mock/e2b-scratch"
+
 const callOrder: string[] = []
 
 const pathExists = vi.fn<(filePath: string) => boolean>(() => false)
@@ -20,12 +22,53 @@ const deploySiteMock = vi.fn<(input: unknown) => Promise<{ domain: string; port:
   }),
 )
 const registerDomainMock = vi.fn<(input: unknown) => Promise<void>>(async () => undefined)
+const rmMock = vi.fn<(targetPath: string, options: { recursive: boolean; force: boolean }) => Promise<void>>(
+  async () => undefined,
+)
+const getNewSiteExecutionModeMock = vi.fn<() => "systemd" | "e2b">(() => "systemd")
+const prepareE2bSiteDeploymentMock = vi.fn<
+  (input: unknown) => Promise<{ port: number; serviceName: string; scratchWorkspace: string }>
+>(async () => ({
+  port: 3701,
+  serviceName: "e2b-site@testsite.alive.best",
+  scratchWorkspace: `${MOCK_E2B_SCRATCH}/testsite.alive.best/user`,
+}))
+const createInitialSiteSandboxMock = vi.fn<(domain: unknown, scratchWorkspace: string) => Promise<void>>(
+  async () => undefined,
+)
+const resolveDomainRuntimeMock = vi.fn<
+  (hostname: string) => Promise<{
+    domain_id: string
+    hostname: string
+    port: number
+    is_test_env: boolean
+    execution_mode: "e2b"
+    sandbox_id: string | null
+    sandbox_status: null
+  } | null>
+>(async hostname => ({
+  domain_id: "dom_123",
+  hostname,
+  port: 3701,
+  is_test_env: false,
+  execution_mode: "e2b",
+  sandbox_id: null,
+  sandbox_status: null,
+}))
 
 vi.mock("node:fs", async importOriginal => {
   const actual = await importOriginal<typeof import("node:fs")>()
   return {
     ...actual,
     existsSync: (filePath: string) => pathExists(filePath),
+  }
+})
+
+vi.mock("node:fs/promises", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>()
+  return {
+    ...actual,
+    rm: (targetPath: string, options: { recursive: boolean; force: boolean }) => rmMock(targetPath, options),
   }
 })
 
@@ -61,6 +104,26 @@ vi.mock("@webalive/site-controller", () => ({
   SiteOrchestrator: {
     teardown: (domain: string, options: unknown) => teardownMock(domain, options),
   },
+}))
+
+vi.mock("@/lib/sandbox/e2b-workspace", () => ({
+  getE2bScratchSiteRoot: (domain: string) => `${MOCK_E2B_SCRATCH}/${domain}`,
+  getNewSiteExecutionMode: () => getNewSiteExecutionModeMock(),
+}))
+
+vi.mock("../e2b-site-deployment", () => ({
+  prepareE2bSiteDeployment: (input: unknown) => {
+    callOrder.push("prepareE2bSiteDeployment")
+    return prepareE2bSiteDeploymentMock(input)
+  },
+  createInitialSiteSandbox: (domain: unknown, scratchWorkspace: string) => {
+    callOrder.push("createInitialSiteSandbox")
+    return createInitialSiteSandboxMock(domain, scratchWorkspace)
+  },
+}))
+
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  resolveDomainRuntime: (hostname: string) => resolveDomainRuntimeMock(hostname),
 }))
 
 const { runStrictDeployment } = await import("../deploy-pipeline")
@@ -100,6 +163,33 @@ describe("runStrictDeployment", () => {
     registerDomainMock.mockReset()
     registerDomainMock.mockResolvedValue(undefined)
 
+    rmMock.mockReset()
+    rmMock.mockResolvedValue(undefined)
+
+    getNewSiteExecutionModeMock.mockReset()
+    getNewSiteExecutionModeMock.mockReturnValue("systemd")
+
+    prepareE2bSiteDeploymentMock.mockReset()
+    prepareE2bSiteDeploymentMock.mockResolvedValue({
+      port: 3701,
+      serviceName: "e2b-site@testsite.alive.best",
+      scratchWorkspace: `${MOCK_E2B_SCRATCH}/testsite.alive.best/user`,
+    })
+
+    createInitialSiteSandboxMock.mockReset()
+    createInitialSiteSandboxMock.mockResolvedValue(undefined)
+
+    resolveDomainRuntimeMock.mockReset()
+    resolveDomainRuntimeMock.mockImplementation(async hostname => ({
+      domain_id: "dom_123",
+      hostname,
+      port: 3701,
+      is_test_env: false,
+      execution_mode: "e2b",
+      sandbox_id: null,
+      sandbox_status: null,
+    }))
+
     vi.clearAllMocks()
   })
 
@@ -119,6 +209,7 @@ describe("runStrictDeployment", () => {
       domain: "testsite.alive.best",
       port: 3700,
       serviceName: "site@testsite-alive-best.service",
+      executionMode: "systemd",
     })
 
     expect(callOrder).toEqual(["deploySite", "registerDomain", "configureCaddy"])
@@ -262,6 +353,64 @@ describe("runStrictDeployment", () => {
     ).rejects.toThrow("reload failed")
 
     expect(unregisterDomainMock).not.toHaveBeenCalled()
+    expect(teardownMock).not.toHaveBeenCalled()
+  })
+
+  it("creates new deployments directly in e2b when the feature flag is enabled", async () => {
+    getNewSiteExecutionModeMock.mockReturnValueOnce("e2b")
+
+    const result = await runStrictDeployment({
+      domain: "testsite.alive.best",
+      email: "owner@example.com",
+      orgId: "org-1",
+      templatePath: "/srv/webalive/templates/blank.alive.best",
+    })
+
+    expect(result).toEqual({
+      domain: "testsite.alive.best",
+      port: 3701,
+      serviceName: "e2b-site@testsite.alive.best",
+      executionMode: "e2b",
+    })
+    expect(callOrder).toEqual(["prepareE2bSiteDeployment", "registerDomain", "createInitialSiteSandbox"])
+    expect(deploySiteMock).not.toHaveBeenCalled()
+    expect(configureCaddyMock).not.toHaveBeenCalled()
+    expect(registerDomainMock).toHaveBeenCalledWith({
+      hostname: "testsite.alive.best",
+      email: "owner@example.com",
+      password: undefined,
+      port: 3701,
+      executionMode: "e2b",
+      orgId: "org-1",
+    })
+    expect(resolveDomainRuntimeMock).toHaveBeenCalledWith("testsite.alive.best")
+    expect(createInitialSiteSandboxMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        domain_id: "dom_123",
+        hostname: "testsite.alive.best",
+      }),
+      `${MOCK_E2B_SCRATCH}/testsite.alive.best/user`,
+    )
+  })
+
+  it("rolls back scratch state instead of tearing down /srv for e2b failures", async () => {
+    getNewSiteExecutionModeMock.mockReturnValueOnce("e2b")
+    isDomainRegisteredMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    createInitialSiteSandboxMock.mockRejectedValueOnce(new Error("sandbox bootstrap failed"))
+
+    await expect(
+      runStrictDeployment({
+        domain: "testsite.alive.best",
+        email: "owner@example.com",
+        templatePath: "/srv/webalive/templates/blank.alive.best",
+      }),
+    ).rejects.toThrow("sandbox bootstrap failed")
+
+    expect(unregisterDomainMock).toHaveBeenCalledWith("testsite.alive.best")
+    expect(rmMock).toHaveBeenCalledWith(`${MOCK_E2B_SCRATCH}/testsite.alive.best`, {
+      recursive: true,
+      force: true,
+    })
     expect(teardownMock).not.toHaveBeenCalled()
   })
 })

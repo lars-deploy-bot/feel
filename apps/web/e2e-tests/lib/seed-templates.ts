@@ -1,9 +1,11 @@
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { DEPLOYMENT_TEMPLATES, PATHS } from "@webalive/shared"
-import type { TestEnv } from "./test-env"
+import type { VALID_ENVS } from "./test-env"
+
+type TestEnv = (typeof VALID_ENVS)[number]
 
 interface SeedTemplateRow {
   templateId: string
@@ -13,8 +15,35 @@ interface SeedTemplateRow {
   previewUrl: string
 }
 
+interface SeedServerRow {
+  serverId: string
+  name: string
+  ip: string
+  hostname: string
+}
+
+interface RuntimeServerConfig {
+  serverId: string
+  serverIp: string
+  domains: {
+    main: string
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
 function sqlStringLiteral(value: string): string {
   return `'${value.replaceAll("'", "''")}'`
+}
+
+function titleCaseHostname(hostname: string): string {
+  return hostname
+    .split(".")
+    .filter(segment => segment.length > 0)
+    .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ")
 }
 
 export function buildTemplateSeedRows(): SeedTemplateRow[] {
@@ -35,7 +64,58 @@ export function buildTemplateSeedRows(): SeedTemplateRow[] {
   })
 }
 
-export function buildTemplateSeedSql(rows: readonly SeedTemplateRow[]): string {
+function assertNonEmptyString(value: unknown, field: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`[E2E template seed] ${field} is required for TEST_ENV=staging`)
+  }
+
+  return value.trim()
+}
+
+function readRuntimeServerConfig(): RuntimeServerConfig {
+  const configPath = process.env.SERVER_CONFIG_PATH
+  if (!configPath) {
+    throw new Error("[E2E template seed] SERVER_CONFIG_PATH is required for TEST_ENV=staging")
+  }
+
+  if (!existsSync(configPath)) {
+    throw new Error(`[E2E template seed] Server config not found: ${configPath}`)
+  }
+
+  const raw: unknown = JSON.parse(readFileSync(configPath, "utf8"))
+  if (!isRecord(raw)) {
+    throw new Error("[E2E template seed] Server config must be a JSON object")
+  }
+
+  const domains = raw.domains
+  if (!isRecord(domains)) {
+    throw new Error("[E2E template seed] server-config domains.main is required")
+  }
+
+  return {
+    serverId: assertNonEmptyString(raw.serverId, "server-config serverId"),
+    serverIp: assertNonEmptyString(raw.serverIp, "server-config serverIp"),
+    domains: {
+      main: assertNonEmptyString(domains.main, "server-config domains.main"),
+    },
+  }
+}
+
+export function buildServerSeedRow(): SeedServerRow {
+  const serverConfig = readRuntimeServerConfig()
+  const serverId = assertNonEmptyString(serverConfig.serverId, "server-config serverId")
+  const hostname = assertNonEmptyString(serverConfig.domains.main, "server-config domains.main")
+  const ip = assertNonEmptyString(serverConfig.serverIp, "server-config serverIp")
+
+  return {
+    serverId,
+    name: titleCaseHostname(hostname),
+    ip,
+    hostname,
+  }
+}
+
+export function buildTemplateSeedSql(rows: readonly SeedTemplateRow[], server: SeedServerRow): string {
   if (rows.length === 0) {
     throw new Error("[E2E template seed] No template rows to seed")
   }
@@ -61,6 +141,18 @@ export function buildTemplateSeedSql(rows: readonly SeedTemplateRow[]): string {
 
   return [
     "BEGIN;",
+    "INSERT INTO app.servers (server_id, name, ip, hostname)",
+    "VALUES (",
+    `  ${sqlStringLiteral(server.serverId)},`,
+    `  ${sqlStringLiteral(server.name)},`,
+    `  ${sqlStringLiteral(server.ip)},`,
+    `  ${sqlStringLiteral(server.hostname)}`,
+    ")",
+    "ON CONFLICT (server_id) DO UPDATE",
+    "SET",
+    "  name = EXCLUDED.name,",
+    "  ip = EXCLUDED.ip,",
+    "  hostname = EXCLUDED.hostname;",
     "INSERT INTO app.templates (",
     "  template_id,",
     "  name,",
@@ -84,10 +176,15 @@ export function buildTemplateSeedSql(rows: readonly SeedTemplateRow[]): string {
     "DO $$",
     "DECLARE",
     "  seeded_count integer;",
+    "  seeded_server_count integer;",
     "BEGIN",
     `  SELECT COUNT(*) INTO seeded_count FROM app.templates WHERE template_id IN (${expectedTemplateIds}) AND is_active = TRUE;`,
     `  IF seeded_count <> ${rows.length} THEN`,
     `    RAISE EXCEPTION 'Expected ${rows.length} active templates after seed, found %', seeded_count;`,
+    "  END IF;",
+    `  SELECT COUNT(*) INTO seeded_server_count FROM app.servers WHERE server_id = ${sqlStringLiteral(server.serverId)};`,
+    "  IF seeded_server_count <> 1 THEN",
+    "    RAISE EXCEPTION 'Expected current server row to exist after seed, found %', seeded_server_count;",
     "  END IF;",
     "END $$;",
     "COMMIT;",
@@ -105,7 +202,8 @@ export function seedTemplatesForE2E(testEnv: TestEnv): void {
   }
 
   const rows = buildTemplateSeedRows()
-  const sql = buildTemplateSeedSql(rows)
+  const server = buildServerSeedRow()
+  const sql = buildTemplateSeedSql(rows, server)
   const tempDir = mkdtempSync(join(tmpdir(), "alive-e2e-template-seed-"))
   const tempFile = join(tempDir, "seed-templates.sql")
 
@@ -123,7 +221,9 @@ export function seedTemplatesForE2E(testEnv: TestEnv): void {
       throw new Error(`[E2E template seed] ${detail}`)
     }
 
-    console.log(`🌱 [Global Setup] Seeded ${rows.length} deployment templates into staging app.templates`)
+    console.log(
+      `🌱 [Global Setup] Seeded ${rows.length} deployment templates and server ${server.serverId} into staging DB`,
+    )
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }

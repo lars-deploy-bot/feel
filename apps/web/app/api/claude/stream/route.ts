@@ -50,6 +50,7 @@ import {
   STREAM_TYPES,
 } from "@/lib/claude/agent-constants.mjs"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { DOMAIN_RUNTIME_SELECT, resolveDomainRuntimeQuery } from "@/lib/domain/resolve-domain-runtime"
 import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { buildAnalyzeImagePrompt, fetchAndSaveAnalyzeImages } from "@/lib/image-analyze/fetch-and-save"
@@ -68,6 +69,7 @@ import {
   errorStreamBuffer,
 } from "@/lib/stream/stream-buffer"
 import { createAppClient } from "@/lib/supabase/app"
+import { createRLSAppClient } from "@/lib/supabase/server-rls"
 import type { TokenSource } from "@/lib/tokens"
 import { getOrgCredits } from "@/lib/tokens"
 import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
@@ -354,12 +356,11 @@ export async function POST(req: NextRequest) {
     })
 
     // Verify domain exists in app.domains
-    const app = await createAppClient("service")
-    const { data: domainRecord } = await app
-      .from("domains")
-      .select("domain_id, hostname, port, is_test_env, execution_mode, sandbox_id, sandbox_status")
-      .eq("hostname", resolvedWorkspaceName)
-      .single()
+    const app = user.isSuperadmin ? await createAppClient("service") : await createRLSAppClient()
+    const domainRecord = await resolveDomainRuntimeQuery(
+      resolvedWorkspaceName,
+      app.from("domains").select(DOMAIN_RUNTIME_SELECT).eq("hostname", resolvedWorkspaceName).single(),
+    )
 
     if (!domainRecord) {
       logger.error("Domain not found in database:", resolvedWorkspaceName)

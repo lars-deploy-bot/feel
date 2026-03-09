@@ -9,7 +9,6 @@ const validateTemplateFromDbMock = vi.fn()
 const runStrictDeploymentMock = vi.fn()
 const handleBodyMock = vi.fn()
 const isHandleBodyErrorMock = vi.fn()
-const inspectSiteOccupancyMock = vi.fn()
 const siteMetadataExistsMock = vi.fn()
 const siteMetadataSetSiteMock = vi.fn()
 
@@ -62,14 +61,11 @@ vi.mock("@/lib/api/responses", () => ({
 
 vi.mock("@/lib/config", () => ({
   buildSubdomain: vi.fn((slug: string) => `${slug}.alive.best`),
+  WORKSPACE_BASE: "/srv/webalive/sites",
 }))
 
 vi.mock("@/lib/deployment/org-resolver", () => ({
   validateUserOrgAccess: (...args: unknown[]) => validateUserOrgAccessMock(...args),
-}))
-
-vi.mock("@/lib/deployment/site-occupancy", () => ({
-  inspectSiteOccupancy: (...args: unknown[]) => inspectSiteOccupancyMock(...args),
 }))
 
 vi.mock("@/lib/deployment/user-quotas", () => ({
@@ -101,6 +97,12 @@ vi.mock("@/lib/siteMetadataStore", () => ({
     exists: (...args: unknown[]) => siteMetadataExistsMock(...args),
     setSite: (...args: unknown[]) => siteMetadataSetSiteMock(...args),
   },
+}))
+
+const MOCK_E2B_SCRATCH = "/mock/e2b-scratch"
+
+vi.mock("@/lib/sandbox/e2b-workspace", () => ({
+  getE2bScratchSiteRoot: vi.fn((domain: string) => `${MOCK_E2B_SCRATCH}/${domain}`),
 }))
 
 vi.mock("@webalive/site-controller", () => {
@@ -142,6 +144,16 @@ describe("/api/deploy-subdomain", () => {
 describe("POST /api/deploy-subdomain", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    requireSessionUserMock.mockReset()
+    validateUserOrgAccessMock.mockReset()
+    getUserQuotaMock.mockReset()
+    validateTemplateFromDbMock.mockReset()
+    runStrictDeploymentMock.mockReset()
+    handleBodyMock.mockReset()
+    isHandleBodyErrorMock.mockReset()
+    siteMetadataExistsMock.mockReset()
+    siteMetadataSetSiteMock.mockReset()
+
     requireSessionUserMock.mockResolvedValue({
       id: "user-1",
       email: "owner@example.com",
@@ -160,7 +172,6 @@ describe("POST /api/deploy-subdomain", () => {
       maxSites: 10,
       currentSites: 1,
     })
-    inspectSiteOccupancyMock.mockReturnValue({ occupied: false })
     siteMetadataExistsMock.mockReturnValue(false)
     siteMetadataSetSiteMock.mockResolvedValue(undefined)
     validateTemplateFromDbMock.mockResolvedValue({
@@ -174,6 +185,7 @@ describe("POST /api/deploy-subdomain", () => {
       domain: "testsite.alive.best",
       port: 3700,
       serviceName: "site@testsite-alive-best.service",
+      executionMode: "systemd",
     })
   })
 
@@ -210,6 +222,36 @@ describe("POST /api/deploy-subdomain", () => {
     expect(runStrictDeploymentMock.mock.calls[0][0]).not.toHaveProperty("password")
   })
 
+  it("stores metadata in the e2b scratch root when sandbox mode is enabled", async () => {
+    runStrictDeploymentMock.mockResolvedValueOnce({
+      domain: "testsite.alive.best",
+      port: 3701,
+      serviceName: "e2b-site@testsite.alive.best",
+      executionMode: "e2b",
+    })
+
+    const response = await POST(
+      createRequest({
+        slug: "testsite",
+        siteIdeas: "Test",
+        templateId: "tmpl_blank",
+        orgId: "org-1",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(siteMetadataSetSiteMock).toHaveBeenCalledWith(
+      "testsite",
+      expect.objectContaining({
+        domain: "testsite.alive.best",
+      }),
+      { workspaceRoot: `${MOCK_E2B_SCRATCH}/testsite.alive.best` },
+    )
+
+    const payload = (await response.json()) as { executionMode: string }
+    expect(payload.executionMode).toBe("e2b")
+  })
+
   it("returns 403 when site quota is exceeded", async () => {
     getUserQuotaMock.mockResolvedValueOnce({
       canCreateSite: false,
@@ -244,21 +286,37 @@ describe("POST /api/deploy-subdomain", () => {
     expect(runStrictDeploymentMock).not.toHaveBeenCalled()
   })
 
-  it("returns 409 when host-level site resources still exist for the slug", async () => {
-    inspectSiteOccupancyMock.mockReturnValueOnce({
-      occupied: true,
-      reason: "systemd service is still active",
+  it("allows superadmins to bypass site quota checks", async () => {
+    requireSessionUserMock.mockResolvedValueOnce({
+      id: "user-1",
+      email: "owner@example.com",
+      name: "Owner",
+      isSuperadmin: true,
+    })
+    getUserQuotaMock.mockResolvedValueOnce({
+      canCreateSite: false,
+      maxSites: 1,
+      currentSites: 1,
     })
 
     const response = await POST(
       createRequest({ slug: "testsite", siteIdeas: "Test", templateId: "tmpl_blank", orgId: "org-1" }),
     )
 
-    expect(response.status).toBe(409)
-    await expect(response.json()).resolves.toMatchObject({
-      error: ErrorCodes.SLUG_TAKEN,
-      message: expect.stringContaining("systemd service is still active"),
-    })
-    expect(runStrictDeploymentMock).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    expect(getUserQuotaMock).not.toHaveBeenCalled()
+    expect(runStrictDeploymentMock).toHaveBeenCalledOnce()
+  })
+
+  it("succeeds even when metadata persistence fails (non-fatal)", async () => {
+    siteMetadataSetSiteMock.mockRejectedValueOnce(new Error("disk full"))
+
+    const response = await POST(
+      createRequest({ slug: "testsite", siteIdeas: "Test", templateId: "tmpl_blank", orgId: "org-1" }),
+    )
+
+    // Metadata persistence is non-fatal — the site is deployed, only metadata write failed
+    expect(response.status).toBe(200)
+    expect(runStrictDeploymentMock).toHaveBeenCalledOnce()
   })
 })

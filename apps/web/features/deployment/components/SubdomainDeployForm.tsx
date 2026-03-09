@@ -13,6 +13,7 @@ import { checkSlugAvailability } from "@/features/deployment/lib/slug-api"
 import type { DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
 import { useAuthModalActions } from "@/lib/stores/authModalStore"
+import { useHistoryActions } from "@/lib/stores/deployStore"
 import { useOnboardingStore } from "@/lib/stores/onboardingStore"
 import { DeploymentStatus } from "./DeploymentStatus"
 import { SlugInput } from "./SlugInput"
@@ -77,6 +78,7 @@ export function SubdomainDeployForm() {
 
   // Auth modal
   const { open: openAuthModal } = useAuthModalActions()
+  const { addToHistory } = useHistoryActions()
 
   // Get values and actions from the store (store accessed early for initial state)
   const { siteIdea, templateId, setSiteIdea, setTemplateId } = onboardingState
@@ -238,8 +240,26 @@ export function SubdomainDeployForm() {
     async (data: DeploySubdomainForm) => {
       setIsDeploying(true)
       setDeploymentStatus(null)
+      const domain = `${data.slug.toLowerCase()}.${wildcard}`
 
       try {
+        if (!templateId) {
+          setDeploymentStatus({
+            ok: false,
+            message: "Choose a template before launching your site",
+            error: "INVALID_TEMPLATE",
+          })
+          addToHistory({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            domain,
+            timestamp: Date.now(),
+            success: false,
+            error: "Choose a template before launching your site",
+          })
+          setIsDeploying(false)
+          return
+        }
+
         // Final availability check before deployment
         const availCheck = await checkSlugAvailability(data.slug)
 
@@ -248,6 +268,13 @@ export function SubdomainDeployForm() {
             ok: false,
             message: availCheck.error || "Failed to check availability",
             error: "AVAILABILITY_CHECK_FAILED",
+          })
+          addToHistory({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            domain,
+            timestamp: Date.now(),
+            success: false,
+            error: availCheck.error || "Failed to check availability",
           })
           setIsDeploying(false)
           return
@@ -258,6 +285,13 @@ export function SubdomainDeployForm() {
             ok: false,
             message: "This subdomain is no longer available",
             error: "SLUG_TAKEN",
+          })
+          addToHistory({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            domain,
+            timestamp: Date.now(),
+            success: false,
+            error: "This subdomain is no longer available",
           })
           setIsDeploying(false)
           return
@@ -271,7 +305,7 @@ export function SubdomainDeployForm() {
           body: JSON.stringify({
             slug: data.slug.toLowerCase(),
             siteIdeas: siteIdea || data.siteIdeas,
-            templateId: templateId || "blank",
+            templateId,
           }),
         })
 
@@ -284,10 +318,24 @@ export function SubdomainDeployForm() {
 
         const result: DeploySubdomainResponse = JSON.parse(responseText)
         setDeploymentStatus(result)
+        addToHistory({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          domain,
+          timestamp: Date.now(),
+          success: Boolean(result.ok),
+          error: result.ok ? undefined : result.message,
+        })
       } catch (error) {
         setDeploymentStatus({
           ok: false,
           message: "Failed to connect to deployment API",
+          error: error instanceof Error ? error.message : "Unknown error",
+        })
+        addToHistory({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          domain,
+          timestamp: Date.now(),
+          success: false,
           error: error instanceof Error ? error.message : "Unknown error",
         })
       } finally {
@@ -295,7 +343,7 @@ export function SubdomainDeployForm() {
         setPendingSubmit(null)
       }
     },
-    [siteIdea, templateId],
+    [addToHistory, siteIdea, templateId, wildcard],
   )
 
   // Handle pending submit after auth success
@@ -602,6 +650,7 @@ export function SubdomainDeployForm() {
           <DeploymentStatus
             status={deploymentStatus.ok ? "success" : "error"}
             domain={deploymentStatus?.domain}
+            executionMode={deploymentStatus?.executionMode ?? null}
             error={deploymentStatus?.message}
             errorCode={deploymentStatus?.error}
             details={deploymentStatus?.details}

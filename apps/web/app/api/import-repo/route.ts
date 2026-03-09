@@ -1,26 +1,26 @@
-import { existsSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
-import { COOKIE_NAMES, getOAuthKeyForProvider, PATHS } from "@webalive/shared"
+import { COOKIE_NAMES, getOAuthKeyForProvider } from "@webalive/shared"
 import { DeploymentError } from "@webalive/site-controller"
-import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
-import { refreshSessionTokenWithOrg } from "@/features/auth/lib/jwt"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { buildSubdomain } from "@/lib/config"
+import { assertCanCreateSite, NewSiteRequestError } from "@/lib/deployment/create-new-site"
 import { runStrictDeployment } from "@/lib/deployment/deploy-pipeline"
 import { DomainRegistrationError } from "@/lib/deployment/domain-registry"
 import { cleanupImportDir, importGithubRepo } from "@/lib/deployment/github-import"
+import {
+  buildNewSiteSuccessPayload,
+  getNewSiteCollisionMessage,
+  persistNewSiteMetadata,
+  refreshSessionJwtForOrg,
+  scheduleSiteSslValidation,
+} from "@/lib/deployment/new-site-lifecycle"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
-import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
-import { getUserQuota } from "@/lib/deployment/user-quotas"
 import { ErrorCodes } from "@/lib/error-codes"
-import { errorLogger } from "@/lib/error-logger"
 import { parseGithubRepoWithUrls } from "@/lib/git/github-repo-url"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
-import { siteMetadataStore } from "@/lib/siteMetadataStore"
-import { QUERY_KEYS } from "@/lib/url/queryState"
 
 export async function POST(request: NextRequest) {
   let cleanupDir: string | null = null
@@ -53,36 +53,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check site creation quota (superadmins bypass)
-    if (!sessionUser.isSuperadmin) {
-      const quota = await getUserQuota(sessionUser.id)
-      if (!quota.canCreateSite) {
-        return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
-          status: 403,
-          details: { limit: quota.maxSites, currentCount: quota.currentSites },
-        })
-      }
-    }
-
     // Build full domain from slug
     const fullDomain = buildSubdomain(slug)
 
-    // Check if slug already exists
-    const slugExists = await siteMetadataStore.exists(slug)
-    if (slugExists) {
+    const collisionMessage = await getNewSiteCollisionMessage(slug, fullDomain)
+    if (collisionMessage) {
       return structuredErrorResponse(ErrorCodes.SLUG_TAKEN, {
         status: 409,
-        details: { message: `Subdomain "${slug}" is already taken. Choose a different name.` },
+        details: { message: collisionMessage },
       })
     }
 
-    // Check if directory exists (extra safety)
-    const siteDir = `${PATHS.SITES_ROOT}/${fullDomain}`
-    if (existsSync(siteDir)) {
-      return structuredErrorResponse(ErrorCodes.SLUG_TAKEN, {
-        status: 409,
-        details: { message: "Site directory already exists. Choose a different slug." },
-      })
+    // Check site creation quota only after slug conflict checks so collisions
+    // consistently report SLUG_TAKEN instead of SITE_LIMIT_EXCEEDED.
+    try {
+      await assertCanCreateSite(sessionUser)
+    } catch (error) {
+      if (error instanceof NewSiteRequestError) {
+        return structuredErrorResponse(error.errorCode, {
+          status: error.status,
+          details: error.details,
+        })
+      }
+      throw error
     }
 
     // Validate repo URL format before anything else
@@ -123,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     // Deploy using the strict shared pipeline (deploy -> register -> caddy -> verify)
     // Skip build: imported repos are arbitrary — user builds via chat
-    await runStrictDeployment({
+    const deployment = await runStrictDeployment({
       domain: fullDomain,
       email: sessionUser.email,
       orgId,
@@ -131,64 +124,60 @@ export async function POST(request: NextRequest) {
       skipBuild: true,
     })
 
-    // Save metadata (indicate source is github import)
-    await siteMetadataStore.setSite(slug, {
-      slug,
-      domain: fullDomain,
-      workspace: fullDomain,
-      email: sessionUser.email,
-      siteIdeas,
-      source: "github-import",
-      sourceRepo: parsedRepo ? parsedRepo.canonicalUrl : repoUrl,
-      sourceBranch: resolvedBranch ?? (branch?.trim() ? branch.trim() : undefined),
-      createdAt: Date.now(),
-    })
-
-    // Fire-and-forget SSL check
-    if (process.env.SKIP_SSL_VALIDATION !== "true") {
-      validateSSLCertificate(fullDomain).catch(err => {
-        errorLogger.capture({
-          category: "deployment",
-          source: "backend",
-          message: `SSL check failed for ${fullDomain} (non-blocking)`,
-          details: { domain: fullDomain, error: err instanceof Error ? err.message : String(err) },
-        })
-      })
-    }
-
-    const res = alrighty("import-repo", {
-      message: `Site ${fullDomain} deployed from GitHub repository!`,
-      domain: fullDomain,
-      orgId,
-      chatUrl: `/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(fullDomain)}`,
-    })
-
-    // Regenerate JWT with updated org membership if a new org was associated
     try {
-      if (orgId) {
-        const jar = await cookies()
-        const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
-        if (sessionCookie?.value) {
-          const newToken = await refreshSessionTokenWithOrg(sessionCookie.value, sessionUser, orgId)
-          if (newToken) {
-            res.cookies.set(COOKIE_NAMES.SESSION, newToken, {
-              httpOnly: true,
-              secure: true,
-              sameSite: "none",
-              path: "/",
-            })
-          }
-        }
-      }
-    } catch (tokenError) {
-      console.error("[Import-Repo] JWT regeneration failed (deployment succeeded):", tokenError)
-      Sentry.captureException(tokenError)
+      await persistNewSiteMetadata({
+        slug,
+        metadata: {
+          slug,
+          domain: fullDomain,
+          workspace: fullDomain,
+          email: sessionUser.email,
+          siteIdeas,
+          source: "github-import",
+          sourceRepo: parsedRepo ? parsedRepo.canonicalUrl : repoUrl,
+          sourceBranch: resolvedBranch ?? (branch?.trim() ? branch.trim() : undefined),
+          createdAt: Date.now(),
+        },
+        executionMode: deployment.executionMode,
+      })
+    } catch (metadataError) {
+      console.error("[Import-Repo] Metadata persistence failed (non-fatal):", metadataError)
+      Sentry.captureException(metadataError)
     }
+
+    scheduleSiteSslValidation(fullDomain, deployment.executionMode)
+
+    const res = alrighty(
+      "import-repo",
+      buildNewSiteSuccessPayload({
+        message: `Site ${fullDomain} deployed from GitHub repository!`,
+        domain: fullDomain,
+        orgId,
+        executionMode: deployment.executionMode,
+      }),
+    )
+
+    await refreshSessionJwtForOrg({
+      orgId,
+      sessionUser,
+      logPrefix: "[Import-Repo]",
+      setSessionCookie: token => {
+        res.cookies.set(COOKIE_NAMES.SESSION, token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          path: "/",
+        })
+      },
+    })
 
     return res
   } catch (error: unknown) {
     if (error instanceof DomainRegistrationError) {
-      const status = error.errorCode === ErrorCodes.DOMAIN_ALREADY_EXISTS ? 409 : 400
+      const status =
+        error.errorCode === ErrorCodes.DOMAIN_ALREADY_EXISTS || error.errorCode === ErrorCodes.DEPLOYMENT_IN_PROGRESS
+          ? 409
+          : 400
       return structuredErrorResponse(error.errorCode, {
         status,
         details: error.details,

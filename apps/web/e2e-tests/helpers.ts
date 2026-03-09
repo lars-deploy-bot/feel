@@ -1,47 +1,9 @@
-import type { BrowserContext, Page, Response } from "@playwright/test"
+import { randomUUID } from "node:crypto"
+import type { BrowserContext, Page } from "@playwright/test"
 import { COOKIE_NAMES, createWorkspaceStorageValue, TEST_CONFIG, WORKSPACE_STORAGE } from "@webalive/shared"
-import type { TestUser } from "./lib/tenant-types"
-
-interface LoginResult {
-  loginResponse: Response
-  loginData: unknown
-}
-
-function parseSessionCookie(setCookieHeader: string): string {
-  const cookiePattern = new RegExp(`${COOKIE_NAMES.SESSION}=([^;]+)`)
-  const match = setCookieHeader.match(cookiePattern)
-  if (!match) {
-    throw new Error(`Could not parse ${COOKIE_NAMES.SESSION} cookie`)
-  }
-  return match[1]
-}
-
-export async function fetchSessionCookie(
-  baseUrl: string,
-  tenant: { email: string; workspace: string },
-): Promise<string> {
-  const loginRes = await fetch(`${baseUrl}/api/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: tenant.email,
-      password: TEST_CONFIG.TEST_PASSWORD,
-      workspace: tenant.workspace,
-    }),
-  })
-
-  if (!loginRes.ok) {
-    const errorText = await loginRes.text()
-    throw new Error(`Login failed: ${loginRes.status} - ${errorText}`)
-  }
-
-  const setCookieHeader = loginRes.headers.get("set-cookie")
-  if (!setCookieHeader) {
-    throw new Error("No session cookie returned from /api/login")
-  }
-
-  return parseSessionCookie(setCookieHeader)
-}
+import jwt from "jsonwebtoken"
+import type { TestTenant } from "@/app/api/test/test-route-schemas"
+import { DEFAULT_USER_SCOPES } from "@/features/auth/lib/jwt"
 
 /**
  * Login helper for e2e tests
@@ -49,8 +11,8 @@ export async function fetchSessionCookie(
  */
 export async function login(
   page: Page,
-  tenant: { email: string; workspace: string; orgId?: string },
-): Promise<LoginResult> {
+  tenant: Pick<TestTenant, "email" | "workspace"> & { orgId?: TestTenant["orgId"] },
+) {
   await page.goto("/")
 
   // Set workspace in localStorage using typed helper from @webalive/shared
@@ -89,18 +51,44 @@ export async function login(
   return { loginResponse, loginData }
 }
 
-export async function setAuthCookie(user: TestUser, context: BrowserContext, baseUrl: string) {
-  const token = await fetchSessionCookie(baseUrl, user)
+/**
+ * Create a valid JWT auth cookie for E2E tests
+ * Uses standalone JWT signing (no Next.js dependencies)
+ * @param user - Test user from fixture
+ * @param context - Playwright browser context
+ */
+export async function setAuthCookie(user: TestTenant, context: BrowserContext) {
+  const JWT_SECRET = process.env.JWT_SECRET
+  if (!JWT_SECRET) throw new Error("JWT_SECRET not set — add it to .env.e2e.local")
+
+  // Create JWT payload with all required fields
+  const payload = {
+    role: "authenticated" as const,
+    sub: user.userId, // Standard JWT claim
+    userId: user.userId,
+    email: user.email,
+    name: user.orgName, // Use org name as display name
+    sid: randomUUID(),
+    scopes: DEFAULT_USER_SCOPES,
+    orgIds: [user.orgId],
+    orgRoles: { [user.orgId]: "owner" as const },
+  }
+
+  // Sign JWT (30 day expiration to match server)
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" })
+
+  // Set auth cookie
   await context.addCookies([
     {
       name: COOKIE_NAMES.SESSION,
       value: token,
+      domain: "localhost",
+      path: "/",
       httpOnly: true,
-      secure: baseUrl.startsWith("https://"),
+      secure: false, // Must be false for local test server (HTTP, not HTTPS)
       sameSite: "Lax",
-      url: baseUrl,
     },
   ])
 
-  console.log(`[E2E Auth] Set session cookie for user: ${user.email}`)
+  console.log(`[E2E Auth] Set JWT cookie for user: ${user.email}`)
 }

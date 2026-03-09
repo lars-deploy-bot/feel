@@ -10,33 +10,10 @@
  * @see https://github.com/eenlars/alive/issues/343
  */
 
-import { WORKSPACE_STORAGE, type WorkspaceStorageValue } from "@webalive/shared"
+import { parseWorkspaceStorageValue, WORKSPACE_STORAGE } from "@webalive/shared"
 import { expect, test } from "./fixtures"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { waitForChatReady } from "./helpers/assertions"
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
-
-function isWorkspaceStorageValue(value: unknown): value is WorkspaceStorageValue {
-  if (!isRecord(value)) return false
-  const state = value.state
-  if (!isRecord(state)) return false
-  const currentWorkspace = state.currentWorkspace
-  return typeof currentWorkspace === "string" || currentWorkspace === null
-}
-
-function parseWorkspaceStorage(raw: string | null): WorkspaceStorageValue {
-  if (!raw) throw new Error("workspace storage missing")
-  const parsed: unknown = JSON.parse(raw)
-  if (!isWorkspaceStorageValue(parsed)) throw new Error("invalid workspace storage shape")
-  return parsed
-}
-
-function readWorkspace(parsed: WorkspaceStorageValue): string | null {
-  return parsed.state.currentWorkspace
-}
 
 test.describe("?wk= URL param consume-once (#343)", () => {
   test("deep link sets workspace and clears ?wk= from URL", async ({ authenticatedPage, workerTenant }) => {
@@ -46,8 +23,7 @@ test.describe("?wk= URL param consume-once (#343)", () => {
 
     // Verify workspace is set
     const storageValue = await authenticatedPage.evaluate(key => localStorage.getItem(key), WORKSPACE_STORAGE.KEY)
-    const parsed = parseWorkspaceStorage(storageValue)
-    expect(readWorkspace(parsed)).toBe(workerTenant.workspace)
+    expect(parseWorkspaceStorageValue(storageValue).state.currentWorkspace).toBe(workerTenant.workspace)
 
     // Verify ?wk= is removed from URL (consumed)
     await expect(async () => {
@@ -92,7 +68,7 @@ test.describe("?wk= URL param consume-once (#343)", () => {
 
     // Verify initial workspace is set from URL param
     const initialStorage = await authenticatedPage.evaluate(key => localStorage.getItem(key), WORKSPACE_STORAGE.KEY)
-    expect(readWorkspace(parseWorkspaceStorage(initialStorage))).toBe(workerTenant.workspace)
+    expect(parseWorkspaceStorageValue(initialStorage).state.currentWorkspace).toBe(workerTenant.workspace)
 
     // Wait for ?wk= to be cleared from URL
     await expect(async () => {
@@ -125,7 +101,7 @@ test.describe("?wk= URL param consume-once (#343)", () => {
       .poll(
         async () => {
           const raw = await authenticatedPage.evaluate(key => localStorage.getItem(key), WORKSPACE_STORAGE.KEY)
-          return readWorkspace(parseWorkspaceStorage(raw))
+          return parseWorkspaceStorageValue(raw).state.currentWorkspace
         },
         { timeout: TEST_TIMEOUTS.slow },
       )

@@ -20,6 +20,8 @@ describe("resolveDomainRuntime", () => {
     const domainData = {
       domain_id: "dom_123",
       hostname: "example.com",
+      port: 3701,
+      is_test_env: false,
       execution_mode: "e2b",
       sandbox_id: "sbx_abc",
       sandbox_status: "running",
@@ -30,7 +32,9 @@ describe("resolveDomainRuntime", () => {
 
     expect(result).toEqual(domainData)
     expect(mockFrom).toHaveBeenCalledWith("domains")
-    expect(mockSelect).toHaveBeenCalledWith("domain_id, hostname, execution_mode, sandbox_id, sandbox_status")
+    expect(mockSelect).toHaveBeenCalledWith(
+      "domain_id, hostname, port, is_test_env, execution_mode, sandbox_id, sandbox_status",
+    )
     expect(mockEq).toHaveBeenCalledWith("hostname", "example.com")
   })
 
@@ -46,6 +50,8 @@ describe("resolveDomainRuntime", () => {
     const domainData = {
       domain_id: "dom_456",
       hostname: "systemd-site.com",
+      port: 3700,
+      is_test_env: null,
       execution_mode: "systemd",
       sandbox_id: null,
       sandbox_status: null,

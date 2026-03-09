@@ -1,18 +1,12 @@
 import { expect, test } from "@playwright/test"
-import { TEST_CONFIG, WORKSPACE_STORAGE, type WorkspaceStorageValue } from "@webalive/shared"
+import { parseWorkspaceStorageValue, TEST_CONFIG, WORKSPACE_STORAGE } from "@webalive/shared"
+import { BootstrapTenantResponseSchema, type TestTenant } from "@/app/api/test/test-route-schemas"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { login } from "./helpers"
 import { getProjectBaseUrl } from "./lib/live-tenant"
 import { parseNDJSONEvents } from "./lib/ndjson"
-import { BootstrapTenantApiResponseSchema } from "./lib/tenant-types"
-
-interface LiveSuperadminUser {
-  email: string
-  password: string
-  workspace: string
-  orgId: string
-}
+import { buildE2ETestHeaders } from "./lib/test-headers"
 
 function getRunId(): string {
   const runId = process.env.E2E_RUN_ID
@@ -22,16 +16,10 @@ function getRunId(): string {
   return runId
 }
 
-function buildBootstrapHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" }
-  const testSecret = process.env.E2E_TEST_SECRET
-  if (testSecret) {
-    headers["x-test-secret"] = testSecret
-  }
-  return headers
-}
-
-async function bootstrapLiveSuperadminUser(workerIndex: number, baseUrl: string): Promise<LiveSuperadminUser> {
+async function bootstrapLiveSuperadminUser(
+  workerIndex: number,
+  baseUrl: string,
+): Promise<Pick<TestTenant, "email" | "workspace" | "orgId"> & { password: string }> {
   const email = process.env.E2E_SUPERADMIN_EMAIL
   if (!email) {
     throw new Error("E2E_SUPERADMIN_EMAIL is required for this test")
@@ -43,7 +31,7 @@ async function bootstrapLiveSuperadminUser(workerIndex: number, baseUrl: string)
 
   const response = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
     method: "POST",
-    headers: buildBootstrapHeaders(),
+    headers: buildE2ETestHeaders(true),
     body: JSON.stringify({
       runId: getRunId(),
       workerIndex: normalizedWorkerIndex,
@@ -56,7 +44,7 @@ async function bootstrapLiveSuperadminUser(workerIndex: number, baseUrl: string)
     throw new Error(`bootstrap-tenant failed (${response.status})`)
   }
 
-  const payload = BootstrapTenantApiResponseSchema.parse(await response.json())
+  const payload = BootstrapTenantResponseSchema.parse(await response.json())
   if (!payload.ok) {
     throw new Error("bootstrap-tenant returned ok=false")
   }
@@ -109,7 +97,7 @@ test.describe("Superadmin Terminal Mode (live)", () => {
 
     const storageValue = await page.evaluate(key => localStorage.getItem(key), WORKSPACE_STORAGE.KEY)
     if (!storageValue) throw new Error("Workspace storage missing after login")
-    const parsed = JSON.parse(storageValue) as WorkspaceStorageValue
+    const parsed = parseWorkspaceStorageValue(storageValue)
     expect(parsed.state.currentWorkspace).toBe(user.workspace)
 
     await expect(page.locator('[data-testid="message-input"]')).toBeVisible({ timeout: TEST_TIMEOUTS.slow })

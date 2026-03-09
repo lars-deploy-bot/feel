@@ -1,7 +1,6 @@
 import type { TriggerType } from "@webalive/database"
 import { domainsRepo, orgsRepo } from "../../../db/repos"
 import * as automationsRepo from "../../../db/repos/automations.repo"
-import type { ManagerAutomationJob, ManagerAutomationRun, ManagerOrgAutomationSummary } from "./automations.types"
 
 export async function toggleJobActive(jobId: string, isActive: boolean): Promise<void> {
   await automationsRepo.setJobActive(jobId, isActive)
@@ -23,6 +22,57 @@ const COST_PER_RUN: Record<string, number> = {
 }
 const DEFAULT_COST_PER_RUN = 0.12 // default model = sonnet
 const MAX_RECENT_RUNS = 10
+
+interface EnrichedJob {
+  id: string
+  name: string
+  description: string | null
+  is_active: boolean
+  status: string
+  trigger_type: TriggerType
+  action_model: string | null
+  action_prompt: string | null
+  action_target_page: string | null
+  cron_schedule: string | null
+  cron_timezone: string | null
+  skills: string[] | null
+  email_address: string | null
+  last_run_status: string | null
+  last_run_at: string | null
+  last_run_error: string | null
+  next_run_at: string | null
+  consecutive_failures: number | null
+  created_at: string
+  hostname: string
+  org_id: string
+  org_name: string
+  runs_30d: number
+  success_runs_30d: number
+  failure_runs_30d: number
+  avg_duration_ms: number | null
+  estimated_weekly_cost_usd: number
+  recent_runs: {
+    id: string
+    status: string
+    started_at: string
+    completed_at: string | null
+    duration_ms: number | null
+    error: string | null
+    triggered_by: string | null
+  }[]
+}
+
+interface OrgSummary {
+  org_id: string
+  org_name: string
+  jobs: EnrichedJob[]
+  total_jobs: number
+  active_jobs: number
+  total_runs_30d: number
+  success_runs_30d: number
+  failure_runs_30d: number
+  estimated_monthly_cost_usd: number
+}
 
 function estimateRunsPerMonth(cronSchedule: string | null, triggerType: TriggerType): number {
   if (triggerType !== "cron" || !cronSchedule) return 0
@@ -61,7 +111,7 @@ function estimateRunsPerMonth(cronSchedule: string | null, triggerType: TriggerT
   return 30
 }
 
-export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> {
+export async function listAutomations() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
   const [jobs, orgs, domains] = await Promise.all([
@@ -89,7 +139,7 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
   }
 
   // Build per-job data grouped by the domain's org (source of truth)
-  const orgGroups = new Map<string, ManagerAutomationJob[]>()
+  const orgGroups = new Map<string, EnrichedJob[]>()
   for (const job of jobs) {
     const domain = domainMap.get(job.site_id)
     const domainOrgId = domain?.org_id ?? null
@@ -116,7 +166,7 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
     const costPerRun = COST_PER_RUN[job.action_model ?? ""] ?? DEFAULT_COST_PER_RUN
     const weeklyCost = Math.round(((runsPerMonth * costPerRun) / 30) * 7 * 100) / 100
 
-    const recentRuns: ManagerAutomationRun[] = jobRuns.slice(0, MAX_RECENT_RUNS).map(r => ({
+    const recentRuns = jobRuns.slice(0, MAX_RECENT_RUNS).map(r => ({
       id: r.id,
       status: r.status,
       started_at: r.started_at,
@@ -126,7 +176,7 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
       triggered_by: r.triggered_by,
     }))
 
-    const enriched: ManagerAutomationJob = {
+    const enriched: EnrichedJob = {
       id: job.id,
       name: job.name,
       description: job.description,
@@ -167,7 +217,7 @@ export async function listAutomations(): Promise<ManagerOrgAutomationSummary[]> 
   }
 
   // Build summaries
-  const summaries: ManagerOrgAutomationSummary[] = []
+  const summaries: OrgSummary[] = []
   for (const [orgId, orgJobs] of orgGroups) {
     const org = orgMap.get(orgId)
     const totalRuns = orgJobs.reduce((s, j) => s + j.runs_30d, 0)

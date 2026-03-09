@@ -1,0 +1,17716 @@
+WHICH: /nix/var/nix/profiles/sandbox/bin/lovable-exec
+
+=== STRINGS: FULL MEANINGFUL ===
+*exec.Cmd
+	Ftruncate
+	WaitWrite
+	WriteByte
+	WriteOnce
+	WriteRune
+	acceptRun
+	capacity: gotypesaliashttpmuxgo121multipathtcprandautoseedtlsunsafeekm{{continue}}block clauseUsage of %s:
+	execFuncs
+	growthLeft: malformed filesyscall failedcrypto/fips140mime/multipartx509sha256skidexpected 'inf'expected 'nan'unknown node: negative offsetnot a directorycopy_file_rangeno such processadvertise errornetwork is downno medium foundkey has expiredbad system callinvalid argSize<invalid Value>computeMaxProcsupdateMaxProcsGallocmRInternalGC (fractional)write heap dumpasyncpreemptoffcheckfinalizersforce gc (idle)sync.Mutex.Lockruntime.Goschedmalloc deadlockruntime error: scan missed a gmisaligned maskruntime: min = runtime: inUse=runtime: max = requested skip=bad panic stackrecovery failedmorestack on g0stopm holding pstartm: m has ppreempt SPWRITEmissing mcache?ms: gomaxprocs=randinit missed]
+	index: not in a cgroupincomplete linejstmpllitinterptarinsecurepathx509keypairleafx509usepolicieszipinsecurepathexpected 'true'unclosed actionno dot in fieldtemplate clauseexpected integerexpected newlineexec: no commandinvalid argumentinvalid exchangeobject is remotemessage too longno route to hostremote I/O errorstopped (signal)reflect.MakeFunc: value of type integer overflowdecoratemappingsgcshrinkstackofftracefpunwindoffGC scavenge waitGC worker (idle)page trace flushselect (durable)SIGNONE: no trap__vdso_getrandom0123456789abcdefheap reservation/gc/gogc:percent, not a functiongc: unswept span KiB work (bg),  mheap.sweepgen=runtime: nelems=workbuf is emptymSpanList.removemSpanList.insertbad special kindpage alloc indexbad summary dataruntime: addr = runtime: base = runtime: head =  already; errno=
+	morebuf={pc:: no frame (sp=runtime: frame ts set in timertraceback stuckunexpected kind476837158203125: cannot parse ,M3.2.0,M11.1.0impossible date not a functionreflectlite.Settable{
+	noWriteTo
+	profilehz
+	sched={pc:, gp->status= pluginpath= : unknown pc  called from runtime: pid=3814697265625invalid base /etc/zoneinfoparsing time  out of range is too largedalTLDpSugct?missing tablemissing fieldcrypto/subtlegocacheverifyhtml/templateinstallgoroottlsmaxrsasizeLocalDateTimeinvalid UTF-8unexpected %sdefine clauseempty command (core dumped)
+	startAddr
+	startLine
+	textStart		NotInHeap
+	used: 		group 			slot avx512bwavx512vlgo/typesnet/httpgo/buildnetedns0tlsmlkemKeyValueDateTimetemplate%.10q...{{else}}%s:%d:%dParseBool01234567_fork/execcontinued#execwait/dev/nullinterruptbus errorbuild:devbun.lockbcomplex64interfaceinvalid nreflect: funcargs(bad indirCallSlice as type InterfacetimerSendpollCacheprofBlockstackpoolhchanLeafwbufSpansGC (idle)mSpanDeadinittracescavtracepanicwaitchan sendpreemptedcoroutinesignal 32signal 33signal 34signal 35signal 36signal 37signal 38signal 39signal 40signal 41signal 42signal 43signal 44signal 45signal 46signal 47signal 48signal 49signal 50signal 51signal 52signal 53signal 54signal 55signal 56signal 57signal 58signal 59signal 60signal 61signal 62signal 63signal 64copystackLINUX_2.6finalizer ms cpu,  (forced) spanq.n= wbuf1.n= wbuf2.n= s.limit= s.state= B work ( B exp.)  marked   unmarked in use)
+	waitWrite
+	writeByte
+	writeLock
+	writeRune
+	writerSem
+    	StringFormat[]byte' for readatwaitidspliceexec: hangupkilled/proc/errno --listuint16uint32uint64structchan<-<-chan Valuesysmontimersefenceselect, not GOROOTobject      unused objs
+    ...resolvedConfig,
+    plugins: [...existingPlugins, lovableTagger],
+    typeof userConfig === "function" ? await userConfig(configEnv) : userConfig;
+  const existingPlugins = plugins.filter((p) => p?.name !== "lovable-tagger");
+  const rawPlugins = resolvedConfig?.plugins;
+  const resolvedConfig =
+  return {
+ (default %q) (default %v)stop signal: level 3 resetexchange fulltimer expiredsrmount errorpower failurevite-overridewakeableSleepprofMemActiveprofMemFuturetraceStackTabexecRInternaltestRInternalGC sweep waitsynctest.WaitSIGQUIT: quitSIGKILL: killout of memory is nil, not value method heap metadata span.base()=bad flushGen created at: 
+ (scan  MB in pacer: % CPU ( zombiegc bits, j0 = head = ,errno=panic: GODEBUG nmsys= locks= dying= allocsrax    rbx    rcx    rdx    rdi    rsi    rbp    rsp    r8     r9     r10    r11    r12    r13    r14    r15    rip    rflags cs     fs     gs     Signal  m->g0= pad1=  pad2=  text= minpc= 	value= (scan)	types : type 19531259765625TuesdayJanuaryOctoberaccept4Floats:number printlnavx512fruntimeos/execfips140tls3destlssha1net/urlInvalidCommentInteger{{end}} actioncommandoperandwork-dir--configdurationGoString01234567beEfFgGvsignal: truncatesendfileno anode/uid_map/gid_mapJustfilejustfilelovable-bun.lock.lovableFuncTypestruct {scavengepollDescsynctesttraceBufdeadlockraceFinipanicnilcgocheckrunnable is not  pointer, errno=BAD RANK status unknown(trigger= npages= nalloc= nfreed=) errno=[signal  newval= mcount= bytes, 
+ *map[runtime._typePair]struct {}
+ *runtime.traceSchedResourceState
+ runqueue= stopwait= runqsize= gfreecnt= throwing= spinning=atomicand8float64nanfloat32nan ptrSize=  targetpc= until pc=active < 0unknown pcruntime: ggoroutine  (durable)12207031256103515625ParseFloat%!Weekday(short read for type <no value>value for arg %d: %w
+!*func() (*os.ProcessState, error)
+!*func(int) ([]fs.FileInfo, error)
+!*map.group[string]json.RawMessage
+!*runtime.gcBgMarkWorkerNodePadded
+"'`$\|&;<>(){}[]!*?0123456789aAbBcCdDeEfFexpected quoted stringargument list too longcannot allocate memoryremote address changedprotocol not availableprotocol not supportedaddress already in usenetwork is unreachablepackage.json not foundreflectlite.Value.Typereflect.Value.MapIndexreflect.MapIter.SetKeyunexpected method stepreflect.Value.SetFloat to array with length integer divide by zeroCountPagesInUse (test)ReadMetricsSlow (test)trace reader (blocked)trace goroutine statusGC weak to strong waitchan receive (durable)SIGSTKFLT: stack faultSIGTSTP: keyboard stopsend on closed channelcall not at safe pointgetenv before env initinterface conversion: freeIndex is not valids.freeindex > s.nelemsbad sweepgen in refillspan has no free spaceruntime: out of memory/gc/scan/globals:bytes/gc/heap/frees:objectsruntime: work.nwait = runtime:scanstack: gp=scanstack - bad statusheadTailIndex overflowruntime.main not on m0set_crosscall2 missingbad g->status in readywirep: invalid p stateassembly checks failed received during fork
+$*func(runtime.goroutineProfileState)
+$*map.group[string]runtime.metricData
+$*runtime.goroutineProfileStateHolder
+%*func() runtime.goroutineProfileState
+%s = "your-command-here"cgocheck > 1 mode is no longer supported at runtime. Use GOEXPERIMENT=cgocheck2 at build time instead.                                                                                                                                --------------------------------------------------------------------------------------------------------------------------------================================================================================================================================00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899
+%s%sfalsevaluefloat  -%s<nil>ErrorsvqxXchdirwritemkdirchmodlstatchownclosegetwdpipe2buildint16int32int64uint8arrayslice and kind=defersweeptestRtestWexecWhchanexecRschedsudogtimergscanmheaptracepanicsleepgcing MB,  got= ...
+&*func(*runtime.g, unsafe.Pointer) bool
+&*func(bisect.Writer, string, int) bool
+&*map.group[runtime._typePair]struct {}
+**os.processHandle
+*<-chan exec.ctxResult
+*[0]*runtime.PanicNilError
+*[10]runtime.heldLockInfo
+*[128]*runtime.mspan
+*[128]*runtime.sudog
+*[136]*runtime.mspan
+*[256]runtime.guintptr
+*[2]*runtime.traceBuf
+*[2][2]*runtime.traceBuf
+*[2][8]runtime.pcvalueCacheEnt
+*[2]runtime.Frame
+*[32]*runtime._defer
+*[4]runtime.stackfreelist
+*[60]*runtime.funcval
+*[68]runtime.sizeClassScanStats
+*[8]runtime.pcvalueCacheEnt
+*[]*os.File
+*[]*parse.CommandNode
+*[]*runtime.PanicNilError
+*[]*runtime._defer
+*[]*runtime.funcval
+*[]*runtime.initTask
+*[]*runtime.moduledata
+*[]*runtime.mspan
+*[]*runtime.p
+*[]*runtime.sudog
+*[]*runtime.traceBuf
+*[][2]*runtime.traceBuf
+*[][8]runtime.pcvalueCacheEnt
+*[]embed.file
+*[]fs.FileInfo
+*[]runtime.Frame
+*[]runtime.ancestorInfo
+*[]runtime.functab
+*[]runtime.guintptr
+*[]runtime.heldLockInfo
+*[]runtime.modulehash
+*[]runtime.pcvalueCacheEnt
+*[]runtime.ptabEntry
+*[]runtime.sizeClassScanStats
+*[]runtime.stackfreelist
+*[]runtime.textsect
+*[]runtime.timerWhen
+*atomic.Pointer[runtime._defer]
+*bisect.Writer
+*chan exec.ctxResult
+*chan exec.goroutineStatus
+*chan<- exec.ctxResult
+*embed.file
+*embed.openFile
+*exec.Error
+*exec.ExitError
+*exec.ctxResult
+*exec.goroutineStatus
+*exec.prefixSuffixSaver
+*exec.wrappedError
+*fmt.readRune
+*fs.File
+*fs.FileInfo
+*fs.FileMode
+*func() (fs.FileInfo, error)
+*func() (io.WriteCloser, error)
+*func() *reflect.MapIter
+*func() *runtime._defer
+*func() fs.FileMode
+*func(*exec.Cmd)
+*func(*os.file) error
+*func(*os.processHandle)
+*func(*reflect.MapIter)
+*func(*runtime._defer)
+*func(*runtime.coro)
+*func(*runtime.pinner)
+*func(bisect.Writer) bool
+*func(fs.FileMode) error
+*func(io.Writer) (int64, error)
+*godebug.runtimeStderr
+*io.RuneScanner
+*io.StringWriter
+*io.WriteCloser
+*io.Writer
+*io.WriterTo
+*json.RawMessage
+*map[string]json.RawMessage
+*map[string]runtime.metricData
+*os.File
+*os.Process
+*os.ProcessState
+*os.file
+*os.fileStat
+*os.fileWithoutReadFrom
+*os.fileWithoutWriteTo
+*os.noWriteTo
+*os.processHandle
+*parse.CommandNode
+*poll.SysFile
+*reflect.MapIter
+*runtime.Cleanup
+*runtime.Error
+*runtime.Frame
+*runtime.Frames
+*runtime.Func
+*runtime.PanicNilError
+*runtime.Pinner
+*runtime.TypeAssertionError
+*runtime._defer
+*runtime._func
+*runtime._panic
+*runtime._typePair
+*runtime.addrRange
+*runtime.ancestorInfo
+*runtime.bitvector
+*runtime.boundsError
+*runtime.boundsErrorCode
+*runtime.cgoCallers
+*runtime.cleanupBlock
+*runtime.cleanupBlockHeader
+*runtime.coro
+*runtime.cpuStats
+*runtime.cpuStatsAggregate
+*runtime.debugCallWrapArgs
+*runtime.dlogPerM
+*runtime.errorAddressString
+*runtime.errorString
+*runtime.funcInfo
+*runtime.funcinl
+*runtime.functab
+*runtime.funcval
+*runtime.g
+*runtime.gList
+*runtime.gTraceState
+*runtime.gcBgMarkWorkerNode
+*runtime.gcBits
+*runtime.gcMarkWorkerMode
+*runtime.gcStatsAggregate
+*runtime.gcWork
+*runtime.gclinkptr
+*runtime.gobuf
+*runtime.goroutineProfileState
+*runtime.gsignalStack
+*runtime.guintptr
+*runtime.hchan
+*runtime.heapStatsAggregate
+*runtime.heapStatsDelta
+*runtime.heldLockInfo
+*runtime.initTask
+*runtime.lfnode
+*runtime.libcall
+*runtime.limiterEvent
+*runtime.localSpanQueue
+*runtime.lockRank
+*runtime.lockRankStruct
+*runtime.m
+*runtime.mLockProfile
+*runtime.mOS
+*runtime.mPadded
+*runtime.mSpanList
+*runtime.mSpanStateBox
+*runtime.mTraceState
+*runtime.mWaitList
+*runtime.mcache
+*runtime.metricData
+*runtime.metricFloat64Histogram
+*runtime.metricKind
+*runtime.metricReader
+*runtime.metricValue
+*runtime.moduledata
+*runtime.modulehash
+*runtime.mspan
+*runtime.muintptr
+*runtime.mutex
+*runtime.notInHeap
+*runtime.note
+*runtime.offAddr
+*runtime.p
+*runtime.pTraceState
+*runtime.pageCache
+*runtime.pcHeader
+*runtime.pcvalueCache
+*runtime.pcvalueCacheEnt
+*runtime.persistentAlloc
+*runtime.piController
+*runtime.pinner
+*runtime.plainError
+*runtime.pollDesc
+*runtime.ptabEntry
+*runtime.puintptr
+*runtime.savedOpenDeferState
+*runtime.scavengerState
+*runtime.sigset
+*runtime.sizeClassScanStats
+*runtime.sliceInterfacePtr
+*runtime.spanClass
+*runtime.special
+*runtime.stack
+*runtime.stackfreelist
+*runtime.statAggregate
+*runtime.statDepSet
+*runtime.stringInterfacePtr
+*runtime.stringer
+*runtime.sudog
+*runtime.synctestBubble
+*runtime.synctestDeadlockError
+*runtime.sysStatsAggregate
+*runtime.sysmontick
+*runtime.textsect
+*runtime.throwType
+*runtime.timeTimer
+*runtime.timer
+*runtime.timerWhen
+*runtime.timers
+*runtime.traceBlockReason
+*runtime.traceBuf
+*runtime.traceBufHeader
+*runtime.traceFrame
+*runtime.traceTime
+*runtime.uint16InterfacePtr
+*runtime.uint32InterfacePtr
+*runtime.uint64InterfacePtr
+*runtime.untracedG
+*runtime.waitReason
+*runtime.waitq
+*runtime.wbBuf
+*runtime.winlibcall
+*runtime.workbuf
+*runtime.workbufhdr
+*syscall.RawSockaddrUnix
+*syscall.SockaddrUnix
+*taskrunner.Config
+*taskrunner.DevServerConfig
+*taskrunner.PackageJson
+*taskrunner.ViteConfig
+*template.ExecError
+*template.writeError
+*time.fileSizeError
+,  g->atomicstatus=unexpected g status_cgo_setenv missingbad runtime
+, locked to thread, synctest bubble 298023223876953125: day out of rangeTime.MarshalJSON: Time.MarshalText: unknown time zone use of closed fileexceeded max depthinvalid character in numeric literalunhandled part: %slen of nil pointer/cpu.cfs_quota_us
+, not pointer != sweepgen  MB globals,  work.nproc=  work.nwait=  nStackRoots= flushedWork double unlock s.spanclass= MB) workers=min too large-byte block (runtime: val=runtime: seq= failed with timer_settimefatal error:  idlethreads= syscalltick=load64 failedxadd64 failedxchg64 failedmp.g0 stack [nil stackbase}
+, size = bad prune, tail = newosprocrecover:  not in [ctxt != 0, oldval=, newval= threads=: status= blocked= lockedg=atomicor8 runtime= sigcode= m->curg=(unknown)total < 0traceback(durable)} stack=[ gp.goid= lockedm=244140625ParseUintWednesdaySeptemberlocaltimerwxrwxrwxInherited of type omitempty				ctrl  (empty)
+,*func(*runtime._defer, *runtime._defer) bool
+,*struct { key string; elem json.RawMessage }
+,*struct { len int; buf [128]*runtime.mspan }
+-*struct { F uintptr; R runtime.metricReader }
+.*[]struct { key string; elem json.RawMessage }
+... omitting no such deviceis a directorytext file busyfile too largetoo many linkslevel 3 haltedlevel 2 haltedprotocol errortoo many userswindow changedvite.config.tslovable-taggerunexpected EOFunsafe.Pointer on zero Valueunknown methoduserArenaStateGC (dedicated)read mem statsupdatemaxprocsasynctimerchangcstoptheworldprofstackdepthtraceallocfreeGC assist waitfinalizer waitsync.Cond.WaitSIGABRT: aborts.allocCount= Value of type runtime: mmap(nil elem type! to finalizer scan: class L  finalizers + GC worker initruntime: full=runtime: want=MB; allocated allspans arrayscavenge indexno deferreturnbad restart PC, called from
+/*[8]struct { key string; elem json.RawMessage }
+/*struct { key string; elem runtime.metricData }
+// Auto-generated by lovable-exec - DO NOT EDIT
+/build/cmd/lovable-exec/main.go
+/build/internal/taskrunner/tagger.go
+/build/internal/taskrunner/taskrunner.go
+/build/internal/taskrunner/vite.go
+/build/internal/taskrunner/vite_command.go
+/cpu/classes/idle:cpu-seconds/cpu/classes/user:cpu-seconds/gc/heap/allocs-by-size:bytes/gc/stack/starting-size:bytesgc done but gcphase != _GCoffruntime: p.gcMarkWorkerMode= scanobject of a noscan objectruntime: marking free object addspecial on invalid pointerruntime: summary max pages = runtime: levelShift[level] = doRecordGoroutineProfile gp1=runtime: eventfd failed with tried to unpin non-Go pointerruntime: sudog with non-nil centersyscall inconsistent bp entersyscall inconsistent sp gfput: bad status (not Gdead)semacquire not on the G stackruntime: split stack overflowstring concatenation too longinvalid function symbol tabletrace: reading after shutdownruntime: traceback stuck. pc=tried to trace dead goroutineruntime: impossible type kind45474735088646411895751953125Time.UnmarshalBinary: no databufio.Scanner: token too longinvalid timezone offset hoursfloat cannot start with a dotcannot assign boolean to a %tnil data; no entry for key %qcannot 3-index slice a stringreflect: Out of non-func typearray cannot start with commainvalid escaped character %#Utoml: table %s already existsmax expression depth exceededruntime.AddCleanup: ptr is nilstrings: negative Repeat countinappropriate ioctl for devicesocket operation on non-socketprotocol wrong type for socketMapIter.Key called before Nextreflect: Elem of invalid type reflect: Out of non-func type called entry on non-entry nodeassignment to entry in nil mapSIGUSR1: user-defined signal 1SIGUSR2: user-defined signal 2SIGVTALRM: virtual alarm clockSIGPROF: profiling alarm clock (types from different scopes)failed to get system page sizeruntime: found in object at *( in prepareForSweep; sweepgen   is reachable from finalizer
+/cpu/classes/total:cpu-seconds/gc/cycles/automatic:gc-cycles/sched/pauses/total/gc:seconds/sync/mutex/wait/total:seconds/godebug/non-default-behavior/runtime: epollctl failed with panic called with nil argumentcheckdead: inconsistent countsrunqputslow: queue is not fullruntime: bad pointer in frame invalid pointer found on stack locals stack map entries for abi mismatch detected between runtime: impossible type kind unsafe.Slice: len out of range227373675443232059478759765625year outside of range [0,9999]looking for beginning of valuein exponent of numeric literalfloat cannot be assigned to %sreflect: Len of non-array typeGODEBUG: unknown cpu feature "runtime: cgroup buffer length sync: inconsistent mutex statesync: unlock of unlocked mutexKey() is not supported on a %smissing keyKind string mappingunterminated raw quoted string{{continue}} outside {{range}}Print command without executing  lovable-exec --dry-run build
+/memory/classes/heap/objects:bytesruntime.SetFinalizer: cannot pass too many pages allocated in chunk?mspan.ensureSwept: m is not lockedruntime: netpollBreak write failedforEachP: sched.safePointWait != 0schedule: spinning with local workentersyscallblock inconsistent bp entersyscallblock inconsistent sp runtime: g is running but p is notinvalid timer channel: no capacity3552713678800500929355621337890625: day-of-year does not match monthin \u hexadecimal character escapehandleValue not implemented for %scan't evaluate field %s in type %scan't handle %s for arg of type %svalue is nil; should be of type %sconcurrent map clone and map writeillegal base64 data at input byte unsigned integer overflow on token strings.Reader.Seek: invalid whencenetwork dropped connection on resettransport endpoint is not connected" is unexported but missing PkgPathreflect.MakeSlice of non-slice typepersistentalloc: align is too large/memory/classes/heap/released:bytesgreyobject: obj not pointer-alignedmismatched begin/end of activeSweepmheap.freeSpanLocked - invalid freefailed to get or create weak handleattempt to clear non-empty span setruntime: close polldesc w/o unblockruntime: inconsistent read deadlinefindrunnable: netpoll with spinningpidleput: P has non-empty run queuefake timer executing with no bubbletraceback did not unwind completely1776356839400250464677810668945312588817841970012523233890533447265625ryuFtoaFixed32 called with prec > 92006-01-02T15:04:05.999999999Z07:00file type does not support deadlinenanoseconds need at least one digitnumber cannot start with underscoreshould not be called with empty keynumber %f does not fit in a float32expected unsigned integer; found %snon-comparable types %s: %v, %s: %vbasic strings cannot have new linesrange can only initialize variablesinvalid boolean value %q for -%s: %vsyntax error scanning complex numberstrings.Builder.Grow: negative countstrings: Join output length overflowaccessing a corrupted shared librarymethod ABI and value ABI don't alignreflect.Value.Equal: values of type lfstack node allocated from the heap) is larger than maximum page size (objects with pointers must be zeroedruntime: invalid typeBitsBulkBarrieruncaching span but s.allocCount == 0Scan trace for cleanup/finalizer on /memory/classes/metadata/other:bytes/sched/pauses/stopping/other:secondsuser arena span is on the wrong listruntime: marked free object in span runtime: unblock on closing polldescruntime: inconsistent write deadlineruntime: netpoll: eventfd ready for runtime: sudog with non-nil waitlinkruntime: mcall called on m->g0 stackfatal: recursive switchToCrashStack
+/memory/classes/metadata/mspan/free:bytesruntime.SetFinalizer: second argument is gcSweep being done but phase is not GCoffobjects added out of order or overlappingmheap.freeSpanLocked - invalid stack freemheap.freeSpanLocked - invalid span stateattempted to add zero-sized address rangeruntime: blocked read on closing polldescstopTheWorld: not stopped (stopwait != 0) received on thread with no signal stack
+/usr/local/go/src/encoding/json/stream.go
+/usr/local/go/src/internal/filepathlite/path.go
+/usr/local/go/src/internal/filepathlite/path_unix.go
+/usr/local/go/src/internal/poll/copy_file_range_linux.go
+/usr/local/go/src/internal/poll/copy_file_range_unix.go
+/usr/local/go/src/internal/poll/fd_poll_runtime.go
+/usr/local/go/src/internal/poll/fd_writev_unix.go
+/usr/local/go/src/internal/poll/sendfile.go
+/usr/local/go/src/internal/poll/sendfile_unix.go
+/usr/local/go/src/internal/poll/sock_cloexec.go
+/usr/local/go/src/internal/poll/writev.go
+/usr/local/go/src/internal/runtime/atomic/types.go
+/usr/local/go/src/internal/runtime/atomic/types_64bit.go
+/usr/local/go/src/internal/runtime/cgroup/cgroup_linux.go
+/usr/local/go/src/internal/runtime/cgroup/line_reader.go
+/usr/local/go/src/internal/runtime/exithook/hooks.go
+/usr/local/go/src/internal/runtime/maps/group.go
+/usr/local/go/src/internal/runtime/maps/map.go
+/usr/local/go/src/internal/runtime/maps/runtime_fast32_swiss.go
+/usr/local/go/src/internal/runtime/maps/runtime_fast64_swiss.go
+/usr/local/go/src/internal/runtime/maps/runtime_faststr_swiss.go
+/usr/local/go/src/internal/runtime/maps/runtime_swiss.go
+/usr/local/go/src/internal/runtime/maps/table.go
+/usr/local/go/src/internal/runtime/maps/table_debug.go
+/usr/local/go/src/internal/runtime/strconv/atoi.go
+/usr/local/go/src/internal/runtime/sys/intrinsics.go
+/usr/local/go/src/internal/runtime/syscall/asm_linux_amd64.s
+/usr/local/go/src/internal/runtime/syscall/syscall_linux.go
+/usr/local/go/src/internal/syscall/execenv/execenv_default.go
+/usr/local/go/src/internal/syscall/unix/copy_file_range_unix.go
+/usr/local/go/src/os/env.go
+/usr/local/go/src/os/exec.go
+/usr/local/go/src/os/exec/exec.go
+/usr/local/go/src/os/exec/exec_unix.go
+/usr/local/go/src/os/exec/lp_unix.go
+/usr/local/go/src/os/exec_linux.go
+/usr/local/go/src/os/exec_posix.go
+/usr/local/go/src/os/exec_unix.go
+/usr/local/go/src/os/file.go
+/usr/local/go/src/os/file_open_unix.go
+/usr/local/go/src/os/file_posix.go
+/usr/local/go/src/os/file_unix.go
+/usr/local/go/src/os/tempfile.go
+/usr/local/go/src/path/filepath/path.go
+/usr/local/go/src/path/filepath/path_unix.go
+/usr/local/go/src/runtime/alg.go
+/usr/local/go/src/runtime/arena.go
+/usr/local/go/src/runtime/asm.s
+/usr/local/go/src/runtime/asm_amd64.s
+/usr/local/go/src/runtime/atomic_pointer.go
+/usr/local/go/src/runtime/cgo_mmap.go
+/usr/local/go/src/runtime/cgo_sigaction.go
+/usr/local/go/src/runtime/cgocall.go
+/usr/local/go/src/runtime/cgroup_linux.go
+/usr/local/go/src/runtime/chan.go
+/usr/local/go/src/runtime/cpuflags_amd64.go
+/usr/local/go/src/runtime/cpuprof.go
+/usr/local/go/src/runtime/debug.go
+/usr/local/go/src/runtime/debugcall.go
+/usr/local/go/src/runtime/defs_linux_amd64.go
+/usr/local/go/src/runtime/duff_amd64.s
+/usr/local/go/src/runtime/env_posix.go
+/usr/local/go/src/runtime/error.go
+/usr/local/go/src/runtime/extern.go
+/usr/local/go/src/runtime/fastlog2.go
+/usr/local/go/src/runtime/fds_unix.go
+/usr/local/go/src/runtime/float.go
+/usr/local/go/src/runtime/hash64.go
+/usr/local/go/src/runtime/histogram.go
+/usr/local/go/src/runtime/iface.go
+/usr/local/go/src/runtime/lfstack.go
+/usr/local/go/src/runtime/lock_futex.go
+/usr/local/go/src/runtime/lock_spinbit.go
+/usr/local/go/src/runtime/lockrank.go
+/usr/local/go/src/runtime/lockrank_off.go
+/usr/local/go/src/runtime/malloc.go
+/usr/local/go/src/runtime/map_swiss.go
+/usr/local/go/src/runtime/mbarrier.go
+/usr/local/go/src/runtime/mbitmap.go
+/usr/local/go/src/runtime/mcache.go
+/usr/local/go/src/runtime/mcentral.go
+/usr/local/go/src/runtime/mcheckmark.go
+/usr/local/go/src/runtime/mcleanup.go
+/usr/local/go/src/runtime/mem.go
+/usr/local/go/src/runtime/mem_linux.go
+/usr/local/go/src/runtime/memclr_amd64.s
+/usr/local/go/src/runtime/memmove_amd64.s
+/usr/local/go/src/runtime/metrics.go
+/usr/local/go/src/runtime/mfinal.go
+/usr/local/go/src/runtime/mfixalloc.go
+/usr/local/go/src/runtime/mgc.go
+/usr/local/go/src/runtime/mgclimit.go
+/usr/local/go/src/runtime/mgcmark.go
+/usr/local/go/src/runtime/mgcmark_nogreenteagc.go
+/usr/local/go/src/runtime/mgcpacer.go
+/usr/local/go/src/runtime/mgcscavenge.go
+/usr/local/go/src/runtime/mgcstack.go
+/usr/local/go/src/runtime/mgcsweep.go
+/usr/local/go/src/runtime/mgcwork.go
+/usr/local/go/src/runtime/mheap.go
+/usr/local/go/src/runtime/mpagealloc.go
+/usr/local/go/src/runtime/mpagealloc_64bit.go
+/usr/local/go/src/runtime/mpagecache.go
+/usr/local/go/src/runtime/mpallocbits.go
+/usr/local/go/src/runtime/mprof.go
+/usr/local/go/src/runtime/mranges.go
+/usr/local/go/src/runtime/msize.go
+/usr/local/go/src/runtime/mspanset.go
+/usr/local/go/src/runtime/mstats.go
+/usr/local/go/src/runtime/mwbbuf.go
+/usr/local/go/src/runtime/netpoll.go
+/usr/local/go/src/runtime/netpoll_epoll.go
+/usr/local/go/src/runtime/os_linux.go
+/usr/local/go/src/runtime/os_linux_generic.go
+/usr/local/go/src/runtime/panic.go
+/usr/local/go/src/runtime/pinner.go
+/usr/local/go/src/runtime/preempt.go
+/usr/local/go/src/runtime/preempt_amd64.s
+/usr/local/go/src/runtime/print.go
+/usr/local/go/src/runtime/proc.go
+/usr/local/go/src/runtime/profbuf.go
+/usr/local/go/src/runtime/rand.go
+/usr/local/go/src/runtime/retry.go
+/usr/local/go/src/runtime/rt0_linux_amd64.s
+/usr/local/go/src/runtime/runtime.go
+/usr/local/go/src/runtime/runtime1.go
+/usr/local/go/src/runtime/runtime2.go
+/usr/local/go/src/runtime/rwmutex.go
+/usr/local/go/src/runtime/security_unix.go
+/usr/local/go/src/runtime/select.go
+/usr/local/go/src/runtime/sema.go
+/usr/local/go/src/runtime/set_vma_name_linux.go
+/usr/local/go/src/runtime/signal_amd64.go
+/usr/local/go/src/runtime/signal_linux_amd64.go
+/usr/local/go/src/runtime/signal_unix.go
+/usr/local/go/src/runtime/sigqueue.go
+/usr/local/go/src/runtime/slice.go
+/usr/local/go/src/runtime/stack.go
+/usr/local/go/src/runtime/stkframe.go
+/usr/local/go/src/runtime/string.go
+/usr/local/go/src/runtime/stubs.go
+/usr/local/go/src/runtime/stubs2.go
+/usr/local/go/src/runtime/symtab.go
+/usr/local/go/src/runtime/symtabinl.go
+/usr/local/go/src/runtime/synctest.go
+/usr/local/go/src/runtime/sys_linux_amd64.s
+/usr/local/go/src/runtime/sys_x86.go
+/usr/local/go/src/runtime/tagptr_64bit.go
+/usr/local/go/src/runtime/time.go
+/usr/local/go/src/runtime/time_linux_amd64.s
+/usr/local/go/src/runtime/time_nofake.go
+/usr/local/go/src/runtime/trace.go
+/usr/local/go/src/runtime/traceallocfree.go
+/usr/local/go/src/runtime/traceback.go
+/usr/local/go/src/runtime/tracebuf.go
+/usr/local/go/src/runtime/tracecpu.go
+/usr/local/go/src/runtime/traceevent.go
+/usr/local/go/src/runtime/tracemap.go
+/usr/local/go/src/runtime/traceregion.go
+/usr/local/go/src/runtime/traceruntime.go
+/usr/local/go/src/runtime/tracestack.go
+/usr/local/go/src/runtime/tracestatus.go
+/usr/local/go/src/runtime/tracestring.go
+/usr/local/go/src/runtime/tracetime.go
+/usr/local/go/src/runtime/tracetype.go
+/usr/local/go/src/runtime/type.go
+/usr/local/go/src/runtime/typekind.go
+/usr/local/go/src/runtime/unsafe.go
+/usr/local/go/src/runtime/utf8.go
+/usr/local/go/src/runtime/vdso_linux.go
+/usr/local/go/src/runtime/vgetrandom_linux.go
+/usr/local/go/src/runtime/write_err.go
+/usr/local/go/src/sync/runtime.go
+/usr/local/go/src/syscall/env_unix.go
+/usr/local/go/src/syscall/exec_linux.go
+/usr/local/go/src/syscall/exec_unix.go
+/usr/local/go/src/syscall/forkpipe2.go
+/usr/local/go/src/text/template/exec.go
+0*struct { F uintptr; X0 *os.File; X1 *exec.Cmd }
+0*struct { F uintptr; X0 io.Writer; X1 *os.File }
+0*struct { ImportLine string; ConfigExpr string }
+0123456789/dev/stdinreaddirentpidfd_openpidfd_waitexecerrdotowner diedterminated/setgroups--unsortedbaseConfigcomplex128t.Kind == vgetrandomnotifyListprofInsertstackLargeNot workermSpanInUseGOMAXPROCSstop tracedisablethpinvalidptrschedtracesemacquiredebug callheap index  <bad pc  flushGen  MB goal,  cleanups
+1*[]struct { key string; elem runtime.metricData }
+1*struct { key runtime._typePair; elem struct {} }
+2*[8]struct { key string; elem runtime.metricData }
+2github.com/lovable/sandbox-cli/internal/taskrunner
+3*[]struct { key runtime._typePair; elem struct {} }
+3*func(*runtime.statAggregate, *runtime.metricValue)
+4*[8]struct { key runtime._typePair; elem struct {} }
+;fileu
+<invalid reflect.Value>0123456789aAbBcCdDeEfF_exec: Stdin already setoperation not permittedinterrupted system calldevice or resource busyno space left on deviceoperation not supportedCPU time limit exceededprofiling timer expired.lovable/vite.config.tsreflectlite.Value.IsNilreflect.Value.Interfacereflect.Value.NumMethodindex out of range [%x]ReadMemStatsSlow (test)chan receive (nil chan)garbage collection scanSIGIO: i/o now possibleSIGSYS: bad system callmakechan: bad alignmentclose of closed channelunlock of unlocked lock) must be a power of 2
+=*struct { F uintptr; X0 *exec.Cmd; X1 chan<- exec.ctxResult }
+???pc=  G125625nanSunMonTueWedThuFriSatJanFebMarAprMayJunJulAugSepOctNovDecUTCdup'"'inf"""lennotadxaesshaavxfmanet'''trueuinteEpPwaitreadseekopenstatsyncfilePWD=PATHquitjust.mts.mjs.cjs.ctsboolint8chanfunccallkindArgs on Call in  != allgallprootitabsbrkidledead is LEAFheapbase at Has used of ) =  <==GOGC] = s + ,r2= pc=+Inf-Inf: p=cas1cas2cas3cas4cas5cas6
+B*struct { F uintptr; X0 chan exec.goroutineStatus; X1 chan error }
+Command(L
+ConfigExpr
+Environ
+Execute
+ExecuteTemplate
+ExtraFiles
+File
+FileLine
+GODEBUG=execwait=2 detected a leaked exec.Cmd created by:
+H*func(runtime.goroutineProfileState, runtime.goroutineProfileState) bool
+IsStream
+MapIndex
+MapIter.Value called before Nextreflect: NumIn of non-func type reflect.Value.Grow: negative lenslice bounds out of range [::%x]slice bounds out of range [:%x:]slice bounds out of range [%x::]SIGFPE: floating-point exceptionSIGTTOU: background write to tty (types from different packages)end outside usable address spaceruntime: fixalloc size too largeinvalid limiter event type foundscanstack: goroutine not stoppedscavenger state is already wiredsweep increased allocation countremovespecial on invalid pointergetWeakHandle on invalid pointerruntime: root level max pages = _cgo_pthread_key_created missingruntime: sudog with non-nil elemruntime: sudog with non-nil nextruntime: sudog with non-nil prevruntime: mcall function returnednon-Go code disabled sigaltstackruntime: newstack called from g=runtime: stack split at bad timepanic while printing panic value28421709430404007434844970703125: day-of-year does not match daysync: Unlock of unlocked RWMutexuse of closed network connectionin literal false (expecting 'a')in literal false (expecting 'l')in literal false (expecting 's')in literal false (expecting 'e')date time should have a timezonecouldn't parse binary number: %wreflect: NumOut of non-func typeinitial table capacity too large" not supported for cpu option "basic string not terminated by "malformed character constant: %sinvalid value %q for flag -%s: %vbytes.Buffer.Grow: negative counttoo many levels of symbolic linksreflect: slice index out of rangereflect: NumOut of non-func type  of method on nil interface valuereflect: Field index out of rangereflect: array index out of rangereflect.Value.Equal: invalid Kind to pointer to array with length slice bounds out of range [%x:%y]SIGCHLD: child status has changedSIGTTIN: background read from ttySIGXFSZ: file size limit exceededbase outside usable address spaceruntime: memory allocated by OS [misrounded allocation in sysAlloc/cpu/classes/gc/pause:cpu-seconds/cpu/classes/gc/total:cpu-seconds/gc/limiter/last-enabled:gc-cycle/memory/classes/heap/stacks:bytes/memory/classes/heap/unused:bytes/sched/pauses/stopping/gc:seconds/sched/pauses/total/other:secondsmin must be a non-zero power of 2runtime: failed mSpanList.insert runtime: epollcreate failed with runtime: morestack on g0, stack [runtime: castogscanstatus oldval=stoplockedm: inconsistent lockingfindrunnable: negative nmspinningfreeing stack not in a stack spanstackalloc not on scheduler stackruntime: goroutine stack exceeds runtime: text offset out of rangetimer period must be non-negativetoo many concurrent timer firingsruntime: name offset out of rangeruntime: type offset out of range142108547152020037174224853515625710542735760100185871124267578125sync: RUnlock of unlocked RWMutexskip everything and stop the walkwaiting for unsupported file typeinvalid timezone offset charactercouldn't parse decimal number: %wnumber cannot end with underscorecannot index slice/array with nilconcurrent map read and map writetable must have positive capacityGODEBUG: no value specified for "slice offset larger than int (%d)  lovable-exec dev -- --port 3000
+Message
+ParseFiles
+Process
+ProcessState
+Pwrite
+RUnlock	
+RawWrite
+ReadRune
+ReturnIsPtr
+RuntimeError
+SetMapIndex
+SetWriteDeadline
+Start
+SysFile
+SystemTime
+To fix this, add to lovable.toml:
+Token
+Truncate
+UnreadRune
+UserTime
+Warning: failed to install lovable-tagger: %v
+Write
+WriteAt
+WriteMsg
+WriteMsgInet4
+WriteMsgInet6
+WriteString
+WriteTo
+WriteToInet4
+WriteToInet6
+Writev
+[run]
+\u%04Xrdtscppopcnt want cmd/gonetdnsdefinedry-run--port=Flags:
+accessed data from freed user arena runtime: wrong goroutine in newstackruntime: invalid pc-encoded table f=444089209850062616169452667236328125ryuFtoaFixed64 called with prec > 180123456789abcdefghijklmnopqrstuvwxyzTime.UnmarshalBinary: invalid lengthjson: encoding error for type %q: %qexceeded maximum template depth (%v)%s is not a method but has argumentsinternal error: associate not commonreflect: NumField of non-struct typeinvalid pattern syntax (+ after -): range length is larger than capacityexec: StdinPipe after process startedvalue too large for defined data typecannot exec a shared library directlyoperation not possible due to RF-killreflect: Bits of non-arithmetic Type reflect: NumField of non-struct type reflect: IsVariadic of non-func type reflect: OverflowInt of non-int type reflect: funcLayout of non-func type reflect.Value.Bytes of non-byte slicereflect.Value.Bytes of non-byte arrayreflect.Value.Bytes of non-rune slicemethod ABI and value ABI do not alignreflect.Value.Convert: value of type runtime: allocation size out of range) is smaller than minimum page size (/cpu/classes/gc/mark/idle:cpu-secondssetprofilebucket: profile already setfailed to reserve page summary memory_cgo_notify_runtime_init_done missingfatal: concurrent switchToCrashStack
+bad addressfile existsbroken pipebad messagealarm clockstack faultvite.configshort writebad argSizemethodargs(reflect.SetassistQueuenetpollInitreflectOffsglobalAllocmSpanManualstart traceclobberfreegccheckmarkscheddetailunspecifiedcgocall nil s.nelems=   of size  ) returned runtime: p  ms clock,  nBSSRoots=runtime: P  exp.) for minTrigger=GOMEMLIMIT=bad m value, elemsize= freeindex= span.list=not reached, npages = , a123456=[ p->status= in status  idleprocs= gcwaiting= schedtick= timerslen= mallocing=bad timedivfloat64nan1float64nan2float64nan3float32nan2GOTRACEBACK) at entry+ (targetpc= , plugin: running < 0runtime: g : frame.sp=created by 30517578125time: file i/o timeoutfinal tokenMarshalJSONMarshalTextarray tablecall of nil (deleted)
+bad flag syntax: %sreflect.Value.IsNilreflect.Value.Floatbad unicode format exec: canceling Cmdbad file descriptortoo many open filesdirectory not emptydevice not a streamdisk quota exceededillegal instructionstopped (tty input)@lovable.dev/lovitereflect.Value.Bytesreflect.Value.Fieldreflect.Value.Indexreflect.Value.Slicereflect.Value.Clear are not comparablestrongFromWeakQueueGC mark terminationsync.WaitGroup.Waitchan send (durable)SIGTRAP: trace trapwait for debug call__vdso_gettimeofdaycgocall unavailablepanicwrap: no ( in panicwrap: no ) in  called using nil *unknown wait reasonnotesleep not on g0GC work not flushedunaligned sysUnused/gc/scan/heap:bytes/gc/heap/goal:bytes/gc/heap/live:bytesmarkroot: bad indexnwait > work.nprocs, gp->atomicstatus=marking free object KiB work (eager),  [controller reset]mspan.sweep: state=sysMemStat overflowbad sequence numberpanic during mallocpanic holding locksmissing deferreturnunexpected gp.parampanic during panic
+booleanbdoUxXvintegercomplexfloat32float64 (trap writeatfstatatabortedstoppedsignal installinvaliduintptrChanDir using , type=closure Value>ConvertforcegcallocmWcpuprofallocmRunknowngctraceIO waitrunningsyscallwaitingforevernetworkUNKNOWNcleanup:events, goid=  mark  s=nil
+bytes.(*Buffer).ReadRune
+bytes.(*Buffer).Truncate
+bytes.(*Buffer).UnreadRune
+bytes.(*Buffer).Write
+bytes.(*Buffer).WriteByte
+bytes.(*Buffer).WriteRune
+bytes.(*Buffer).WriteString
+bytes.(*Buffer).WriteTo
+bytes.Buffer: reader returned negative count from ReadUsage: lovable-exec [flags] <task> [-- extra-args...]
+cacheStart
+called CompareAndSwap when value is not of comparable typejson: cannot set embedded pointer to unexported struct: %vreflect: reflect.Value.Elem on an invalid notinheap pointerreflect: indirection through nil pointer to embedded structruntime: mmap: too much locked memory (check 'ulimit -l').
+childIOFiles
+command
+complexTokens
+const lovableTagger = componentTagger();
+const userConfig = {{.ConfigExpr}};
+copyFileRange
+deferreturn
+dispatch
+embed.(*file).Info
+embed.(*file).IsDir
+embed.(*file).ModTime
+embed.(*file).Mode
+embed.(*file).Name
+embed.(*file).Size
+embed.(*file).String
+embed.(*file).Sys
+embed.(*file).Type
+embed.(*openFile).Close
+embed.(*openFile).Read
+embed.(*openFile).ReadAt
+embed.(*openFile).Seek
+embed.(*openFile).Stat
+embed.FS.ReadFile
+embedfollowsymlinksgotestjsonbuildtextmultipartmaxheadersarray is incompleteunclosed left parenunknown branch typetemplate: %s:%d: %sunexpected %s in %sflag: help requestedtype not a pointer: invalid request codebad font file formatconnection timed outis a named type filekey has been revokedstopped (tty output)urgent I/O conditioninvalid write resultreflect: cannot use  returned zero Valuereflect.Value.IsZeroreflect.Value.Methodreflect.Value.SetIntreflect.Value.Slice3floating point errorGC sweep terminationResetDebugLog (test)chan send (nil chan)flushing proc cachesSIGALRM: alarm clockSIGTERM: termination__vdso_clock_gettimeclose of nil channelinconsistent lockedmnotetsleep not on g0bad system page size to unallocated span/gc/scan/stack:bytes/gc/scan/total:bytes/gc/heap/frees:bytes/gc/gomemlimit:bytesp mcache not flushed markroot jobs done
+encoding/json.(*RawMessage).MarshalJSON
+encoding/json.(*RawMessage).UnmarshalJSON
+encoding/json.(*encodeState).ReadRune
+encoding/json.(*encodeState).Truncate
+encoding/json.(*encodeState).UnreadRune
+encoding/json.(*encodeState).Write
+encoding/json.(*encodeState).WriteByte
+encoding/json.(*encodeState).WriteRune
+encoding/json.(*encodeState).WriteString
+encoding/json.(*encodeState).WriteTo
+encoding/json.RawMessage.MarshalJSON
+encoding/json.foldRune
+end of filegocachehashgocachetesthttp2clienthttp2serverrandseednoparchive/tartls10servercrypto/x509archive/zipInlineTableexpected :=empty fieldexit status can't happenillegal seekinvalid slothost is downchild exitedI/O possiblepackage.jsonlovable.tomlshort buffer has no name has no typereflect.CopysweepWaiterscleanupQueuetraceStringsspanSetSpinemspanSpecialtraceTypeTabgcBitsArenasmheapSpecialgcpacertraceharddecommitmadvdontneeddumping heapchan receivesynctest.Runcleanup wait span.limit= span.state=bad flushGen MB stacks, scan: total scan: class worker mode  nDataRoots= nSpanRoots= wbuf1=<nil> wbuf2=<nil> gcscandone runtime: gp= found at *( s.elemsize= B (
+environ
+evalCommand
+execute
+exit hook invoked panicpattern bits too long: expected value, not eof0123456789abcdefABCDEF_function %q not definedexec: Stdout already setexec: Stderr already setfunction not implementedlevel 2 not synchronizedlink number out of rangeout of streams resourcesconnection reset by peerstructure needs cleaningfloating point exceptionfile size limit exceededRawSockaddrAny too smallreflect.MapIter.SetValuereflect.StructOf: field reflect.Value.SetComplexreflect.Value.UnsafeAddrtracecheckstackownershiphash of unhashable type cannot open standard fdsspan has no free objectsruntime: found obj at *(/cgo/go-to-c-calls:calls/gc/heap/objects:objects/sched/latencies:secondsqueuefinalizer during GCcheckfinalizers: queue: update during transitionruntime: markroot index can't scan our own stackgcDrainN phase incorrectpageAlloc: out of memoryruntime: p.searchAddr = range partially overlapsruntime: epollctl failed [recovered, repanicked]stack trace unavailable
+export default defineConfig(async (configEnv) => {
+file
+fileID
+fileLine
+files
+filetab
+filetabOffset
+flag provided but not defined: -%sexecutable file not found in $PATHtoo many references: cannot splicereflect: Method index out of rangereflect: ChanDir of non-chan type reflect: Field of non-struct type reflect: Field index out of boundsreflect.FuncOf: too many argumentsreflect.StructOf: duplicate field " is anonymous but has PkgPath setreflect: string index out of rangereflect: recv on send-only channelreflect: send on recv-only channelreflect.Value.Grow: slice overflowslice bounds out of range [:%x:%y]slice bounds out of range [%x:%y:]SIGURG: urgent condition on socketruntime: standard file descriptor out of memory allocating allArenas... too many potential issues ...
+flag.commandLineUsage
+floatToken
+fmt.(*buffer).write
+fmt.(*buffer).writeByte
+fmt.(*buffer).writeRune
+fmt.(*buffer).writeString
+fmt.(*fmt).truncate
+fmt.(*fmt).truncateString
+fmt.(*fmt).writePadding
+fmt.(*pp).Write
+fmt.(*pp).WriteString
+fmt.(*readRune).ReadRune
+fmt.(*readRune).UnreadRune
+fmt.(*readRune).readByte
+fmt.(*ss).ReadRune
+fmt.(*ss).Token
+fmt.(*ss).Token.func1
+fmt.(*ss).UnreadRune
+fmt.(*ss).complexTokens
+fmt.(*ss).floatToken
+fmt.(*ss).getRune
+fmt.(*ss).mustReadRune
+fmt.(*ss).scanRune
+fmt.(*ss).token
+fmt.indexRune
+fmt.tooLarge
+fmt: unknown base; can't happen.lib section in a.out corruptedcannot assign requested address cannot produce iter.Seq[Value]reflect: Len of non-array type reflect.MakeSlice: negative lenreflect.MakeSlice: negative capslice bounds out of range [:%x]slice bounds out of range [%x:]SIGSEGV: segmentation violationcall from within the Go runtimeinternal error - misuse of itab) not in usable address space: runtime: cannot allocate memorycheckmark found unmarked object/memory/classes/heap/free:bytes/memory/classes/os-stacks:bytespacer: sweep done at heap size non in-use span in unswept listruntime.Pinner: argument is nilcasgstatus: bad incoming valuesresetspinning: not a spinning mruntime: profBuf already closedfatal: bad g in signal handler
+gcMarkWorkerStartTime
+gcWriteBarrier
+getRune
+github.com/lovable/sandbox-cli/internal/taskrunner.EnsureLovableTaggerInstalled
+github.com/lovable/sandbox-cli/internal/taskrunner.GenerateOverrideConfig
+github.com/lovable/sandbox-cli/internal/taskrunner.GetCommand
+github.com/lovable/sandbox-cli/internal/taskrunner.GetDevServerPort
+github.com/lovable/sandbox-cli/internal/taskrunner.GetViteConfigPath
+github.com/lovable/sandbox-cli/internal/taskrunner.IsViteCommand
+github.com/lovable/sandbox-cli/internal/taskrunner.IsViteOverrideEnabled
+github.com/lovable/sandbox-cli/internal/taskrunner.IsViteProject
+github.com/lovable/sandbox-cli/internal/taskrunner.IsViteTask
+github.com/lovable/sandbox-cli/internal/taskrunner.NeedsViteOverride
+github.com/lovable/sandbox-cli/internal/taskrunner.UsesLovableTagger
+github.com/lovable/sandbox-cli/internal/taskrunner.UsesLovite
+github.com/lovable/sandbox-cli/internal/taskrunner.checkJustfile
+github.com/lovable/sandbox-cli/internal/taskrunner.checkLovableToml
+github.com/lovable/sandbox-cli/internal/taskrunner.checkPackageManager
+github.com/lovable/sandbox-cli/internal/taskrunner.detectPackageManager
+github.com/lovable/sandbox-cli/internal/taskrunner.formatOverrideConfig
+github.com/lovable/sandbox-cli/internal/taskrunner.getPackageScript
+github.com/lovable/sandbox-cli/internal/taskrunner.hasJustRecipe
+github.com/lovable/sandbox-cli/internal/taskrunner.hasUnsupportedViteConfig
+github.com/lovable/sandbox-cli/internal/taskrunner.init
+github.com/lovable/sandbox-cli/internal/taskrunner.parseCommand
+github.com/lovable/sandbox-cli/internal/taskrunner.scriptUsesVite
+github.com/pelletier/go-toml/v2/unstable.hexToRune
+github.com/pelletier/go-toml/v2/unstable.isValidBinaryRune
+github.com/pelletier/go-toml/v2/unstable.isValidHexRune
+github.com/pelletier/go-toml/v2/unstable.isValidOctalRune
+go:textfipsstart
+goroutineProfiled
+gosave_systemstack_switch
+http2debugrsa1024mincrypto/rsacrypto/tlswinsymlinkx509rsacrtArrayTabledefinition
+import { componentTagger } from "lovable-tagger";
+import { defineConfig } from "vite";
+instruction bytes:mp.gsignal stack [bad manualFreeListruntime: textAddr  frames elided...
+internal/abi.TypeFor[go.shape.struct { Pid int; os.state sync/atomic.Uint32; os.sigMu sync.RWMutex; os.handle *os.processHandle; os.cleanup runtime.Cleanup }]
+internal/abi.TypeFor[go.shape.struct { internal/poll.splicePipeFields; internal/poll.cleanup runtime.Cleanup }]
+internal/abi.writeVarint
+internal/bisect.(*Matcher).FileLine
+internal/bisect.(*Matcher).fileLine
+internal/bisect.appendFileLine
+internal/bisect.printFileLine
+internal/cpu.processOptions
+internal/filepathlite.(*lazybuf).append
+internal/filepathlite.(*lazybuf).index
+internal/filepathlite.(*lazybuf).string
+internal/filepathlite.Base
+internal/filepathlite.Clean
+internal/filepathlite.IsAbs
+internal/filepathlite.IsPathSeparator
+internal/filepathlite.VolumeName
+internal/godebug.(*runtimeStderr).Write
+internal/poll.(*FD).Ftruncate
+internal/poll.(*FD).Ftruncate.deferwrap1
+internal/poll.(*FD).Ftruncate.func1
+internal/poll.(*FD).Pwrite
+internal/poll.(*FD).Pwrite.deferwrap1
+internal/poll.(*FD).RawWrite
+internal/poll.(*FD).RawWrite.deferwrap1
+internal/poll.(*FD).SetWriteDeadline
+internal/poll.(*FD).WaitWrite
+internal/poll.(*FD).Write
+internal/poll.(*FD).Write.deferwrap1
+internal/poll.(*FD).WriteMsg
+internal/poll.(*FD).WriteMsg.deferwrap1
+internal/poll.(*FD).WriteMsgInet4
+internal/poll.(*FD).WriteMsgInet4.deferwrap1
+internal/poll.(*FD).WriteMsgInet6
+internal/poll.(*FD).WriteMsgInet6.deferwrap1
+internal/poll.(*FD).WriteOnce
+internal/poll.(*FD).WriteOnce.deferwrap1
+internal/poll.(*FD).WriteTo
+internal/poll.(*FD).WriteTo.deferwrap1
+internal/poll.(*FD).WriteToInet4
+internal/poll.(*FD).WriteToInet4.deferwrap1
+internal/poll.(*FD).WriteToInet6
+internal/poll.(*FD).WriteToInet6.deferwrap1
+internal/poll.(*FD).Writev
+internal/poll.(*FD).Writev.deferwrap1
+internal/poll.(*FD).writeLock
+internal/poll.(*FD).writeUnlock
+internal/poll.(*SysFile).destroy
+internal/poll.(*pollDesc).prepareWrite
+internal/poll.(*pollDesc).waitWrite
+internal/poll.CopyFileRange
+internal/poll.DupCloseOnExec
+internal/poll.SendFile
+internal/poll.copyFileRange
+internal/poll.copyFileRange.deferwrap1
+internal/poll.copyFileRange.deferwrap2
+internal/poll.copyFileRange.func1
+internal/poll.dupCloseOnExecOld
+internal/poll.dupCloseOnExecOld.deferwrap1
+internal/poll.handleCopyFileRangeErr
+internal/poll.runtime_Semacquire
+internal/poll.runtime_Semrelease
+internal/poll.runtime_pollClose
+internal/poll.runtime_pollOpen
+internal/poll.runtime_pollReset
+internal/poll.runtime_pollServerInit
+internal/poll.runtime_pollSetDeadline
+internal/poll.runtime_pollUnblock
+internal/poll.runtime_pollWait
+internal/poll.sendFile
+internal/poll.sendFile.deferwrap1
+internal/poll.sendFile.func1
+internal/poll.sendFileChunk
+internal/poll.supportCopyFileRange
+internal/poll.writev
+internal/runtime/atomic
+internal/runtime/atomic.(*Bool).Load
+internal/runtime/atomic.(*Bool).Store
+internal/runtime/atomic.(*Float64).Load
+internal/runtime/atomic.(*Float64).Store
+internal/runtime/atomic.(*Int32).Add
+internal/runtime/atomic.(*Int32).CompareAndSwap
+internal/runtime/atomic.(*Int32).Load
+internal/runtime/atomic.(*Int32).Store
+internal/runtime/atomic.(*Int32).Swap
+internal/runtime/atomic.(*Int64).Add
+internal/runtime/atomic.(*Int64).CompareAndSwap
+internal/runtime/atomic.(*Int64).Load
+internal/runtime/atomic.(*Int64).Store
+internal/runtime/atomic.(*Int64).Swap
+internal/runtime/atomic.(*Pointer[go.shape.5f566b8060af5dcf2bb32599f0d90d9b6c002cd445f22159b86edf45e23a5dae]).CompareAndSwapNoWB
+internal/runtime/atomic.(*Pointer[go.shape.5f566b8060af5dcf2bb32599f0d90d9b6c002cd445f22159b86edf45e23a5dae]).Load
+internal/runtime/atomic.(*Pointer[go.shape.func()]).CompareAndSwap
+internal/runtime/atomic.(*Pointer[go.shape.func()]).Load
+internal/runtime/atomic.(*Pointer[go.shape.func(string) func()]).Load
+internal/runtime/atomic.(*Pointer[go.shape.func(string) func()]).Store
+internal/runtime/atomic.(*Pointer[go.shape.func(string, string)]).Load
+internal/runtime/atomic.(*Pointer[go.shape.func(string, string)]).Store
+internal/runtime/atomic.(*Pointer[go.shape.string]).Load
+internal/runtime/atomic.(*Pointer[go.shape.string]).Store
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).CompareAndSwap
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).CompareAndSwapNoWB
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).Load
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).Store
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).StoreNoWB
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.r runtime.profAtomic; runtime.w runtime.profAtomic; runtime.overflow internal/runtime/atomic.Uint64; runtime.overflowTime internal/runtime/atomic.Uint64; runtime.eof internal/runtime/atomic.Uint32; runtime.hdrsize uintptr; runtime.data []uint64; runtime.tags []unsafe.Pointer; runtime.rNext runtime.profIndex; runtime.overflowBuf []uint64; runtime.wait runtime.note }]).Load
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.r runtime.profAtomic; runtime.w runtime.profAtomic; runtime.overflow internal/runtime/atomic.Uint64; runtime.overflowTime internal/runtime/atomic.Uint64; runtime.eof internal/runtime/atomic.Uint32; runtime.hdrsize uintptr; runtime.data []uint64; runtime.tags []unsafe.Pointer; runtime.rNext runtime.profIndex; runtime.overflowBuf []uint64; runtime.wait runtime.note }]).Store
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.spanSetBlockHeader2; runtime.spans [512]runtime.atomicMSpanPointer }]).Load
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.spanSetBlockHeader2; runtime.spans [512]runtime.atomicMSpanPointer }]).StoreNoWB
+internal/runtime/atomic.(*Pointer[runtime._defer]).CompareAndSwap
+internal/runtime/atomic.(*Pointer[runtime._defer]).CompareAndSwapNoWB
+internal/runtime/atomic.(*Pointer[runtime._defer]).Load
+internal/runtime/atomic.(*Pointer[runtime._defer]).Store
+internal/runtime/atomic.(*Pointer[runtime._defer]).StoreNoWB
+internal/runtime/atomic.(*Uint32).Add
+internal/runtime/atomic.(*Uint32).And
+internal/runtime/atomic.(*Uint32).CompareAndSwap
+internal/runtime/atomic.(*Uint32).CompareAndSwapRelease
+internal/runtime/atomic.(*Uint32).Load
+internal/runtime/atomic.(*Uint32).LoadAcquire
+internal/runtime/atomic.(*Uint32).Or
+internal/runtime/atomic.(*Uint32).Store
+internal/runtime/atomic.(*Uint32).StoreRelease
+internal/runtime/atomic.(*Uint32).Swap
+internal/runtime/atomic.(*Uint64).Add
+internal/runtime/atomic.(*Uint64).CompareAndSwap
+internal/runtime/atomic.(*Uint64).Load
+internal/runtime/atomic.(*Uint64).LoadAcquire
+internal/runtime/atomic.(*Uint64).Store
+internal/runtime/atomic.(*Uint64).StoreRelease
+internal/runtime/atomic.(*Uint64).Swap
+internal/runtime/atomic.(*Uint8).And
+internal/runtime/atomic.(*Uint8).Load
+internal/runtime/atomic.(*Uint8).Or
+internal/runtime/atomic.(*Uint8).Store
+internal/runtime/atomic.(*Uintptr).Add
+internal/runtime/atomic.(*Uintptr).CompareAndSwap
+internal/runtime/atomic.(*Uintptr).Load
+internal/runtime/atomic.(*Uintptr).LoadAcquire
+internal/runtime/atomic.(*Uintptr).Store
+internal/runtime/atomic.(*Uintptr).StoreRelease
+internal/runtime/atomic.(*Uintptr).Swap
+internal/runtime/atomic.(*UnsafePointer).CompareAndSwap
+internal/runtime/atomic.(*UnsafePointer).CompareAndSwapNoWB
+internal/runtime/atomic.(*UnsafePointer).Load
+internal/runtime/atomic.(*UnsafePointer).Store
+internal/runtime/atomic.(*UnsafePointer).StoreNoWB
+internal/runtime/atomic.(*noCopy).Lock
+internal/runtime/atomic.(*noCopy).Unlock
+internal/runtime/atomic.casPointer
+internal/runtime/atomic.storePointer
+internal/runtime/cgroup
+internal/runtime/cgroup.(*lineReader).line
+internal/runtime/cgroup.(*lineReader).next
+internal/runtime/cgroup.(*stringError).Error
+internal/runtime/cgroup.CPU.Close
+internal/runtime/cgroup.FindCPU
+internal/runtime/cgroup.FindCPUMountPoint
+internal/runtime/cgroup.FindCPURelativePath
+internal/runtime/cgroup.OpenCPU
+internal/runtime/cgroup.ReadCPULimit
+internal/runtime/cgroup.checkBufferSize
+internal/runtime/cgroup.containsCPU
+internal/runtime/cgroup.newLineReader
+internal/runtime/cgroup.parseCPUMount
+internal/runtime/cgroup.parseCPURelativePath
+internal/runtime/cgroup.parseV1Number
+internal/runtime/cgroup.parseV2Limit
+internal/runtime/cgroup.readV1Number
+internal/runtime/cgroup.readV2Limit
+internal/runtime/cgroup.stringError.Error
+internal/runtime/cgroup.throw
+internal/runtime/cgroup.unescapePath
+internal/runtime/exithook.Run
+internal/runtime/exithook.Run.deferwrap1
+internal/runtime/exithook.Run.deferwrap2
+internal/runtime/exithook.Run.func1
+internal/runtime/maps
+internal/runtime/maps.(*Iter).Elem
+internal/runtime/maps.(*Iter).Init
+internal/runtime/maps.(*Iter).Initialized
+internal/runtime/maps.(*Iter).Key
+internal/runtime/maps.(*Iter).Map
+internal/runtime/maps.(*Iter).Next
+internal/runtime/maps.(*Iter).grownKeyElem
+internal/runtime/maps.(*Iter).nextDirIdx
+internal/runtime/maps.(*Map).Clear
+internal/runtime/maps.(*Map).Clone
+internal/runtime/maps.(*Map).Delete
+internal/runtime/maps.(*Map).Get
+internal/runtime/maps.(*Map).Put
+internal/runtime/maps.(*Map).PutSlot
+internal/runtime/maps.(*Map).Used
+internal/runtime/maps.(*Map).clearSmall
+internal/runtime/maps.(*Map).deleteSmall
+internal/runtime/maps.(*Map).directoryAt
+internal/runtime/maps.(*Map).directoryIndex
+internal/runtime/maps.(*Map).directorySet
+internal/runtime/maps.(*Map).getWithKey
+internal/runtime/maps.(*Map).getWithKeySmall
+internal/runtime/maps.(*Map).getWithoutKey
+internal/runtime/maps.(*Map).getWithoutKeySmallFastStr
+internal/runtime/maps.(*Map).growToSmall
+internal/runtime/maps.(*Map).growToTable
+internal/runtime/maps.(*Map).installTableSplit
+internal/runtime/maps.(*Map).putSlotSmall
+internal/runtime/maps.(*Map).putSlotSmallFast32
+internal/runtime/maps.(*Map).putSlotSmallFast64
+internal/runtime/maps.(*Map).putSlotSmallFastPtr
+internal/runtime/maps.(*Map).putSlotSmallFastStr
+internal/runtime/maps.(*Map).replaceTable
+internal/runtime/maps.(*ctrlGroup).get
+internal/runtime/maps.(*ctrlGroup).set
+internal/runtime/maps.(*ctrlGroup).setEmpty
+internal/runtime/maps.(*groupReference).ctrls
+internal/runtime/maps.(*groupReference).elem
+internal/runtime/maps.(*groupReference).key
+internal/runtime/maps.(*groupsReference).group
+internal/runtime/maps.(*table).Clear
+internal/runtime/maps.(*table).Delete
+internal/runtime/maps.(*table).Get
+internal/runtime/maps.(*table).Print
+internal/runtime/maps.(*table).PutSlot
+internal/runtime/maps.(*table).Used
+internal/runtime/maps.(*table).clone
+internal/runtime/maps.(*table).getWithKey
+internal/runtime/maps.(*table).getWithoutKey
+internal/runtime/maps.(*table).grow
+internal/runtime/maps.(*table).maxGrowthLeft
+internal/runtime/maps.(*table).pruneTombstones
+internal/runtime/maps.(*table).rehash
+internal/runtime/maps.(*table).reset
+internal/runtime/maps.(*table).split
+internal/runtime/maps.(*table).tombstones
+internal/runtime/maps.(*table).uncheckedPutSlot
+internal/runtime/maps.(*unhashableTypeError).Error
+internal/runtime/maps.(*unhashableTypeError).RuntimeError
+internal/runtime/maps.NewEmptyMap
+internal/runtime/maps.NewMap
+internal/runtime/maps.alignUpPow2
+internal/runtime/maps.bitset.count
+internal/runtime/maps.bitset.first
+internal/runtime/maps.bitset.lowestSet
+internal/runtime/maps.bitset.removeBelow
+internal/runtime/maps.bitset.removeFirst
+internal/runtime/maps.bitset.shiftOutLowest
+internal/runtime/maps.cloneGroup
+internal/runtime/maps.ctrlGroup.matchEmpty
+internal/runtime/maps.ctrlGroup.matchEmptyOrDeleted
+internal/runtime/maps.ctrlGroup.matchFull
+internal/runtime/maps.ctrlGroup.matchH2
+internal/runtime/maps.depthToShift
+internal/runtime/maps.dump
+internal/runtime/maps.fatal
+internal/runtime/maps.h1
+internal/runtime/maps.h2
+internal/runtime/maps.localDepthMask
+internal/runtime/maps.longStringQuickEqualityTest
+internal/runtime/maps.makeProbeSeq
+internal/runtime/maps.mapKeyError
+internal/runtime/maps.mapKeyError2
+internal/runtime/maps.newGroups
+internal/runtime/maps.newTable
+internal/runtime/maps.newarray
+internal/runtime/maps.newobject
+internal/runtime/maps.probeSeq.next
+internal/runtime/maps.rand
+internal/runtime/maps.typeString
+internal/runtime/maps.typedmemclr
+internal/runtime/maps.typedmemmove
+internal/runtime/maps.unhashableTypeError.Error
+internal/runtime/maps.unhashableTypeError.RuntimeError
+internal/runtime/strconv.Atoi
+internal/runtime/strconv.Atoi32
+internal/runtime/strconv.Atoi64
+internal/runtime/sys
+internal/runtime/sys.LeadingZeros64
+internal/runtime/sys.LeadingZeros8
+internal/runtime/sys.OnesCount64
+internal/runtime/syscall.Close
+internal/runtime/syscall.EpollCreate1
+internal/runtime/syscall.EpollCtl
+internal/runtime/syscall.EpollWait
+internal/runtime/syscall.Eventfd
+internal/runtime/syscall.Open
+internal/runtime/syscall.Pread
+internal/runtime/syscall.Read
+internal/runtime/syscall.Syscall6
+internal/sync.runtime_SemacquireMutex
+internal/sync.runtime_Semrelease
+internal/sync.runtime_canSpin
+internal/sync.runtime_doSpin
+internal/sync.runtime_nanotime
+internal/syscall/execenv.Default
+internal/syscall/unix.CopyFileRange
+internal/testlog.Getenv
+invalid base '%c', should have been checked by scanIntOrFloatstrings.Reader.UnreadRune: previous operation was not ReadRunereflect.ArrayOf: array size would exceed virtual address spacereflect: reflect.Value.Pointer on an invalid notinheap pointerfound bad pointer in Go heap (incorrect use of unsafe or cgo?)limiterEvent.stop: found wrong event in p's limiter event slotruntime: internal error: misuse of lockOSThread/unlockOSThreadruntime.AddCleanup: ptr is equal to arg, cleanup will never runinternal/sync.HashTrieMap: ran out of hash bits while iteratinginternal/sync.HashTrieMap: ran out of hash bits while inserting  may be in the same tiny block as cleanup or cleanup argument
+invalid timer: fake time but no syncgroup34694469519536141888238489627838134765625strconv: illegal AppendInt/FormatInt basetime: Reset called on uninitialized Timertime: missing Location in call to Time.InTime.UnmarshalBinary: unsupported versionbytes.Buffer.WriteTo: invalid Write countexpecting colon between hours and minuteswrong type for value; expected %s; got %s""" not allowed in multiline basic stringtoml: expected %s to be a table, not a %sError: unexpected argument %q before "--"
+io.WriteString
+io/fs.(*FileMode).IsDir
+io/fs.(*FileMode).IsRegular
+io/fs.(*FileMode).Perm
+io/fs.(*FileMode).String
+io/fs.(*FileMode).Type
+io/fs.FileMode.IsDir
+io/fs.FileMode.IsRegular
+io/fs.FileMode.Perm
+io/fs.FileMode.String
+io/fs.FileMode.Type
+io/fs.FormatFileInfo
+isFile
+isUnusedUserArenaChunk
+isUserArenaChunk
+lock: lock countbad system huge page sizearena already initialized to unused region of spanunaligned sysNoHugePageOS/sched/gomaxprocs:threadsmissing type in finalizerremaining pointer buffersruntime: epollwait on fd slice bounds out of range_cgo_thread_start missingallgadd: bad status Gidleruntime: program exceeds startm: p has runnable gsstoplockedm: not runnablereleasep: invalid p statecheckdead: no p for timercheckdead: no m for timerunexpected fault address missing stack in newstackbad status in shrinkstackmissing traceGCSweepStart29103830456733703613281252006-01-02T15:04:05Z07:00inconsistent poll.fdMutexjson: Unexpected key typejson: unsupported value: hour cannot be greater 23unable to parse float: %wcan't evaluate command %qexpected string; found %scan't print %s of type %shash of unhashable type: GODEBUG: can not enable "impossible cgroup versionwindows new line expectedillegal number syntax: %qreflect.Value.CanInterfaceinteger overflow on token no message of desired typeno CSI structure availableinvalid request descriptorname not unique on networkrequired key not available using unaddressable valueunknown ABI parameter kind using zero Value argumentreflect.Value.MethodByNamereflect.Value.OverflowUintall goroutines stack traceSIGSTOP: stop, unblockableGC background sweeper waitcall from unknown functionnotewakeup - double wakeuppersistentalloc: size == 0/gc/cycles/total:gc-cyclesbad type kind in finalizernegative idle mark workersuse of invalid sweepLockerruntime: bad span s.state=forEachP: P did not run fnwakep: negative nmspinningstartlockedm: locked to meinittask with no functionsunlock of unlocked rwmutexcorrupted semaphore ticketout of memory (stackalloc)shrinking stack in libcallruntime: pcHeader: magic= traceRegion: out of memory1455191522836685180664062572759576141834259033203125: day-of-year out of rangeencountered a cycle via %sinvalid date-time timezoneinvalid value; expected %sexpected integer; found %sexpected complex; found %stoo many slice indexes: %dnon-function %s of type %snon-comparable type %s: %vinline table is incompleteunterminated quoted stringunexpected . after term %qinvalid boolean flag %s: %vflag needs an argument: -%sinconsistent process statusos: unsupported signal typeos: process not initializedchannel number out of rangecommunication error on sendnot a XENIX named type filekey was rejected by servicereflect.Value.OverflowFloatreflect.Value.UnsafePointer is not assignable to type PageCachePagesLeaked (test)SIGILL: illegal instructionSIGXCPU: cpu limit exceededmakechan: size out of rangeG waiting list is corruptedM structure uses sizeclass runtime
+lock: sleeping while lock is availableP has cached GC work at end of mark terminationfailed to acquire lock to start a GC transitionfinishGCTransition called without starting one?tried to sleep scavenger from another goroutineracy sudog adjustment due to parking on channelfunction symbol table not sorted by PC offset: attempted to trace a bad status for a goroutinefloat decimal point must be preceded by a digitfloat decimal point must be followed by a digitreflect: CallSlice with too many input argumentsslice bounds out of range [:%x] with capacity %y  is reachable from cleanup or cleanup argument
+mLockProfile
+malformed GOMEMLIMIT; see `go doc runtime/debug.SetMemoryLimit`parser should not permit expression of kind %s at document root0000000000000000000000000000000000000000000000000000000000000000																																																																reflect.StructOf: struct size would exceed virtual address spaceruntime.SetFinalizer: first argument was allocated into an arenaattempted to trace stack of a goroutine this thread does not ownjson: invalid number literal, trying to unmarshal %q into NumberABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_reflect: StructOf does not support methods of embedded interfacesuser arena chunk size is not a multiple of the physical page sizeruntime.SetFinalizer: pointer not at beginning of allocated blockreflect: indirection through nil pointer to embedded struct field runtime: unexpected error while checking standard file descriptor casGToWaitingForSuspendG with non-isWaitingForSuspendG wait reasontoml: key %s already exists as a %s,  but should be an array tablereflect: reflect.Value.UnsafePointer on an invalid notinheap pointerAllThreadsSyscall6 results differ between threads; runtime corruptedstrict mode: fields in the document are missing in the target structreflect: embedded interface with unexported method(s) not implementedruntime.Pinner: found leaking pinned pointer; forgot to call Unpin()?bytes.Buffer: UnreadByte: previous operation was not a successful readexec: command with a non-nil Cancel was not created with CommandContextrange function recovered a loop body panic and did not resume panickingtoo many concurrent operations on a single file or socket (max 1048575)json: invalid use of ,string struct tag, trying to unmarshal %q into %vtoml: cannot redefine table %s that has already been explicitly definedreflect: embedded type with methods not implemented for non-pointer typeruntime.Goexit called in a thread that was not created by the Go runtimebytes.Buffer: UnreadRune: previous operation was not a successful ReadRuneMapIter.Next called on an iterator that does not have an associated map Valueinvalid function signature for %s: second return value should be error; is %sreflect: embedded type with methods not implemented if type is not first fieldrange function continued iteration after function for loop body returned falsecannot convert slice with length %y to array or pointer to array with length %xlocal datetimes are expected to have the format YYYY-MM-DDTHH:MM:SS[.NNNNNNNNN] (bad use of unsafe.Pointer or having race conditions? try -d=checkptr or -race)
+maybeRunAsync
+maybeRunChan
+message
+mod	github.com/lovable/sandbox-cli	(devel)	
+mstartfn
+mstartm not found in allmstopm holding lockssemaRoot rotateLeftbad notifyList sizeruntime: preempt g0runtime: pcdata is 14901161193847656257450580596923828125bad value for field/usr/lib/locale/TZ/skip this directory2006-01-02 15:04:05file already existsfile does not existfile already closedafter array element/cpu.cfs_period_us
+mustReadRune
+newCommand
+nfiles
+on a locked thread with no template threadunexpected signal during runtime execution received but handler not on signal stack
+os.(*File).Chdir
+os.(*File).Chmod
+os.(*File).Chown
+os.(*File).Close
+os.(*File).Fd
+os.(*File).Name
+os.(*File).Read
+os.(*File).Read-fm
+os.(*File).ReadAt
+os.(*File).ReadDir
+os.(*File).ReadFrom
+os.(*File).Readdir
+os.(*File).Readdirnames
+os.(*File).Seek
+os.(*File).SetDeadline
+os.(*File).SetReadDeadline
+os.(*File).SetWriteDeadline
+os.(*File).Stat
+os.(*File).Sync
+os.(*File).SyscallConn
+os.(*File).Truncate
+os.(*File).Write
+os.(*File).WriteAt
+os.(*File).WriteString
+os.(*File).WriteTo
+os.(*File).checkValid
+os.(*File).chmod
+os.(*File).copyFileRange
+os.(*File).fd
+os.(*File).lstatat
+os.(*File).lstatatNolog
+os.(*File).pread
+os.(*File).pwrite
+os.(*File).read
+os.(*File).readFrom
+os.(*File).readdir
+os.(*File).readdir.deferwrap1
+os.(*File).seek
+os.(*File).setDeadline
+os.(*File).setReadDeadline
+os.(*File).setWriteDeadline
+os.(*File).spliceToFile
+os.(*File).wrapErr
+os.(*File).write
+os.(*File).writeTo
+os.(*File).writeTo.func1
+os.(*Process).Kill
+os.(*Process).Release
+os.(*Process).Signal
+os.(*Process).Wait
+os.(*Process).blockUntilWaitable
+os.(*Process).blockUntilWaitable.func1
+os.(*Process).doRelease
+os.(*Process).handleTransientAcquire
+os.(*Process).handleTransientRelease
+os.(*Process).kill
+os.(*Process).pidSignal
+os.(*Process).pidSignal.deferwrap1
+os.(*Process).pidStatus
+os.(*Process).pidWait
+os.(*Process).pidWait.func1
+os.(*Process).pidfdSendSignal
+os.(*Process).pidfdSendSignal.deferwrap1
+os.(*Process).pidfdWait
+os.(*Process).pidfdWait.deferwrap1
+os.(*Process).pidfdWait.func1
+os.(*Process).signal
+os.(*Process).wait
+os.(*ProcessState).ExitCode
+os.(*ProcessState).Exited
+os.(*ProcessState).Pid
+os.(*ProcessState).String
+os.(*ProcessState).Success
+os.(*ProcessState).Sys
+os.(*ProcessState).SysUsage
+os.(*ProcessState).SystemTime
+os.(*ProcessState).UserTime
+os.(*ProcessState).exited
+os.(*ProcessState).success
+os.(*ProcessState).sys
+os.(*ProcessState).sysUsage
+os.(*ProcessState).systemTime
+os.(*ProcessState).userTime
+os.(*file).close
+os.(*fileStat).IsDir
+os.(*fileStat).ModTime
+os.(*fileStat).Mode
+os.(*fileStat).Name
+os.(*fileStat).Size
+os.(*fileStat).Sys
+os.(*fileWithoutReadFrom).Chdir
+os.(*fileWithoutReadFrom).Chmod
+os.(*fileWithoutReadFrom).Chown
+os.(*fileWithoutReadFrom).Close
+os.(*fileWithoutReadFrom).Fd
+os.(*fileWithoutReadFrom).Name
+os.(*fileWithoutReadFrom).Read
+os.(*fileWithoutReadFrom).ReadAt
+os.(*fileWithoutReadFrom).ReadDir
+os.(*fileWithoutReadFrom).Readdir
+os.(*fileWithoutReadFrom).Readdirnames
+os.(*fileWithoutReadFrom).Seek
+os.(*fileWithoutReadFrom).SetDeadline
+os.(*fileWithoutReadFrom).SetReadDeadline
+os.(*fileWithoutReadFrom).SetWriteDeadline
+os.(*fileWithoutReadFrom).Stat
+os.(*fileWithoutReadFrom).Sync
+os.(*fileWithoutReadFrom).SyscallConn
+os.(*fileWithoutReadFrom).Truncate
+os.(*fileWithoutReadFrom).Write
+os.(*fileWithoutReadFrom).WriteAt
+os.(*fileWithoutReadFrom).WriteString
+os.(*fileWithoutReadFrom).WriteTo
+os.(*fileWithoutWriteTo).Chdir
+os.(*fileWithoutWriteTo).Chmod
+os.(*fileWithoutWriteTo).Chown
+os.(*fileWithoutWriteTo).Close
+os.(*fileWithoutWriteTo).Fd
+os.(*fileWithoutWriteTo).Name
+os.(*fileWithoutWriteTo).Read
+os.(*fileWithoutWriteTo).ReadAt
+os.(*fileWithoutWriteTo).ReadDir
+os.(*fileWithoutWriteTo).ReadFrom
+os.(*fileWithoutWriteTo).Readdir
+os.(*fileWithoutWriteTo).Readdirnames
+os.(*fileWithoutWriteTo).Seek
+os.(*fileWithoutWriteTo).SetDeadline
+os.(*fileWithoutWriteTo).SetReadDeadline
+os.(*fileWithoutWriteTo).SetWriteDeadline
+os.(*fileWithoutWriteTo).Stat
+os.(*fileWithoutWriteTo).Sync
+os.(*fileWithoutWriteTo).SyscallConn
+os.(*fileWithoutWriteTo).Truncate
+os.(*fileWithoutWriteTo).Write
+os.(*fileWithoutWriteTo).WriteAt
+os.(*fileWithoutWriteTo).WriteString
+os.(*noWriteTo).WriteTo
+os.(*processHandle).acquire
+os.(*processHandle).closeHandle
+os.(*processHandle).release
+os.(*rawConn).Write
+os.Environ
+os.Getenv
+os.NewFile
+os.OpenFile
+os.ReadFile
+os.ReadFile.deferwrap1
+os.SameFile
+os.StartProcess
+os.WriteFile
+os.fileWithoutReadFrom.Chdir
+os.fileWithoutReadFrom.Chmod
+os.fileWithoutReadFrom.Chown
+os.fileWithoutReadFrom.Close
+os.fileWithoutReadFrom.Fd
+os.fileWithoutReadFrom.Name
+os.fileWithoutReadFrom.Read
+os.fileWithoutReadFrom.ReadAt
+os.fileWithoutReadFrom.ReadDir
+os.fileWithoutReadFrom.Readdir
+os.fileWithoutReadFrom.Readdirnames
+os.fileWithoutReadFrom.Seek
+os.fileWithoutReadFrom.SetDeadline
+os.fileWithoutReadFrom.SetReadDeadline
+os.fileWithoutReadFrom.SetWriteDeadline
+os.fileWithoutReadFrom.Stat
+os.fileWithoutReadFrom.Sync
+os.fileWithoutReadFrom.SyscallConn
+os.fileWithoutReadFrom.Truncate
+os.fileWithoutReadFrom.Write
+os.fileWithoutReadFrom.WriteAt
+os.fileWithoutReadFrom.WriteString
+os.fileWithoutReadFrom.WriteTo
+os.fileWithoutWriteTo.Chdir
+os.fileWithoutWriteTo.Chmod
+os.fileWithoutWriteTo.Chown
+os.fileWithoutWriteTo.Close
+os.fileWithoutWriteTo.Fd
+os.fileWithoutWriteTo.Name
+os.fileWithoutWriteTo.Read
+os.fileWithoutWriteTo.ReadAt
+os.fileWithoutWriteTo.ReadDir
+os.fileWithoutWriteTo.ReadFrom
+os.fileWithoutWriteTo.Readdir
+os.fileWithoutWriteTo.Readdirnames
+os.fileWithoutWriteTo.Seek
+os.fileWithoutWriteTo.SetDeadline
+os.fileWithoutWriteTo.SetReadDeadline
+os.fileWithoutWriteTo.SetWriteDeadline
+os.fileWithoutWriteTo.Stat
+os.fileWithoutWriteTo.Sync
+os.fileWithoutWriteTo.SyscallConn
+os.fileWithoutWriteTo.Truncate
+os.fileWithoutWriteTo.Write
+os.fileWithoutWriteTo.WriteAt
+os.fileWithoutWriteTo.WriteString
+os.fillFileStatFromSys
+os.genericWriteTo
+os.newFile
+os.newFileFromNewFile
+os.newHandleProcess
+os.newPIDProcess
+os.noWriteTo.WriteTo
+os.openFileNolog
+os.openFileNolog.func1
+os.readFileContents
+os.runtime_args
+os.runtime_beforeExit
+os.sameFile
+os.startProcess
+os/exec
+os/exec.(*Cmd).CombinedOutput
+os/exec.(*Cmd).Environ
+os/exec.(*Cmd).Output
+os/exec.(*Cmd).Run
+os/exec.(*Cmd).Start
+os/exec.(*Cmd).Start.func1
+os/exec.(*Cmd).Start.func2
+os/exec.(*Cmd).Start.gowrap1
+os/exec.(*Cmd).Start.gowrap2
+os/exec.(*Cmd).StderrPipe
+os/exec.(*Cmd).StdinPipe
+os/exec.(*Cmd).StdoutPipe
+os/exec.(*Cmd).String
+os/exec.(*Cmd).Wait
+os/exec.(*Cmd).argv
+os/exec.(*Cmd).awaitGoroutines
+os/exec.(*Cmd).awaitGoroutines.func1
+os/exec.(*Cmd).childStderr
+os/exec.(*Cmd).childStdin
+os/exec.(*Cmd).childStdin.func1
+os/exec.(*Cmd).childStdout
+os/exec.(*Cmd).environ
+os/exec.(*Cmd).watchCtx
+os/exec.(*Cmd).writerDescriptor
+os/exec.(*Cmd).writerDescriptor.func1
+os/exec.(*Error).Error
+os/exec.(*Error).Unwrap
+os/exec.(*ExitError).Error
+os/exec.(*ExitError).ExitCode
+os/exec.(*ExitError).Exited
+os/exec.(*ExitError).Pid
+os/exec.(*ExitError).String
+os/exec.(*ExitError).Success
+os/exec.(*ExitError).Sys
+os/exec.(*ExitError).SysUsage
+os/exec.(*ExitError).SystemTime
+os/exec.(*ExitError).UserTime
+os/exec.(*prefixSuffixSaver).Bytes
+os/exec.(*prefixSuffixSaver).Write
+os/exec.(*prefixSuffixSaver).fill
+os/exec.(*wrappedError).Error
+os/exec.(*wrappedError).Unwrap
+os/exec.Command
+os/exec.Command.func1
+os/exec.ExitError.ExitCode
+os/exec.ExitError.Exited
+os/exec.ExitError.Pid
+os/exec.ExitError.String
+os/exec.ExitError.Success
+os/exec.ExitError.Sys
+os/exec.ExitError.SysUsage
+os/exec.ExitError.SystemTime
+os/exec.ExitError.UserTime
+os/exec.L
+os/exec.LookPath
+os/exec.closeDescriptors
+os/exec.dedupEnv
+os/exec.dedupEnvCase
+os/exec.findExecutable
+os/exec.interfaceEqual
+os/exec.interfaceEqual.func1
+os/exec.skipStdinCopyError
+os/exec.validateLookPath
+os/exec.wrappedError.Error
+os/exec.wrappedError.Unwrap
+os/execL
+os: invalid use of WriteAt on file opened with O_APPENDinternal error: negative process handle reference countreflect: internal error: invalid use of makeMethodValuereflect.FuncOf: last arg of variadic func must be slicemheap.freeSpanLocked - invalid free of user arena chunkcasfrom_Gscanstatus:top gp->status is not in scan statebufio.Scanner: SplitFunc returns negative advance counttimes are expected to have the format HH:MM:SS[.NNNNNN]number must have at least one digit between underscoresstrings: illegal use of non-zero Builder copied by valuenon-empty pointer map passed for non-pointer-size valuesreflect: Value.SetIterValue called on exhausted iteratorrange function continued iteration after loop body panicrange function continued iteration after whole loop exitprofilealloc called without a P or outside bootstrappingdetected possible issues with cleanups and/or finalizersin gcMark expecting to see gcphase as _GCmarkterminationruntime: netpoll: eventfd ready for something unexpectedcannot decode TOML %s into struct field %s.%s of type %scannot run executable found relative to current directory (set GODEBUG=execwait=2 to capture stacks for debugging)runtime: checkmarks found unexpected unmarked object obj=runtime: failed to disable profiling timer; timer_delete(non-Go code set up signal handler without SA_ONSTACK flagcan't handle assignment of %s to empty interface argumentTasks: install, dev, build, build:dev, test, lint, start
+osif{{}}*/intnil01_PWD../devbunaddrunnpmEOFmapptrKey...
+pacer: assist ratio=workbuf is not emptybad use of bucket.mpbad use of bucket.bpruntime: double waitpreempt off reason: forcegc: phase errorgopark: bad g statusgo of nil func valueselectgo: bad wakeupsemaRoot rotateRightreflect.makeFuncStubtrace: out of memorywirep: already in go37252902984619140625time: invalid number/usr/share/zoneinfo/json: Unmarshal(nil)json: Unmarshal(nil json: error calling expected digit (0-9)if/with can't use %vnil is not a commanderror calling %s: %windex of untyped nilindex of nil pointerslice of untyped nilhttplaxcontentlengthx509usefallbackrootsinteger overflow: %qmissing value for %sfeature-vite-overrideflag %q begins with -%s flag redefined: %sreflect.Value.Complexexec: already startedblock device requiredread-only file systempackage not installedlink has been severedstate not recoverabletrace/breakpoint trapuser defined signal 1user defined signal 2virtual timer expiredlovable-tagger@latestvite_override.tmpl.tsunsupported operationunknown ABI part kind of unexported methodunexpected value stepreflect.Value.SetZeroreflect.Value.Pointerreflect.Value.SetUintnegative shift amountdataindependenttimingsystem goroutine wait/gc/heap/allocs:bytesruntime: work.nwait=  previous allocCount=, levelBits[level] = runtime: searchIdx = profiler hash bucketsdefer on system stackpanic on system stackasync stack too large_cgo_unsetenv missingstartm: m is spinningstartlockedm: m has pfindrunnable: wrong ppreempt at unknown pcreleasep: invalid argcheckdead: runnable gruntime: newstack at runtime: newstack sp=runtime: confused by  pcHeader.textStart= timer data corruption186264514923095703125931322574615478515625time zone offset hourbad type in compare: after top-level valuein string escape codeunhandled kv part: %sconcurrent map writesinvalid character %#Uexpected character %cbad number syntax: %qundefined variable %q 	
+parse errorbad verb '%0123456789_/dev/stdout/dev/stderrunreachable bytes ...
+path	github.com/lovable/sandbox-cli/cmd/lovable-exec
+path/filepath.Abs
+path/filepath.Base
+path/filepath.Clean
+path/filepath.IsAbs
+path/filepath.Join
+path/filepath.SplitList
+path/filepath.abs
+path/filepath.init
+path/filepath.join
+path/filepath.splitList
+path/filepath.unixAbs
+pcfile
+peekRune
+prepareWrite
+prevRune
+profileTimer
+profileTimerValid
+prune
+pruneTombstones
+pwrite
+rUnlockSlow
+reflect.(*MapIter).Key
+reflect.(*MapIter).Next
+reflect.(*MapIter).Reset
+reflect.(*MapIter).Value
+reflect.(*Value).MapIndex
+reflect.(*Value).SetMapIndex
+reflect.Value.MapIndex
+reflect.Value.SetMapIndex
+reflect.Value.runes
+reflect.Value.setRunes
+reflect.cvtRunesString
+reflect.cvtStringRunes
+reflect.makeRunes
+reflect.mapIterNext
+reflect.mapIterStart
+reflect.runtimeStructField
+reflect: embedded type with methods not implemented if there is more than one fieldexpected all size classes up to min size for malloc header to fit in one-page spansjson: invalid use of ,string struct tag, trying to unmarshal unquoted value into %vreflect.Value.Interface: cannot return value obtained from unexported field or methodreflect: New of type that may not be allocated in heap (possibly undefined cgo C type)no command found for task %q
+reflect: non-interface type passed to Type.Implementsreflect.Value.Slice: string slice index out of boundsnon-concurrent sweep failed to drain all sweep queuesexited a goroutine internally locked to the OS threadbufio.Scan: too many empty tokens without progressingsmall map with no empty slot (concurrent map writes?)unique.canonMap: ran out of hash bits while iteratingunique.canonMap: ran out of hash bits while insertingpanic calling String method on zero %v for flag %s: %vfmt: scanning called UnreadRune with no rune availablereflect: Value.SetIterKey called on exhausted iteratorruntime.m memory alignment too small for spinbit mutexmin size of malloc header is not a size class boundarygcControllerState.findRunnable: blackening not enabledno goroutines (main called runtime.Goexit) - deadlock!trace: non-empty full trace buffer for done generationtrace: non-empty full trace buffer for next generation	goroutine running on other thread; stack unavailable
+rrun
+runSafePointFn
+runes
+runnableTime
+runnext
+running
+runningCleanups
+runq
+runqhead
+runqtail
+runtime
+runtime H
+runtime stack:
+runtime.
+runtime.(*Cleanup).Stop
+runtime.(*Frames).Next
+runtime.(*Func).Entry
+runtime.(*Func).Name
+runtime.(*Func).funcInfo
+runtime.(*PanicNilError).Error
+runtime.(*PanicNilError).RuntimeError
+runtime.(*Pinner).Pin
+runtime.(*Pinner).Pin.func1
+runtime.(*Pinner).Unpin
+runtime.(*TypeAssertionError).Error
+runtime.(*TypeAssertionError).RuntimeError
+runtime.(*_func).funcInfo
+runtime.(*_func).isInlined
+runtime.(*_panic).initOpenCodedDefers
+runtime.(*_panic).nextDefer
+runtime.(*_panic).nextFrame
+runtime.(*_panic).nextFrame.func1
+runtime.(*_panic).start
+runtime.(*activeSweep).begin
+runtime.(*activeSweep).end
+runtime.(*activeSweep).isDone
+runtime.(*activeSweep).markDrained
+runtime.(*activeSweep).reset
+runtime.(*activeSweep).sweepers
+runtime.(*addrRanges).add
+runtime.(*addrRanges).cloneInto
+runtime.(*addrRanges).findAddrGreaterEqual
+runtime.(*addrRanges).findSucc
+runtime.(*addrRanges).init
+runtime.(*atomicHeadTailIndex).cas
+runtime.(*atomicHeadTailIndex).incTail
+runtime.(*atomicHeadTailIndex).load
+runtime.(*atomicHeadTailIndex).reset
+runtime.(*atomicMSpanPointer).Load
+runtime.(*atomicMSpanPointer).StoreNoWB
+runtime.(*atomicOffAddr).Clear
+runtime.(*atomicOffAddr).Load
+runtime.(*atomicOffAddr).StoreMarked
+runtime.(*atomicOffAddr).StoreMin
+runtime.(*atomicOffAddr).StoreUnmark
+runtime.(*atomicScavChunkData).load
+runtime.(*atomicScavChunkData).store
+runtime.(*atomicSpanSetSpinePointer).Load
+runtime.(*atomicSpanSetSpinePointer).StoreNoWB
+runtime.(*boundsError).Error
+runtime.(*boundsError).RuntimeError
+runtime.(*bucket).bp
+runtime.(*bucket).mp
+runtime.(*bucket).stk
+runtime.(*cleanupBlock).empty
+runtime.(*cleanupBlock).enqueue
+runtime.(*cleanupBlock).full
+runtime.(*cleanupBlock).take
+runtime.(*cleanupQueue).addWork
+runtime.(*cleanupQueue).beginRunningCleanups
+runtime.(*cleanupQueue).createGs
+runtime.(*cleanupQueue).dequeue
+runtime.(*cleanupQueue).endRunningCleanups
+runtime.(*cleanupQueue).enqueue
+runtime.(*cleanupQueue).flush
+runtime.(*cleanupQueue).needG
+runtime.(*cleanupQueue).needsWake
+runtime.(*cleanupQueue).readQueueStats
+runtime.(*cleanupQueue).tryTakeWork
+runtime.(*cleanupQueue).wake
+runtime.(*consistentHeapStats).acquire
+runtime.(*consistentHeapStats).release
+runtime.(*cpuProfile).add
+runtime.(*cpuProfile).addExtra
+runtime.(*cpuProfile).addNonGo
+runtime.(*cpuStats).accumulate
+runtime.(*cpuStats).accumulateGCPauseTime
+runtime.(*errorAddressString).Addr
+runtime.(*errorAddressString).Error
+runtime.(*errorAddressString).RuntimeError
+runtime.(*errorString).Error
+runtime.(*errorString).RuntimeError
+runtime.(*fixalloc).alloc
+runtime.(*fixalloc).free
+runtime.(*fixalloc).init
+runtime.(*g).guintptr
+runtime.(*gList).empty
+runtime.(*gList).pop
+runtime.(*gList).push
+runtime.(*gList).pushAll
+runtime.(*gQueue).empty
+runtime.(*gQueue).pop
+runtime.(*gQueue).popList
+runtime.(*gQueue).push
+runtime.(*gQueue).pushBack
+runtime.(*gQueue).pushBackAll
+runtime.(*gTraceState).reset
+runtime.(*gcBits).bitp
+runtime.(*gcBits).bytep
+runtime.(*gcBitsArena).tryAlloc
+runtime.(*gcCPULimiterState).accumulate
+runtime.(*gcCPULimiterState).addAssistTime
+runtime.(*gcCPULimiterState).addIdleTime
+runtime.(*gcCPULimiterState).finishGCTransition
+runtime.(*gcCPULimiterState).limiting
+runtime.(*gcCPULimiterState).needUpdate
+runtime.(*gcCPULimiterState).resetCapacity
+runtime.(*gcCPULimiterState).startGCTransition
+runtime.(*gcCPULimiterState).tryLock
+runtime.(*gcCPULimiterState).unlock
+runtime.(*gcCPULimiterState).update
+runtime.(*gcCPULimiterState).updateLocked
+runtime.(*gcControllerState).addGlobals
+runtime.(*gcControllerState).addIdleMarkWorker
+runtime.(*gcControllerState).addScannableStack
+runtime.(*gcControllerState).commit
+runtime.(*gcControllerState).endCycle
+runtime.(*gcControllerState).enlistWorker
+runtime.(*gcControllerState).findRunnableGCWorker
+runtime.(*gcControllerState).findRunnableGCWorker.func1
+runtime.(*gcControllerState).heapGoal
+runtime.(*gcControllerState).heapGoalInternal
+runtime.(*gcControllerState).init
+runtime.(*gcControllerState).markWorkerStop
+runtime.(*gcControllerState).memoryLimitHeapGoal
+runtime.(*gcControllerState).needIdleMarkWorker
+runtime.(*gcControllerState).removeIdleMarkWorker
+runtime.(*gcControllerState).resetLive
+runtime.(*gcControllerState).revise
+runtime.(*gcControllerState).setGCPercent
+runtime.(*gcControllerState).setMaxIdleMarkWorkers
+runtime.(*gcControllerState).setMemoryLimit
+runtime.(*gcControllerState).startCycle
+runtime.(*gcControllerState).trigger
+runtime.(*gcControllerState).update
+runtime.(*gcWork).balance
+runtime.(*gcWork).dispose
+runtime.(*gcWork).empty
+runtime.(*gcWork).flushScanStats
+runtime.(*gcWork).init
+runtime.(*gcWork).putObj
+runtime.(*gcWork).putObjBatch
+runtime.(*gcWork).putObjFast
+runtime.(*gcWork).tryGetObj
+runtime.(*gcWork).tryGetObjFast
+runtime.(*godebugInc).IncNonDefault
+runtime.(*goroutineProfileStateHolder).CompareAndSwap
+runtime.(*goroutineProfileStateHolder).Load
+runtime.(*goroutineProfileStateHolder).Store
+runtime.(*guintptr).cas
+runtime.(*guintptr).set
+runtime.(*hchan).raceaddr
+runtime.(*hchan).sortkey
+runtime.(*immortalWeakHandle).handle
+runtime.(*immortalWeakHandleMap).getOrAdd
+runtime.(*inlineUnwinder).fileLine
+runtime.(*inlineUnwinder).isInlined
+runtime.(*inlineUnwinder).next
+runtime.(*inlineUnwinder).resolveInternal
+runtime.(*inlineUnwinder).srcFunc
+runtime.(*itabTableType).add
+runtime.(*itabTableType).add-fm
+runtime.(*itabTableType).find
+runtime.(*lfstack).empty
+runtime.(*lfstack).pop
+runtime.(*lfstack).push
+runtime.(*limiterEvent).consume
+runtime.(*limiterEvent).start
+runtime.(*limiterEvent).stop
+runtime.(*linearAlloc).alloc
+runtime.(*lockRank).String
+runtime.(*m).becomeSpinning
+runtime.(*m).clearAllpSnapshot
+runtime.(*m).hasCgoOnStack
+runtime.(*m).snapshotAllp
+runtime.(*mLockProfile).captureStack
+runtime.(*mLockProfile).captureStack.func1
+runtime.(*mLockProfile).end
+runtime.(*mLockProfile).recordUnlock
+runtime.(*mLockProfile).start
+runtime.(*mLockProfile).store
+runtime.(*mLockProfile).storeSlow
+runtime.(*mProfCycleHolder).increment
+runtime.(*mProfCycleHolder).read
+runtime.(*mProfCycleHolder).setFlushed
+runtime.(*mSpanList).init
+runtime.(*mSpanList).insert
+runtime.(*mSpanList).isEmpty
+runtime.(*mSpanList).remove
+runtime.(*mSpanList).takeAll
+runtime.(*mSpanStateBox).get
+runtime.(*mSpanStateBox).set
+runtime.(*markBits).advance
+runtime.(*mcache).allocLarge
+runtime.(*mcache).nextFree
+runtime.(*mcache).prepareForSweep
+runtime.(*mcache).refill
+runtime.(*mcache).releaseAll
+runtime.(*mcentral).cacheSpan
+runtime.(*mcentral).fullSwept
+runtime.(*mcentral).fullUnswept
+runtime.(*mcentral).grow
+runtime.(*mcentral).init
+runtime.(*mcentral).partialSwept
+runtime.(*mcentral).partialUnswept
+runtime.(*mcentral).uncacheSpan
+runtime.(*memRecordCycle).add
+runtime.(*metricValue).float64HistOrInit
+runtime.(*mheap).alloc
+runtime.(*mheap).alloc.func1
+runtime.(*mheap).allocMSpanLocked
+runtime.(*mheap).allocManual
+runtime.(*mheap).allocNeedsZero
+runtime.(*mheap).allocSpan
+runtime.(*mheap).allocSpan.func1
+runtime.(*mheap).enableMetadataHugePages
+runtime.(*mheap).freeMSpanLocked
+runtime.(*mheap).freeManual
+runtime.(*mheap).freeSpan
+runtime.(*mheap).freeSpanLocked
+runtime.(*mheap).grow
+runtime.(*mheap).init
+runtime.(*mheap).initSpan
+runtime.(*mheap).nextSpanForSweep
+runtime.(*mheap).reclaim
+runtime.(*mheap).reclaimChunk
+runtime.(*mheap).setSpans
+runtime.(*mheap).sysAlloc
+runtime.(*mheap).tryAllocMSpan
+runtime.(*moduledata).funcName
+runtime.(*moduledata).textAddr
+runtime.(*moduledata).textOff
+runtime.(*mspan).allocBitsForIndex
+runtime.(*mspan).base
+runtime.(*mspan).countAlloc
+runtime.(*mspan).decPinCounter
+runtime.(*mspan).divideByElemSize
+runtime.(*mspan).ensureSwept
+runtime.(*mspan).getPinnerBits
+runtime.(*mspan).heapBits
+runtime.(*mspan).heapBitsSmallForAddr
+runtime.(*mspan).incPinCounter
+runtime.(*mspan).init
+runtime.(*mspan).initHeapBits
+runtime.(*mspan).isFree
+runtime.(*mspan).isFreeOrNewlyAllocated
+runtime.(*mspan).markBitsForBase
+runtime.(*mspan).markBitsForIndex
+runtime.(*mspan).newPinnerBits
+runtime.(*mspan).nextFreeIndex
+runtime.(*mspan).objBase
+runtime.(*mspan).objIndex
+runtime.(*mspan).pinnerBitSize
+runtime.(*mspan).refillAllocCache
+runtime.(*mspan).refreshPinnerBits
+runtime.(*mspan).reportZombies
+runtime.(*mspan).setPinnerBits
+runtime.(*mspan).setUserArenaChunkToFault
+runtime.(*mspan).setUserArenaChunkToFault.func1
+runtime.(*mspan).specialFindSplicePoint
+runtime.(*mspan).typePointersOf
+runtime.(*mspan).typePointersOfType
+runtime.(*mspan).typePointersOfUnchecked
+runtime.(*mspan).writeHeapBitsSmall
+runtime.(*muintptr).set
+runtime.(*notInHeap).add
+runtime.(*p).destroy
+runtime.(*p).destroy.freemcache.func2
+runtime.(*p).destroy.func1
+runtime.(*p).init
+runtime.(*pageAlloc).alloc
+runtime.(*pageAlloc).allocRange
+runtime.(*pageAlloc).allocToCache
+runtime.(*pageAlloc).chunkOf
+runtime.(*pageAlloc).enableChunkHugePages
+runtime.(*pageAlloc).find
+runtime.(*pageAlloc).find.func1
+runtime.(*pageAlloc).findMappedAddr
+runtime.(*pageAlloc).free
+runtime.(*pageAlloc).grow
+runtime.(*pageAlloc).init
+runtime.(*pageAlloc).scavenge
+runtime.(*pageAlloc).scavenge.func1
+runtime.(*pageAlloc).scavengeOne
+runtime.(*pageAlloc).sysGrow
+runtime.(*pageAlloc).sysGrow.func1
+runtime.(*pageAlloc).sysGrow.func2
+runtime.(*pageAlloc).sysGrow.func3
+runtime.(*pageAlloc).sysInit
+runtime.(*pageAlloc).update
+runtime.(*pageBits).block64
+runtime.(*pageBits).clear
+runtime.(*pageBits).clearAll
+runtime.(*pageBits).clearBlock64
+runtime.(*pageBits).clearRange
+runtime.(*pageBits).popcntRange
+runtime.(*pageBits).set
+runtime.(*pageBits).setAll
+runtime.(*pageBits).setBlock64
+runtime.(*pageBits).setRange
+runtime.(*pageCache).alloc
+runtime.(*pageCache).allocN
+runtime.(*pageCache).empty
+runtime.(*pageCache).flush
+runtime.(*pallocBits).allocAll
+runtime.(*pallocBits).allocPages64
+runtime.(*pallocBits).allocRange
+runtime.(*pallocBits).find
+runtime.(*pallocBits).find1
+runtime.(*pallocBits).findLargeN
+runtime.(*pallocBits).findSmallN
+runtime.(*pallocBits).free
+runtime.(*pallocBits).free1
+runtime.(*pallocBits).freeAll
+runtime.(*pallocBits).pages64
+runtime.(*pallocBits).summarize
+runtime.(*pallocData).allocAll
+runtime.(*pallocData).allocRange
+runtime.(*pallocData).findScavengeCandidate
+runtime.(*piController).next
+runtime.(*piController).reset
+runtime.(*pinState).isMultiPinned
+runtime.(*pinState).isPinned
+runtime.(*pinState).set
+runtime.(*pinState).setMultiPinned
+runtime.(*pinState).setPinned
+runtime.(*pinner).unpin
+runtime.(*pinnerBits).ofObject
+runtime.(*plainError).Error
+runtime.(*plainError).RuntimeError
+runtime.(*pollCache).alloc
+runtime.(*pollCache).free
+runtime.(*pollDesc).info
+runtime.(*pollDesc).makeArg
+runtime.(*pollDesc).publishInfo
+runtime.(*pollDesc).setEventErr
+runtime.(*profAtomic).cas
+runtime.(*profAtomic).load
+runtime.(*profAtomic).store
+runtime.(*profBuf).canWriteRecord
+runtime.(*profBuf).canWriteTwoRecords
+runtime.(*profBuf).close
+runtime.(*profBuf).hasOverflow
+runtime.(*profBuf).incrementOverflow
+runtime.(*profBuf).read
+runtime.(*profBuf).takeOverflow
+runtime.(*profBuf).wakeupExtra
+runtime.(*profBuf).write
+runtime.(*puintptr).set
+runtime.(*randomEnum).done
+runtime.(*randomEnum).next
+runtime.(*randomEnum).position
+runtime.(*randomOrder).reset
+runtime.(*randomOrder).start
+runtime.(*rwmutex).init
+runtime.(*rwmutex).lock
+runtime.(*rwmutex).lock.func1
+runtime.(*rwmutex).rlock
+runtime.(*rwmutex).rlock.func1
+runtime.(*rwmutex).runlock
+runtime.(*rwmutex).unlock
+runtime.(*scavChunkData).alloc
+runtime.(*scavChunkData).free
+runtime.(*scavChunkFlags).isEmpty
+runtime.(*scavChunkFlags).setEmpty
+runtime.(*scavChunkFlags).setNonEmpty
+runtime.(*scavengeIndex).alloc
+runtime.(*scavengeIndex).find
+runtime.(*scavengeIndex).free
+runtime.(*scavengeIndex).grow
+runtime.(*scavengeIndex).init
+runtime.(*scavengeIndex).nextGen
+runtime.(*scavengeIndex).setEmpty
+runtime.(*scavengeIndex).sysGrow
+runtime.(*scavengeIndex).sysInit
+runtime.(*scavengerState).controllerFailed
+runtime.(*scavengerState).init
+runtime.(*scavengerState).init.func1
+runtime.(*scavengerState).init.func2
+runtime.(*scavengerState).init.func3
+runtime.(*scavengerState).init.func4
+runtime.(*scavengerState).park
+runtime.(*scavengerState).ready
+runtime.(*scavengerState).run
+runtime.(*scavengerState).sleep
+runtime.(*scavengerState).wake
+runtime.(*semTable).rootFor
+runtime.(*semaRoot).dequeue
+runtime.(*semaRoot).queue
+runtime.(*semaRoot).rotateLeft
+runtime.(*semaRoot).rotateRight
+runtime.(*sigctxt).cs
+runtime.(*sigctxt).fault
+runtime.(*sigctxt).fs
+runtime.(*sigctxt).gs
+runtime.(*sigctxt).preparePanic
+runtime.(*sigctxt).pushCall
+runtime.(*sigctxt).r10
+runtime.(*sigctxt).r11
+runtime.(*sigctxt).r12
+runtime.(*sigctxt).r13
+runtime.(*sigctxt).r14
+runtime.(*sigctxt).r15
+runtime.(*sigctxt).r8
+runtime.(*sigctxt).r9
+runtime.(*sigctxt).rax
+runtime.(*sigctxt).rbp
+runtime.(*sigctxt).rbx
+runtime.(*sigctxt).rcx
+runtime.(*sigctxt).rdi
+runtime.(*sigctxt).rdx
+runtime.(*sigctxt).regs
+runtime.(*sigctxt).rflags
+runtime.(*sigctxt).rip
+runtime.(*sigctxt).rsi
+runtime.(*sigctxt).rsp
+runtime.(*sigctxt).set_rip
+runtime.(*sigctxt).set_rsp
+runtime.(*sigctxt).sigFromSeccomp
+runtime.(*sigctxt).sigFromUser
+runtime.(*sigctxt).sigaddr
+runtime.(*sigctxt).sigcode
+runtime.(*sigctxt).sigpc
+runtime.(*sigctxt).sigsp
+runtime.(*spanSet).pop
+runtime.(*spanSet).push
+runtime.(*spanSet).reset
+runtime.(*spanSetBlockAlloc).alloc
+runtime.(*spanSetBlockAlloc).free
+runtime.(*specialsIter).next
+runtime.(*specialsIter).unlinkAndNext
+runtime.(*specialsIter).valid
+runtime.(*stackObject).setRecord
+runtime.(*stackObjectRecord).gcdata
+runtime.(*stackScanState).addObject
+runtime.(*stackScanState).buildIndex
+runtime.(*stackScanState).findObject
+runtime.(*stackScanState).getPtr
+runtime.(*stackScanState).putPtr
+runtime.(*stkframe).argBytes
+runtime.(*stkframe).argMapInternal
+runtime.(*stkframe).getStackMap
+runtime.(*sweepClass).clear
+runtime.(*sweepClass).load
+runtime.(*sweepClass).update
+runtime.(*sweepLocked).sweep
+runtime.(*sweepLocked).sweep.(*mheap).freeSpan.func2
+runtime.(*sweepLocked).sweep.(*mheap).freeSpan.func3
+runtime.(*sweepLocked).sweep.func1
+runtime.(*sweepLocker).tryAcquire
+runtime.(*synctestBubble).changegstatus
+runtime.(*synctestBubble).changegstatus.goready.func1
+runtime.(*synctestBubble).decActive
+runtime.(*synctestBubble).decActive.goready.func1
+runtime.(*synctestBubble).incActive
+runtime.(*synctestBubble).maybeWakeLocked
+runtime.(*sysMemStat).add
+runtime.(*sysMemStat).load
+runtime.(*ticksType).init
+runtime.(*timeHistogram).record
+runtime.(*timeHistogram).write
+runtime.(*timer).hchan
+runtime.(*timer).init
+runtime.(*timer).lock
+runtime.(*timer).maybeAdd
+runtime.(*timer).maybeRunAsync
+runtime.(*timer).maybeRunAsync.func1
+runtime.(*timer).maybeRunChan
+runtime.(*timer).maybeRunChan.func1
+runtime.(*timer).modify
+runtime.(*timer).modify.func1
+runtime.(*timer).needsAdd
+runtime.(*timer).reset
+runtime.(*timer).stop
+runtime.(*timer).unlock
+runtime.(*timer).unlockAndRun
+runtime.(*timer).unlockAndRun.func1
+runtime.(*timer).updateHeap
+runtime.(*timers).addHeap
+runtime.(*timers).adjust
+runtime.(*timers).check
+runtime.(*timers).cleanHead
+runtime.(*timers).deleteMin
+runtime.(*timers).initHeap
+runtime.(*timers).lock
+runtime.(*timers).run
+runtime.(*timers).siftDown
+runtime.(*timers).siftUp
+runtime.(*timers).take
+runtime.(*timers).unlock
+runtime.(*timers).updateMinWhenHeap
+runtime.(*timers).updateMinWhenModified
+runtime.(*timers).wakeTime
+runtime.(*timespec).setNsec
+runtime.(*traceAdvancerState).stop
+runtime.(*traceBuf).available
+runtime.(*traceBuf).byte
+runtime.(*traceBuf).stringData
+runtime.(*traceBuf).varint
+runtime.(*traceBuf).varintAt
+runtime.(*traceBuf).varintReserve
+runtime.(*traceBufQueue).empty
+runtime.(*traceBufQueue).push
+runtime.(*traceMap).newTraceMapNode
+runtime.(*traceMap).put
+runtime.(*traceMap).reset
+runtime.(*traceRegionAlloc).alloc
+runtime.(*traceRegionAlloc).alloc.func1
+runtime.(*traceRegionAlloc).drop
+runtime.(*traceSchedResourceState).acquireStatus
+runtime.(*traceSchedResourceState).nextSeq
+runtime.(*traceSchedResourceState).readyNextGen
+runtime.(*traceSchedResourceState).setStatusTraced
+runtime.(*traceSchedResourceState).statusWasTraced
+runtime.(*traceStackTable).dump
+runtime.(*traceStackTable).put
+runtime.(*traceStringTable).put
+runtime.(*traceStringTable).put.func1
+runtime.(*traceStringTable).reset
+runtime.(*traceStringTable).reset.func1
+runtime.(*traceStringTable).writeString
+runtime.(*traceTypeTable).dump
+runtime.(*traceTypeTable).put
+runtime.(*unwinder).cgoCallers
+runtime.(*unwinder).finishInternal
+runtime.(*unwinder).init
+runtime.(*unwinder).initAt
+runtime.(*unwinder).next
+runtime.(*unwinder).resolveInternal
+runtime.(*unwinder).symPC
+runtime.(*unwinder).valid
+runtime.(*waitReason).String
+runtime.(*waitq).dequeue
+runtime.(*waitq).dequeueSudoG
+runtime.(*waitq).enqueue
+runtime.(*wakeableSleep).close
+runtime.(*wakeableSleep).wake
+runtime.(*wbBuf).discard
+runtime.(*wbBuf).get1
+runtime.(*wbBuf).get2
+runtime.(*wbBuf).reset
+runtime.(*workbuf).checkempty
+runtime.(*workbuf).checknonempty
+runtime.AddCleanup: ptr is arena-allocatedMapIter.Value called on exhausted iteratorreflect: negative length passed to ArrayOfreflect: Call with too few input argumentsmismatch between ABI description and typesreflect: cannot convert slice with length  bytes; incompatible with mutex flag mask persistentalloc: align is not a power of 2/cpu/classes/gc/mark/dedicated:cpu-seconds/memory/classes/metadata/mcache/free:bytes/memory/classes/metadata/mspan/inuse:bytesnon-empty mark queue after concurrent marksweep: tried to preserve a user arena spanruntime: blocked write on closing polldescunexpected state passed to panicrangestateacquireSudog: found s.elem != nil in cachefatal error: cgo callback before cgo call
+runtime.AddCleanup: ptr not in allocated blockboth Setctty and Foreground set in SysProcAttrreflect: Value.SetIterValue called before Nextreflect: nil type passed to Type.ConvertibleToreflect.Struct: fields with different PkgPath reflect.StructOf: illegal embedded field type  returned value obtained from unexported fieldreflect: slice capacity out of range in SetCapreflect.Value.Slice: slice index out of boundsslice bounds out of range [:%x] with length %ypanicwrap: unexpected string after type name: memory reservation exceeds address space limittried to park scavenger from another goroutinereleased less than one physical page of memorysysGrow bounds not aligned to pallocChunkBytesruntime: failed to create new OS thread (have runtime: panic before malloc heap initialized
+runtime.AddCleanup[go.shape.struct { Pid int; os.state sync/atomic.Uint32; os.sigMu sync.RWMutex; os.handle *os.processHandle; os.cleanup runtime.Cleanup },go.shape.*uint8]
+runtime.AddCleanup[go.shape.struct { Pid int; os.state sync/atomic.Uint32; os.sigMu sync.RWMutex; os.handle *os.processHandle; os.cleanup runtime.Cleanup },go.shape.*uint8].func1
+runtime.AddCleanup[go.shape.struct { internal/poll.splicePipeFields; internal/poll.cleanup runtime.Cleanup },go.shape.struct { internal/poll.rfd int; internal/poll.wfd int; internal/poll.data int }]
+runtime.AddCleanup[go.shape.struct { internal/poll.splicePipeFields; internal/poll.cleanup runtime.Cleanup },go.shape.struct { internal/poll.rfd int; internal/poll.wfd int; internal/poll.data int }].func1
+runtime.AddCleanup[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string },go.shape.struct {}]
+runtime.AddCleanup[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string },go.shape.struct {}].func1
+runtime.Caller
+runtime.Callers
+runtime.CallersFrames
+runtime.Cleanup.Stop
+runtime.FuncForPC
+runtime.GC
+runtime.GOMAXPROCS
+runtime.GOROOT
+runtime.Gosched
+runtime.H
+runtime.H9
+runtime.H90@
+runtime.NumCgoCall
+runtime.SetFinalizer
+runtime.SetFinalizer.func1
+runtime.SetFinalizer.func2
+runtime.Stack
+runtime.Stack.func1
+runtime.Stack.func1.tracebackothers.1
+runtime._ELF_ST_BIND
+runtime._ELF_ST_TYPE
+runtime._ExternalCode
+runtime._GC
+runtime._LostContendedRuntimeLock
+runtime._LostExternalCode
+runtime._LostSIGPROFDuringAtomic64
+runtime._System
+runtime._VDSO
+runtime.abort
+runtime.acquireLockRankAndM
+runtime.acquireSudog
+runtime.acquirem
+runtime.acquirep
+runtime.activeModules
+runtime.add
+runtime.add1
+runtime.addCleanup
+runtime.addExtraM
+runtime.addb
+runtime.addfinalizer
+runtime.addrRange.contains
+runtime.addrRange.size
+runtime.addrRange.subtract
+runtime.addrsToSummaryRange
+runtime.addspecial
+runtime.adjustCgroupGOMAXPROCS
+runtime.adjustSignalStack
+runtime.adjustSignalStack2
+runtime.adjustctxt
+runtime.adjustdefers
+runtime.adjustframe
+runtime.adjustpanics
+runtime.adjustpointer
+runtime.adjustpointers
+runtime.adjustsudogs
+runtime.alginit
+runtime.alignDown
+runtime.alignUp
+runtime.allGsSnapshot
+runtime.allZero
+runtime.allgadd
+runtime.allocm
+runtime.allocm.func1
+runtime.allocmcache
+runtime.allocmcache.func1
+runtime.appendIntStr
+runtime.arenaIndex
+runtime.args
+runtime.argv_index
+runtime.asmcgocall
+runtime.asmcgocall_landingpad
+runtime.asminit
+runtime.assertE2I
+runtime.assertE2I2
+runtime.asyncPreempt
+runtime.asyncPreempt2
+runtime.atomicAllG
+runtime.atomicAllGIndex
+runtime.atomicstorep
+runtime.atomicwb
+runtime.badDefer
+runtime.badPointer
+runtime.badTimer
+runtime.badctxt
+runtime.badmcall
+runtime.badmcall2
+runtime.badmorestackg0
+runtime.badmorestackg0.func1
+runtime.badmorestackgsignal
+runtime.badreflectcall
+runtime.badsignal
+runtime.badsystemstack
+runtime.badunlockosthread
+runtime.bgscavenge
+runtime.bgsweep
+runtime.binarySearchTree
+runtime.bitCursor.offset
+runtime.bitCursor.write
+runtime.blockAlignSummaryRange
+runtime.blockTimerChan
+runtime.blockableSig
+runtime.blockevent
+runtime.blocksampled
+runtime.bool2int
+runtime.bootstrapRand
+runtime.bootstrapRandReseed
+runtime.boundsError.Error
+runtime.boundsError.RuntimeError
+runtime.buildGCMask
+runtime.buildInterfaceSwitchCache
+runtime.buildInterfaceSwitchCache.func1
+runtime.buildTypeAssertCache
+runtime.buildTypeAssertCache.func1
+runtime.bulkBarrierBitmap
+runtime.bulkBarrierPreWrite
+runtime.bulkBarrierPreWriteSrcOnly
+runtime.bytes
+runtime.c128equal
+runtime.c128hash
+runtime.c64equal
+runtime.c64hash
+runtime.call1024
+runtime.call1048576
+runtime.call1073741824
+runtime.call128
+runtime.call131072
+runtime.call134217728
+runtime.call16
+runtime.call16384
+runtime.call16777216
+runtime.call2048
+runtime.call2097152
+runtime.call256
+runtime.call262144
+runtime.call268435456
+runtime.call32
+runtime.call32768
+runtime.call33554432
+runtime.call4096
+runtime.call4194304
+runtime.call512
+runtime.call524288
+runtime.call536870912
+runtime.call64
+runtime.call65536
+runtime.call67108864
+runtime.call8192
+runtime.call8388608
+runtime.callCgoMmap
+runtime.callCgoMunmap
+runtime.callCgoSigaction
+runtime.callCgoSymbolizer
+runtime.callbackUpdateSystemStack
+runtime.callers
+runtime.callers.func1
+runtime.canPreemptM
+runtime.canpanic
+runtime.cansemacquire
+runtime.casGFromPreempted
+runtime.casGToPreemptScan
+runtime.casGToWaiting
+runtime.casGToWaitingForSuspendG
+runtime.casfrom_Gscanstatus
+runtime.casgstatus
+runtime.casgstatus.func1
+runtime.casgstatus.func2
+runtime.casgstatus.func3
+runtime.castogscanstatus
+runtime.ceil
+runtime.cgoContextPCs
+runtime.cgoSigtramp
+runtime.cgocall
+runtime.chanbuf
+runtime.chancap
+runtime.chanlen
+runtime.chanparkcommit
+runtime.chanrecv
+runtime.chanrecv.func1
+runtime.chanrecv1
+runtime.chansend
+runtime.chansend.func1
+runtime.chansend1
+runtime.cheaprand
+runtime.cheaprand64
+runtime.cheaprandn
+runtime.check
+runtime.checkASM
+runtime.checkFinalizersAndCleanups
+runtime.checkFinalizersAndCleanups.func1
+runtime.checkFinalizersAndCleanups.func1.1
+runtime.checkIdleGCNoP
+runtime.checkRunqsNoP
+runtime.checkTimersNoP
+runtime.checkdead
+runtime.checkdead.func1
+runtime.checkfds
+runtime.checkmcount
+runtime.chunkBase
+runtime.chunkIdx.l1
+runtime.chunkIdx.l2
+runtime.chunkIndex
+runtime.chunkPageIndex
+runtime.clearCleanupContext
+runtime.clearFinalizerContext
+runtime.clearSignalHandlers
+runtime.clearpools
+runtime.clobberfree
+runtime.clone
+runtime.closechan
+runtime.closechan.goready.func1
+runtime.closefd
+runtime.cmpstring
+runtime.compute0
+runtime.concatstring2
+runtime.concatstring3
+runtime.concatstring4
+runtime.concatstring5
+runtime.concatstrings
+runtime.convT
+runtime.convT16
+runtime.convT32
+runtime.convT64
+runtime.convTnoptr
+runtime.convTslice
+runtime.convTstring
+runtime.copystack
+runtime.countSub
+runtime.cpuinit
+runtime.cputicks
+runtime.crash
+runtime.createfing
+runtime.debugCallCheck
+runtime.debugCallCheck.func1
+runtime.debugCallPanicked
+runtime.debugCallV2
+runtime.debugCallWrap
+runtime.debugCallWrap.func1
+runtime.debugCallWrap.func2
+runtime.debugCallWrap1
+runtime.debugCallWrap1.func1
+runtime.debugCallWrap2
+runtime.debugCallWrap2.func1
+runtime.debugPinnerV1
+runtime.decoderune
+runtime.deductAssistCredit
+runtime.deductSweepCredit
+runtime.defaultGOMAXPROCS
+runtime.defaultGOMAXPROCSInit
+runtime.defaultGOMAXPROCSUpdateEnable
+runtime.defaultGOMAXPROCSUpdateGODEBUG
+runtime.deferconvert
+runtime.deferprocStack
+runtime.deferreturn
+runtime.dieFromSignal
+runtime.divRoundUp
+runtime.doInit
+runtime.doInit1
+runtime.doRecordGoroutineProfile
+runtime.doRecordGoroutineProfile.func1
+runtime.doSigPreempt
+runtime.dolockOSThread
+runtime.dopanic_m
+runtime.dopanic_m.func1
+runtime.dopanic_m.tracebackothers.func2
+runtime.dounlockOSThread
+runtime.dropg
+runtime.dropm
+runtime.duffcopy
+runtime.duffzero
+runtime.dumpScanStats
+runtime.dumpStacksRec
+runtime.dumpTypesRec
+runtime.dumpgstatus
+runtime.dumpregs
+runtime.efaceeq
+runtime.elideWrapperCalling
+runtime.empty
+runtime.encoderune
+runtime.endCheckmarks
+runtime.entersyscall
+runtime.entersyscall_gcwait
+runtime.entersyscall_sysmon
+runtime.entersyscallblock
+runtime.entersyscallblock.func1
+runtime.entersyscallblock.func2
+runtime.entersyscallblock.func3
+runtime.entersyscallblock_handoff
+runtime.envKeyEqual
+runtime.eqslice
+runtime.errorAddressString.Addr
+runtime.errorAddressString.Error
+runtime.errorAddressString.RuntimeError
+runtime.errorString.Error
+runtime.errorString.RuntimeError
+runtime.execute
+runtime.exit
+runtime.exitThread
+runtime.exitsyscall
+runtime.exitsyscall.func1
+runtime.exitsyscall.func2
+runtime.exitsyscall0
+runtime.exitsyscallfast
+runtime.exitsyscallfast.func1
+runtime.exitsyscallfast_pidle
+runtime.exitsyscallfast_reacquired
+runtime.exitsyscallfast_reacquired.func1
+runtime.expandCgoFrames
+runtime.f32equal
+runtime.f32hash
+runtime.f64equal
+runtime.f64hash
+runtime.fastexprand
+runtime.fastlog2
+runtime.fatal
+runtime.fatal.func1
+runtime.fatalpanic
+runtime.fatalpanic.func1
+runtime.fatalpanic.func2
+runtime.fatalsignal
+runtime.fatalthrow
+runtime.fatalthrow.func1
+runtime.fcntl
+runtime.fillAligned
+runtime.fillAligned.func1
+runtime.fillstack
+runtime.finReadQueueStats
+runtime.finalizercommit
+runtime.findBitRange64
+runtime.findObject
+runtime.findRunnable
+runtime.findfunc
+runtime.findmoduledatap
+runtime.findnull
+runtime.findsghi
+runtime.finishDebugVarsSetup
+runtime.finishsweep_m
+runtime.float64bits
+runtime.float64frombits
+runtime.floor
+runtime.fmtNSAsMS
+runtime.forEachG
+runtime.forEachGRace
+runtime.forEachP
+runtime.forEachPInternal
+runtime.forEachSpecial
+runtime.forcegchelper
+runtime.fpTracebackPCs
+runtime.fpTracebackPartialExpand
+runtime.fpTracebackPartialExpand.func1
+runtime.fpunwindExpand
+runtime.fpunwindExpand.func1
+runtime.freeSomeWbufs
+runtime.freeSomeWbufs.func1
+runtime.freeSpecial
+runtime.freeStackSpans
+runtime.freemcache
+runtime.freezetheworld
+runtime.full
+runtime.funcInfo.entry
+runtime.funcInfo.srcFunc
+runtime.funcInfo.valid
+runtime.funcMaxSPDelta
+runtime.funcNameForPrint
+runtime.funcNamePiecesForPrint
+runtime.funcdata
+runtime.funcfile
+runtime.funcline
+runtime.funcline1
+runtime.funcname
+runtime.funcpkgpath
+runtime.funcspdelta
+runtime.futex
+runtime.futexsleep
+runtime.futexwakeup
+runtime.futexwakeup.func1
+runtime.gcAssistAlloc
+runtime.gcAssistAlloc.func1
+runtime.gcAssistAlloc.func2
+runtime.gcAssistAlloc1
+runtime.gcBgMarkPrepare
+runtime.gcBgMarkStartWorkers
+runtime.gcBgMarkStartWorkers.gowrap1
+runtime.gcBgMarkWorker
+runtime.gcBgMarkWorker.func1
+runtime.gcBgMarkWorker.func2
+runtime.gcComputeStartingStackSize
+runtime.gcControllerCommit
+runtime.gcDrain
+runtime.gcDrainMarkWorkerDedicated
+runtime.gcDrainMarkWorkerFractional
+runtime.gcDrainMarkWorkerIdle
+runtime.gcDrainN
+runtime.gcDumpObject
+runtime.gcFlushBgCredit
+runtime.gcMark
+runtime.gcMarkDone
+runtime.gcMarkDone.forEachP.func5
+runtime.gcMarkDone.func1
+runtime.gcMarkDone.func2
+runtime.gcMarkDone.func3
+runtime.gcMarkDone.func4
+runtime.gcMarkRootCheck
+runtime.gcMarkRootCheck.func1
+runtime.gcMarkTermination
+runtime.gcMarkTermination.forEachP.func6
+runtime.gcMarkTermination.func1
+runtime.gcMarkTermination.func2
+runtime.gcMarkTermination.func2.1
+runtime.gcMarkTermination.func3
+runtime.gcMarkTermination.func4
+runtime.gcMarkTermination.func4.1
+runtime.gcMarkTermination.func5
+runtime.gcMarkTinyAllocs
+runtime.gcMarkWorkAvailable
+runtime.gcPaceScavenger
+runtime.gcPaceSweeper
+runtime.gcParkAssist
+runtime.gcParkStrongFromWeak
+runtime.gcPrepareMarkRoots
+runtime.gcPrepareMarkRoots.func1
+runtime.gcResetMarkState
+runtime.gcResetMarkState.func1
+runtime.gcScanCleanup
+runtime.gcScanFinalizer
+runtime.gcStart
+runtime.gcStart.func1
+runtime.gcStart.func2
+runtime.gcStart.func3
+runtime.gcStart.func4
+runtime.gcSweep
+runtime.gcTrigger.test
+runtime.gcWaitOnMark
+runtime.gcWakeAllAssists
+runtime.gcWakeAllStrongFromWeak
+runtime.gcWriteBarrier1
+runtime.gcWriteBarrier2
+runtime.gcWriteBarrier3
+runtime.gcWriteBarrier4
+runtime.gcWriteBarrier5
+runtime.gcWriteBarrier6
+runtime.gcWriteBarrier7
+runtime.gcWriteBarrier8
+runtime.gcallers
+runtime.gcd
+runtime.gcenable
+runtime.gcenable.gowrap1
+runtime.gcenable.gowrap2
+runtime.gcinit
+runtime.gclinkptr.ptr
+runtime.gcmarknewobject
+runtime.gcount
+runtime.gcstopm
+runtime.gdestroy
+runtime.getCPUCount
+runtime.getCheckmark
+runtime.getCleanupContext
+runtime.getExtraM
+runtime.getGCMask
+runtime.getGCMaskOnDemand
+runtime.getGCMaskOnDemand.func1
+runtime.getGodebugEarly
+runtime.getHugePageSize
+runtime.getMCache
+runtime.getOrAddWeakHandle
+runtime.getStaticuint64s
+runtime.getWeakHandle
+runtime.getcallerfp
+runtime.getempty
+runtime.getempty.func1
+runtime.getfp
+runtime.getitab
+runtime.getpid
+runtime.getsig
+runtime.gettid
+runtime.gfget
+runtime.gfget.func1
+runtime.gfget.func2
+runtime.gfpurge
+runtime.gfput
+runtime.globrunqget
+runtime.globrunqgetbatch
+runtime.globrunqput
+runtime.globrunqputbatch
+runtime.globrunqputhead
+runtime.goPanicIndex
+runtime.goPanicIndexU
+runtime.goPanicSlice3Alen
+runtime.goPanicSlice3C
+runtime.goPanicSliceAcap
+runtime.goPanicSliceAcapU
+runtime.goPanicSliceAlen
+runtime.goPanicSliceAlenU
+runtime.goPanicSliceB
+runtime.goPanicSliceBU
+runtime.goStatusToTraceGoStatus
+runtime.goargs
+runtime.godebugNotify
+runtime.goenvs
+runtime.goenvs_unix
+runtime.goexit
+runtime.goexit0
+runtime.goexit1
+runtime.gogetenv
+runtime.gogo
+runtime.gopanic
+runtime.gopark
+runtime.goparkunlock
+runtime.gopreempt_m
+runtime.goready
+runtime.gorecover
+runtime.goroutineheader
+runtime.goschedIfBusy
+runtime.goschedImpl
+runtime.gosched_m
+runtime.goschedguarded
+runtime.goschedguarded_m
+runtime.gostartcall
+runtime.gostartcallfn
+runtime.gostring
+runtime.gostringnocopy
+runtime.gotraceback
+runtime.goyield
+runtime.goyield_m
+runtime.greyobject
+runtime.growslice
+runtime.guintptr.ptr
+runtime.gwrite
+runtime.handoff
+runtime.handoffp
+runtime.headTailIndex.head
+runtime.headTailIndex.split
+runtime.heapBitsInSpan
+runtime.heapBitsSlice
+runtime.heapRetained
+runtime.heapSetTypeLarge
+runtime.heapSetTypeNoHeader
+runtime.heapSetTypeSmallHeader
+runtime.hexdumpWords
+runtime.ifaceeq
+runtime.inUserArenaChunk
+runtime.inVDSOPage
+runtime.incidlelocked
+runtime.init
+runtime.init.0
+runtime.init.1
+runtime.init.4
+runtime.init.5
+runtime.init.6
+runtime.init.6.func1
+runtime.init.7
+runtime.init.func1
+runtime.init.func2
+runtime.initAlgAES
+runtime.initMetrics
+runtime.initMetrics.func1
+runtime.initMetrics.func10
+runtime.initMetrics.func11
+runtime.initMetrics.func12
+runtime.initMetrics.func13
+runtime.initMetrics.func14
+runtime.initMetrics.func15
+runtime.initMetrics.func16
+runtime.initMetrics.func17
+runtime.initMetrics.func18
+runtime.initMetrics.func19
+runtime.initMetrics.func2
+runtime.initMetrics.func20
+runtime.initMetrics.func21
+runtime.initMetrics.func22
+runtime.initMetrics.func23
+runtime.initMetrics.func24
+runtime.initMetrics.func25
+runtime.initMetrics.func26
+runtime.initMetrics.func27
+runtime.initMetrics.func28
+runtime.initMetrics.func29
+runtime.initMetrics.func3
+runtime.initMetrics.func30
+runtime.initMetrics.func31
+runtime.initMetrics.func32
+runtime.initMetrics.func33
+runtime.initMetrics.func34
+runtime.initMetrics.func35
+runtime.initMetrics.func36
+runtime.initMetrics.func37
+runtime.initMetrics.func38
+runtime.initMetrics.func39
+runtime.initMetrics.func4
+runtime.initMetrics.func40
+runtime.initMetrics.func41
+runtime.initMetrics.func42
+runtime.initMetrics.func43
+runtime.initMetrics.func44
+runtime.initMetrics.func45
+runtime.initMetrics.func46
+runtime.initMetrics.func47
+runtime.initMetrics.func48
+runtime.initMetrics.func49
+runtime.initMetrics.func5
+runtime.initMetrics.func50
+runtime.initMetrics.func51
+runtime.initMetrics.func52
+runtime.initMetrics.func53
+runtime.initMetrics.func54
+runtime.initMetrics.func55
+runtime.initMetrics.func56
+runtime.initMetrics.func6
+runtime.initMetrics.func7
+runtime.initMetrics.func8
+runtime.initMetrics.func9
+runtime.initsig
+runtime.injectglist
+runtime.injectglist.func1
+runtime.inlineFrame.valid
+runtime.interequal
+runtime.interfaceSwitch
+runtime.interhash
+runtime.intstring
+runtime.isAbortPC
+runtime.isAsyncSafePoint
+runtime.isDirectIface
+runtime.isExportedRuntime
+runtime.isFinite
+runtime.isGoPointerWithoutSpan
+runtime.isInf
+runtime.isNaN
+runtime.isPowerOfTwo
+runtime.isShrinkStackSafe
+runtime.isSweepDone
+runtime.isSystemGoroutine
+runtime.itabAdd
+runtime.itabHashFunc
+runtime.itabInit
+runtime.itabsinit
+runtime.iterate_itabs
+runtime.itoa
+runtime.itoaDiv
+runtime.levelIndexToOffAddr
+runtime.lfnodeValidate
+runtime.lfstackPack
+runtime.lfstackUnpack
+runtime.limiterEventStamp.duration
+runtime.limiterEventStamp.typ
+runtime.lock
+runtime.lock2
+runtime.lockOSThread
+runtime.lockRank.String
+runtime.lockVerifyMSize
+runtime.lockWithRank
+runtime.lockextra
+runtime.mPark
+runtime.mProfStackInit
+runtime.mProf_Flush
+runtime.mProf_FlushLocked
+runtime.mProf_Free
+runtime.mProf_Malloc
+runtime.mProf_Malloc.func1
+runtime.mProf_NextCycle
+runtime.mProf_PostSweep
+runtime.mReserveID
+runtime.madvise
+runtime.main
+runtime.main.func1
+runtime.main.func2
+runtime.makeAddrRange
+runtime.makeHeadTailIndex
+runtime.makeLimiterEventStamp
+runtime.makeProfStack
+runtime.makeProfStackFP
+runtime.makeSpanClass
+runtime.makeStatDepSet
+runtime.makeTraceFrame
+runtime.makeTraceFrames
+runtime.makechan
+runtime.makemap
+runtime.makemap_small
+runtime.makeslice
+runtime.makeslicecopy
+runtime.malg
+runtime.malg.func1
+runtime.mallocgc
+runtime.mallocgcLarge
+runtime.mallocgcSmallNoscan
+runtime.mallocgcSmallScanHeader
+runtime.mallocgcSmallScanNoHeader
+runtime.mallocgcTiny
+runtime.mallocinit
+runtime.mapIterNext
+runtime.mapIterStart
+runtime.mapaccess1
+runtime.mapaccess1_fast32
+runtime.mapaccess1_fast64
+runtime.mapaccess1_faststr
+runtime.mapaccess2
+runtime.mapaccess2_fast32
+runtime.mapaccess2_fast64
+runtime.mapaccess2_faststr
+runtime.mapassign
+runtime.mapassign_fast32
+runtime.mapassign_fast64
+runtime.mapassign_fast64ptr
+runtime.mapassign_faststr
+runtime.mapclear
+runtime.mapdelete
+runtime.mapdelete_faststr
+runtime.mapinitnoop
+runtime.markBits.isMarked
+runtime.markBits.setMarked
+runtime.markBits.setMarkedNonAtomic
+runtime.markroot
+runtime.markroot.func1
+runtime.markrootBlock
+runtime.markrootFreeGStacks
+runtime.markrootSpans
+runtime.maxCleanupGs
+runtime.mcall
+runtime.mcommoninit
+runtime.mcount
+runtime.memclrHasPointers
+runtime.memclrNoHeapPointers
+runtime.memclrNoHeapPointersChunked
+runtime.memequal
+runtime.memequal0
+runtime.memequal128
+runtime.memequal16
+runtime.memequal32
+runtime.memequal64
+runtime.memequal8
+runtime.memequal_varlen
+runtime.memhash
+runtime.memhash128
+runtime.memhash32
+runtime.memhash32Fallback
+runtime.memhash64
+runtime.memhash64Fallback
+runtime.memhashFallback
+runtime.memhash_varlen
+runtime.memmove
+runtime.mergeSummaries
+runtime.metricReader.compute
+runtime.metricReader.compute-fm
+runtime.metricsLock
+runtime.metricsUnlock
+runtime.mexit
+runtime.mget
+runtime.mincore
+runtime.minit
+runtime.minitSignalMask
+runtime.minitSignalStack
+runtime.minitSignals
+runtime.mix
+runtime.mmap
+runtime.mmap.func1
+runtime.modf
+runtime.moduledataverify
+runtime.moduledataverify1
+runtime.modulesinit
+runtime.morestack
+runtime.morestack_noctxt
+runtime.morestackc
+runtime.mpreinit
+runtime.mprotect
+runtime.mput
+runtime.mrandinit
+runtime.msigrestore
+runtime.mspinning
+runtime.mstart
+runtime.mstart0
+runtime.mstart1
+runtime.mstartm0
+runtime.muintptr.ptr
+runtime.munmap
+runtime.munmap.func1
+runtime.mutexPreferLowLatency
+runtime.mutexSampleContention
+runtime.mutexWaitListHead
+runtime.nanotime
+runtime.nanotime1
+runtime.needm
+runtime.netpoll
+runtime.netpollAdjustWaiters
+runtime.netpollAnyWaiters
+runtime.netpollBreak
+runtime.netpollDeadline
+runtime.netpollGenericInit
+runtime.netpollReadDeadline
+runtime.netpollWriteDeadline
+runtime.netpollblock
+runtime.netpollblockcommit
+runtime.netpollcheckerr
+runtime.netpollclose
+runtime.netpolldeadlineimpl
+runtime.netpollgoready
+runtime.netpollgoready.goready.func1
+runtime.netpollinit
+runtime.netpollinited
+runtime.netpollopen
+runtime.netpollready
+runtime.netpollunblock
+runtime.newAllocBits
+runtime.newArenaMayUnlock
+runtime.newBucket
+runtime.newInlineUnwinder
+runtime.newMarkBits
+runtime.newarray
+runtime.newextram
+runtime.newm
+runtime.newm1
+runtime.newobject
+runtime.newosproc
+runtime.newosproc.func1
+runtime.newproc
+runtime.newproc.func1
+runtime.newproc1
+runtime.newstack
+runtime.nextFreeFast
+runtime.nextMarkBitArenaEpoch
+runtime.nextSample
+runtime.nextslicecap
+runtime.nilfunc
+runtime.nilinterequal
+runtime.nilinterhash
+runtime.noSignalStack
+runtime.noteclear
+runtime.notesleep
+runtime.notetsleep
+runtime.notetsleep_internal
+runtime.notetsleepg
+runtime.notewakeup
+runtime.nsToSec
+runtime.offAddr.add
+runtime.offAddr.diff
+runtime.offAddr.equal
+runtime.offAddr.lessEqual
+runtime.offAddr.lessThan
+runtime.offAddrToLevelIndex
+runtime.oneNewExtraM
+runtime.open
+runtime.osinit
+runtime.osyield
+runtime.osyield_no_g
+runtime.pMask.clear
+runtime.pMask.read
+runtime.pMask.set
+runtime.packPallocSum
+runtime.pageIndexOf
+runtime.pallocSum.end
+runtime.pallocSum.max
+runtime.pallocSum.start
+runtime.pallocSum.unpack
+runtime.panicCheck1
+runtime.panicCheck2
+runtime.panicIndex
+runtime.panicIndexU
+runtime.panicSlice3Alen
+runtime.panicSlice3C
+runtime.panicSliceAcap
+runtime.panicSliceAcapU
+runtime.panicSliceAlen
+runtime.panicSliceAlenU
+runtime.panicSliceB
+runtime.panicSliceBU
+runtime.panicdivide
+runtime.panicdottypeE
+runtime.panicdottypeI
+runtime.panicfloat
+runtime.panicmakeslicecap
+runtime.panicmakeslicelen
+runtime.panicmem
+runtime.panicmemAddr
+runtime.panicnildottype
+runtime.panicoverflow
+runtime.panicrangestate
+runtime.panicshift
+runtime.panicunsafeslicelen
+runtime.panicunsafeslicelen1
+runtime.panicunsafeslicenilptr
+runtime.panicunsafeslicenilptr1
+runtime.panicunsafestringlen
+runtime.panicunsafestringnilptr
+runtime.panicwrap
+runtime.park_m
+runtime.parkunlock_c
+runtime.parseByteCount
+runtime.parseRuntimeDebugVars
+runtime.parsegodebug
+runtime.pcdatastart
+runtime.pcdatavalue
+runtime.pcdatavalue1
+runtime.pcdatavalue2
+runtime.pcvalue
+runtime.pcvalueCacheKey
+runtime.persistentalloc
+runtime.persistentalloc.func1
+runtime.persistentalloc1
+runtime.pidleget
+runtime.pidlegetSpinning
+runtime.pidleput
+runtime.pinnerGetPtr
+runtime.pkgPath
+runtime.plainError.Error
+runtime.plainError.RuntimeError
+runtime.pollFractionalWorkerExit
+runtime.pollInfo.closing
+runtime.pollInfo.eventErr
+runtime.pollInfo.expiredReadDeadline
+runtime.pollInfo.expiredWriteDeadline
+runtime.pollWork
+runtime.popDefer
+runtime.postMallocgcDebug
+runtime.preMallocgcDebug
+runtime.preemptM
+runtime.preemptPark
+runtime.preemptall
+runtime.preemptone
+runtime.prepareFreeWorkbufs
+runtime.preprintpanics
+runtime.preprintpanics.func1
+runtime.printAncestorTraceback
+runtime.printAncestorTracebackFuncInfo
+runtime.printArgs
+runtime.printArgs.func1
+runtime.printArgs.func2
+runtime.printArgs.func3
+runtime.printCgoTraceback
+runtime.printCgoTraceback.func1
+runtime.printFuncName
+runtime.printOneCgoTraceback
+runtime.printScavTrace
+runtime.printanycustomtype
+runtime.printbool
+runtime.printcomplex
+runtime.printcreatedby
+runtime.printcreatedby1
+runtime.printfloat
+runtime.printhex
+runtime.printindented
+runtime.printint
+runtime.printlock
+runtime.printnl
+runtime.printpanics
+runtime.printpanicval
+runtime.printpointer
+runtime.printslice
+runtime.printsp
+runtime.printstring
+runtime.printuint
+runtime.printuintptr
+runtime.printunlock
+runtime.procPin
+runtime.procUnpin
+runtime.procresize
+runtime.procyield
+runtime.profIndex.addCountsAndClearFlags
+runtime.profIndex.tagCount
+runtime.profilealloc
+runtime.progToPointerMask
+runtime.publicationBarrier
+runtime.puintptr.ptr
+runtime.putExtraM
+runtime.putempty
+runtime.putfull
+runtime.queuefinalizer
+runtime.r4
+runtime.r8
+runtime.raise
+runtime.raisebadsignal
+runtime.raiseproc
+runtime.rand
+runtime.randinit
+runtime.rawbyteslice
+runtime.rawruneslice
+runtime.rawstring
+runtime.rawstringtmp
+runtime.read
+runtime.readGOGC
+runtime.readGOMEMLIMIT
+runtime.readRandom
+runtime.readTimeRandom
+runtime.readUintptr
+runtime.readUnaligned32
+runtime.readUnaligned64
+runtime.readgstatus
+runtime.readvarint
+runtime.readvarintUnsafe
+runtime.ready
+runtime.readyWithTime
+runtime.readyWithTime.goready.func1
+runtime.recordForPanic
+runtime.recordspan
+runtime.recovery
+runtime.recv
+runtime.recv.goready.func1
+runtime.recvDirect
+runtime.reentersyscall
+runtime.reentersyscall.func1
+runtime.reentersyscall.func2
+runtime.reentersyscall.func3
+runtime.reflectOffsLock
+runtime.reflectOffsUnlock
+runtime.reflectcall
+runtime.reflectcallmove
+runtime.releaseLockRankAndM
+runtime.releaseSudog
+runtime.releasem
+runtime.releasep
+runtime.releasepNoTrace
+runtime.removefinalizer
+runtime.removespecial
+runtime.reparsedebugvars
+runtime.resetspinning
+runtime.resolveNameOff
+runtime.resolveTypeOff
+runtime.restoreGsignalStack
+runtime.resumeG
+runtime.retake
+runtime.retryOnEAGAIN
+runtime.round2
+runtime.roundupsize
+runtime.rt0_go
+runtime.rt_sigaction
+runtime.rtsigprocmask
+runtime.rtype.nameOff
+runtime.rtype.pkgpath
+runtime.rtype.string
+runtime.rtype.textOff
+runtime.rtype.typeOff
+runtime.rtype.uncommon
+runtime.runCheckmark
+runtime.runCleanups
+runtime.runExitHooks
+runtime.runFinalizers
+runtime.runGCProg
+runtime.runPerThreadSyscall
+runtime.runSafePointFn
+runtime.runqdrain
+runtime.runqempty
+runtime.runqget
+runtime.runqgrab
+runtime.runqput
+runtime.runqputbatch
+runtime.runqputslow
+runtime.runqsteal
+runtime.save
+runtime.saveAncestors
+runtime.saveBlockEventStack
+runtime.saveblockevent
+runtime.saveg
+runtime.scanConservative
+runtime.scanblock
+runtime.scanframeworker
+runtime.scanobject
+runtime.scanstack
+runtime.scavChunkData.pack
+runtime.scavChunkData.shouldScavenge
+runtime.schedEnableUser
+runtime.schedEnabled
+runtime.sched_getaffinity
+runtime.schedinit
+runtime.schedtrace
+runtime.schedtrace.func1
+runtime.schedule
+runtime.secure
+runtime.secureEnv
+runtime.selectgo
+runtime.selectgo.func2
+runtime.selectgo.func3
+runtime.selectnbrecv
+runtime.selectnbsend
+runtime.sellock
+runtime.selparkcommit
+runtime.selunlock
+runtime.semacquire
+runtime.semacquire1
+runtime.semasleep
+runtime.semawakeup
+runtime.semrelease
+runtime.semrelease1
+runtime.send
+runtime.send.goready.func1
+runtime.sendDirect
+runtime.setCheckmark
+runtime.setCleanupContext
+runtime.setFinalizerContext
+runtime.setGCPhase
+runtime.setGNoWB
+runtime.setGsignalStack
+runtime.setMNoWB
+runtime.setPinned
+runtime.setPinned.func1
+runtime.setPinned.func2
+runtime.setSignalstackSP
+runtime.setThreadCPUProfiler
+runtime.setTinyBlockContext
+runtime.setVMAName
+runtime.setVMANameSupported
+runtime.setg
+runtime.setprofilebucket
+runtime.setsig
+runtime.setsigstack
+runtime.settls
+runtime.shade
+runtime.shouldPushSigpanic
+runtime.showframe
+runtime.showfuncinfo
+runtime.shrinkstack
+runtime.sigFetchG
+runtime.sigInitIgnored
+runtime.sigInstallGoHandler
+runtime.sigNotOnStack
+runtime.sigaction
+runtime.sigaction.func1
+runtime.sigaddset
+runtime.sigaltstack
+runtime.sigblock
+runtime.sigdelset
+runtime.sigfillset
+runtime.sigfwd
+runtime.sigfwdgo
+runtime.sighandler
+runtime.sighandler.tracebackothers.func1
+runtime.signalDuringFork
+runtime.signalM
+runtime.signalstack
+runtime.signame
+runtime.sigpanic
+runtime.sigpanic0
+runtime.sigpipe
+runtime.sigprocmask
+runtime.sigprof
+runtime.sigprofNonGo
+runtime.sigprofNonGoPC
+runtime.sigprofNonGoWrapper
+runtime.sigreturn__sigaction
+runtime.sigsave
+runtime.sigsend
+runtime.sigtramp
+runtime.sigtrampgo
+runtime.slicebytetostring
+runtime.slicecopy
+runtime.slicerunetostring
+runtime.spanAllocType.manual
+runtime.spanClass.noscan
+runtime.spanClass.sizeclass
+runtime.spanHasNoSpecials
+runtime.spanHasSpecials
+runtime.spanHeapBitsRange
+runtime.spanOf
+runtime.spanOfHeap
+runtime.spanOfUnchecked
+runtime.spillArgs
+runtime.srcFunc.name
+runtime.stackalloc
+runtime.stackcache_clear
+runtime.stackcacherefill
+runtime.stackcacherelease
+runtime.stackcheck
+runtime.stackfree
+runtime.stackinit
+runtime.stacklog2
+runtime.stackmapdata
+runtime.stackpoolalloc
+runtime.stackpoolfree
+runtime.startCheckmarks
+runtime.startCheckmarks.func1
+runtime.startPCForTrace
+runtime.startTemplateThread
+runtime.startTheWorld
+runtime.startTheWorld.func1
+runtime.startTheWorldGC
+runtime.startTheWorldWithSema
+runtime.startlockedm
+runtime.startm
+runtime.startpanic_m
+runtime.stealWork
+runtime.step
+runtime.stkbucket
+runtime.stkobjinit
+runtime.stopTheWorld
+runtime.stopTheWorld.func1
+runtime.stopTheWorldGC
+runtime.stopTheWorldWithSema
+runtime.stoplockedm
+runtime.stopm
+runtime.strequal
+runtime.strhash
+runtime.strhashFallback
+runtime.stringDataOnStack
+runtime.stringtoslicebyte
+runtime.stringtoslicerune
+runtime.stwReason.String
+runtime.stwReason.isGC
+runtime.subtract1
+runtime.subtractb
+runtime.suspendG
+runtime.sweepClass.split
+runtime.sweepone
+runtime.sweepone.func1
+runtime.switchToCrashStack
+runtime.switchToCrashStack0
+runtime.syncadjustsudogs
+runtime.sysAlloc
+runtime.sysAllocOS
+runtime.sysFault
+runtime.sysFaultOS
+runtime.sysFree
+runtime.sysFreeOS
+runtime.sysHugePage
+runtime.sysHugePageOS
+runtime.sysMap
+runtime.sysMapOS
+runtime.sysMmap
+runtime.sysMunmap
+runtime.sysNoHugePage
+runtime.sysNoHugePageOS
+runtime.sysReserve
+runtime.sysReserveAligned
+runtime.sysReserveOS
+runtime.sysSigaction
+runtime.sysSigaction.func1
+runtime.sysUnused
+runtime.sysUnusedOS
+runtime.sysUsed
+runtime.sysUsedOS
+runtime.sysargs
+runtime.sysauxv
+runtime.sysmon
+runtime.sysmonUpdateGOMAXPROCS
+runtime.systemstack
+runtime.systemstack_switch
+runtime.taggedPointer.pointer
+runtime.taggedPointer.tag
+runtime.taggedPointerPack
+runtime.templateThread
+runtime.testAtomic64
+runtime.tgkill
+runtime.throw
+runtime.throw.func1
+runtime.timeHistogramMetricsBuckets
+runtime.timeSleepUntil
+runtime.timediv
+runtime.timerWhen.less
+runtime.timer_create
+runtime.timer_delete
+runtime.timer_settime
+runtime.timerchandrain
+runtime.totalMutexWaitTimeNanos
+runtime.traceAcquire
+runtime.traceAcquireEnabled
+runtime.traceAdvance
+runtime.traceAdvance.forEachP.func7
+runtime.traceAdvance.func1
+runtime.traceAdvance.func1.1
+runtime.traceAdvance.func2
+runtime.traceAdvance.func3
+runtime.traceAdvance.func4
+runtime.traceAdvance.func5
+runtime.traceAdvance.func6
+runtime.traceAllocFreeEnabled
+runtime.traceBufFlush
+runtime.traceCPUFlush
+runtime.traceCPUFlush.func1
+runtime.traceCPUSample
+runtime.traceClockNow
+runtime.traceCompressStackSize
+runtime.traceEnabled
+runtime.traceEventWriter.event
+runtime.traceExitedSyscall
+runtime.traceExitingSyscall
+runtime.traceGoroutineStackID
+runtime.traceHeapObjectID
+runtime.traceLockInit
+runtime.traceLocker.GCActive
+runtime.traceLocker.GCDone
+runtime.traceLocker.GCMarkAssistDone
+runtime.traceLocker.GCMarkAssistStart
+runtime.traceLocker.GCStart
+runtime.traceLocker.GCSweepDone
+runtime.traceLocker.GCSweepSpan
+runtime.traceLocker.GCSweepStart
+runtime.traceLocker.GoCreate
+runtime.traceLocker.GoCreateSyscall
+runtime.traceLocker.GoDestroySyscall
+runtime.traceLocker.GoEnd
+runtime.traceLocker.GoPark
+runtime.traceLocker.GoPreempt
+runtime.traceLocker.GoSched
+runtime.traceLocker.GoStart
+runtime.traceLocker.GoStop
+runtime.traceLocker.GoSysCall
+runtime.traceLocker.GoSysExit
+runtime.traceLocker.GoUnpark
+runtime.traceLocker.Gomaxprocs
+runtime.traceLocker.GoroutineStackAlloc
+runtime.traceLocker.GoroutineStackFree
+runtime.traceLocker.HeapAlloc
+runtime.traceLocker.HeapGoal
+runtime.traceLocker.HeapObjectAlloc
+runtime.traceLocker.HeapObjectFree
+runtime.traceLocker.ProcStart
+runtime.traceLocker.ProcSteal
+runtime.traceLocker.ProcStop
+runtime.traceLocker.STWDone
+runtime.traceLocker.STWStart
+runtime.traceLocker.SpanAlloc
+runtime.traceLocker.SpanFree
+runtime.traceLocker.emitUnblockStatus
+runtime.traceLocker.eventWriter
+runtime.traceLocker.ok
+runtime.traceLocker.rtype
+runtime.traceLocker.stack
+runtime.traceLocker.startPC
+runtime.traceLocker.string
+runtime.traceLocker.writer
+runtime.traceNextGen
+runtime.traceReadCPU
+runtime.traceReader
+runtime.traceReaderAvailable
+runtime.traceRegisterLabelsAndReasons
+runtime.traceRelease
+runtime.traceShuttingDown
+runtime.traceSpanID
+runtime.traceSpanTypeAndClass
+runtime.traceStack
+runtime.traceStopReadCPU
+runtime.traceSyncBatch
+runtime.traceSyncBatch.func1
+runtime.traceThreadDestroy
+runtime.traceThreadDestroy.func1
+runtime.traceWriter.end
+runtime.traceWriter.ensure
+runtime.traceWriter.event
+runtime.traceWriter.flush
+runtime.traceWriter.flush.func1
+runtime.traceWriter.refill
+runtime.traceWriter.refill.func1
+runtime.traceWriter.writeGoStatus
+runtime.traceWriter.writeProcStatus
+runtime.traceWriter.writeProcStatusForP
+runtime.traceback
+runtime.traceback1
+runtime.traceback1.func1
+runtime.traceback2
+runtime.traceback2.func1
+runtime.tracebackHexdump
+runtime.tracebackHexdump.func1
+runtime.tracebackPCs
+runtime.tracebackothers
+runtime.tracebacksomeothers
+runtime.tracebacksomeothers.func1
+runtime.tracebacktrap
+runtime.tracefpunwindoff
+runtime.tryRecordGoroutineProfile
+runtime.tryRecordGoroutineProfileWB
+runtime.trygetfull
+runtime.typeAssert
+runtime.typeBitsBulkBarrier
+runtime.typePointers.fastForward
+runtime.typePointers.next
+runtime.typePointers.nextFast
+runtime.typedmemclr
+runtime.typedmemmove
+runtime.typedslicecopy
+runtime.typehash
+runtime.typelinksinit
+runtime.typesEqual
+runtime.unblockTimerChan
+runtime.unblocksig
+runtime.unlock
+runtime.unlock2
+runtime.unlock2Wake
+runtime.unlockOSThread
+runtime.unlockWithRank
+runtime.unlockextra
+runtime.unminit
+runtime.unminitSignals
+runtime.unpackScavChunkData
+runtime.unreachableMethod
+runtime.unspillArgs
+runtime.updateMaxProcsGoroutine
+runtime.usleep
+runtime.usleep_no_g
+runtime.validSIGPROF
+runtime.vdsoFindVersion
+runtime.vdsoInitFromSysinfoEhdr
+runtime.vdsoParseSymbols
+runtime.vdsoParseSymbols.func1
+runtime.vdsoauxv
+runtime.vgetrandom1
+runtime.vgetrandomDestroy
+runtime.vgetrandomInit
+runtime.waitReason.String
+runtime.waitReason.isIdleInSynctest
+runtime.waitReason.isMutexWait
+runtime.waitReason.isWaitingForSuspendG
+runtime.wakeNetPoller
+runtime.wakefing
+runtime.wakep
+runtime.wantAsyncPreempt
+runtime.wbBufFlush
+runtime.wbBufFlush.func1
+runtime.wbBufFlush1
+runtime.wbMove
+runtime.wbZero
+runtime.wirep
+runtime.wirep.func1
+runtime.wirep.func2
+runtime.write
+runtime.write1
+runtime.writeErr
+runtime.writeErrData
+runtime.writeErrStr
+runtime/debug.SetTraceback
+runtime: cannot map pages in arena address spaceruntime: malformed profBuf buffer - invalid sizeruntime: taggedPointerPack invalid packing: ptr=attempt to trace invalid or unsupported P statusstrconv: illegal AppendFloat/FormatFloat bitSizenot enough significant bits after mult64bitPow10dates are expected to have the format YYYY-MM-DDcannot decode TOML %s into a Go value of type %sextra characters at the end of a local date timetoml: negative number %d does not fit in an uintcan't use %v iterate over more than one variablestrings.Reader.UnreadByte: at beginning of stringstrings.Reader.UnreadRune: at beginning of stringstrings.Reader.WriteTo: invalid WriteString countinvalid or incomplete multibyte or wide characterreflect.Value.Slice: slice of unaddressable arrayslice bounds out of range [::%x] with capacity %yinvalid memory address or nil pointer dereferencepanicwrap: unexpected string after package name: s.allocCount != s.nelems && freeIndex == s.nelemsruntime.reflect_makemap: unsupported map key typesweeper left outstanding across sweep generationsfully empty unfreed span set block found in resetcasgstatus: waiting for Gwaiting but is Grunnablenot enough significant bits after mult128bitPow10datetime separator is expected to be T or a spacetoml: negative number %d does not fit in an uint8toml: error parsing key of type %s from float: %wexpected character %c but the document ended heresubslice address (%d) is before data address (%d)reflect.Value.Slice3: slice of unaddressable arraymallocgc called with gcphase == _GCmarkterminationruntime.Pinner: object was allocated into an arenaruntime.Pinner: decreased non-existing pin counterrecursive call during initialization - linker skewattempt to execute system stack code on user stacktoml: negative number %d does not fit in an uint64toml: negative number %d does not fit in an uint32toml: negative number %d does not fit in an uint16%s has arguments but cannot be invoked as functionfunction %s has %d return values; should be 1 or 2slice offset (%d) is farther than data length (%d)ScanState's Read should not be called. Use ReadRuneinternal error: too many releases of process handlelimiterEvent.stop: invalid limiter event type foundpotentially overlapping in-use allocations detectedfatal: systemstack called from unexpected goroutinegodebug: Value of name not listed in godebugs.All: JSON decoder out of sync - data changing underfoot?toml: error unmarshalling key type %s from text: %wtoml: error parsing key of type %s from integer: %wcan't use %v to iterate over more than one variableexpected = after a key, but the document ends thereslice ends (%d+%d) is farther than data length (%d)errors: *target must be interface or implement errorfailed to correctly flush all P-owned cleanup blocksruntime: cannot disable permissions in address spaceruntime.SetFinalizer: pointer not in allocated blockruntime: use of FixAlloc_Alloc before FixAlloc_Init
+runtime: casgstatus: oldval=gcstopm: negative nmspinningfindrunnable: netpoll with psave on system g not allowednewproc1: newg missing stacknewproc1: new g is not GdeadFixedStack is not power-of-2missing stack in shrinkstack args stack map entries for invalid runtime symbol tableruntime: no module data for mismatched isSending updates[originating from goroutine traceRegion: alloc too large18189894035458564758300781259094947017729282379150390625unsupported compression for abi.NewName: name too long: json: Unmarshal(non-pointer !#$%&()*+-./:;<=>?@[]^_{|}~ unexpected end of JSON inputminutes cannot be greater 59seconds cannot be greater 60%q is not a defined functionnil pointer evaluating %s.%sinvalid slice index: %d > %dreflect: In of non-func typereflect: Key of non-map typeinvalid path escape sequenceexpected newline but got %#Uinvalid character in commentError: command not found: %s
+runtime: may need to increase max user processes (ulimit -u)
+runtime: mp.lockedInt = runqsteal: runq overflowgoroutine stack (system)unexpected syncgroup setdouble traceGCSweepStartbad use of trace.seqlock116415321826934814453125582076609134674072265625/usr/share/lib/zoneinfo/json: unsupported type: expected float; found %shtmlmetacontenturlescapeinvalid pattern syntax: need a character after \no hex data for %x stringno such file or directoryno such device or addressinvalid cross-device linkresource deadlock avoidedsocket type not supportedno buffer space availableoperation now in progressreflect.Value.SetMapIndexreflect: Bits of nil Typereflect.StructOf: field "reflect.Value.OverflowIntgoroutine profile cleanupGOMAXPROCS updater (idle)chansend: spurious wakeup when attempting to open runtime
+runtime: sp=abi mismatchwrong timerstrace buffer152587890625762939453125not pollableinvalid kind
+runtime: split stack overflow: ...additional frames elided...
+runtimeCtx
+runtimehash
+s.state =  s.base()= heapGoal=GOMEMLIMIT KiB now,  pages at  sweepgen= sweepgen , bound = , limit = page alloc returned ,errno=0}
+scanRune
+setRunes
+setUserArenaChunkToFault
+setWriteDeadline
+sigaction failed23841857910156250123456789ABCDEFtime: bad [0-9]*after object keyextra characterstemplate: %s: %sunknown node: %s%s overflows intGODEBUG: value "output too smallallowmultiplevcshttpcookiemaxnumexpected 'false'unclosed commentWorking directory0123456789ABCDEFX0123456789abcdefxreflect.Value.Intillegal hex digitcan't scan type: pidfd_send_signalexec: killing Cmdexec: not startedexec format errorpermission deniedno data availablestale file handlewrong medium typepackage-lock.jsonunknown type kind has invalid namereflect: call of reflect.Value.Capreflect.Value.Lenreflect: New(nil)containermaxprocsgoroutine profileAllThreadsSyscallGC assist markingselect (no cases)sync.RWMutex.Lockwait for GC cycletrace proc statusSIGINT: interruptSIGBUS: bus errorSIGCONT: continuesync.(*Cond).Wait: missing method notetsleepg on g0bad TinySizeClassimmortal metadataruntime: pointer g already scannedmark - bad statusscanobject n == 0swept cached spanmarkBits overflowruntime: summary[runtime: level = , p.searchAddr = futexwakeup addr=, 0, {interval: {ns}}, nil) errno=results: got {r1=internal/runtime/thread exhaustionlocked m0 woke upentersyscallblock spinningthreads=gp.waiting != niltaggedPointerPackunknown caller pcstack: frame={sp:trace arena allocruntime: nameOff runtime: typeOff runtime: textOff 1192092895507812559604644775390625invalid bit size Time.AppendText: corrupt zip file fractional second from a write of in string literal%s at position %dmultipartmaxpartsurlmaxqueryparamswinreadlinkvolumenon-hex characterincomplete numberinvalid characterbad character %#Uvalue out of rangeflag %q contains =flag redefined: %sreflect.Value.Uintunexpected newlinecannot be negativeinput/output errorno child processesfile name too longno locks availableidentifier removedmultihop attemptedRFS specific errorstreams pipe errorconnection refusedoperation canceledsegmentation faultreflect.Value.Callreflect.Value.Elemreflect.Value.Sendreflect.Value.Typereflect: Zero(nil)adaptivestackstartdontfreezetheworldtraceadvanceperiodtracebackancestorsgarbage collectionsync.RWMutex.RLockGC worker (active)stopping the worldwait until GC endssystem page size (  but memory size /gc/pauses:seconds because dotdotdotruntime: npages = invalid skip valueruntime: range = {index out of rangeruntime:   gp: gp=runtime: getg:  g=forEachP: not done in async preempt
+span set block with unpopped elements found in resetcasfrom_Gscanstatus: gp->status is not in scan statewrong number of args for %s: want at least %d got %dwrong number of args for %s: got %d want at least %dunexpected character 'i' while scanning for a numberunexpected character 'n' while scanning for a numberWarning: failed to generate Vite config override: %v
+spliceToFile	
+stack not a power of 2minpc or maxpc invalidnon-Go function at pc=4656612873077392578125/lib/time/zoneinfo.zip into Go struct field json: unknown field %qexpected a : separatorundefined variable: %sindex out of range: %dreflectlite.Value.Elemexit hook invoked exitunexpected right parenexpected end; found %sparenthesized pipelineError: exec failed: %v
+start
+startPC
+startParse
+startSP
+startTheWorld: inconsistent mp->nextpCouldn't put Gs into empty local runqruntime: unexpected SPWRITE function all goroutines are asleep - deadlock!2220446049250313080847263336181640625timezone hour outside of range [0,23]bytes.Buffer: truncation out of rangegodebug: unexpected IncNonDefault of couldn't parse hexadecimal number: %wcannot have underscore after exponent%q is an incomplete or empty templatedereference of nil pointer of type %scannot index slice/array with type %sruntime: cgroup invalid buffer lengthbisect.Hash: unexpected argument typeinvalid character at start of key: %cliteral strings cannot have new linescomment ends before closing delimiterunrecognized character in action: %#Uflag %s set at %s before being definedexec: StdoutPipe after process startedexec: StderrPipe after process startedstrings.Reader.ReadAt: negative offsetstrings.Reader.Seek: negative positionstrings: Repeat output length overflowcan not access a needed shared libraryreflect.typeptrdata: unexpected type, reflect: close of receive-only channelreflect: Method on nil interface valueindex out of range [%x] with length %ymakechan: invalid channel element typeunreachable method called. linker bug?gcBgMarkWorker: blackening not enabledcannot read stack of running goroutineruntime: blocked read on free polldescruntime: sudog with non-false isSelectarg size to reflect.call more than 1GBv could not fit in traceBytesPerNumber1110223024625156540423631668090820312555511151231257827021181583404541015625time: missing Location in call to Dateafter decimal point in numeric literalextra bytes at the end of the timezonecannot have underscore before exponenttemplate: %s: executing %q at <%s>: %scan't give argument to non-function %sindirection through explicit nil in %sevalEmptyInterface: nil (can't happen)concurrent map iteration and map writeKind.String() not implemented for '%d'exec: environment variable contains NULtransport endpoint is already connectedSetctty set but Ctty not valid in childsyscall.releaseForkLock: negative count cannot produce iter.Seq2[Value, Value]reflect: OverflowUint of non-uint type reflect.MakeMapWithSize of non-map typemismatched count during itab table copyout of memory allocating heap arena map/cpu/classes/gc/mark/assist:cpu-seconds/cpu/classes/scavenge/total:cpu-seconds/memory/classes/profiling/buckets:bytesmspan.sweep: bad span state after sweepruntime: blocked write on free polldescruntime.Pinner: object already unpinnedsuspendG from non-preemptible goroutineruntime: casfrom_Gscanstatus failed gp=stack growth not allowed in system calltraceback: unexpected SPWRITE function traceRegion: alloc with concurrent drop2775557561562891351059079170227050781252006-01-02 15:04:05.999999999 -0700 MSTcannot store inline table in Go type %stoml: number %d does not fit in an int8time: Stop called on uninitialized Timeraddress family not supported by protocolerrors: target must be a non-nil pointerMapIter.Key called on exhausted iteratorreflect: FieldByName of non-struct type reflect.Value.Call: call of nil functionreflect.Value.Call: wrong argument countattempted to copy pointer to FP registerreflect.Value.SetBytes of non-byte slicereflect.Value.setRunes of non-rune sliceinvalid span in heapArena for user arenabulkBarrierPreWrite: unaligned argumentsruntime: typeBitsBulkBarrier with type  refill of span with free space remaining/cpu/classes/scavenge/assist:cpu-secondsruntime.SetFinalizer: first argument is failed to acquire lock to reset capacitymarkWorkerStop: unknown mark worker modecannot free workbufs when work.full != 0runtime: out of memory: cannot allocate runtime: netpollBreak write failed with stopTheWorld: broken CPU time accountingglobal runq empty with non-zero runqsizemust be able to track idle limiter eventgoroutine stack size is not a power of 213877787807814456755295395851135253906256938893903907228377647697925567626953125ryuFtoaFixed32 called with negative precfloat can have at most one decimal pointtoml: number %d does not fit in an int32toml: number %d does not fit in an int16unicode point needs %d character, not %dtoml: key %s should be a table, not a %sunexpected call to os.Exit(0) during testclone(CLONE_PIDFD) failed to return pidfdempty command for task %q in lovable.tomlcan't call pointer on a non-pointer ValueMapIter.Next called on exhausted iteratorreflect: FieldByIndex of non-struct type reflect: OverflowFloat of non-float type reflect.Value.Addr of unaddressable value closed, unable to open /dev/null, errno=runtime: typeBitsBulkBarrier without typeWARNING: LIKELY CLEANUP/FINALIZER ISSUES
+startTicks
+started
+startm: P required for spinning=true) is not Grunnable or Gscanrunnable
+startpc
+stop of synctest timer from outside bubbletraceStopReadCPU called with trace enabledattempted to trace a bad status for a procout of memory allocating checkmarks bitmap173472347597680709441192448139190673828125867361737988403547205962240695953369140625Time.MarshalBinary: unexpected zone offsetsync/atomic: store of nil value into Valuelooking for beginning of object key stringleading zero not allowed on decimal numbercannot have underscore after decimal pointinternal error: no fields in evalChainNodefunction name %q is not a valid identifierKeyValue should have at least two childrenarray elements must be separated by commasexec: WaitDelay expired before I/O completeinterrupted system call should be restartedmultiple Read calls return no data or errorreflect: nil type passed to Type.ImplementsGcSlice can't handle on-demand gcdata typesreflect: CallSlice of non-variadic functionreflect: Call with too many input argumentsruntime: opened unexpected file descriptor /memory/classes/metadata/mcache/inuse:bytesruntime.SetFinalizer: first argument is nilruntime.SetFinalizer: finalizer already setgcBgMarkWorker: unexpected gcMarkWorkerModenon in-use span found with specials bit setgrew heap, but no adequate free space foundroot level max pages doesn't fit in summaryruntime.Pinner: argument is not a pointer: runtime: releaseSudog with non-nil gp.paramunknown runnable goroutine during bootstrapruntime: casfrom_Gscanstatus bad oldval gp=runtime:stoplockedm: lockedg (atomicstatus=methodValueCallFrameObjs is not in a modulereset of synctest timer from outside bubblesynctest timer accessed from outside bubblemult64bitPow10: power of 10 is out of rangeexpecting colon between minutes and secondscannot have underscore before decimal pointtoml: decoding pointer target cannot be nilextra characters at the end of a local time%s is an unexported field of struct type %swrong number of args for %s: want %d got %dwrong number of args for %s: got %d want %d''' not allowed in multiline literal stringnon executable command in pipeline stage %dreflect: call of MakeFunc with non-Func typereflect: Value.SetIterKey called before Nextreflect: FieldByNameFunc of non-struct type reflect: funcLayout with interface receiver  using value obtained using unexported fieldreflect: function created by MakeFunc using reflect: slice length out of range in SetLenspan on userArena.faultList has invalid sizesend on synctest channel from outside bubbleout of memory allocating heap arena metadataruntime: cannot remap pages in address space/cpu/classes/scavenge/background:cpu-secondsruntime: unexpected metric registration for gcmarknewobject called while doing checkmarkactive sweepers found at start of mark phaseno P available, write barriers are forbiddencannot trace user goroutine on its own stackunsafe.Slice: ptr is nil and len is not zeromult128bitPow10: power of 10 is out of rangeneed at least one digit after fraction pointincompatible types for comparison: %v and %vencoding alphabet contains newline characterencoding alphabet includes duplicate symbolsmultiline basic string not terminated by """this should not be a top level node type: %stemplate: multiple definition of template %qhandleTransientAcquire called in invalid modehandleTransientRelease called in invalid modecannot send after transport endpoint shutdownreflect: OverflowComplex of non-complex type reflect: nil type passed to Type.AssignableToreflect: internal error: invalid method indexclose of synctest channel from outside bubble  may be in the same tiny block as finalizer
+stopTheWorld: not stopped (status != _Pgcstop)select on synctest channel from outside bubbleruntime: name offset base pointer out of rangeruntime: type offset base pointer out of rangeruntime: text offset base pointer out of rangeTime.UnmarshalJSON: input is not a JSON stringinvariant failed: growthLeft is unexpectedly 0multiline literal string not terminated by '''Enable Vite config override for legacy projectsunexpected error wrapping poll.ErrFileClosing: attempting to link in too many shared librariesreflect.Value.Bytes of unaddressable byte arrayreflect: CallSlice with too few input argumentsregister-based return value has stack componentreflect.Value.Slice3: slice index out of boundsreflect.Value.UnsafeAddr of unaddressable valueslice bounds out of range [::%x] with length %yreceive on synctest channel from outside bubbleruntime
+stopm spinning nmidlelocked= needspinning= schedticks=[ randinit twicestore64 failedsemaRoot queuebad allocCountbad span statestack overflow untyped args  out of range no module data in goroutine runtime: seq1=runtime: goid=invalid syntax1907348632812595367431640625: extra text: unreachable:  %04d-%02d-%02d%02d:%02d:%02dlen of type %s
+strconv.AppendQuoteRune
+strconv.AppendQuoteRuneToASCII
+strconv.appendEscapedRune
+strconv.appendQuotedRuneWith
+strings.(*Builder).Write
+strings.(*Builder).WriteByte
+strings.(*Builder).WriteRune
+strings.(*Builder).WriteString
+strings.(*Reader).ReadRune
+strings.(*Reader).UnreadRune
+strings.(*Reader).WriteTo
+strings.ContainsRune
+strings.IndexRune
+sync.(*RWMutex).RUnlock
+sync.(*RWMutex).rUnlockSlow
+sync.runtime_SemacquireRWMutex
+sync.runtime_SemacquireRWMutexR
+sync.runtime_Semrelease
+sync.runtime_notifyListCheck
+sync.runtime_procPin
+sync.runtime_procUnpin
+sync.runtime_registerPoolCleanup
+sync/atomic.(*Pointer[go.shape.interface { Chdir(string); Getenv(string); Open(string); Stat(string) }]).Load
+sync/atomic.runtime_procPin
+sync/atomic.runtime_procUnpin
+syntax error scanning booleanexec: Wait was already calledtoo many open files in systemnumerical result out of rangemachine is not on the networkprotocol family not supportedoperation already in progressno XENIX semaphores availablereflect: Key of non-map type reflect: In of non-func type reflect.Value.OverflowComplex cannot be converted to type sync.WaitGroup.Wait (durable)SIGPIPE: write to broken pipeSIGPWR: power failure restartexecuting on Go runtime stackruntime: mmap: access denied
+syscall.(*SockaddrUnix).sockaddr
+syscall.CloseOnExec
+syscall.Environ
+syscall.Environ.deferwrap1
+syscall.Exec
+syscall.Ftruncate
+syscall.Getenv
+syscall.Getenv.deferwrap1
+syscall.Pwrite
+syscall.Sendfile
+syscall.StartProcess
+syscall.Write
+syscall.acquireForkLock
+syscall.acquireForkLock.deferwrap1
+syscall.forkAndExecFailureCleanup
+syscall.forkAndExecInChild
+syscall.forkAndExecInChild1
+syscall.forkExec
+syscall.forkExecPipe
+syscall.pwrite
+syscall.rawVforkSyscall
+syscall.releaseForkLock
+syscall.releaseForkLock.deferwrap1
+syscall.runtime_AfterExec
+syscall.runtime_AfterFork
+syscall.runtime_AfterForkInChild
+syscall.runtime_BeforeExec
+syscall.runtime_BeforeFork
+syscall.runtime_envs
+syscall.sendfile
+syscall.write
+syscall.writeIDMappings
+syscall.writeSetgroups
+syscall.writeUidGidMappings
+system huge page size (runtime: s.allocCount= s.allocCount > s.nelems/gc/heap/allocs:objectsruntime: internal errorwork.nwait > work.nprocleft over markroot jobsgcDrain phase incorrectMB during sweep; swept bad profile stack countruntime: eventfd failedruntime: netpoll failedpanic during preemptoffnanotime returning zeroschedule: holding locksprocresize: invalid argmisuse of profBuf.writeunexpected signal valuespan has no free stacksstack growth after forkshrinkstack at bad timereflect.methodValueCall23283064365386962890625time zone offset minutetime zone offset secondbytes.Buffer: too largejson: cannot unmarshal  into Go value of type unexpected map key typetemplate %q not definedcannot assign nil to %sexpected bool; found %s", missing CPU support
+systemTime
+systemTimeD
+text/template.(*ExecError).Error
+text/template.(*ExecError).Unwrap
+text/template.(*Template).Execute
+text/template.(*Template).execute
+text/template.(*Template).execute.deferwrap1
+text/template.(*state).evalCommand
+text/template.(*state).writeError
+text/template.ExecError.Error
+text/template.ExecError.Unwrap
+text/template.isRuneInt
+text/template/parse.(*ActionNode).writeTo
+text/template/parse.(*BoolNode).writeTo
+text/template/parse.(*BranchNode).writeTo
+text/template/parse.(*BreakNode).writeTo
+text/template/parse.(*ChainNode).writeTo
+text/template/parse.(*CommandNode).Copy
+text/template/parse.(*CommandNode).Position
+text/template/parse.(*CommandNode).String
+text/template/parse.(*CommandNode).Type
+text/template/parse.(*CommandNode).append
+text/template/parse.(*CommandNode).tree
+text/template/parse.(*CommandNode).writeTo
+text/template/parse.(*CommentNode).writeTo
+text/template/parse.(*ContinueNode).writeTo
+text/template/parse.(*DotNode).writeTo
+text/template/parse.(*FieldNode).writeTo
+text/template/parse.(*IdentifierNode).writeTo
+text/template/parse.(*IfNode).writeTo
+text/template/parse.(*ListNode).writeTo
+text/template/parse.(*NilNode).writeTo
+text/template/parse.(*NumberNode).writeTo
+text/template/parse.(*PipeNode).writeTo
+text/template/parse.(*RangeNode).writeTo
+text/template/parse.(*StringNode).writeTo
+text/template/parse.(*TemplateNode).writeTo
+text/template/parse.(*TextNode).writeTo
+text/template/parse.(*Tree).command
+text/template/parse.(*Tree).newCommand
+text/template/parse.(*Tree).startParse
+text/template/parse.(*VariableNode).writeTo
+text/template/parse.(*WithNode).writeTo
+text/template/parse.(*elseNode).writeTo
+text/template/parse.(*endNode).writeTo
+text/template/parse.(*lexer).acceptRun
+text/template/parse.CommandNode.Position
+text/template/parse.CommandNode.Type
+time.(*Duration).Truncate
+time.(*Time).Truncate
+time.(*fileSizeError).Error
+time.Duration.Truncate
+time.Time.Truncate
+time.fileSizeError.Error
+time.readFile
+time.readFile.deferwrap1
+time.runtimeIsBubbled
+time.runtimeNano
+time.runtimeNow
+time.startsWithLowerCase
+token
+toml:"run"
+transitioning GC to the same state as before?produced a trigger greater than the heap goaltried to run scavenger from another goroutineruntime: failed mSpanList.remove span.npages=exitsyscall: syscall frame is no longer validunsafe.String: ptr is nil and len is not zerobufio.Scanner: Read returned impossible countjson.RawMessage: UnmarshalJSON on nil pointerfloat integer part cannot have leading zeroesescape sequence is invalid Unicode code pointUsage: lovable-exec <task> [-- extra-args...]
+tried to trace goroutine with invalid or unsupported statussync/atomic: store of inconsistently typed value into Valuebufio.Scanner: SplitFunc returns advance count beyond inputtoml: decoding can only be performed into a pointer, not %stoml: cannot convert map key of type %s to expected type %sreflect: call of reflect.Value.Cap on ptr to non-array Valuereflect: call of reflect.Value.Len on ptr to non-array Valuecalled CompareAndDelete when value is not of comparable typemanual span allocation called with non-manually-managed typeaddr range base and limit are not in the same memory segmentruntime: failed to configure profiling timer; timer_settime(runtime: malformed profBuf buffer - tag and data out of synctoml: error parsing key of type %s from unsigned integer: %wstart pointer address (%d) is after end pointer address (%d)exec: Cmd started a Process but leaked without a call to Waitreflect: wrong return count from function created by MakeFunc  is in a tiny block with other (possibly long-lived) values
+truncate
+truncateString
+type:.eq.[2]runtime.Frame
+type:.eq.embed.file
+type:.eq.fmt.readRune
+type:.eq.internal/runtime/atomic.Int64
+type:.eq.internal/runtime/atomic.Uint64
+type:.eq.internal/runtime/maps.Iter
+type:.eq.internal/runtime/maps.Map
+type:.eq.internal/runtime/maps.table
+type:.eq.internal/runtime/sys.NotInHeap
+type:.eq.os.Process
+type:.eq.os.ProcessState
+type:.eq.os.file
+type:.eq.os.fileStat
+type:.eq.os.processHandle
+type:.eq.os/exec.Error
+type:.eq.os/exec.ctxResult
+type:.eq.os/exec.goroutineStatus
+type:.eq.os/exec.wrappedError
+type:.eq.reflect.MapIter
+type:.eq.runtime.Frame
+type:.eq.runtime.PanicNilError
+type:.eq.runtime.TypeAssertionError
+type:.eq.runtime._func
+type:.eq.runtime._panic
+type:.eq.runtime.bitvector
+type:.eq.runtime.boundsError
+type:.eq.runtime.cleanupBlock
+type:.eq.runtime.cleanupBlockHeader
+type:.eq.runtime.errorAddressString
+type:.eq.runtime.funcinl
+type:.eq.runtime.gList
+type:.eq.runtime.gTraceState
+type:.eq.runtime.gcBits
+type:.eq.runtime.gcWork
+type:.eq.runtime.hchan
+type:.eq.runtime.limiterEvent
+type:.eq.runtime.mOS
+type:.eq.runtime.mSpanList
+type:.eq.runtime.mTraceState
+type:.eq.runtime.mcache
+type:.eq.runtime.modulehash
+type:.eq.runtime.mspan
+type:.eq.runtime.notInHeap
+type:.eq.runtime.pTraceState
+type:.eq.runtime.piController
+type:.eq.runtime.special
+type:.eq.runtime.synctestDeadlockError
+type:.eq.runtime.traceBuf
+type:.eq.runtime.traceSchedResourceState
+type:.eq.runtime.untracedG
+type:.eq.runtime.workbuf
+type:.eq.struct { ImportLine string; ConfigExpr string }
+type:.eq.struct { os/exec.in string; os/exec.out string }
+type:.eq.syscall.SockaddrUnix
+type:.eq.text/template.ExecError
+unicode/utf16.DecodeRune
+unicode/utf8.AppendRune
+unicode/utf8.DecodeLastRune
+unicode/utf8.DecodeLastRuneInString
+unicode/utf8.DecodeRune
+unicode/utf8.DecodeRuneInString
+unicode/utf8.EncodeRune
+unicode/utf8.FullRune
+unicode/utf8.RuneCount
+unicode/utf8.RuneCountInString
+unicode/utf8.RuneLen
+unicode/utf8.RuneStart
+unicode/utf8.ValidRune
+unicode/utf8.appendRuneNonASCII
+unicode/utf8.encodeRuneNonASCII
+unique.(*entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).prune
+unlock: lock countprogToPointerMask: overflow/gc/cycles/forced:gc-cycles/memory/classes/other:bytes/memory/classes/total:bytesfailed to set sweep barrierwork.nwait was > work.nproc not in stack roots range [allocated pages below zero?address not a stack addressmspan.sweep: bad span stateinvalid profile bucket typeruntime: corrupted polldescruntime: netpollinit failedruntime: asyncPreemptStack=runtime: thread ID overflowstopTheWorld: holding locksgcstopm: not waiting for gcruntime: checkdead: nmidle=runtime: checkdead: find g runlock of unlocked rwmutexsignal received during forksigsend: inconsistent statemakeslice: len out of rangemakeslice: cap out of rangegrowslice: len out of rangestack size not a power of 2timer when must be positive: unexpected return pc for 363797880709171295166015625abi.NewName: tag too long: after object key:value pairfloat cannot end with a dotinvalid type for comparisonrange can't iterate over %vmap has no entry for key %qcan't index item of type %scan't slice item of type %sreflectlite.Value.Interfacereflectlite.Value.NumMethodhttpservecontentkeepheadersexpected key but found noneunterminated literal string in action started at %s:%d{{break}} outside {{range}}too many declarations in %soverflow on character value os: process already finishedos: process already releasedprotocol driver not attachedfile descriptor in bad statedestination address requirederrors: target cannot be nilreflect.MakeSlice: len > capSIGHUP: terminal line hangupSIGWINCH: window size changeGC mark assist wait for workcomparing uncomparable type notewakeup - double wakeup (region exceeds uintptr range/gc/heap/frees-by-size:bytes/gc/heap/tiny/allocs:objects/sched/goroutines:goroutinesgcBgMarkWorker: mode not setmspan.sweep: m is not lockedfound pointer to free objectmheap.freeSpanLocked - span fatal: morestack on gsignal
+unlockAndRun
+unsafe.String: len out of range11368683772161602973937988281255684341886080801486968994140625malformed time zone informationinvalid return from write: got json: invalid number literal %qin literal true (expecting 'r')in literal true (expecting 'u')in literal true (expecting 'e')in literal null (expecting 'u')in literal null (expecting 'l')invalid timezone offset minutescouldn't parse octal number: %wcannot store a table in a slicemissing argument for comparisonrange over send-only channel %vvalue has type %s; should be %sreflect: NumIn of non-func typewindows new line should be \r\ncannot call BytesRange with niltoml: key %s is already definedunterminated character constantpidStatus called in invalid moderesource temporarily unavailablenumerical argument out of domainsoftware caused connection abortimport baseConfig from "../%s";
+updateMaxProcsGoroutine: phase errorruntime: bad notifyList size - sync=signal arrived during cgo execution
+user
+userArenaChunkFree
+userArenaNextFree
+userTime
+userTimeD
+valueStart
+weak.runtime_makeStrongFromWeak
+weak.runtime_registerWeakPointer
+write
+writeError
+writeHeapBitsSmall
+writePadding
+writeString
+writeTo
+writeUnlock
+writeUserArenaHeapBits
+writebuf
+writerDescriptor
+wrun
+x509negativeserialneed a \n after \r  lovable-exec dev
+
+=== lovable-exec (no args) ===
+EXIT:1 STDOUT:Usage: lovable-exec [flags] <task> [-- extra-args...]
+
+Tasks: install, dev, build, build:dev, test, lint, start
+
+Flags:
+  -dry-run
+    	Print command without executing
+  -feature-vite-override
+    	Enable Vite config override for legacy projects
+  -w string
+    	Working directory
+  -work-dir string
+    	Working directory
+
+Examples:
+  lovable-exec dev
+  lovable-exec dev -- --port 3000
+  lovable-exec --dry-run build STDERR:
+
+=== lovable-exec --help ===
+Usage: lovable-exec [flags] <task> [-- extra-args...]
+
+Tasks: install, dev, build, build:dev, test, lint, start
+
+Flags:
+  -dry-run
+    	Print command without executing
+  -feature-vite-override
+    	Enable Vite config override for legacy projects
+  -w string
+    	Working directory
+  -work-dir string
+    	Working directory
+
+Examples:
+  lovable-exec dev
+  lovable-exec dev -- --port 3000
+  lovable-exec --dry-run build
+
+=== lovable-exec --version ===
+EXIT:2 STDOUT:flag provided but not defined: -version
+Usage: lovable-exec [flags] <task> [-- extra-args...]
+
+Tasks: install, dev, build, build:dev, test, lint, start
+
+Flags:
+  -dry-run
+    	Print command without executing
+  -feature-vite-override
+    	Enable Vite config override for legacy projects
+  -w string
+    	Working directory
+  -work-dir string
+    	Working directory
+
+Examples:
+  lovable-exec dev
+  lovable-exec dev -- --port 3000
+  lovable-exec --dry-run build STDERR:
+
+=== lovable-exec -h ===
+Usage: lovable-exec [flags] <task> [-- extra-args...]
+
+Tasks: install, dev, build, build:dev, test, lint, start
+
+Flags:
+  -dry-run
+    	Print command without executing
+  -feature-vite-override
+    	Enable Vite config override for legacy projects
+  -w string
+    	Working directory
+  -work-dir string
+    	Working directory
+
+Examples:
+  lovable-exec dev
+  lovable-exec dev -- --port 3000
+  lovable-exec --dry-run build
+
+=== lovable-exec help ===
+EXIT:1 STDOUT:Error: no command found for task "help"
+
+To fix this, add to lovable.toml:
+
+[run]
+help = "your-command-here" STDERR:
+
+=== ALL STRINGS (unfiltered, sorted unique) ===
+~
+				J
+				key  				elem pclmulqdq/cpu.max
+			f
+			i
+			}
+		[(
+	 	#O
+	 	7N8
+	"$!.,
+	#	$
+	#	(
+	*[1]uint8
+	*[3]int64
+	*[4]uint8
+	*[8]uint8
+	*[]string
+	*[]uint32
+	*[]uint64
+	*abi.ITab
+	*abi.Kind
+	*abi.Name
+	*abi.Type
+	*chan int
+	*exec.Cmd
+	*maps.Map
+	*toml.Key		LocalDate		LocalTime
+	+	.
+	+ >
+	,	+
+	.|]
+	1w:x9
+	4$-
+	4,)
+	;~"
+	? B
+	Anonymous
+	ArrayType
+	Available
+	CallSlice
+	Continued
+	D		D
+	DevServer
+	Ftruncate
+	GobDecode
+	GobEncode
+	GroupSize
+	Highlight
+	Immutable
+	Interface
+	IsComplex
+	IsRegular
+	J",
+	Multiaddr
+	NumMethod
+	ParseGlob
+	ParseName
+	Pdeathsig
+	Precision
+	PtrToThis
+	ReadBytes
+	SetOutput
+	SetString
+	SkipSpace
+	Specified
+	StdinPipe
+	StoreNoWB
+	StringVar
+	Templates
+	Temporary
+	TotalTime
+	TrapCause
+	Uint64Var
+	UnixMicro
+	UnixMilli
+	ValueElem
+	WaitDelay
+	WaitWrite
+	WriteByte
+	WriteOnce
+	WriteRune
+	X__unused
+	`M1k
+	a	L
+	acceptRun
+	allocBits
+	ancestors
+	argNumber
+	associate
+	available
+	badArgNum
+	bytesSlow
+	cacheZone
+	capacity: gotypesaliashttpmuxgo121multipathtcprandautoseedtlsunsafeekm{{continue}}block clauseUsage of %s:
+	caughtsig
+	cheaprand
+	cleanHead
+	committed
+	copyCheck
+	ctxResult
+	decActive
+	decodeMap
+	deferpool
+	deleteMin
+	dirOffset
+	doPrintln
+	doRelease
+	enoptrbss
+	evalField
+	evalFloat
+	execFuncs
+	fmtString
+	framePool		SliceType
+	freeindex
+	gcMiscSys
+	gcbssmask
+	goidcache
+	goroutine
+	groups:
+	growthLeft: malformed filesyscall failedcrypto/fips140mime/multipartx509sha256skidexpected 'inf'expected 'nan'unknown node: negative offsetnot a directorycopy_file_rangeno such processadvertise errornetwork is downno medium foundkey has expiredbad system callinvalid argSize<invalid Value>computeMaxProcsupdateMaxProcsGallocmRInternalGC (fractional)write heap dumpasyncpreemptoffcheckfinalizersforce gc (idle)sync.Mutex.Lockruntime.Goschedmalloc deadlockruntime error: scan missed a gmisaligned maskruntime: min = runtime: inUse=runtime: max = requested skip=bad panic stackrecovery failedmorestack on g0stopm holding pstartm: m has ppreempt SPWRITEmissing mcache?ms: gomaxprocs=randinit missed]
+	haveStack
+	heapStats
+	hexString
+	ifControl
+	inObjects
+	inRegPtrs
+	incActive
+	index: not in a cgroupincomplete linejstmpllitinterptarinsecurepathx509keypairleafx509usepolicieszipinsecurepathexpected 'true'unclosed actionno dot in fieldtemplate clauseexpected integerexpected newlineexec: no commandinvalid argumentinvalid exchangeobject is remotemessage too longno route to hostremote I/O errorstopped (signal)reflect.MakeFunc: value of type integer overflowdecoratemappingsgcshrinkstackofftracefpunwindoffGC scavenge waitGC worker (idle)page trace flushselect (durable)SIGNONE: no trap__vdso_getrandom0123456789abcdefheap reservation/gc/gogc:percent, not a functiongc: unswept span KiB work (bg),  mheap.sweepgen=runtime: nelems=workbuf is emptymSpanList.removemSpanList.insertbad special kindpage alloc indexbad summary dataruntime: addr = runtime: base = runtime: head =  already; errno=
+	initTimer
+	inittasks
+	isInlined
+	isSending
+	itablinks
+	largeFree
+	largeType
+	leftDelim
+	lessEqual
+	libcallpc
+	libcallsp
+	localDepth: 
+	localSize
+	lockedExt
+	lockedInt
+	locksHeld
+	m= sp= sp: lr: fp= gp= mp=) m=3125AtoiJuneJuly as hour/etcnulljson'\''tomlhtmlermsfsrmsse3avx2bmi1bmi2timeBoolelsewith<%s> 	
+	mCacheSys
+	mWaitList
+	mallocing
+	morebuf={pc:: no frame (sp=runtime: frame ts set in timertraceback stuckunexpected kind476837158203125: cannot parse ,M3.2.0,M11.1.0impossible date not a functionreflectlite.Settable{
+	nameBytes
+	net/netip
+	newAction
+	newNumber
+	newString
+	nextDefer
+	nextFrame
+	nfuncdata
+	nlIsSpace
+	noWriteTo
+	noptrdata
+	omitEmpty
+	padString
+	panicking
+	pclntable
+	peekCount
+	pidSignal
+	pidStatus
+	pidfdWait
+	pkghashes
+	printlock
+	profStack
+	profilehz
+	r	H
+	r	L
+	rJH
+	rLH
+	rTH
+	rUH
+	rangefunc
+	reL
+	readIndex
+	readSlice
+	readSliceY
+	readerSem
+	reclaimed
+	recovered
+	reentered
+	regAssign
+	reordered
+	retOffset
+	rxH
+	s%H
+	s*H
+	s0H
+	sXH
+	saveError
+	scanAlloc
+	scanWhile
+	sched={pc:, gp->status= pluginpath= : unknown pc  called from runtime: pid=3814697265625invalid base /etc/zoneinfoparsing time  out of range is too largedalTLDpSugct?missing tablemissing fieldcrypto/subtlegocacheverifyhtml/templateinstallgoroottlsmaxrsasizeLocalDateTimeinvalid UTF-8unexpected %sdefine clauseempty command (core dumped)
+	schedlink
+	schedtick
+	schedwhen
+	seenLossy
+	setOption
+	setTopVar
+	sizeclass
+	sleepStub
+	sleepWhen
+	soH
+	spN
+	spanclass
+	stackLock
+	stackPtrs
+	stackScan
+	stacksSys
+	startAddr
+	startLine
+	stashExpr
+	stopParse
+	storeSlow
+	stripMono
+	suffixOff
+	syscallbp
+	syscallpc
+	syscallsp
+	t#@
+	textStart		NotInHeap
+	totalScan
+	traceback
+	tryGetObj
+	typelinks
+	u+f
+	uFH
+	uJH
+	unmarshal
+	useNumber
+	used: 		group 			slot avx512bwavx512vlgo/typesnet/httpgo/buildnetedns0tlsmlkemKeyValueDateTimetemplate%.10q...{{else}}%s:%d:%dParseBool01234567_fork/execcontinued#execwait/dev/nullinterruptbus errorbuild:devbun.lockbcomplex64interfaceinvalid nreflect: funcargs(bad indirCallSlice as type InterfacetimerSendpollCacheprofBlockstackpoolhchanLeafwbufSpansGC (idle)mSpanDeadinittracescavtracepanicwaitchan sendpreemptedcoroutinesignal 32signal 33signal 34signal 35signal 36signal 37signal 38signal 39signal 40signal 41signal 42signal 43signal 44signal 45signal 46signal 47signal 48signal 49signal 50signal 51signal 52signal 53signal 54signal 55signal 56signal 57signal 58signal 59signal 60signal 61signal 62signal 63signal 64copystackLINUX_2.6finalizer ms cpu,  (forced) spanq.n= wbuf1.n= wbuf2.n= s.limit= s.state= B work ( B exp.)  marked   unmarked in use)
+	v(H
+	v6H
+	v<H
+	validSave
+	w!H
+	w"L
+	w%H
+	w&H
+	w&L
+	w(H
+	w)H
+	w)I
+	w*H
+	w,H
+	w-H
+	w-I
+	w-L
+	w.H
+	w0H
+	w1H
+	w1f
+	w3L
+	w6H
+	w;H
+	wBH
+	wFH
+	wGI
+	wZI
+	waitWrite
+	waitsince
+	walkRange
+	writeByte
+	writeLock
+	writeRune
+	writerSem
+	}	1
+	}<H
+	}\I
+ 	 2500
+    	StringFormat[]byte' for readatwaitidspliceexec: hangupkilled/proc/errno --listuint16uint32uint64structchan<-<-chan Valuesysmontimersefenceselect, not GOROOTobject      unused objs
+                
+    ...resolvedConfig,
+    plugins: [...existingPlugins, lovableTagger],
+    typeof userConfig === "function" ? await userConfig(configEnv) : userConfig;
+   +:
+   f
+  /#0
+  const existingPlugins = plugins.filter((p) => p?.name !== "lovable-tagger");
+  const plugins = Array.isArray(rawPlugins) ? rawPlugins : rawPlugins ? [rawPlugins] : [];
+  const rawPlugins = resolvedConfig?.plugins;
+  const resolvedConfig =
+  return {
+  };
+ !"#$%%&&''((()))*++,,,,,------....//////0001123333333333444444444455666677777888888888889999999999::::::;;;;;;;;;;;;;;;;<<<<<<<<<<<<<<<<=====>>>>>>>>>>>??????????@@@@@@@@@@@@@@@@@@@@@@AAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+ "$&
+ $&*.26:
+ $(,2345
+ ' 0 ^ p q t 
+ '/%0
+ ( ) / / _ _ 
+ (default %q) (default %v)stop signal: level 3 resetexchange fulltimer expiredsrmount errorpower failurevite-overridewakeableSleepprofMemActiveprofMemFuturetraceStackTabexecRInternaltestRInternalGC sweep waitsynctest.WaitSIGQUIT: quitSIGKILL: killout of memory is nil, not value method heap metadata span.base()=bad flushGen created at: 
+ (scan  MB in pacer: % CPU ( zombiegc bits, j0 = head = ,errno=panic: GODEBUG nmsys= locks= dying= allocsrax    rbx    rcx    rdx    rdi    rsi    rbp    rsp    r8     r9     r10    r11    r12    r13    r14    r15    rip    rflags cs     fs     gs     Signal  m->g0= pad1=  pad2=  text= minpc= 	value= (scan)	types : type 19531259765625TuesdayJanuaryOctoberaccept4Floats:number printlnavx512fruntimeos/execfips140tls3destlssha1net/urlInvalidCommentInteger{{end}} actioncommandoperandwork-dir--configdurationGoString01234567beEfFgGvsignal: truncatesendfileno anode/uid_map/gid_mapJustfilejustfilelovable-bun.lock.lovableFuncTypestruct {scavengepollDescsynctesttraceBufdeadlockraceFinipanicnilcgocheckrunnable is not  pointer, errno=BAD RANK status unknown(trigger= npages= nalloc= nfreed=) errno=[signal  newval= mcount= bytes, 
+ *func() (syscall.RawConn, error)
+ *func(*[][]uint8) (int64, error)
+ *func([]int) reflect.StructField
+ *func(int64, int) (int64, error)
+ *func(interface {}) interface {}
+ *map.group[abi.TypeOff]*abi.Type
+ *map.group[string]parse.itemType
+ *map[runtime._typePair]struct {}
+ *runtime.traceSchedResourceState
+ *struct { key string; elem int }
+ ,1* Z
+ /	2
+ / _ 
+ 2)2
+ 8	7
+ := L
+ @s -> PB n=][}
+ FUY
+ Go buildinf:
+ Go fipsinfo 
+ HcB
+ M9,$
+ P	7
+ [("")) )
+ e"e
+ error: H
+ m=nil base 390625SundayMondayFridayAugustminutesecondCommonnumbertoml: printf'"&<>
+ max=scav  ptr ] = (trap:init  ms, fault tab= tag= top=[...], fp:1562578125MarchAprilmonthLocalfcntlInts:Ptrs:Greek.%09dbreak.eEpPindexprintsse41sse42ssse3TableArrayFloattableblockrangeinput-port=--portstring
+ method:I
+ next= jobs= goid sweep  B -> % util alloc free  span= prev= list=, i =  code= addr=], sp= m->p= p->m=SCHED  curg= ctxt: min=  max= bad ts(...)
+ runqueue= stopwait= runqsize= gfreecnt= throwing= spinning=atomicand8float64nanfloat32nan ptrSize=  targetpc= until pc=active < 0unknown pcruntime: ggoroutine  (durable)12207031256103515625ParseFloat%!Weekday(short read for type <no value>value for arg %d: %w
+ s%H
+ s.sweepgen= allocCount page summarytimer_deletens} value: {}, want {r1= [recovered]bad recoveryGOTRACEBACK=bad g statusentersyscallwirep: p->m=) p->status=releasep: m= sysmonwait= preemptoff=cas64 failed m->gsignal=-byte limit
+ sP@
+ stack=[ minLC=  maxpc=  packed= -> ptr=	stack=[ minutes status= etypes 48828125infinitystrconv.parsing ParseIntThursdaySaturdayFebruaryNovemberDecember%!Month(nil Poolomitzerotoml: %scontinueurlqueryoverflow
+ t"H
+ t-N
+ t/(
+ t0H
+ ttK
+ u	1
+ u#H
+ u+H
+ uGH
+ uJH
+ w	H
+ w&H
+ w>t
+ wbL
+!	"#!
+!	"(!
+!$'+08
+!%)+
+!&$@$J$`$s+v+
+!&*.//00
+!&p%T
+!*func() (*os.ProcessState, error)
+!*func(*flag.Flag, *flag.Flag) int
+!*func(fmt.ScanState, int32) error
+!*func(int) ([]fs.DirEntry, error)
+!*func(int) ([]fs.FileInfo, error)
+!*func(interface {}, interface {})
+!*func(json.field, json.field) int
+!*func(reflect.Type) reflect.Value
+!*func(reflect.Value) (int, error)
+!*map.group[*abi.Type]interface {}
+!*map.group[interface {}]struct {}
+!*map.group[string]json.RawMessage
+!*runtime.gcBgMarkWorkerNodePadded
+!*struct { in string; out string }
+!*struct { key string; elem bool }
+!*struct { key uint64; elem bool }
+!0)0
+!1)!
+!7"(
+!:&)
+!K $
+!W"	!
+!Y"	!
+!^"F
+!u+H
+!uTH
+"	!""
+"   
+" !	
+" %! 
+"!!L
+""	!
+""""
+""%!
+""&"
+"##$$*+,,.
+"%!  
+"%(*(
+"%X+
+"&(*J
+"')b
+"',06:
+"'`$\|&;<>(){}[]!*?0123456789aAbBcCdDeEfFexpected quoted stringargument list too longcannot allocate memoryremote address changedprotocol not availableprotocol not supportedaddress already in usenetwork is unreachablepackage.json not foundreflectlite.Value.Typereflect.Value.MapIndexreflect.MapIter.SetKeyunexpected method stepreflect.Value.SetFloat to array with length integer divide by zeroCountPagesInUse (test)ReadMetricsSlow (test)trace reader (blocked)trace goroutine statusGC weak to strong waitchan receive (durable)SIGSTKFLT: stack faultSIGTSTP: keyboard stopsend on closed channelcall not at safe pointgetenv before env initinterface conversion: freeIndex is not valids.freeindex > s.nelemsbad sweepgen in refillspan has no free spaceruntime: out of memory/gc/scan/globals:bytes/gc/heap/frees:objectsruntime: work.nwait = runtime:scanstack: gp=scanstack - bad statusheadTailIndex overflowruntime.main not on m0set_crosscall2 missingbad g->status in readywirep: invalid p stateassembly checks failed received during fork
+"(!C
+")!6"
+"*[]struct { key string; elem int }
+"*atomic.Pointer[sync.poolChainElt]
+"*func(*abi.SwissMapType) *maps.Map
+"*func(*bisect.dedup) *bisect.dedup
+"*func([]uint8, int64) (int, error)
+"*func(int, int, int) reflect.Value
+"*func(int, uintptr) unsafe.Pointer
+"*func(parse.Node) (string, string)
+"*func(reflect.Value) reflect.Value
+"*func(time.Duration) time.Duration
+"*map.group[*reflect.structType]int
+"*struct { F uintptr; X0 chan int }
+"*struct { key string; elem []int }
+"*unique.node[net/netip.addrDetail]
+",!/"
+"-!0
+"9!|
+"I-*4
+"M9#t
+"Nap
+"Z#-
+"t A
+"t"A
+"t*U1Vx
+"t.H
+"tGf
+"t{f
+"u%H
+"uJH
+"ujH
+"unL
+"uvH
+#$$$$$%
+#&(,/35`
+#($	!
+#*[8]struct { key string; elem int }
+#*[]struct { key string; elem bool }
+#*[]struct { key uint64; elem bool }
+#*func(*abi.SwissMapType, *maps.Map)
+#*func(*abi.Type, interface {}) bool
+#*func(*unstable.Node) (bool, error)
+#*func([]int) (reflect.Value, error)
+#*func(interface {}, uintptr, int64)
+#*func(reflect.Value, reflect.Value)
+#*map.group[*reflect.structType]bool
+#*map[danger.TypeID]map[string][]int
+#*struct { F uintptr; X0 *abi.Type }
+#*struct { key string; elem string }
+#*unique.entry[net/netip.addrDetail]
+#*weak.Pointer[net/netip.addrDetail]
+#. 	
+#7(	
+#M9"w
+#R"Q.
+#Y&,%
+#^6]
+#c(]'P 
+#d{H
+#s,H
+#uwH
+#w&f
+#|&8%
+#}"H
+$ 		
+$ "!
+$!*!
+$$#)
+$$$$$$$$$$$$$$$
+$$fI
+$%#@$
+$&1%
+$'''),01B
+$'L9
+$(#>$
+$)),
+$*[8]struct { key string; elem bool }
+$*[8]struct { key uint64; elem bool }
+$*[]struct { key string; elem []int }
+$*func(*godebug.value) *godebug.value
+$*func(*os.dirInfo, *os.dirInfo) bool
+$*func(runtime.goroutineProfileState)
+$*func(string) (reflect.Method, bool)
+$*interface { As(interface {}) bool }
+$*map.group[interface {}]interface {}
+$*map.group[string]*template.Template
+$*map.group[string]runtime.metricData
+$*runtime.goroutineProfileStateHolder
+$*unique.Handle[net/netip.addrDetail]
+$. -
+$0E8
+$H"9
+$H+L$HH
+$RM)
+$_E^
+$m\,
+$q r
+$s@t2s
+%	&t
+%	E=
+%!&_
+%!(BADPRL
+%!(BADWIL
+%!(EXTRAM
+%!(NOVERM
+%!)!
+%%%!
+%&*	)
+%('(
+%);"!!
+%*[8]struct { key string; elem []int }
+%*[]*unique.node[net/netip.addrDetail]
+%*[]struct { key string; elem string }
+%*func() runtime.goroutineProfileState
+%*func(*abi.Type) (interface {}, bool)
+%*func(string, ...interface {}) string
+%*map.group[netip.addrDetail]struct {}
+%*map.group[string]*unicode.RangeTable
+%*struct { ptr interface {}; len int }
+%*sync.node[interface {},interface {}]
+%6&<
+%6(	
+%D'(
+%N_4
+%T6!
+%i4!
+%j"3
+%parseOptionalWhitespaceCommentNewline
+%qh0
+%s = "your-command-here"cgocheck > 1 mode is no longer supported at runtime. Use GOEXPERIMENT=cgocheck2 at build time instead.                                                                                                                                --------------------------------------------------------------------------------------------------------------------------------================================================================================================================================00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899
+%s%sfalsevaluefloat  -%s<nil>ErrorsvqxXchdirwritemkdirchmodlstatchownclosegetwdpipe2buildint16int32int64uint8arrayslice and kind=defersweeptestRtestWexecWhchanexecRschedsudogtimergscanmheaptracepanicsleepgcing MB,  got= ...
+%sa6
+%sa6	
+&	%'
+&	%=
+&	,	
+&!*!
+&#34;
+&#39;
+&&&&&&
+&*[0]*unique.node[net/netip.addrDetail]
+&*[8]struct { key string; elem string }
+&*[]*unique.entry[net/netip.addrDetail]
+&*atomic.Pointer[internal/bisect.dedup]
+&*func(*runtime.g, unsafe.Pointer) bool
+&*func([]reflect.Value) []reflect.Value
+&*func(bisect.Writer, string, int) bool
+&*func(func(string) bool) reflect.Value
+&*func(int, int, *syscall.IPMreq) error
+&*func(int, int, *syscall.Linger) error
+&*func(interface {}, interface {}) bool
+&*func(parse.Pos) *parse.IdentifierNode
+&*func(unsafe.Pointer, uintptr) uintptr
+&*go.shape.interface { Error() string }
+&*map.group[runtime._typePair]struct {}
+&*struct { F uintptr; R *flag.FlagSet }
+&*struct { F uintptr; X0 reflect.Type }
+&*struct { key reflect.Type; elem int }
+&*struct { key string; elem struct {} }
+&*sync.entry[interface {},interface {}]
+&*unique.canonMap[net/netip.addrDetail]
+&*unique.indirect[net/netip.addrDetail]
+&A%9
+&H%7&-
+&H%C(
+&amp;
+&f%<(
+&wYE
+'	(7'
+'%(D%
+'*[0]*unique.entry[net/netip.addrDetail]
+'*atomic.Pointer[internal/godebug.value]
+'*func(int, int, *syscall.IPMreqn) error
+'*iter.Seq2[reflect.Value,reflect.Value]
+'*struct { F uintptr; R *atomic.Uint64 }
+'*struct { key reflect.Type; elem bool }
+'*struct { key reflect.Value; elem int }
+'*struct { key string; elem *flag.Flag }
+'*unique.uniqueMap[net/netip.addrDetail]
+'---
+'9	*
+'>,)
+'q r#
+'sv]
+'t>A
+'tCf
+'uhH
+'ujL
+'usI
+'~	a	
+( ) 
+("'7
+("'N
+((( 
+(*[]*sync.node[interface {},interface {}]
+(*[]struct { key reflect.Type; elem int }
+(*[]struct { key string; elem struct {} }
+(*func(*abi.SwissMapType, unsafe.Pointer)
+(*func(*bisect.dedup, *bisect.dedup) bool
+(*func(*parse.Tree) *parse.IdentifierNode
+(*func(int, int, *syscall.IPv6Mreq) error
+(*func(interface {}) (interface {}, bool)
+(*func(reflect.Value, reflect.Value) bool
+(*go.shape.struct { unique.isEntry bool }
+(*struct { F uintptr; R json.mapEncoder }
+(*struct { F uintptr; R json.ptrEncoder }
+(*struct { F uintptr; X0 *reflect.Value }
+(*struct { F uintptr; X0 chan struct {} }
+(*struct { key string; elem *json.field }
+(*struct { key string; elem *parse.Tree }
+(*struct { key uint32; elem []*abi.Type }
+(BADINDEI
+(MISSINGI
+(P7<
+(PANC
+(W^j
+(d$5V
+(github.com/pelletier/go-toml/v2/unstable
+(nil
+(nilA
+(}'*.
+)	*	
+)"*	
+)"*"
+)"*#
+)#*#
+)%*%
+)%*))
+))A"$!
+)*[0]*sync.node[interface {},interface {}]
+)*[8]struct { key reflect.Type; elem int }
+)*[8]struct { key string; elem struct {} }
+)*[]*sync.entry[interface {},interface {}]
+)*[]*unique.indirect[net/netip.addrDetail]
+)*[]struct { key reflect.Type; elem bool }
+)*[]struct { key reflect.Value; elem int }
+)*[]struct { key string; elem *flag.Flag }
+)*func(*unique.node[net/netip.addrDetail])
+)*func(func(*abi.Type, interface {}) bool)
+)*func(netip.addrDetail) *netip.addrDetail
+)*func(string) (reflect.StructField, bool)
+)*func(string, *syscall.Stat_t, int) error
+)*map.group[danger.TypeID]map[string][]int
+)*struct { F uintptr; R *godebug.Setting }
+)*struct { key string; elem interface {} }
+)*sync.indirect[interface {},interface {}]
+);A>$=
+)H(H
+)H* 
+)Q	\
+)b"=s>'
+)u.H
+)v+	,9+
+*"!!
+*$ !$
+**[0]*sync.entry[interface {},interface {}]
+**[0]*unique.indirect[net/netip.addrDetail]
+**[8]struct { key reflect.Type; elem bool }
+**[8]struct { key reflect.Value; elem int }
+**[8]struct { key string; elem *flag.Flag }
+**[]struct { key string; elem *json.field }
+**[]struct { key string; elem *parse.Tree }
+**[]struct { key uint32; elem []*abi.Type }
+**abi.Type
+**func() *unique.node[net/netip.addrDetail]
+**func(*godebug.value, *godebug.value) bool
+**func(*unique.entry[net/netip.addrDetail])
+**func(unsafe.Pointer, unsafe.Pointer) bool
+**os.processHandle
+**struct { F uintptr; R json.arrayEncoder }
+**struct { F uintptr; R json.floatEncoder }
+**struct { F uintptr; R json.sliceEncoder }
+**struct { key int32; elem unsafe.Pointer }
+**struct { key string; elem reflect.Value }
+**struct { key unsafe.Pointer; elem int32 }
+**unstable.ParserError
+*0/0
+*2G2
+*4)=2
+*<-chan error
+*<-chan exec.ctxResult
+*<-chan struct {}
+*<-chan time.Time
+*F)O2
+*X)a2
+*["	!
+*[0]*bisect.dedup
+*[0]*go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }
+*[0]*go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.interface {},go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }
+*[0]*go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }] }
+*[0]*godebug.value
+*[0]*netip.addrDetail
+*[0]*os.dirInfo
+*[0]*runtime.PanicNilError
+*[0]*sync.poolChainElt
+*[1024]uintptr
+*[108]int8
+*[10]runtime.heldLockInfo
+*[11]uintptr
+*[128]*runtime.mspan
+*[128]*runtime.sudog
+*[128][4]uint64
+*[136]*runtime.mspan
+*[144]uintptr
+*[15]uint64
+*[16]uint8
+*[16]uintptr
+*[1][]int32
+*[1]int
+*[1]reflect.Value
+*[1]string
+*[1]template.variable
+*[1]time.zone
+*[1]time.zoneTrans
+*[1]uintptr
+*[1]unsafe.Pointer
+*[224]uint8
+*[253]uintptr
+*[256]runtime.guintptr
+*[256]uint8
+*[2]*runtime.traceBuf
+*[2][2]*runtime.traceBuf
+*[2][8]runtime.pcvalueCacheEnt
+*[2]map[string]interface {}
+*[2]runtime.Frame
+*[2]string
+*[2]uint64
+*[2]uintptr
+*[32]*runtime._defer
+*[32]uint64
+*[32]uint8
+*[32]uintptr
+*[3]atomic.Uint32
+*[3]parse.item
+*[3]string
+*[480]uint8
+*[4]runtime.stackfreelist
+*[4]uint64
+*[4]uintptr
+*[50]uint8
+*[512]uintptr
+*[52]uintptr
+*[5]uintptr
+*[5]unsafe.Pointer
+*[60]*runtime.funcval
+*[64]uint8
+*[65504]uint8
+*[68]runtime.sizeClassScanStats
+*[68]uint64
+*[68]uint8
+*[6]uintptr
+*[7]cpu.option
+*[8]runtime.pcvalueCacheEnt
+*[96]uint8
+*[9]uintptr
+*[9]unsafe.Pointer
+*[]*abi.ITab
+*[]*abi.Type
+*[]*bisect.dedup
+*[]*flag.Flag
+*[]*go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }
+*[]*go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.interface {},go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }
+*[]*go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }] }
+*[]*godebug.value
+*[]*netip.addrDetail
+*[]*os.File
+*[]*os.dirInfo
+*[]*parse.CommandNode
+*[]*parse.VariableNode
+*[]*runtime.PanicNilError
+*[]*runtime._defer
+*[]*runtime.funcval
+*[]*runtime.initTask
+*[]*runtime.moduledata
+*[]*runtime.mspan
+*[]*runtime.p
+*[]*runtime.sudog
+*[]*runtime.traceBuf
+*[]*sync.poolChainElt
+*[][2]*runtime.traceBuf
+*[][4]uint64
+*[][8]runtime.pcvalueCacheEnt
+*[][]int32
+*[][]uint8
+*[]abi.Imethod
+*[]abi.Method
+*[]abi.StructField
+*[]atomic.Uint32
+*[]bisect.cond
+*[]cpu.option
+*[]embed.file
+*[]error
+*[]float64
+*[]fmtsort.KeyValue
+*[]fs.DirEntry
+*[]fs.FileInfo
+*[]func() error
+*[]int
+*[]int32
+*[]int64
+*[]int8
+*[]interface {}
+*[]io.Closer
+*[]json.field
+*[]json.reflectWithString
+*[]map[string]interface {}
+*[]parse.Node
+*[]parse.item
+*[]reflect.Type
+*[]reflect.Value
+*[]reflect.abiStep
+*[]runtime.Frame
+*[]runtime.ancestorInfo
+*[]runtime.functab
+*[]runtime.guintptr
+*[]runtime.heldLockInfo
+*[]runtime.modulehash
+*[]runtime.pcvalueCacheEnt
+*[]runtime.ptabEntry
+*[]runtime.sizeClassScanStats
+*[]runtime.stackfreelist
+*[]runtime.textsect
+*[]runtime.timerWhen
+*[]sync.eface
+*[]syscall.Iovec
+*[]syscall.SysProcIDMap
+*[]template.variable
+*[]time.zone
+*[]time.zoneTrans
+*[]toml.DecodeError
+*[]tracker.entry
+*[]uint
+*[]uint8
+*[]uintptr
+*[]unicode.Range16
+*[]unicode.Range32
+*[]unsafe.Pointer
+*[]unstable.Node
+*[]unstable.ParserError
+*\)e2
+*abi.ArrayType
+*abi.ChanDir
+*abi.FuncFlag
+*abi.FuncID
+*abi.FuncType
+*abi.Imethod
+*abi.IntArgRegBitmap
+*abi.InterfaceType
+*abi.Method
+*abi.NameOff
+*abi.PtrType
+*abi.RegArgs
+*abi.SliceType
+*abi.StructField
+*abi.StructType
+*abi.SwissMapType
+*abi.TFlag
+*abi.TextOff
+*abi.TypeOff
+*abi.UncommonType
+*atomic.Bool
+*atomic.Int32
+*atomic.Int64
+*atomic.Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }]
+*atomic.Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.interface {},go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }]
+*atomic.Pointer[go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }] }]
+*atomic.Pointer[os.dirInfo]
+*atomic.Pointer[runtime._defer]
+*atomic.Uint32
+*atomic.Uint64
+*atomic.Uint8
+*atomic.Uintptr
+*atomic.UnsafePointer
+*atomic.align64
+*atomic.noCopy
+*base64.CorruptInputError
+*base64.Encoding
+*bisect.Matcher
+*bisect.Writer
+*bisect.cond
+*bisect.dedup
+*bisect.parseError
+*bool
+*bytes.Buffer
+*bytes.readOp
+*cgroup.stringError
+*chacha8rand.State
+*chan bool
+*chan error
+*chan exec.ctxResult
+*chan exec.goroutineStatus
+*chan struct {}
+*chan time.Time
+*chan<- exec.ctxResult
+*complex128
+*complex64
+*context.Context
+*cpu.option
+*danger.TypeID
+*embed.file
+*embed.openDir
+*embed.openFile
+*encoding.TextMarshaler
+*encoding.TextUnmarshaler
+*error
+*errors.errorString
+*exec.Error
+*exec.ExitError
+*exec.ctxResult
+*exec.goroutineStatus
+*exec.prefixSuffixSaver
+*exec.wrappedError
+*flag.ErrorHandling
+*flag.Flag
+*flag.FlagSet
+*flag.Value
+*flag.boolFlag
+*flag.boolValue
+*flag.durationValue
+*flag.float64Value
+*flag.int64Value
+*flag.intValue
+*flag.stringValue
+*flag.uint64Value
+*flag.uintValue
+*float32
+*float64
+*fmt.Formatter
+*fmt.GoStringer
+*fmt.ScanState
+*fmt.Scanner
+*fmt.State
+*fmt.Stringer
+*fmt.buffer
+*fmt.fmt
+*fmt.fmtFlags
+*fmt.pp
+*fmt.readRune
+*fmt.scanError
+*fmt.ss
+*fmt.ssave
+*fmt.stringReader
+*fmt.wrapError
+*fmt.wrapErrors
+*fmtsort.KeyValue
+*fs.DirEntry
+*fs.File
+*fs.FileInfo
+*fs.FileMode
+*fs.PathError
+*func()
+*func() ([]uint8, error)
+*func() (float64, error)
+*func() (fs.FileInfo, error)
+*func() (int, bool)
+*func() (int, int)
+*func() (int, int, int)
+*func() (int, string, error)
+*func() (int, time.Month, int)
+*func() (int32, int, error)
+*func() (int64, error)
+*func() (int64, int64)
+*func() (io.ReadCloser, error)
+*func() (io.WriteCloser, error)
+*func() (reflect.Value, bool)
+*func() (string, int)
+*func() (time.Time, bool)
+*func() (time.Time, time.Time)
+*func() (uint64, bool)
+*func() (uint8, error)
+*func() *abi.ArrayType
+*func() *abi.FuncType
+*func() *abi.InterfaceType
+*func() *abi.StructType
+*func() *abi.SwissMapType
+*func() *abi.Type
+*func() *abi.UncommonType
+*func() *bisect.dedup
+*func() *godebug.value
+*func() *maps.Map
+*func() *netip.addrDetail
+*func() *os.dirInfo
+*func() *parse.ListNode
+*func() *parse.PipeNode
+*func() *parse.Tree
+*func() *poll.FD
+*func() *reflect.MapIter
+*func() *runtime._defer
+*func() *time.Location
+*func() *unstable.Node
+*func() <-chan struct {}
+*func() [2]uintptr
+*func() []*abi.Type
+*func() []abi.Method
+*func() []error
+*func() []reflect.Value
+*func() []string
+*func() []uint8
+*func() abi.ChanDir
+*func() abi.Kind
+*func() bool
+*func() complex128
+*func() error
+*func() float64
+*func() fs.FileMode
+*func() go.shape.bool
+*func() int
+*func() int32
+*func() int64
+*func() interface {}
+*func() iter.Seq[reflect.Value]
+*func() json.encoderFunc
+*func() netip.addrDetail
+*func() parse.Node
+*func() parse.NodeType
+*func() parse.Pos
+*func() poll.String
+*func() reflect.ChanDir
+*func() reflect.Kind
+*func() reflect.Type
+*func() reflect.Value
+*func() reflectlite.Type
+*func() string
+*func() sync.Locker
+*func() syscall.Signal
+*func() time.Duration
+*func() time.Month
+*func() time.Time
+*func() time.Weekday
+*func() toml.Key
+*func() uint32
+*func() uint64
+*func() uint8
+*func() uintptr
+*func() unsafe.Pointer
+*func() unstable.Iterator
+*func(*abi.SwissMapType)
+*func(*abi.Type)
+*func(*abi.Type, interface {})
+*func(*bisect.dedup)
+*func(*exec.Cmd)
+*func(*godebug.value)
+*func(*json.scanner, uint8) int
+*func(*os.dirInfo)
+*func(*os.dirInfo) *os.dirInfo
+*func(*os.file) error
+*func(*os.processHandle)
+*func(*reflect.MapIter)
+*func(*runtime._defer)
+*func(*runtime.coro)
+*func(*runtime.pinner)
+*func(*strings.Builder)
+*func(*syscall.Stat_t) error
+*func(*time.Location) time.Time
+*func(*unstable.Node) error
+*func(...interface {}) string
+*func([32]uint8)
+*func([4]uint64)
+*func([]int) reflect.Value
+*func([]uint8)
+*func([]uint8) ([]uint8, error)
+*func([]uint8) (int, error)
+*func([]uint8) error
+*func([]uint8, int, int) int
+*func([]uint8, string) []uint8
+*func(bisect.Writer) bool
+*func(bool)
+*func(bool) bool
+*func(bool, bool) bool
+*func(complex128)
+*func(complex128) bool
+*func(error) bool
+*func(float64)
+*func(float64) bool
+*func(fmt.State, int32)
+*func(fs.FileMode) error
+*func(func() error)
+*func(func())
+*func(func(uintptr) bool) error
+*func(func(uintptr)) error
+*func(go.shape.*uint8)
+*func(go.shape.struct {})
+*func(int)
+*func(int) ([]string, error)
+*func(int) (int, int)
+*func(int) *abi.Type
+*func(int) *uint8
+*func(int) []uint8
+*func(int) bool
+*func(int) error
+*func(int) reflect.Method
+*func(int) reflect.StructField
+*func(int) reflect.Type
+*func(int) reflect.Value
+*func(int) reflectlite.Type
+*func(int, int) (int, error)
+*func(int, int) error
+*func(int, int) reflect.Value
+*func(int, int, [4]uint8) error
+*func(int, int, int) error
+*func(int, int, int) time.Time
+*func(int, int, uint8) error
+*func(int, string) *uint8
+*func(int32)
+*func(int32) (int, error)
+*func(int32) bool
+*func(int32) int32
+*func(int32) uint32
+*func(int32, int32) bool
+*func(int64)
+*func(int64) bool
+*func(int64) error
+*func(int64) int64
+*func(int64) uint64
+*func(int64, int64) bool
+*func(interface {})
+*func(interface {}) bool
+*func(io.Reader) (int64, error)
+*func(io.Writer) (int64, error)
+*func(os.Signal) error
+*func(poll.splicePipeFields)
+*func(reflect.Type) bool
+*func(reflect.Value)
+*func(reflect.Value) bool
+*func(reflectlite.Type) bool
+*func(string)
+*func(string) (int, error)
+*func(string) (string, bool)
+*func(string) bool
+*func(string) error
+*func(string) func()
+*func(string) reflect.Value
+*func(string) string
+*func(string, bool) error
+*func(string, int, int) int
+*func(string, string)
+*func(struct {})
+*func(time.Duration) bool
+*func(time.Duration) time.Time
+*func(time.Time) bool
+*func(time.Time) error
+*func(time.Time) int
+*func(time.Time) time.Duration
+*func(uint32)
+*func(uint32) error
+*func(uint32) uint32
+*func(uint32, uint32) bool
+*func(uint64)
+*func(uint64) bool
+*func(uint64) uint64
+*func(uint64, uint64) bool
+*func(uint8)
+*func(uint8) ([]uint8, error)
+*func(uint8) (string, error)
+*func(uint8) error
+*func(uintptr)
+*func(uintptr) (uintptr, int64)
+*func(uintptr) bool
+*func(uintptr) uintptr
+*func(uintptr, uintptr) []uint8
+*func(uintptr, uintptr) bool
+*func(unsafe.Pointer)
+*go.shape.*internal/abi.Type
+*go.shape.*uint8
+*go.shape.bool
+*go.shape.int64
+*go.shape.interface {}
+*go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }
+*go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }
+*go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.interface {},go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }
+*go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }] }
+*go.shape.struct {}
+*go.shape.uint64
+*godebug.Setting
+*godebug.runtimeStderr
+*godebug.setting
+*godebug.value
+*godebugs.Info
+*int
+*int16
+*int32
+*int64
+*int8
+*interface { Is(error) bool }
+*interface { Timeout() bool }
+*interface { Unwrap() []error }
+*interface { Unwrap() error }
+*interface {}
+*io.Closer
+*io.LimitedReader
+*io.ReadCloser
+*io.Reader
+*io.ReaderFrom
+*io.RuneScanner
+*io.StringWriter
+*io.WriteCloser
+*io.Writer
+*io.WriterTo
+*iter.Seq[reflect.Value]
+*json.InvalidUnmarshalError
+*json.Marshaler
+*json.MarshalerError
+*json.Number
+*json.RawMessage
+*json.SyntaxError
+*json.UnmarshalTypeError
+*json.Unmarshaler
+*json.UnsupportedTypeError
+*json.UnsupportedValueError
+*json.arrayEncoder
+*json.condAddrEncoder
+*json.decodeState
+*json.encOpts
+*json.encodeState
+*json.encoderFunc
+*json.errorContext
+*json.field
+*json.floatEncoder
+*json.isZeroer
+*json.jsonError
+*json.mapEncoder
+*json.ptrEncoder
+*json.reflectWithString
+*json.scanner
+*json.sliceEncoder
+*json.structEncoder
+*json.structFields
+*json.unquotedValue
+*map.group[int32]unsafe.Pointer
+*map.group[reflect.Type]bool
+*map.group[reflect.Type]int
+*map.group[reflect.Value]int
+*map.group[string]*flag.Flag
+*map.group[string]*json.field
+*map.group[string]*parse.Tree
+*map.group[string][]int
+*map.group[string]bool
+*map.group[string]int
+*map.group[string]interface {}
+*map.group[string]reflect.Value
+*map.group[string]string
+*map.group[string]struct {}
+*map.group[uint32][]*abi.Type
+*map.group[uint64]bool
+*map.group[unsafe.Pointer]int32
+*map[*abi.Type]interface {}
+*map[*reflect.structType]bool
+*map[*reflect.structType]int
+*map[abi.TypeOff]*abi.Type
+*map[int32]unsafe.Pointer
+*map[interface {}]interface {}
+*map[interface {}]struct {}
+*map[netip.addrDetail]struct {}
+*map[reflect.Type]bool
+*map[reflect.Type]int
+*map[reflect.Value]int
+*map[string]*flag.Flag
+*map[string]*json.field
+*map[string]*parse.Tree
+*map[string]*template.Template
+*map[string]*unicode.RangeTable
+*map[string][]int
+*map[string]bool
+*map[string]int
+*map[string]interface {}
+*map[string]json.RawMessage
+*map[string]parse.itemType
+*map[string]reflect.Value
+*map[string]runtime.metricData
+*map[string]string
+*map[string]struct {}
+*map[uint32][]*abi.Type
+*map[uint64]bool
+*map[unsafe.Pointer]int32
+*maps.Iter
+*maps.groupReference
+*maps.groupsReference
+*maps.table
+*maps.unhashableTypeError
+*netip.addrDetail
+*os.File
+*os.LinkError
+*os.Process
+*os.ProcessState
+*os.Signal
+*os.SyscallError
+*os.dirInfo
+*os.file
+*os.fileStat
+*os.fileWithoutReadFrom
+*os.fileWithoutWriteTo
+*os.noReadFrom
+*os.noWriteTo
+*os.processHandle
+*os.rawConn
+*os.timeout
+*os.unixDirent
+*parse.ActionNode
+*parse.BoolNode
+*parse.BranchNode
+*parse.BreakNode
+*parse.ChainNode
+*parse.CommandNode
+*parse.CommentNode
+*parse.ContinueNode
+*parse.DotNode
+*parse.FieldNode
+*parse.IdentifierNode
+*parse.IfNode
+*parse.ListNode
+*parse.Mode
+*parse.NilNode
+*parse.Node
+*parse.NodeType
+*parse.NumberNode
+*parse.PipeNode
+*parse.Pos
+*parse.RangeNode
+*parse.StringNode
+*parse.TemplateNode
+*parse.TextNode
+*parse.Tree
+*parse.VariableNode
+*parse.WithNode
+*parse.elseNode
+*parse.endNode
+*parse.item
+*parse.itemType
+*parse.lexOptions
+*parse.lexer
+*poll.DeadlineExceededError
+*poll.FD
+*poll.String
+*poll.SysFile
+*poll.errNetClosing
+*poll.fdMutex
+*poll.pollDesc
+*poll.splicePipe
+*poll.splicePipeFields
+*reflect.ChanDir
+*reflect.Kind
+*reflect.MapIter
+*reflect.Method
+*reflect.StructField
+*reflect.StructTag
+*reflect.Type
+*reflect.Value
+*reflect.ValueError
+*reflect.abiDesc
+*reflect.abiSeq
+*reflect.abiStep
+*reflect.abiStepKind
+*reflect.bitVector
+*reflect.cacheKey
+*reflect.fieldScan
+*reflect.flag
+*reflect.layoutKey
+*reflect.layoutType
+*reflect.makeFuncCtxt
+*reflect.makeFuncImpl
+*reflect.methodValue
+*reflect.ptrType
+*reflect.rtype
+*reflect.sliceType
+*reflect.structType
+*reflect.structTypeUncommon
+*reflectlite.Type
+*reflectlite.ValueError
+*reflectlite.rtype
+*runtime.Cleanup
+*runtime.Error
+*runtime.Frame
+*runtime.Frames
+*runtime.Func
+*runtime.PanicNilError
+*runtime.Pinner
+*runtime.TypeAssertionError
+*runtime._defer
+*runtime._func
+*runtime._panic
+*runtime._typePair
+*runtime.addrRange
+*runtime.ancestorInfo
+*runtime.bitvector
+*runtime.boundsError
+*runtime.boundsErrorCode
+*runtime.cgoCallers
+*runtime.cleanupBlock
+*runtime.cleanupBlockHeader
+*runtime.coro
+*runtime.cpuStats
+*runtime.cpuStatsAggregate
+*runtime.debugCallWrapArgs
+*runtime.dlogPerM
+*runtime.errorAddressString
+*runtime.errorString
+*runtime.funcInfo
+*runtime.funcinl
+*runtime.functab
+*runtime.funcval
+*runtime.g
+*runtime.gList
+*runtime.gTraceState
+*runtime.gcBgMarkWorkerNode
+*runtime.gcBits
+*runtime.gcMarkWorkerMode
+*runtime.gcStatsAggregate
+*runtime.gcWork
+*runtime.gclinkptr
+*runtime.gobuf
+*runtime.goroutineProfileState
+*runtime.gsignalStack
+*runtime.guintptr
+*runtime.hchan
+*runtime.heapStatsAggregate
+*runtime.heapStatsDelta
+*runtime.heldLockInfo
+*runtime.initTask
+*runtime.lfnode
+*runtime.libcall
+*runtime.limiterEvent
+*runtime.localSpanQueue
+*runtime.lockRank
+*runtime.lockRankStruct
+*runtime.m
+*runtime.mLockProfile
+*runtime.mOS
+*runtime.mPadded
+*runtime.mSpanList
+*runtime.mSpanStateBox
+*runtime.mTraceState
+*runtime.mWaitList
+*runtime.mcache
+*runtime.metricData
+*runtime.metricFloat64Histogram
+*runtime.metricKind
+*runtime.metricReader
+*runtime.metricValue
+*runtime.moduledata
+*runtime.modulehash
+*runtime.mspan
+*runtime.muintptr
+*runtime.mutex
+*runtime.notInHeap
+*runtime.note
+*runtime.offAddr
+*runtime.p
+*runtime.pTraceState
+*runtime.pageCache
+*runtime.pcHeader
+*runtime.pcvalueCache
+*runtime.pcvalueCacheEnt
+*runtime.persistentAlloc
+*runtime.piController
+*runtime.pinner
+*runtime.plainError
+*runtime.pollDesc
+*runtime.ptabEntry
+*runtime.puintptr
+*runtime.savedOpenDeferState
+*runtime.scavengerState
+*runtime.sigset
+*runtime.sizeClassScanStats
+*runtime.sliceInterfacePtr
+*runtime.spanClass
+*runtime.special
+*runtime.stack
+*runtime.stackfreelist
+*runtime.statAggregate
+*runtime.statDepSet
+*runtime.stringInterfacePtr
+*runtime.stringer
+*runtime.sudog
+*runtime.synctestBubble
+*runtime.synctestDeadlockError
+*runtime.sysStatsAggregate
+*runtime.sysmontick
+*runtime.textsect
+*runtime.throwType
+*runtime.timeTimer
+*runtime.timer
+*runtime.timerWhen
+*runtime.timers
+*runtime.traceBlockReason
+*runtime.traceBuf
+*runtime.traceBufHeader
+*runtime.traceFrame
+*runtime.traceTime
+*runtime.uint16InterfacePtr
+*runtime.uint32InterfacePtr
+*runtime.uint64InterfacePtr
+*runtime.untracedG
+*runtime.waitReason
+*runtime.waitq
+*runtime.wbBuf
+*runtime.winlibcall
+*runtime.workbuf
+*runtime.workbufhdr
+*strconv.NumError
+*string
+*strings.Builder
+*strings.Reader
+*strings.span
+*struct { F uintptr; X0 *func(go.shape.struct { internal/poll.rfd int; internal/poll.wfd int; internal/poll.data int }); X1 *go.shape.struct { internal/poll.rfd int; internal/poll.wfd int; internal/poll.data int }; X2 *[11]uintptr }
+*struct { F uintptr; X0 *struct { f func() go.shape.bool; once sync.Once; valid bool; p interface {}; result go.shape.bool }; X1 *[4]uintptr }
+*struct { F uintptr; X0 *struct { f func() go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts); once sync.Once; valid bool; p interface {}; result go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts) }; X1 *[4]uintptr }
+*struct { F uintptr; X0 *struct { f func() go.shape.interface { Error() string }; once sync.Once; valid bool; p interface {}; result go.shape.interface { Error() string } }; X1 *[4]uintptr }
+*struct { F uintptr; X0 *unique.canonMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; X1 uintptr; X2 weak.Pointer[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; X3 *[52]uintptr }
+*struct { f func() go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts); once sync.Once; valid bool; p interface {}; result go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts) }
+*struct { f func() go.shape.interface { Error() string }; once sync.Once; valid bool; p interface {}; result go.shape.interface { Error() string } }
+*struct {}
+*sync.Locker
+*sync.Mutex
+*sync.Once
+*sync.Pool
+*sync.RWMutex
+*sync.dequeueNil
+*sync.eface
+*sync.equalFunc
+*sync.hashFunc
+*sync.noCopy
+*sync.poolChain
+*sync.poolChainElt
+*sync.poolDequeue
+*sync.poolLocal
+*sync.poolLocalInternal
+*sync.rlocker
+*sys.NotInHeap
+*sys.nih
+*syscall.Conn
+*syscall.Credential
+*syscall.Errno
+*syscall.IPMreq
+*syscall.IPMreqn
+*syscall.IPv6Mreq
+*syscall.Iovec
+*syscall.Linger
+*syscall.RawConn
+*syscall.RawSockaddrInet4
+*syscall.RawSockaddrInet6
+*syscall.RawSockaddrLinklayer
+*syscall.RawSockaddrNetlink
+*syscall.RawSockaddrUnix
+*syscall.Rlimit
+*syscall.Rusage
+*syscall.Signal
+*syscall.Sockaddr
+*syscall.SockaddrInet4
+*syscall.SockaddrInet6
+*syscall.SockaddrLinklayer
+*syscall.SockaddrNetlink
+*syscall.SockaddrUnix
+*syscall.Stat_t
+*syscall.SysProcAttr
+*syscall.SysProcIDMap
+*syscall.Timespec
+*syscall.Timeval
+*syscall.WaitStatus
+*syscall._Gid_t
+*syscall._Socklen
+*taskrunner.Config
+*taskrunner.DevServerConfig
+*taskrunner.PackageJson
+*taskrunner.ViteConfig
+*template.ExecError
+*template.FuncMap
+*template.Template
+*template.common
+*template.missingKeyAction
+*template.missingValType
+*template.option
+*template.state
+*template.variable
+*template.writeError
+*time.Duration
+*time.Location
+*time.Month
+*time.ParseError
+*time.Time
+*time.Timer
+*time.Weekday
+*time.fileSizeError
+*time.zone
+*time.zoneTrans
+*toml.DecodeError
+*toml.LocalDate
+*toml.LocalDateTime
+*toml.LocalTime
+*toml.StrictMissingError
+*toml.decoder
+*toml.errorContext
+*toml.strict
+*tracker.KeyTracker
+*tracker.SeenTracker
+*tracker.entry
+*tracker.keyKind
+*uint
+*uint16
+*uint32
+*uint64
+*uint8
+*uintptr
+*unicode.Range16
+*unicode.Range32
+*unicode.RangeTable
+*unique.cloneSeq
+*unsafe.Pointer
+*unsafeheader.Slice
+*unsafeheader.String
+*unstable.Iterator
+*unstable.Kind
+*unstable.Node
+*unstable.Parser
+*unstable.ParserError
+*unstable.Range
+*unstable.Unmarshaler
+*unstable.builder
+*unstable.reference
+*unstable.root
++	,&
++	,;
++	,i*
++!-!
++!2!
++#&$
++((((
++*[8]struct { key string; elem *json.field }
++*[8]struct { key string; elem *parse.Tree }
++*[8]struct { key uint32; elem []*abi.Type }
++*[]*go.shape.struct { unique.isEntry bool }
++*[]struct { key string; elem interface {} }
++*func() *unique.entry[net/netip.addrDetail]
++*struct { F uintptr; R json.structEncoder }
++*struct { key abi.TypeOff; elem *abi.Type }
++*struct { key string; elem parse.itemType }
++*sync.node[*internal/abi.Type,interface {}]
+++++
+++++#  
++7,8
++F)O(
++t	H
++u	E
++x7(
++~xY
+,	}x
+,  g->atomicstatus=unexpected g status_cgo_setenv missingbad runtime
+, locked to thread, synctest bubble 298023223876953125: day out of rangeTime.MarshalJSON: Time.MarshalText: unknown time zone use of closed fileexceeded max depthinvalid character in numeric literalunhandled part: %slen of nil pointer/cpu.cfs_quota_us
+, not pointer != sweepgen  MB globals,  work.nproc=  work.nwait=  nStackRoots= flushedWork double unlock s.spanclass= MB) workers=min too large-byte block (runtime: val=runtime: seq= failed with timer_settimefatal error:  idlethreads= syscalltick=load64 failedxadd64 failedxchg64 failedmp.g0 stack [nil stackbase}
+, size = bad prune, tail = newosprocrecover:  not in [ctxt != 0, oldval=, newval= threads=: status= blocked= lockedg=atomicor8 runtime= sigcode= m->curg=(unknown)total < 0traceback(durable)} stack=[ gp.goid= lockedm=244140625ParseUintWednesdaySeptemberlocaltimerwxrwxrwxInherited of type omitempty				ctrl  (empty)
+, ti
+,!+N
+,#H9
+,$M9l$
+,%+$,
+,'-----0-g-o-p-
+,)Ud
+,*[0]*go.shape.struct { unique.isEntry bool }
+,*[8]struct { key string; elem interface {} }
+,*[]*sync.indirect[interface {},interface {}]
+,*[]struct { key int32; elem unsafe.Pointer }
+,*[]struct { key string; elem reflect.Value }
+,*[]struct { key unsafe.Pointer; elem int32 }
+,*func(*runtime._defer, *runtime._defer) bool
+,*func(*sync.node[interface {},interface {}])
+,*func(func(interface {}, interface {}) bool)
+,*struct { key *abi.Type; elem interface {} }
+,*struct { key interface {}; elem struct {} }
+,*struct { key string; elem json.RawMessage }
+,*struct { len int; buf [128]*runtime.mspan }
+,*sync.HashTrieMap[interface {},interface {}]
+,*sync.entry[*internal/abi.Type,interface {}]
+,354
+,6	,7
+,7@;
+,7L9
+,;+	,
+,="3!
+,qH9
+,qI9
+,t!A
+,u2H
+,wJ:
+,y+>.=-00
+-	9!
+-!!!
+-*[0]*sync.indirect[interface {},interface {}]
+-*[8]struct { key int32; elem unsafe.Pointer }
+-*[8]struct { key string; elem reflect.Value }
+-*[8]struct { key unsafe.Pointer; elem int32 }
+-*[]struct { key abi.TypeOff; elem *abi.Type }
+-*[]struct { key string; elem parse.itemType }
+-*func() *sync.node[interface {},interface {}]
+-*func() go.shape.interface { Error() string }
+-*func(*sync.entry[interface {},interface {}])
+-*func(*unique.indirect[net/netip.addrDetail])
+-*func([]uint8) (int, syscall.Sockaddr, error)
+-*func([]uint8, syscall.Sockaddr) (int, error)
+-*func(fmtsort.KeyValue, fmtsort.KeyValue) int
+-*struct { F uintptr; R json.condAddrEncoder }
+-*struct { F uintptr; R runtime.metricReader }
+-*struct { F uintptr; X0 *reflect.structType }
+-*struct { key *reflect.structType; elem int }
+-+.^-
+-----
+---A
+-070u
+-07:00:0
+-07:00:0L
+-07:00:0M9
+-07:u
+-32)
+-374&
+->!Q
+-D.:P
+-^85
+-bAe
+-m	p
+-t0H
+-tfA
+-thread limit
+-u#A
+-u)H
+-u-H
+-uKM
+-uZH
+-u`H
+-ufH
+-uuE
+.!:!
+.$*(
+.&-". -
+.*	)
+.*[8]struct { key abi.TypeOff; elem *abi.Type }
+.*[8]struct { key string; elem parse.itemType }
+.*[]*sync.node[*internal/abi.Type,interface {}]
+.*[]struct { key *abi.Type; elem interface {} }
+.*[]struct { key interface {}; elem struct {} }
+.*[]struct { key string; elem json.RawMessage }
+.*func() (int, syscall.Sockaddr, string, error)
+.*func() *sync.entry[interface {},interface {}]
+.*func() *unique.indirect[net/netip.addrDetail]
+.*func() iter.Seq2[reflect.Value,reflect.Value]
+.*func(bool, func(int32) bool) ([]uint8, error)
+.*struct { key *reflect.structType; elem bool }
+.,--
+.,-5
+... omitting no such deviceis a directorytext file busyfile too largetoo many linkslevel 3 haltedlevel 2 haltedprotocol errortoo many userswindow changedvite.config.tslovable-taggerunexpected EOFunsafe.Pointer on zero Valueunknown methoduserArenaStateGC (dedicated)read mem statsupdatemaxprocsasynctimerchangcstoptheworldprofstackdepthtraceallocfreeGC assist waitfinalizer waitsync.Cond.WaitSIGABRT: aborts.allocCount= Value of type runtime: mmap(nil elem type! to finalizer scan: class L  finalizers + GC worker initruntime: full=runtime: want=MB; allocated allspans arrayscavenge indexno deferreturnbad restart PC, called from
+.4!3+
+.4)\*
+.@001
+.BDC
+.bss
+.data
+.elfdata
+.go.buildinfo
+.go.fipsinfo
+.go.fuzzcntrs
+.gopclntab
+.gosymtab
+.itablink
+.noptrbss
+.noptrdata
+.note.gnu.build-id
+.note.go.buildid
+.rodata
+.shstrtab
+.t	1
+.tRD
+.tdA
+.text
+.typelink
+.u	A
+.u I
+.u;H
+.u=A
+.uJA
+.zipu
+/	 	
+/	/	/
+/	Y	
+/ _ 0
+/!9!
+/'U	N
+/*[0]*sync.node[*internal/abi.Type,interface {}]
+/*[8]struct { key *abi.Type; elem interface {} }
+/*[8]struct { key interface {}; elem struct {} }
+/*[8]struct { key string; elem json.RawMessage }
+/*[]*sync.entry[*internal/abi.Type,interface {}]
+/*[]struct { key *reflect.structType; elem int }
+/*go.shape.struct { internal/sync.isEntry bool }
+/*struct { key interface {}; elem interface {} }
+/*struct { key string; elem *template.Template }
+/*struct { key string; elem runtime.metricData }
+/*sync.indirect[*internal/abi.Type,interface {}]
+/+0'/
+// Auto-generated by lovable-exec - DO NOT EDIT
+/build/cmd/lovable-exec/main.go
+/build/internal/taskrunner/tagger.go
+/build/internal/taskrunner/taskrunner.go
+/build/internal/taskrunner/vite.go
+/build/internal/taskrunner/vite_command.go
+/cgroup
+/cpu/classes/idle:cpu-seconds/cpu/classes/user:cpu-seconds/gc/heap/allocs-by-size:bytes/gc/stack/starting-size:bytesgc done but gcphase != _GCoffruntime: p.gcMarkWorkerMode= scanobject of a noscan objectruntime: marking free object addspecial on invalid pointerruntime: summary max pages = runtime: levelShift[level] = doRecordGoroutineProfile gp1=runtime: eventfd failed with tried to unpin non-Go pointerruntime: sudog with non-nil centersyscall inconsistent bp entersyscall inconsistent sp gfput: bad status (not Gdead)semacquire not on the G stackruntime: split stack overflowstring concatenation too longinvalid function symbol tabletrace: reading after shutdownruntime: traceback stuck. pc=tried to trace dead goroutineruntime: impossible type kind45474735088646411895751953125Time.UnmarshalBinary: no databufio.Scanner: token too longinvalid timezone offset hoursfloat cannot start with a dotcannot assign boolean to a %tnil data; no entry for key %qcannot 3-index slice a stringreflect: Out of non-func typearray cannot start with commainvalid escaped character %#Utoml: table %s already existsmax expression depth exceededruntime.AddCleanup: ptr is nilstrings: negative Repeat countinappropriate ioctl for devicesocket operation on non-socketprotocol wrong type for socketMapIter.Key called before Nextreflect: Elem of invalid type reflect: Out of non-func type called entry on non-entry nodeassignment to entry in nil mapSIGUSR1: user-defined signal 1SIGUSR2: user-defined signal 2SIGVTALRM: virtual alarm clockSIGPROF: profiling alarm clock (types from different scopes)failed to get system page sizeruntime: found in object at *( in prepareForSweep; sweepgen   is reachable from finalizer
+/cpu/classes/total:cpu-seconds/gc/cycles/automatic:gc-cycles/sched/pauses/total/gc:seconds/sync/mutex/wait/total:seconds/godebug/non-default-behavior/runtime: epollctl failed with panic called with nil argumentcheckdead: inconsistent countsrunqputslow: queue is not fullruntime: bad pointer in frame invalid pointer found on stack locals stack map entries for abi mismatch detected between runtime: impossible type kind unsafe.Slice: len out of range227373675443232059478759765625year outside of range [0,9999]looking for beginning of valuein exponent of numeric literalfloat cannot be assigned to %sreflect: Len of non-array typeGODEBUG: unknown cpu feature "runtime: cgroup buffer length sync: inconsistent mutex statesync: unlock of unlocked mutexKey() is not supported on a %smissing keyKind string mappingunterminated raw quoted string{{continue}} outside {{range}}Print command without executing  lovable-exec --dry-run build
+/dev/nulH
+/dev/urandom
+/etc/locH
+/github.com/pelletier/go-toml/v2/internal/danger
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/decode.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/errors.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/internal/characters/ascii.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/internal/characters/utf8.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/internal/danger/danger.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/internal/tracker/key.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/internal/tracker/seen.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/localtime.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/strict.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/types.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/unmarshaler.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/unstable/ast.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/unstable/builder.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/unstable/kind.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/unstable/parser.go
+/go/pkg/mod/github.com/pelletier/go-toml/v2@v2.2.4/unstable/scanner.go
+/memory/classes/heap/objects:bytesruntime.SetFinalizer: cannot pass too many pages allocated in chunk?mspan.ensureSwept: m is not lockedruntime: netpollBreak write failedforEachP: sched.safePointWait != 0schedule: spinning with local workentersyscallblock inconsistent bp entersyscallblock inconsistent sp runtime: g is running but p is notinvalid timer channel: no capacity3552713678800500929355621337890625: day-of-year does not match monthin \u hexadecimal character escapehandleValue not implemented for %scan't evaluate field %s in type %scan't handle %s for arg of type %svalue is nil; should be of type %sconcurrent map clone and map writeillegal base64 data at input byte unsigned integer overflow on token strings.Reader.Seek: invalid whencenetwork dropped connection on resettransport endpoint is not connected" is unexported but missing PkgPathreflect.MakeSlice of non-slice typepersistentalloc: align is too large/memory/classes/heap/released:bytesgreyobject: obj not pointer-alignedmismatched begin/end of activeSweepmheap.freeSpanLocked - invalid freefailed to get or create weak handleattempt to clear non-empty span setruntime: close polldesc w/o unblockruntime: inconsistent read deadlinefindrunnable: netpoll with spinningpidleput: P has non-empty run queuefake timer executing with no bubbletraceback did not unwind completely1776356839400250464677810668945312588817841970012523233890533447265625ryuFtoaFixed32 called with prec > 92006-01-02T15:04:05.999999999Z07:00file type does not support deadlinenanoseconds need at least one digitnumber cannot start with underscoreshould not be called with empty keynumber %f does not fit in a float32expected unsigned integer; found %snon-comparable types %s: %v, %s: %vbasic strings cannot have new linesrange can only initialize variablesinvalid boolean value %q for -%s: %vsyntax error scanning complex numberstrings.Builder.Grow: negative countstrings: Join output length overflowaccessing a corrupted shared librarymethod ABI and value ABI don't alignreflect.Value.Equal: values of type lfstack node allocated from the heap) is larger than maximum page size (objects with pointers must be zeroedruntime: invalid typeBitsBulkBarrieruncaching span but s.allocCount == 0Scan trace for cleanup/finalizer on /memory/classes/metadata/other:bytes/sched/pauses/stopping/other:secondsuser arena span is on the wrong listruntime: marked free object in span runtime: unblock on closing polldescruntime: inconsistent write deadlineruntime: netpoll: eventfd ready for runtime: sudog with non-nil waitlinkruntime: mcall called on m->g0 stackfatal: recursive switchToCrashStack
+/memory/classes/metadata/mspan/free:bytesruntime.SetFinalizer: second argument is gcSweep being done but phase is not GCoffobjects added out of order or overlappingmheap.freeSpanLocked - invalid stack freemheap.freeSpanLocked - invalid span stateattempted to add zero-sized address rangeruntime: blocked read on closing polldescstopTheWorld: not stopped (stopwait != 0) received on thread with no signal stack
+/proc/seH
+/proc/self/auxv
+/s"H
+/s7H
+/self/moH
+/self/seL
+/sys/kernel/mm/transparent_hugepage/hpage_pmd_size
+/usr/local/go
+/usr/local/go/src/bufio/scan.go
+/usr/local/go/src/bytes/buffer.go
+/usr/local/go/src/bytes/bytes.go
+/usr/local/go/src/cmp/cmp.go
+/usr/local/go/src/context/context.go
+/usr/local/go/src/embed/embed.go
+/usr/local/go/src/encoding/base64/base64.go
+/usr/local/go/src/encoding/json/decode.go
+/usr/local/go/src/encoding/json/encode.go
+/usr/local/go/src/encoding/json/fold.go
+/usr/local/go/src/encoding/json/indent.go
+/usr/local/go/src/encoding/json/scanner.go
+/usr/local/go/src/encoding/json/stream.go
+/usr/local/go/src/encoding/json/tags.go
+/usr/local/go/src/errors/errors.go
+/usr/local/go/src/errors/wrap.go
+/usr/local/go/src/flag/flag.go
+/usr/local/go/src/fmt/errors.go
+/usr/local/go/src/fmt/format.go
+/usr/local/go/src/fmt/print.go
+/usr/local/go/src/fmt/scan.go
+/usr/local/go/src/internal/abi/abi.go
+/usr/local/go/src/internal/abi/escape.go
+/usr/local/go/src/internal/abi/map_swiss.go
+/usr/local/go/src/internal/abi/type.go
+/usr/local/go/src/internal/bisect/bisect.go
+/usr/local/go/src/internal/bytealg/bytealg.go
+/usr/local/go/src/internal/bytealg/compare_amd64.s
+/usr/local/go/src/internal/bytealg/compare_native.go
+/usr/local/go/src/internal/bytealg/count_amd64.s
+/usr/local/go/src/internal/bytealg/count_native.go
+/usr/local/go/src/internal/bytealg/equal_amd64.s
+/usr/local/go/src/internal/bytealg/index_amd64.go
+/usr/local/go/src/internal/bytealg/index_amd64.s
+/usr/local/go/src/internal/bytealg/indexbyte_amd64.s
+/usr/local/go/src/internal/bytealg/lastindexbyte_generic.go
+/usr/local/go/src/internal/byteorder/byteorder.go
+/usr/local/go/src/internal/chacha8rand/chacha8.go
+/usr/local/go/src/internal/chacha8rand/chacha8_amd64.s
+/usr/local/go/src/internal/cpu/cpu.go
+/usr/local/go/src/internal/cpu/cpu_x86.go
+/usr/local/go/src/internal/cpu/cpu_x86.s
+/usr/local/go/src/internal/filepathlite/path.go
+/usr/local/go/src/internal/filepathlite/path_unix.go
+/usr/local/go/src/internal/fmtsort/sort.go
+/usr/local/go/src/internal/godebug/godebug.go
+/usr/local/go/src/internal/godebugs/table.go
+/usr/local/go/src/internal/itoa/itoa.go
+/usr/local/go/src/internal/poll/copy_file_range_linux.go
+/usr/local/go/src/internal/poll/copy_file_range_unix.go
+/usr/local/go/src/internal/poll/errno_unix.go
+/usr/local/go/src/internal/poll/fd.go
+/usr/local/go/src/internal/poll/fd_fsync_posix.go
+/usr/local/go/src/internal/poll/fd_mutex.go
+/usr/local/go/src/internal/poll/fd_poll_runtime.go
+/usr/local/go/src/internal/poll/fd_posix.go
+/usr/local/go/src/internal/poll/fd_unix.go
+/usr/local/go/src/internal/poll/fd_unixjs.go
+/usr/local/go/src/internal/poll/fd_writev_unix.go
+/usr/local/go/src/internal/poll/fstatat_unix.go
+/usr/local/go/src/internal/poll/sendfile.go
+/usr/local/go/src/internal/poll/sendfile_unix.go
+/usr/local/go/src/internal/poll/sock_cloexec.go
+/usr/local/go/src/internal/poll/sockopt.go
+/usr/local/go/src/internal/poll/sockopt_linux.go
+/usr/local/go/src/internal/poll/sockopt_unix.go
+/usr/local/go/src/internal/poll/sockoptip.go
+/usr/local/go/src/internal/poll/splice_linux.go
+/usr/local/go/src/internal/poll/writev.go
+/usr/local/go/src/internal/reflectlite/type.go
+/usr/local/go/src/internal/reflectlite/value.go
+/usr/local/go/src/internal/runtime/atomic/types.go
+/usr/local/go/src/internal/runtime/atomic/types_64bit.go
+/usr/local/go/src/internal/runtime/cgroup/cgroup_linux.go
+/usr/local/go/src/internal/runtime/cgroup/line_reader.go
+/usr/local/go/src/internal/runtime/exithook/hooks.go
+/usr/local/go/src/internal/runtime/maps/group.go
+/usr/local/go/src/internal/runtime/maps/map.go
+/usr/local/go/src/internal/runtime/maps/runtime_fast32_swiss.go
+/usr/local/go/src/internal/runtime/maps/runtime_fast64_swiss.go
+/usr/local/go/src/internal/runtime/maps/runtime_faststr_swiss.go
+/usr/local/go/src/internal/runtime/maps/runtime_swiss.go
+/usr/local/go/src/internal/runtime/maps/table.go
+/usr/local/go/src/internal/runtime/maps/table_debug.go
+/usr/local/go/src/internal/runtime/strconv/atoi.go
+/usr/local/go/src/internal/runtime/sys/intrinsics.go
+/usr/local/go/src/internal/runtime/syscall/asm_linux_amd64.s
+/usr/local/go/src/internal/runtime/syscall/syscall_linux.go
+/usr/local/go/src/internal/stringslite/strings.go
+/usr/local/go/src/internal/sync/hashtriemap.go
+/usr/local/go/src/internal/sync/mutex.go
+/usr/local/go/src/internal/syscall/execenv/execenv_default.go
+/usr/local/go/src/internal/syscall/unix/at_fstatat.go
+/usr/local/go/src/internal/syscall/unix/copy_file_range_unix.go
+/usr/local/go/src/internal/syscall/unix/eaccess.go
+/usr/local/go/src/internal/syscall/unix/fcntl_unix.go
+/usr/local/go/src/internal/syscall/unix/kernel_version_linux.go
+/usr/local/go/src/internal/syscall/unix/nonblocking_unix.go
+/usr/local/go/src/internal/syscall/unix/pidfd_linux.go
+/usr/local/go/src/internal/syscall/unix/siginfo_linux.go
+/usr/local/go/src/internal/syscall/unix/waitid_linux.go
+/usr/local/go/src/internal/testlog/exit.go
+/usr/local/go/src/internal/testlog/log.go
+/usr/local/go/src/io/fs/format.go
+/usr/local/go/src/io/fs/fs.go
+/usr/local/go/src/io/io.go
+/usr/local/go/src/iter/iter.go
+/usr/local/go/src/math/abs.go
+/usr/local/go/src/math/bits.go
+/usr/local/go/src/math/bits/bits.go
+/usr/local/go/src/math/copysign.go
+/usr/local/go/src/math/exp_amd64.go
+/usr/local/go/src/math/ldexp.go
+/usr/local/go/src/math/unsafe.go
+/usr/local/go/src/net/netip/netip.go
+/usr/local/go/src/net/url/url.go
+/usr/local/go/src/os/dir.go
+/usr/local/go/src/os/dir_unix.go
+/usr/local/go/src/os/dirent_linux.go
+/usr/local/go/src/os/env.go
+/usr/local/go/src/os/error.go
+/usr/local/go/src/os/exec.go
+/usr/local/go/src/os/exec/exec.go
+/usr/local/go/src/os/exec/exec_unix.go
+/usr/local/go/src/os/exec/lp_unix.go
+/usr/local/go/src/os/exec_linux.go
+/usr/local/go/src/os/exec_posix.go
+/usr/local/go/src/os/exec_unix.go
+/usr/local/go/src/os/file.go
+/usr/local/go/src/os/file_open_unix.go
+/usr/local/go/src/os/file_posix.go
+/usr/local/go/src/os/file_unix.go
+/usr/local/go/src/os/getwd.go
+/usr/local/go/src/os/path.go
+/usr/local/go/src/os/pidfd_linux.go
+/usr/local/go/src/os/pipe2_unix.go
+/usr/local/go/src/os/proc.go
+/usr/local/go/src/os/rawconn.go
+/usr/local/go/src/os/stat.go
+/usr/local/go/src/os/stat_linux.go
+/usr/local/go/src/os/stat_unix.go
+/usr/local/go/src/os/statat.go
+/usr/local/go/src/os/statat_unix.go
+/usr/local/go/src/os/tempfile.go
+/usr/local/go/src/os/types.go
+/usr/local/go/src/os/types_unix.go
+/usr/local/go/src/os/wait_waitid.go
+/usr/local/go/src/os/zero_copy_linux.go
+/usr/local/go/src/os/zero_copy_posix.go
+/usr/local/go/src/path/filepath/path.go
+/usr/local/go/src/path/filepath/path_unix.go
+/usr/local/go/src/reflect/abi.go
+/usr/local/go/src/reflect/asm_amd64.s
+/usr/local/go/src/reflect/float32reg_generic.go
+/usr/local/go/src/reflect/iter.go
+/usr/local/go/src/reflect/makefunc.go
+/usr/local/go/src/reflect/map_swiss.go
+/usr/local/go/src/reflect/type.go
+/usr/local/go/src/reflect/value.go
+/usr/local/go/src/runtime/alg.go
+/usr/local/go/src/runtime/arena.go
+/usr/local/go/src/runtime/asm.s
+/usr/local/go/src/runtime/asm_amd64.s
+/usr/local/go/src/runtime/atomic_pointer.go
+/usr/local/go/src/runtime/cgo_mmap.go
+/usr/local/go/src/runtime/cgo_sigaction.go
+/usr/local/go/src/runtime/cgocall.go
+/usr/local/go/src/runtime/cgroup_linux.go
+/usr/local/go/src/runtime/chan.go
+/usr/local/go/src/runtime/cpuflags_amd64.go
+/usr/local/go/src/runtime/cpuprof.go
+/usr/local/go/src/runtime/debug.go
+/usr/local/go/src/runtime/debugcall.go
+/usr/local/go/src/runtime/defs_linux_amd64.go
+/usr/local/go/src/runtime/duff_amd64.s
+/usr/local/go/src/runtime/env_posix.go
+/usr/local/go/src/runtime/error.go
+/usr/local/go/src/runtime/extern.go
+/usr/local/go/src/runtime/fastlog2.go
+/usr/local/go/src/runtime/fds_unix.go
+/usr/local/go/src/runtime/float.go
+/usr/local/go/src/runtime/hash64.go
+/usr/local/go/src/runtime/histogram.go
+/usr/local/go/src/runtime/iface.go
+/usr/local/go/src/runtime/lfstack.go
+/usr/local/go/src/runtime/lock_futex.go
+/usr/local/go/src/runtime/lock_spinbit.go
+/usr/local/go/src/runtime/lockrank.go
+/usr/local/go/src/runtime/lockrank_off.go
+/usr/local/go/src/runtime/malloc.go
+/usr/local/go/src/runtime/map_swiss.go
+/usr/local/go/src/runtime/mbarrier.go
+/usr/local/go/src/runtime/mbitmap.go
+/usr/local/go/src/runtime/mcache.go
+/usr/local/go/src/runtime/mcentral.go
+/usr/local/go/src/runtime/mcheckmark.go
+/usr/local/go/src/runtime/mcleanup.go
+/usr/local/go/src/runtime/mem.go
+/usr/local/go/src/runtime/mem_linux.go
+/usr/local/go/src/runtime/memclr_amd64.s
+/usr/local/go/src/runtime/memmove_amd64.s
+/usr/local/go/src/runtime/metrics.go
+/usr/local/go/src/runtime/mfinal.go
+/usr/local/go/src/runtime/mfixalloc.go
+/usr/local/go/src/runtime/mgc.go
+/usr/local/go/src/runtime/mgclimit.go
+/usr/local/go/src/runtime/mgcmark.go
+/usr/local/go/src/runtime/mgcmark_nogreenteagc.go
+/usr/local/go/src/runtime/mgcpacer.go
+/usr/local/go/src/runtime/mgcscavenge.go
+/usr/local/go/src/runtime/mgcstack.go
+/usr/local/go/src/runtime/mgcsweep.go
+/usr/local/go/src/runtime/mgcwork.go
+/usr/local/go/src/runtime/mheap.go
+/usr/local/go/src/runtime/mpagealloc.go
+/usr/local/go/src/runtime/mpagealloc_64bit.go
+/usr/local/go/src/runtime/mpagecache.go
+/usr/local/go/src/runtime/mpallocbits.go
+/usr/local/go/src/runtime/mprof.go
+/usr/local/go/src/runtime/mranges.go
+/usr/local/go/src/runtime/msize.go
+/usr/local/go/src/runtime/mspanset.go
+/usr/local/go/src/runtime/mstats.go
+/usr/local/go/src/runtime/mwbbuf.go
+/usr/local/go/src/runtime/netpoll.go
+/usr/local/go/src/runtime/netpoll_epoll.go
+/usr/local/go/src/runtime/os_linux.go
+/usr/local/go/src/runtime/os_linux_generic.go
+/usr/local/go/src/runtime/panic.go
+/usr/local/go/src/runtime/pinner.go
+/usr/local/go/src/runtime/preempt.go
+/usr/local/go/src/runtime/preempt_amd64.s
+/usr/local/go/src/runtime/print.go
+/usr/local/go/src/runtime/proc.go
+/usr/local/go/src/runtime/profbuf.go
+/usr/local/go/src/runtime/rand.go
+/usr/local/go/src/runtime/retry.go
+/usr/local/go/src/runtime/rt0_linux_amd64.s
+/usr/local/go/src/runtime/runtime.go
+/usr/local/go/src/runtime/runtime1.go
+/usr/local/go/src/runtime/runtime2.go
+/usr/local/go/src/runtime/rwmutex.go
+/usr/local/go/src/runtime/security_unix.go
+/usr/local/go/src/runtime/select.go
+/usr/local/go/src/runtime/sema.go
+/usr/local/go/src/runtime/set_vma_name_linux.go
+/usr/local/go/src/runtime/signal_amd64.go
+/usr/local/go/src/runtime/signal_linux_amd64.go
+/usr/local/go/src/runtime/signal_unix.go
+/usr/local/go/src/runtime/sigqueue.go
+/usr/local/go/src/runtime/slice.go
+/usr/local/go/src/runtime/stack.go
+/usr/local/go/src/runtime/stkframe.go
+/usr/local/go/src/runtime/string.go
+/usr/local/go/src/runtime/stubs.go
+/usr/local/go/src/runtime/stubs2.go
+/usr/local/go/src/runtime/symtab.go
+/usr/local/go/src/runtime/symtabinl.go
+/usr/local/go/src/runtime/synctest.go
+/usr/local/go/src/runtime/sys_linux_amd64.s
+/usr/local/go/src/runtime/sys_x86.go
+/usr/local/go/src/runtime/tagptr_64bit.go
+/usr/local/go/src/runtime/time.go
+/usr/local/go/src/runtime/time_linux_amd64.s
+/usr/local/go/src/runtime/time_nofake.go
+/usr/local/go/src/runtime/trace.go
+/usr/local/go/src/runtime/traceallocfree.go
+/usr/local/go/src/runtime/traceback.go
+/usr/local/go/src/runtime/tracebuf.go
+/usr/local/go/src/runtime/tracecpu.go
+/usr/local/go/src/runtime/traceevent.go
+/usr/local/go/src/runtime/tracemap.go
+/usr/local/go/src/runtime/traceregion.go
+/usr/local/go/src/runtime/traceruntime.go
+/usr/local/go/src/runtime/tracestack.go
+/usr/local/go/src/runtime/tracestatus.go
+/usr/local/go/src/runtime/tracestring.go
+/usr/local/go/src/runtime/tracetime.go
+/usr/local/go/src/runtime/tracetype.go
+/usr/local/go/src/runtime/type.go
+/usr/local/go/src/runtime/typekind.go
+/usr/local/go/src/runtime/unsafe.go
+/usr/local/go/src/runtime/utf8.go
+/usr/local/go/src/runtime/vdso_linux.go
+/usr/local/go/src/runtime/vgetrandom_linux.go
+/usr/local/go/src/runtime/write_err.go
+/usr/local/go/src/slices/slices.go
+/usr/local/go/src/slices/sort.go
+/usr/local/go/src/slices/zsortanyfunc.go
+/usr/local/go/src/slices/zsortordered.go
+/usr/local/go/src/strconv/atob.go
+/usr/local/go/src/strconv/atof.go
+/usr/local/go/src/strconv/atoi.go
+/usr/local/go/src/strconv/bytealg.go
+/usr/local/go/src/strconv/decimal.go
+/usr/local/go/src/strconv/eisel_lemire.go
+/usr/local/go/src/strconv/ftoa.go
+/usr/local/go/src/strconv/ftoaryu.go
+/usr/local/go/src/strconv/itoa.go
+/usr/local/go/src/strconv/quote.go
+/usr/local/go/src/strings/builder.go
+/usr/local/go/src/strings/compare.go
+/usr/local/go/src/strings/reader.go
+/usr/local/go/src/strings/strings.go
+/usr/local/go/src/sync/atomic/type.go
+/usr/local/go/src/sync/atomic/value.go
+/usr/local/go/src/sync/cond.go
+/usr/local/go/src/sync/hashtriemap.go
+/usr/local/go/src/sync/mutex.go
+/usr/local/go/src/sync/once.go
+/usr/local/go/src/sync/oncefunc.go
+/usr/local/go/src/sync/pool.go
+/usr/local/go/src/sync/poolqueue.go
+/usr/local/go/src/sync/runtime.go
+/usr/local/go/src/sync/rwmutex.go
+/usr/local/go/src/syscall/asm_linux_amd64.s
+/usr/local/go/src/syscall/env_unix.go
+/usr/local/go/src/syscall/exec_linux.go
+/usr/local/go/src/syscall/exec_unix.go
+/usr/local/go/src/syscall/forkpipe2.go
+/usr/local/go/src/syscall/rlimit.go
+/usr/local/go/src/syscall/syscall.go
+/usr/local/go/src/syscall/syscall_linux.go
+/usr/local/go/src/syscall/syscall_linux_amd64.go
+/usr/local/go/src/syscall/syscall_unix.go
+/usr/local/go/src/syscall/zsyscall_linux_amd64.go
+/usr/local/go/src/text/template/exec.go
+/usr/local/go/src/text/template/funcs.go
+/usr/local/go/src/text/template/parse/lex.go
+/usr/local/go/src/text/template/parse/node.go
+/usr/local/go/src/text/template/parse/parse.go
+/usr/local/go/src/text/template/template.go
+/usr/local/go/src/time/format.go
+/usr/local/go/src/time/format_rfc3339.go
+/usr/local/go/src/time/sleep.go
+/usr/local/go/src/time/sys_unix.go
+/usr/local/go/src/time/time.go
+/usr/local/go/src/time/zoneinfo.go
+/usr/local/go/src/time/zoneinfo_goroot.go
+/usr/local/go/src/time/zoneinfo_read.go
+/usr/local/go/src/time/zoneinfo_unix.go
+/usr/local/go/src/unicode/digit.go
+/usr/local/go/src/unicode/graphic.go
+/usr/local/go/src/unicode/letter.go
+/usr/local/go/src/unicode/tables.go
+/usr/local/go/src/unicode/utf16/utf16.go
+/usr/local/go/src/unicode/utf8/utf8.go
+/usr/local/go/src/unique/canonmap.go
+/usr/local/go/src/unique/clone.go
+/usr/local/go/src/unique/handle.go
+/usr/local/go/src/weak/pointer.go
+0 /(
+0 C 
+0"%4&
+0"/%
+0&/J0
+0*%"&
+0*[0]*sync.entry[*internal/abi.Type,interface {}]
+0*[8]struct { key *reflect.structType; elem int }
+0*[]struct { key *reflect.structType; elem bool }
+0*func() func(func(*abi.Type, interface {}) bool)
+0*func(*sync.indirect[interface {},interface {}])
+0*struct { F uintptr; X0 *os.File; X1 *exec.Cmd }
+0*struct { F uintptr; X0 io.Writer; X1 *os.File }
+0*struct { ImportLine string; ConfigExpr string }
+0*struct { key netip.addrDetail; elem struct {} }
+0*struct { key string; elem *unicode.RangeTable }
+0,/,
+0,_,
+0-g-
+0.O.
+0//%6
+00/(0
+00=0
+01/(
+010+
+0123456789/dev/stdinreaddirentpidfd_openpidfd_waitexecerrdotowner diedterminated/setgroups--unsortedbaseConfigcomplex128t.Kind == vgetrandomnotifyListprofInsertstackLargeNot workermSpanInUseGOMAXPROCSstop tracedisablethpinvalidptrschedtracesemacquiredebug callheap index  <bad pc  flushGen  MB goal,  cleanups
+0123456789ABCDEF
+02/(
+02/,0
+08 $"
+09/(
+09/*
+09z0w
+0>/F
+0C/"
+0H35q
+0L/*
+0U@H
+0W/-
+0]/	2
+0github.com/pelletier/go-toml/v2/internal/tracker
+0i/$
+0r.A
+0rrA
+0u1M
+0u>D
+0uBH
+0uQH
+0u~L
+0vv4
+0x/F
+1	 	
+1$6%5
+1%4-3
+1*[8]struct { key *reflect.structType; elem bool }
+1*[]struct { key interface {}; elem interface {} }
+1*[]struct { key string; elem *template.Template }
+1*[]struct { key string; elem runtime.metricData }
+1*func() (unsafe.Pointer, syscall._Socklen, error)
+1*func() *sync.indirect[interface {},interface {}]
+1*func(*abi.Type, interface {}, interface {}) bool
+1*func(reflect.Value, reflect.Value) (bool, error)
+1*struct { F uintptr; X0 func() json.encoderFunc }
+1*struct { key runtime._typePair; elem struct {} }
+11eU%
+13333333
+1I9@H
+2*[8]struct { key interface {}; elem interface {} }
+2*[8]struct { key string; elem *template.Template }
+2*[8]struct { key string; elem runtime.metricData }
+2*[]*go.shape.struct { internal/sync.isEntry bool }
+2*[]*sync.indirect[*internal/abi.Type,interface {}]
+2*[]struct { key netip.addrDetail; elem struct {} }
+2*[]struct { key string; elem *unicode.RangeTable }
+2*atomic.Pointer[unique.node[net/netip.addrDetail]]
+2*func(*sync.node[*internal/abi.Type,interface {}])
+2*struct { F uintptr; X0 func(reflect.Value) bool }
+2*sync.HashTrieMap[*internal/abi.Type,interface {}]
+2-byfH
+2006t
+2006u&H)
+2050
+231|6
+2333
+2@)I
+2github.com/lovable/sandbox-cli/internal/taskrunner
+2mN#M
+2u?H
+2usL
+2}#s]H
+3	4H3
+3*[0]*go.shape.struct { internal/sync.isEntry bool }
+3*[0]*sync.indirect[*internal/abi.Type,interface {}]
+3*[8]struct { key netip.addrDetail; elem struct {} }
+3*[8]struct { key string; elem *unicode.RangeTable }
+3*[]struct { key runtime._typePair; elem struct {} }
+3*atomic.Pointer[unique.entry[net/netip.addrDetail]]
+3*func() *sync.node[*internal/abi.Type,interface {}]
+3*func() func(func(interface {}, interface {}) bool)
+3*func(*abi.Type, interface {}) (interface {}, bool)
+3*func(*runtime.statAggregate, *runtime.metricValue)
+3*func(*sync.entry[*internal/abi.Type,interface {}])
+3*func([]uint8, *syscall.SockaddrInet4) (int, error)
+3*func([]uint8, *syscall.SockaddrInet6) (int, error)
+3+4+3
+3,0l
+3-*s
+32*`
+3333
+333333
+33333333H!
+35*U
+3@P?Bh%g
+3ByA@"#
+3S458
+3o=q
+4#~&@
+4*56	R
+4*[8]struct { key runtime._typePair; elem struct {} }
+4*[]atomic.Pointer[unique.node[net/netip.addrDetail]]
+4*func() *sync.entry[*internal/abi.Type,interface {}]
+4*func(func(string) bool) (reflect.StructField, bool)
+4*func(interface {}, interface {}, interface {}) bool
+4*func(reflect.Value, ...reflect.Value) (bool, error)
+4*func(reflect.Value, ...reflect.Value) reflect.Value
+4*struct { key danger.TypeID; elem map[string][]int }
+40H9
+4:L9
+4<BHAjB
+4H3 4
+4H352
+4IH9
+4RHi
+4WH9
+4]3 4	3
+4k"h
+4qf9
+4rf9
+4s'H
+4u*H)
+4y!|
+5	6i
+5!?	
+5"3)
+5"L(
+5$8-70 .
+5$V(
+5$W(
+5$[(
+5%K	
+5&y	
+5'E,
+5'L,
+5(HR
+5(L(
+5(l	
+5)W&
+5)o1
+5*8 
+5*?'
+5+[(
+5,\2
+5-V(
+5-W(
+5/J.
+5/g4
+5/h4
+51Y	
+53A	
+53\,
+555555555
+56!	
+57&0
+57h4
+58L.
+58a#
+58{	
+5<N(
+5<U+
+5=V+
+5=s4
+5?&&
+5?S&
+5@8)7
+5@^	
+5BK(
+5BN(
+5BO(
+5BQ	
+5CK,
+5D;&
+5DU(
+5E	2
+5FY&
+5GF	
+5Gg4
+5H9G@u/
+5HK(
+5H\(
+5IO(
+5JN	
+5L!)
+5Lg	
+5ML&
+5MU(
+5M_	
+5P5	
+5P:	
+5P`	
+5Po&
+5QE&
+5QZ	
+5Rh4
+5U]_n
+5U~&
+5V		
+5V=+
+5VT(
+5WBYA
+5WN,
+5WV+
+5Wa0
+5YL	K
+5ZD0
+5Zk	
+5\$1
+5\D(
+5\T(
+5\k(
+5];	
+5^L(
+5a+&
+5a[(
+5bD(
+5b[&
+5bk(
+5c>	
+5cV(
+5cW(
+5dQ0
+5g$	
+5i6	
+5kM2
+5l 	
+5ni(
+5n}3
+5og4
+5ph%
+5pq*
+5ti(
+5u/H
+5u/H9
+5u3H
+5u|&
+5vO	
+5wz&
+5xN(
+5xp0
+5xq*
+5z	,
+5zc5
+5}[-
+5~7)
+5~K(
+5~~	
+6*[16]atomic.Pointer[unique.node[net/netip.addrDetail]]
+6*[]struct { key danger.TypeID; elem map[string][]int }
+6*atomic.Pointer[unique.indirect[net/netip.addrDetail]]
+6*func(*sync.indirect[*internal/abi.Type,interface {}])
+6*func(interface {}, interface {}) (interface {}, bool)
+60//8
+6070
+67_6
+6A_p
+6H9FH
+6Rq	
+6l3o
+6tzH9
+7 8	7
+7!h	
+7*[8]struct { key danger.TypeID; elem map[string][]int }
+7*func() *sync.indirect[*internal/abi.Type,interface {}]
+7*func(*abi.SwissMapType, unsafe.Pointer) unsafe.Pointer
+7*interface { Network() poll.String; PollFD() *poll.FD }
+7*sync.node[go.shape.interface {},go.shape.interface {}]
+70:M9
+76	5
+7Cxl2i5n
+7fD9
+8	7	
+8	7#8
+8	A,
+8 u7
+8"u/
+8#Xl
+8&;%z
+8'i(
+8*atomic.Pointer[go.shape.struct { unique.isEntry bool }]
+8*func(*abi.SwissMapType, unsafe.Pointer, unsafe.Pointer)
+8*sync.entry[go.shape.interface {},go.shape.interface {}]
+8+u	
+8-u"H
+8-uEH
+80:0
+80u+
+80u5
+80u8
+80urH
+84t6H9
+85s3H
+8>:A@
+8>G#g$
+8GMuB
+8S)u
+8UTu
+8UTu^
+8WAe
+8WITAuI
+8ZubH
+8Z~H
+8_t\
+8alu
+8buue
+8cpu.u
+8crasuA
+8deu[
+8falsu
+8noneuS1
+8npu
+8null
+8ofu
+8rang
+8sGE
+8singu
+8systu
+8true
+8viteu
+8weui
+9	:M
+9"$!
+9'tXD
+9*func(json.reflectWithString, json.reflectWithString) int
+9--u
+9:uFI
+9D$Tu
+9D:	9
+9P:	9
+9QX*r
+9S0uB
+9builu
+9cpu	
+9inst
+9lint
+9m,Y
+9q0s&H9J
+9rangu
+9sXt
+9star
+9test
+9w)f
+9w:H
+9wlA
+:	9*<
+:	<	
+:#uNH
+:*[]atomic.Pointer[go.shape.struct { unique.isEntry bool }]
+:--pou	fA
+:-poru
+:.u'
+:.uSH
+:5(+EW
+::uAI
+:H9F w
+:TZiff
+:fD9
+:t<H
+:true
+:u4H
+:writub
+:|1f
+;!@!
+;(/'&
+;)8	7
+;*[]*sync.entry[go.shape.interface {},go.shape.interface {}]
+;*func([]uint8, []uint8, syscall.Sockaddr) (int, int, error)
+;*go.shape.struct { Key reflect.Value; Value reflect.Value }
+;*sync.indirect[go.shape.interface {},go.shape.interface {}]
+;,u4H
+;0<0
+;0k/
+;0t{
+;0uoD
+;1t8
+;FALSu
+;Falsu
+;GMu)
+;TRUEt
+;Truet
+;Tt,
+;call
+;falsu
+;fileu
+;ift
+;nullu
+;orA
+;rHH
+;tcp4t
+;tcp6t
+;trueA
+;trueuI1
+;tt 
+;unix
+;witht
+;|8	7
+;}NH
+<!?!
+<".+,
+<$/t[H
+<$fI
+<$tI<&tE
+<(M9
+<*[0]*sync.entry[go.shape.interface {},go.shape.interface {}]
+<*[16]atomic.Pointer[go.shape.struct { unique.isEntry bool }]
+<-^D@C3FyE
+</t$
+</w5
+<0L9
+<6Rj
+<:L9
+<=9#
+<?u	
+<L9(
+<OM9
+<autogenerated>
+<cI9
+<g9;c
+<invalid reflect.Value>0123456789aAbBcCdDeEfF_exec: Stdin already setoperation not permittedinterrupted system calldevice or resource busyno space left on deviceoperation not supportedCPU time limit exceededprofiling timer expired.lovable/vite.config.tsreflectlite.Value.IsNilreflect.Value.Interfacereflect.Value.NumMethodindex out of range [%x]ReadMemStatsSlow (test)chan receive (nil chan)garbage collection scanSIGIO: i/o now possibleSIGSYS: bad system callmakechan: bad alignmentclose of closed channelunlock of unlocked lock) must be a power of 2
+<nil
+<nilA
+<rmH
+<s=H
+<t!A
+=	#1
+=	$&
+=	+(
+=	/.
+=	H.
+=	H3
+=	L	
+=	P	
+=	^2
+=!z.
+="=)
+="?+
+=#@,?
+=#G3
+=#H#
+=#L3
+=#X#
+=#e+
+=$!0
+=$#0
+=$)(
+=$6	
+=$8(
+=$=6
+=$R'
+=%@	
+=&1$
+=&L5
+=&O5
+=&f&
+=&y!
+='%1
+='@"
+='G2
+='V	U	V
+='Y'
+=(A'
+=(A4
+=(E-
+=(g%
+=(l'
+=)R0
+=)W!
+=)[2
+=)^	
+=)^'
+=)a#
+=*"&
+=*<0
+=*G,
+=*Z 
+=*func(reflect.Value, ...reflect.Value) (reflect.Value, error)
+=*struct { F uintptr; X0 *exec.Cmd; X1 chan<- exec.ctxResult }
+=*struct { F uintptr; X0 func(func() error); X1 func() error }
+=*sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]
+=*t,
+=+h!
+=+v'
+=+|,
+=,-$
+=,0'
+=,L1
+=,T0
+=-	0
+=-]6
+=-o'
+=-z+
+=.=0
+=//3
+=/K5
+=/Q5
+=/p!
+=1O%
+=1Y3
+=2T*
+=2l%
+=382
+=3>'
+=4,7
+=595
+=5U	
+=5^ 
+=5d5
+=5p$
+=68.
+=6:%
+=6<6
+=6D5
+=6F+
+=6X3
+=6d(
+=6h	
+=7	0
+=7I#
+=7L%
+=7q(
+=8:5
+=8S5
+=93	
+=9d'
+=9f'
+=9i'
+=9tau
+=:56
+=:G2
+=:c5
+=:s!
+=:t0
+=;)0
+=;/1
+=;>.
+=;B	
+=;I6
+=;T'
+=;s2
+=<=	
+=<Q(
+=<\-
+==.7
+==M5
+=>/+
+=>36
+=?7.
+=?U5
+=@/5
+=@x3
+=Au+
+=BK2
+=BR1
+=C!&
+=C33
+=Cl	
+=DA+
+=F+.
+=FG2
+=FI5
+=FW5
+=Fl!
+=G$6
+=G40
+=G@.
+=GE6
+=HG4
+=H\#
+=IQ0
+=Ij,
+=Io%
+=J1&
+=J36
+=J5)
+=JA6
+=Kw&
+=LF	
+=LX,
+=Lv%
+=Lw6
+=Mo2
+=Mr$
+=NP2
+=NQ%
+=Nn	
+=OH.
+=OH6
+=OR3
+=OV2
+=O`'
+=PU$
+=Pe2
+=Po!
+=Pr,
+=QK4
+=QV5
+=QW!
+=RH#
+=Ra!
+=Rh'
+=Rl4
+=Rm'
+=Rz$
+=S'-
+=S;3
+=S<'
+=SG5
+=SK1
+=Se!
+=T8"
+=T>"
+=TZ%
+=Tp2
+=Tx"
+=Tz!
+=U4$
+=US1
+=UW3
+=UX$
+=V;6
+=V=5
+=VY-
+=Va)
+=Vm%
+=W=)
+=W?+
+=W]6
+=Wl,
+=X#&
+=XN5
+=XU	
+=Xk(
+=Xt+
+=Y$2
+=Y36
+=YS'
+=YY#
+=Yu,
+=Yx,
+=Z^4
+=[Y-
+=[_!
+=[p0
+=[|'
+=\#7
+=\..
+=\F+
+=\g,
+=\x*
+=]C5
+=]F2
+=]X5
+=]q*
+=]x5
+=^3"
+=^<3
+=_"&
+=_9.
+=_B2
+=_P5
+=_l&
+=`56
+=ak2
+=b6.
+=bi&
+=c15
+=cF5
+=cM*
+=cr&
+=c{,
+=d$$
+=dq'
+=e),
+=eP2
+=ev,
+=e{'
+=f.!
+=f21
+=fC"
+=fR5
+=ft&
+=g53
+=h^(
+=i)	
+=iD%
+=j&1
+=jb!
+=k0'
+=l+-
+=lL/
+=lp'
+=m,5
+=mm4
+=nQ	
+=nY!
+=nw"
+=oN+
+=oT5
+=oc	
+=p)&
+=p="
+=pH2
+=pb#
+=qF6
+=q]-
+=qn!
+=qr!
+=rE	
+=rQ(
+=rb'
+=s<(
+=sd%
+=s}%
+=t`2
+=t`I
+=u<6
+=uC'
+=uE'
+=ug,
+=uh%
+=us+
+=ux$
+=u|H
+=v,7
+=vh 
+=vz&
+=wD	
+=wP2
+=wT!
+=w\0
+=x>$
+=xH5
+=xK5
+=xV5
+=xX#
+=xp!
+=xy+
+=y]#
+=yq4
+=zC6
+=zv&
+={.'
+={>(
+={\!
+={ch
+={l/
+={m,
+={|!
+=|=0
+=|I6
+=}D5
+=}R+
+=}R3
+=}{(
+=~L5
+=~R0
+=~V+
+>	O	
+>	Q$h
+> [  ]
+>"	)
+>*atomic.Pointer[internal/sync.node[interface {},interface {}]]
+>*sync.HashTrieMap[go.shape.interface {},go.shape.interface {}]
+>*sync.entry[go.shape.*internal/abi.Type,go.shape.interface {}]
+>..t+H9
+>.t8H
+>.u4
+>0?0
+>0uRH
+>H+zhH
+>Zt 
+>n'm
+>rangu
+>ruu
+?*atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }]
+?*atomic.Pointer[internal/sync.entry[interface {},interface {}]]
+?*func(*abi.SwissMapType, unsafe.Pointer) (unsafe.Pointer, bool)
+?/"=~Fr
+?0uOH
+?333333
+?=@	!
+???pc=  G125625nanSunMonTueWedThuFriSatJanFebMarAprMayJunJulAugSepOctNovDecUTCdup'"'inf"""lennotadxaesshaavxfmanet'''trueuinteEpPwaitreadseekopenstatsyncfilePWD=PATHquitjust.mts.mjs.cjs.ctsboolint8chanfunccallkindArgs on Call in  != allgallprootitabsbrkidledead is LEAFheapbase at Has used of ) =  <==GOGC] = s + ,r2= pc=+Inf-Inf: p=cas1cas2cas3cas4cas5cas6
+?Arj
+?anu
+?ffffff
+?oruTH
+?r]H
+?rgH
+?s	A
+?s H
+?s$H
+?s&H
+?s'H
+?s(H
+?s)L
+?s0H
+?s?H
+?sNH
+?sQH
+?sjb
+?u9H
+?w	H
+?w)H
+?w,H
+?wWH
+?wqH
+?~	H
+@ H9
+@ Ik
+@!?2
+@#?,
+@$?&
+@$J$
+@&?6
+@'?(
+@*[]atomic.Pointer[internal/sync.node[interface {},interface {}]]
+@*struct { f func(); once sync.Once; valid bool; p interface {} }
+@,? 
+@-?!
+@.?(
+@0I9
+@0L9
+@7?(
+@81t#@
+@8?)
+@8H)
+@8L9
+@8~Ru
+@<?(
+@<?2
+@<?6
+@<?@
+@>?)
+@>?,
+@>?5
+@@L9
+@B?,
+@E? @
+@E?0@
+@GO?
+@M9,$
+@OQ]=
+@P?(
+@PH=
+@Q?5
+@aQY
+@e?(
+@eBeB
+@g?&
+@hI9
+@n?&
+@p?*
+@p?<
+@rWI
+@s.L
+@t!H
+@u?2
+@uFH
+@v:k
+@vLI
+@w	H
+@wRH
+@x7|
+@x?'
+@}$D
+@}gD
+@}hE
+@}kE
+@}tE
+@}wH
+@~1H
+@~6I
+A B	A#B	A
+A H9
+A!D!
+A"B5A
+A*[]*sync.entry[go.shape.*internal/abi.Type,go.shape.interface {}]
+A*[]atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }]
+A*func(*abi.SwissMapType, *maps.Map, uintptr, unsafe.Pointer) bool
+A*func([]uint8, []uint8, *syscall.SockaddrInet4) (int, int, error)
+A*func([]uint8, []uint8, *syscall.SockaddrInet6) (int, int, error)
+A*go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }
+A*struct { F uintptr; X0 func(reflect.Value, reflect.Value) bool }
+A*sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]
+A0fE
+A8?,
+A@L9C@u
+AMVS
+ATH=
+AUDFC
+A]DG
+A`H9
+Accept
+AdBVA
+AddDate
+AddParseTree
+Addr
+Address
+After
+Align
+Align_
+AmbientCaps
+AppendBinary
+AppendDecode
+AppendEncode
+AppendFormat
+AppendText
+Ar	@
+Args
+As)H
+AsIE
+AsTime
+AssignableTo
+Atim
+AttachChild
+AvailableBuffer
+Aw7H
+B 	f
+B!@H
+B%A"B
+B%A+B
+B*[0]*sync.entry[go.shape.*internal/abi.Type,go.shape.interface {}]
+B*[16]atomic.Pointer[internal/sync.node[interface {},interface {}]]
+B*atomic.Pointer[internal/sync.indirect[interface {},interface {}]]
+B*struct { F uintptr; X0 *int64; X1 *error; X2 *bool; X3 *poll.FD }
+B*struct { F uintptr; X0 chan exec.goroutineStatus; X1 chan error }
+B-A	B9A
+B-A	BEA
+B/A%B5A
+B0fD
+B5yr
+B8H9
+B@H9
+B@Hc
+B@L9
+BFBN
+BHH9
+BJA	B:A
+Bad varintGC forced
+Base
+Before
+BfA9
+Bits
+Blksize
+Blocks
+Bool
+BoolFunc
+BoolVar
+BranchNode
+Buffer
+Bytes
+B}A*BVA
+C	D!C
+C	Z	
+C H9
+C")f
+C#F	E
+C$N6M
+C*[16]atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }]
+C0fE
+C0fH
+C4~~o@
+C946+5
+C@H9
+C@L9G@u
+CCCCCCCCCCCCCCCC
+CHH9
+CU4V+U
+CV@@
+Call
+CallSlicL9'u
+CanAddr
+CanComplex
+CanConvert
+CanFloat
+CanInt
+CanInterface
+CanSeq
+CanSeq2
+CanSet
+CanUint
+Cancel
+Cb.2
+Cc!f
+CgroupFD
+ChSTt
+Chain
+ChanDir
+Changed
+Chdir
+CheckExpression
+Child
+Children
+Chmod
+Chown
+Chroot
+Clear
+Clock
+Clone
+Cloneflags
+Close
+Cmds
+CombinedOutput
+Command(L
+Common
+Comparable
+Compare
+CompareAndDelete
+CompareAndSwap
+CompareAndSwapNoWB
+CompareAndSwapRelease
+Complex
+Complex128
+ConfigExpr
+ContainerID
+Control
+Convert
+ConvertibleTo
+Copy
+CopyList
+CopyPipe
+CoreDump
+Credential
+Ctim
+Ctty
+CuXH
+Cupv]dB
+C}DtC
+D R 
+D#(L
+D$ "
+D$ 1
+D$ @
+D$ A
+D$ D
+D$ H
+D$ H)
+D$ H9
+D$ Hc
+D$ Hi
+D$ I
+D$ I)
+D$ L
+D$ M
+D$ ]
+D$ f
+D$ fI
+D$"1
+D$"D
+D$#H
+D$#e+H
+D$$-H
+D$$A
+D$$D
+D$$E
+D$$H
+D$$Hc
+D$$L
+D$$u$L
+D$%D
+D$&A
+D$&D
+D$&H
+D$&I
+D$&L
+D$&M
+D$&l
+D$'H
+D$'L
+D$(1
+D$(@
+D$(A
+D$(D
+D$(E1
+D$(F
+D$(H
+D$(H)
+D$(H9
+D$(H9Z
+D$(Hc
+D$(I
+D$(L
+D$(L!
+D$(M
+D$(f
+D$(fI
+D$(p
+D$(r
+D$(u+
+D$)L
+D$,E
+D$,H
+D$,Hc
+D$-D
+D$-H
+D$-L
+D$.H
+D$.I
+D$/D
+D$/E1
+D$/H
+D$/I
+D$0%
+D$01
+D$0@
+D$0A
+D$0D
+D$0E1
+D$0H
+D$0H9
+D$0H9H
+D$0H=
+D$0Hc
+D$0I
+D$0J
+D$0K
+D$0L
+D$0Li
+D$0M
+D$0M9
+D$0f
+D$0t[
+D$49
+D$4E
+D$4H
+D$4L
+D$4O
+D$5H
+D$6D
+D$7L
+D$8 Go:
+D$81
+D$8@
+D$8A
+D$8D
+D$8E
+D$8H
+D$8H)
+D$8H9
+D$8Hc
+D$8I
+D$8I9
+D$8L
+D$8L9
+D$8M
+D$8M9
+D$8f
+D$8u
+D$:H
+D$:deny
+D$< A
+D$<H
+D$<L
+D$?H
+D$?allof
+D$?deny
+D$@ m
+D$@1
+D$@@
+D$@A
+D$@D
+D$@E1
+D$@H
+D$@H9
+D$@Hc
+D$@Hi
+D$@I
+D$@I9
+D$@I9p
+D$@J
+D$@L
+D$@L)
+D$@L9
+D$@M
+D$@Mi
+D$@N
+D$@f
+D$@func
+D$B=
+D$BD
+D$BH
+D$CL
+D$Callo
+D$Cw
+D$D(
+D$D1
+D$DB
+D$DD
+D$DD9
+D$DH
+D$DI
+D$DL
+D$Df
+D$E@
+D$EH
+D$EL
+D$FA
+D$FD
+D$FH
+D$FL
+D$Ff
+D$G@
+D$GA
+D$GD
+D$GD8
+D$GH
+D$GH9
+D$GI
+D$GL
+D$G]H
+D$GfI
+D$Gw
+D$H1
+D$H@
+D$HA
+D$HB
+D$HD
+D$HH
+D$HH)
+D$HH9
+D$HI
+D$HK
+D$HL
+D$HL9
+D$HM
+D$HM9
+D$Hf
+D$HfA
+D$H}
+D$Je(
+D$KL
+D$LB
+D$LH
+D$LL
+D$MH
+D$O0
+D$P1
+D$P@
+D$PA
+D$PA)P
+D$PD
+D$PE
+D$PE1
+D$PH
+D$PH)
+D$PH9
+D$PI
+D$PL
+D$PL9
+D$PM
+D$PM9
+D$PO
+D$Pf
+D$PtrD
+D$UH
+D$X1
+D$X@
+D$X@83
+D$XA
+D$XD
+D$XH
+D$XH9
+D$XHc
+D$XI
+D$XI9
+D$XK
+D$XL
+D$XL9
+D$XM
+D$XN
+D$XO
+D$Xf
+D$Yf
+D$\H
+D$]I
+D$_L
+D$`	
+D$`1
+D$`@
+D$`A
+D$`D
+D$`E
+D$`H
+D$`H9
+D$`Hc
+D$`I
+D$`K
+D$`L
+D$`L)
+D$`L9
+D$`M
+D$`N
+D$`f
+D$dH
+D$eH
+D$gH
+D$h1
+D$h@
+D$hA
+D$hD
+D$hH
+D$hH)
+D$hH9
+D$hH98
+D$hH9P@w
+D$hHc
+D$hI
+D$hJ
+D$hL
+D$hL9
+D$hM
+D$hN
+D$hf
+D$i1
+D$mD
+D$mL
+D$nA
+D$p	
+D$p1
+D$p@
+D$pA
+D$pD
+D$pE
+D$pE1
+D$pH
+D$pH)
+D$pH9
+D$pH9H
+D$pI
+D$pI)
+D$pL
+D$pL9
+D$pL9A
+D$pM
+D$pN
+D$pO
+D$pf
+D$s0
+D$tH
+D$uma
+D$wxH
+D$x1
+D$x@
+D$xA
+D$xD
+D$xH
+D$xH+
+D$xH9
+D$xI
+D$xI9
+D$xL
+D$xL9
+D$xM
+D$xM9
+D$xN
+D$xf
+D$yD
+D$|H
+D$~H
+D$~L
+D%X$
+D&xE
+D*[]*go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }
+D*atomic.Pointer[internal/sync.node[*internal/abi.Type,interface {}]]
+D*sync.HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]
+D,{8
+D-%*
+D-J	
+D.:0
+D4DI
+D9BX
+D9[:
+D9[Xw
+D:!o
+D>*E
+D@Ed
+DDDD
+DTH)L
+Data
+DataChecked
+Date
+Deadline
+Decl
+Decode
+DecodeString
+DecodedLen
+DefValue
+DefinedTemplates
+Delete
+Delims
+Dk(s
+Dm@e
+Done
+Ds9H
+Ds|H
+Dump
+Duration
+DurationVar
+DwZhN"
+Dw`z
+Dy6?
+E Q 
+E!I!
+E"i!I$
+E&f!I
+E*[0]*go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }
+E*atomic.Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]
+E*f%s
+E*func([]uint8, []uint8, int) (int, int, int, syscall.Sockaddr, error)
+E*func(string, reflect.Value, ...reflect.Value) (reflect.Value, error)
+E.g)
+E4f//
+E9NF
+E='W
+E@|o
+EZ7I
+E`F	
+EcT)
+Ef#-
+Elem
+ElemOff
+ElseList
+Embedded
+Enable
+Enabled
+Encode 
+EncodeToString
+EncodedLen
+EnterArrayTable
+EnterKeyValue
+EnterTable
+Entry
+Environ
+EoFaEoFiE1F8
+Equal
+Error
+ErrorContext
+ErrorHandling
+Errors
+Et&A
+Et)A
+EtTA
+EuIH
+Examples:
+Execute
+ExecuteTemplate
+ExitCode
+ExitKeyValue
+ExitStatus
+Exited
+ExportedMethods
+Expression
+ExtraFiles
+E}aj
+F!!"
+F#VL
+F*[]atomic.Pointer[internal/sync.node[*internal/abi.Type,interface {}]]
+F*struct { F uintptr; X0 *parse.RangeNode; X1 *template.state; X2 int }
+F4?F
+F<?Q
+FHH9
+FHL9
+Family
+Fchdir
+Fchmod
+Fchown
+Feature
+FiYW
+Field
+FieldAlign
+FieldAlign_
+FieldByIndex
+FieldByIndexErr
+FieldByName
+FieldByNameFunc
+FieldStack
+Fields
+File
+FileLine
+Flag
+Flags
+Float
+Float64
+Float64Var
+Floats H@
+Flowinfo
+Foreground
+Format 
+FromParser
+Fstat
+Fstatat
+Fsync
+Func
+FuncType
+Funcs
+Function
+G	H-"
+G,f'
+G-;eU
+G0I9F0t=
+G8fD
+GA@s}
+GCAssistTime
+GCData
+GCDedicatedTime
+GCIdleTime
+GCPauseTime
+GCTotalTime
+GH9Z
+GODEBUG=1
+GODEBUG=H9
+GODEBUG=execwait=2 detected a leaked exec.Cmd created by:
+GcSlice
+GdeT
+Genuu
+GetsockoptInt
+GidMappings
+GidMappingsEnableSetgroups
+GoString
+Group
+Groups
+Grow
+Gv+ep
+Gw)A
+H	8K	u
+H 9K u&H
+H H9K 
+H H9K u
+H H9K u(H
+H H9K uHH
+H Ik
+H#3H
+H%G+N
+H'2,
+H(H+H0H
+H(H9
+H(H9K(u
+H(M)
+H*[16]atomic.Pointer[internal/sync.node[*internal/abi.Type,interface {}]]
+H*atomic.Pointer[internal/sync.indirect[*internal/abi.Type,interface {}]]
+H*func(runtime.goroutineProfileState, runtime.goroutineProfileState) bool
+H+4$dH
+H+5`a0
+H+:H
+H+H H+H(H
+H+P H
+H+P8H
+H08K0u
+H0H+
+H0H9K0u
+H18K1
+H2O2
+H8D)
+H8H)
+H8H+
+H8H9K8
+H8fE
+H91w
+H92t
+H92t9H9rHt3H
+H92w
+H95);&
+H950} 
+H95Ci
+H95Yc.
+H95fo
+H95l
+H95y`#
+H9=cr6
+H9A(t
+H9A0t
+H9A0u
+H9AH
+H9APt
+H9Apw
+H9Bpw
+H9BpwF@
+H9D$ tbH
+H9D$8A
+H9D$8s
+H9D$XA
+H9F u4H
+H9F uFH
+H9FH
+H9GP
+H9H(
+H9H@v_H
+H9HP|
+H9J u`D
+H9J8
+H9J@
+H9K(u
+H9K0u
+H9K@
+H9K`
+H9K`t H
+H9L$0uAH
+H9L$ht<H
+H9N0u
+H9P(
+H9P0
+H9P0u
+H9P0u<H
+H9P8uUH
+H9P@
+H9PH
+H9Ph
+H9Q t
+H9Q@
+H9S 
+H9S(
+H9S0
+H9S@
+H9S@t
+H9SH
+H9SHu!H
+H9S`
+H9T$0
+H9T$@u
+H9V@
+H9X(v
+H9X0tO
+H9X@
+H9XP
+H9XX~
+H9Xhu
+H9Z u
+H9Z(w
+H9p(
+H9r 
+H9r u
+H9t$
+H9w t
+H9w@u
+H; w
+H=@B
+H@Hc
+H@L)
+H@L9
+H@M9
+HHH9KH
+HI6.
+HPH9
+HPH9KPu
+HXH9KX
+HXL)
+Halen
+HasName
+HasTag
+Hash
+HashMightPanic
+Hasher
+Hatype
+Hc	H
+Hc	J
+HcD$
+HcD$ 
+HcD$4
+HcL$
+HcL$@H
+HcL$D
+HcPDH
+HcT$,H
+HhH9
+HhH9Kh
+Hj`F
+Ho^+
+HostID
+Hour
+Hours
+I	J)
+I	J,
+I	x	F
+I*struct { F uintptr; X0 reflect.Type; X1 go.shape.int64; X2 *[5]uintptr }
+I0H)
+I3.)7,
+I8H9K8
+I9>w
+I9F 
+I9H0u
+I9N0tVH
+I9N0tgH
+I9Nh
+I9Qpu	I9qh
+I9Z u
+I9x(t
+I9x(u
+I@L9K@u
+IHH9KH
+IIIIA
+ISOWeek
+I`f9
+IbJ	
+Ident
+IdleTime
+Idrss
+IfL)KQN
+IfaceIndir
+Ifindex
+Ij#m	
+Implements
+ImportLine
+InCount
+InSlice
+Inblock
+IncNonDefault
+Index
+IndirectElem
+IndirectKey
+Info	
+Init
+Init64
+Initialized
+Int64
+Int64Var
+IntRegArgAddr
+IntVar
+Inter
+InterfaceData
+InterfaceType
+Ints
+IoJ#
+IsAssign
+IsBlank
+IsBoolFlag
+IsDST
+IsDir
+IsDirectIface
+IsEmbedded
+IsExported
+IsFloat
+IsInt
+IsLast
+IsNil
+IsStream
+IsUint
+IsValid
+IsVariadic	
+IsZero
+Isrss
+Iterator
+Ixrss
+J #f	
+J L9
+J!M!
+J(H9
+J*func(*abi.SwissMapType, *maps.Map, unsafe.Pointer) (unsafe.Pointer, bool)
+J*struct { F uintptr; X0 reflect.Type; X1 go.shape.uint64; X2 *[5]uintptr }
+J0H9O0u;H
+J0f9J2vmH
+J8H9
+J8L)
+J@H9
+JDHc
+JIxX
+JXH9
+J[I	L
+Januu!D
+JfA9
+JjL	K
+JtH8
+Ju@H
+J~H7
+K H)
+K%oD
+K)C_
+K*func([]uint8, []uint8, int, *syscall.SockaddrInet4) (int, int, int, error)
+K*func([]uint8, []uint8, int, *syscall.SockaddrInet6) (int, int, int, error)
+K*go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }
+K8H9H8
+K@H9
+KeepComments
+Kill
+Kind
+Kind_
+L K+L
+L!KN
+L$	I
+L$ 1
+L$ @
+L$ D
+L$ G
+L$ H
+L$ H)
+L$ H)Y@
+L$ H9
+L$ Hc
+L$ I
+L$ K
+L$ L
+L$ L9
+L$ M
+L$ f
+L$ fH
+L$"@8
+L$"A
+L$$9
+L$$D
+L$$H
+L$$L
+L$&H
+L$'H
+L$'L
+L$(1
+L$(@
+L$(A
+L$(D
+L$(G
+L$(H
+L$(H!
+L$(H)
+L$(H+A
+L$(H9
+L$(I
+L$(I)
+L$(K
+L$(L
+L$(N
+L$(O
+L$(f
+L$,H
+L$,Hc
+L$,L
+L$.D
+L$.H
+L$.L
+L$/D
+L$/H
+L$/f
+L$01
+L$09
+L$0@
+L$0A
+L$0D
+L$0E1
+L$0H
+L$0H)
+L$0H1
+L$0H9
+L$0H9A
+L$0H=
+L$0I
+L$0L
+L$0L)
+L$0L9
+L$0M
+L$0M)
+L$0M9
+L$0N
+L$0f
+L$0t
+L$1@
+L$1D
+L$1f
+L$3@
+L$3H
+L$4D
+L$4H
+L$71
+L$7@
+L$7A
+L$7H
+L$7I
+L$7L
+L$81
+L$8A
+L$8D
+L$8E
+L$8E1
+L$8H
+L$8H)
+L$8H9
+L$8I
+L$8J
+L$8L
+L$8M
+L$8M)
+L$8M9
+L$8f
+L$:L
+L$<H
+L$<f
+L$<t
+L$>H
+L$@1
+L$@@
+L$@A
+L$@D
+L$@E
+L$@H
+L$@H)
+L$@H9
+L$@I
+L$@I!
+L$@J
+L$@L
+L$@M
+L$@M9
+L$@O
+L$@f
+L$AA
+L$AH
+L$CD
+L$CH
+L$CI
+L$D1
+L$DH
+L$FD
+L$FE
+L$FH
+L$FL
+L$GD
+L$GH
+L$GL
+L$H1
+L$H@
+L$HA
+L$HD
+L$HH
+L$HH)
+L$HH9
+L$HHc
+L$HI
+L$HI)
+L$HI9Qhu
+L$HK
+L$HL
+L$HM
+L$HO
+L$Hf
+L$L9
+L$LA
+L$LL
+L$OH
+L$P1
+L$P@
+L$PA
+L$PD
+L$PE1
+L$PH
+L$PH)
+L$PH9
+L$PI
+L$PK
+L$PL
+L$PL9
+L$PM
+L$PO
+L$Pf
+L$PfA
+L$TH
+L$Vf
+L$X1
+L$X8
+L$X9
+L$X@
+L$XA
+L$XE1
+L$XH
+L$XH)
+L$XH9
+L$XHc
+L$XI
+L$XJ
+L$XL
+L$XL9
+L$XM
+L$XM9
+L$Xf
+L$Y@
+L$YH
+L$YI
+L$`1
+L$`@
+L$`D
+L$`E
+L$`E1
+L$`H
+L$`H)
+L$`H+
+L$`H9
+L$`Hi
+L$`I
+L$`J
+L$`K
+L$`L
+L$`M
+L$`f
+L$gE
+L$h1
+L$h@
+L$hA
+L$hD
+L$hE
+L$hH
+L$hH+
+L$hH9
+L$hI
+L$hI!
+L$hI)
+L$hK
+L$hL
+L$hM
+L$hN
+L$hO
+L$hf
+L$htxL
+L$lH
+L$lI
+L$n@
+L$nD
+L$p1
+L$p@
+L$pA
+L$pD
+L$pF
+L$pH
+L$pH)
+L$pH9
+L$pI
+L$pIc
+L$pK
+L$pL
+L$pL9
+L$pL9N
+L$pM
+L$pM)
+L$pM9
+L$pO
+L$pf
+L$sH
+L$tH
+L$x1
+L$xA
+L$xD
+L$xE
+L$xG
+L$xH
+L$xH)
+L$xH9
+L$xHc
+L$xI
+L$xI9
+L$xL
+L$xM
+L$xM9
+L$xN
+L$xf
+L$xu9H
+L$xu~H
+L$}L
+L&K@
+L'K+I
+L(knN
+L*func(*unique.node[net/netip.addrDetail]) *unique.node[net/netip.addrDetail]
+L+K{)
+L3H L
+L4DH
+L4FH
+L9A@
+L9C8u$L
+L9G8u#L
+L9K8u$L
+L9L$Xt$H
+L9N8
+L9N@
+L9X8
+L9YPA
+L>(A
+L>)E
+LatinOffset
+Layout
+LayoutElem
+Length
+Line
+Linger
+List
+Load
+LoadAcquire
+LoadAndDelete
+LoadOrStore
+Local
+Location
+Lock
+Lookup
+L|]C5;
+M#"I	
+M9,$
+M9,$u
+M9\$
+M9c0
+MFU=
+MPu8
+M_N	
+Majflt
+MapIndex
+MapIter.Value called before Nextreflect: NumIn of non-func type reflect.Value.Grow: negative lenslice bounds out of range [::%x]slice bounds out of range [:%x:]slice bounds out of range [%x::]SIGFPE: floating-point exceptionSIGTTOU: background write to tty (types from different packages)end outside usable address spaceruntime: fixalloc size too largeinvalid limiter event type foundscanstack: goroutine not stoppedscavenger state is already wiredsweep increased allocation countremovespecial on invalid pointergetWeakHandle on invalid pointerruntime: root level max pages = _cgo_pthread_key_created missingruntime: sudog with non-nil elemruntime: sudog with non-nil nextruntime: sudog with non-nil prevruntime: mcall function returnednon-Go code disabled sigaltstackruntime: newstack called from g=runtime: stack split at bad timepanic while printing panic value28421709430404007434844970703125: day-of-year does not match daysync: Unlock of unlocked RWMutexuse of closed network connectionin literal false (expecting 'a')in literal false (expecting 'l')in literal false (expecting 's')in literal false (expecting 'e')date time should have a timezonecouldn't parse binary number: %wreflect: NumOut of non-func typeinitial table capacity too large" not supported for cpu option "basic string not terminated by "malformed character constant: %sinvalid value %q for flag -%s: %vbytes.Buffer.Grow: negative counttoo many levels of symbolic linksreflect: slice index out of rangereflect: NumOut of non-func type  of method on nil interface valuereflect: Field index out of rangereflect: array index out of rangereflect.Value.Equal: invalid Kind to pointer to array with length slice bounds out of range [%x:%y]SIGCHLD: child status has changedSIGTTIN: background read from ttySIGXFSZ: file size limit exceededbase outside usable address spaceruntime: memory allocated by OS [misrounded allocation in sysAlloc/cpu/classes/gc/pause:cpu-seconds/cpu/classes/gc/total:cpu-seconds/gc/limiter/last-enabled:gc-cycle/memory/classes/heap/stacks:bytes/memory/classes/heap/unused:bytes/sched/pauses/stopping/gc:seconds/sched/pauses/total/other:secondsmin must be a non-zero power of 2runtime: failed mSpanList.insert runtime: epollcreate failed with runtime: morestack on g0, stack [runtime: castogscanstatus oldval=stoplockedm: inconsistent lockingfindrunnable: negative nmspinningfreeing stack not in a stack spanstackalloc not on scheduler stackruntime: goroutine stack exceeds runtime: text offset out of rangetimer period must be non-negativetoo many concurrent timer firingsruntime: name offset out of rangeruntime: type offset out of range142108547152020037174224853515625710542735760100185871124267578125sync: RUnlock of unlocked RWMutexskip everything and stop the walkwaiting for unsupported file typeinvalid timezone offset charactercouldn't parse decimal number: %wnumber cannot end with underscorecannot index slice/array with nilconcurrent map read and map writetable must have positive capacityGODEBUG: no value specified for "slice offset larger than int (%d)  lovable-exec dev -- --port 3000
+MapKeys
+MapRange
+MapType
+MarkerOnly
+MarshalBinary
+MarshalJSON
+MarshalText
+Maxrss
+MbP?H
+Mc	L
+Mcount
+MeSTu
+Message
+Method
+MethodByName
+Methods
+Microseconds
+Milliseconds
+Minflt
+Minute
+Minutes
+MissingField
+MissingTable
+ModTime
+Mode
+Moff
+Mondu
+Month
+Msgrcv
+Msgsnd
+Mtim
+Mtyp
+Mu@H
+N	M(N;
+N$H%G
+N%)	
+N%G n
+N*func(*unique.entry[net/netip.addrDetail]) *unique.entry[net/netip.addrDetail]
+N*unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+N0H9
+N1Z!YNZ
+N@H)
+N@H9
+N@H9H@umH
+NArg
+NFlag
+NIC=L
+NPM)
+NXM)
+Name
+Nano
+Nanosecond
+Nanoseconds
+NdP#
+NeedKeyUpdate
+Network
+Next
+NextExpression
+Nivcsw
+Nlink
+NoSetGroups
+Noctty
+Node
+NodeAt@
+NodeType
+Nodes
+Nsec
+Nsignals
+Nswap
+Nu	H
+NumField
+NumIn
+NumOut
+Nvcsw
+O*struct { F uintptr; X0 *int; X1 *bool; X2 func(reflect.Value, reflect.Value) }
+O*unique.entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+O*weak.Pointer[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+O0L9J |fH
+OInH
+OTxa
+OXQ	
+O`I)
+Offset
+Onoff
+Opaque
+Option
+Ou.I
+Oublock
+OutCount
+OutSlice
+Output
+OverflowComplex
+OverflowFloat
+OverflowInt
+OverflowUint
+Override
+P	8S	u]
+P	O 
+P	O#
+P	O;
+P	OVRW
+P	Ol
+P !$(
+P 9S ucH
+P H9
+P H9S u
+P H9S u7H
+P H9S ulH
+P H9S uqH
+P Hk
+P Ik
+P Mk
+P!O4
+P"O2
+P$O(
+P&O(
+P(H9S(
+P(H9S(t
+P(H9S(u
+P(H9S(u6H
+P(H9S(ub
+P(M)
+P(M9
+P*go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts)
+P+8S+t
+P-O(
+P.Q.
+P/O2
+P0H9
+P0H9S0
+P0H9S0u
+P0L)
+P0f9S0u
+P1O\
+P1r'
+P2H9
+P2O-
+P2`2
+P2f9S2u
+P2f9V2
+P2fA
+P49S4u:H
+P7O(
+P7O2
+P7O6
+P88S8u^
+P8H)
+P8H9
+P8H9P(s
+P8H9V8t
+P98S9
+P98S9uUH
+P<O4
+P<O@
+P@H)
+P@H9PX
+P@H9S@t
+P@H9S@u/H
+P@H9S@u[H
+PCO2
+PHH9
+POO+
+PPH9SP
+PPH9SPu
+PPH9SPuuH
+PXH+PPH
+PXH9SX
+PXH9SXu
+PXH9SXukH
+PY8SY
+P\O_
+P]O*
+P_O7
+P`H9
+P`I9
+P`f9P2tgH
+Package
+Parse
+ParseFS
+ParseFiles
+Parsed
+Path
+Perm
+Pgid
+PhO2
+PidFD
+Pipe
+PkgPath
+Pkttype
+Pointer
+Pointers
+PollFD
+Pop	
+Port
+Position
+PpH9Sp
+PpH9SpuWH
+PpO,
+Pread
+Print
+PrintDefaults
+Process
+ProcessState
+Protocol
+PtrBytes
+PtrType
+Ptrace
+Ptrs
+PuIL
+PuO,
+Push
+PushAndChain
+PutSlot
+Pwrite
+PxH9
+PxO3
+Py8Sy
+P~uu\T
+Q	W	
+Q 9S u
+Q H9S u/
+Q(8S(u&
+Q*atomic.Pointer[internal/sync.entry[go.shape.interface {},go.shape.interface {}]]
+Q0:/H
+Q0H9
+Q0H9S0u
+Q2_2
+Q2f9
+Q8H+Q(
+Q8H9Q
+Q8H9S8u
+Q8fE
+Q@H)
+Q@H9S@u
+Q^3-
+Q^R	
+QkT)S
+QpH9
+QpM9Qhu
+Quoted
+R*[]*unique.entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+R*func(*sync.node[interface {},interface {}]) *sync.node[interface {},interface {}]
+R*func(*unique.node[net/netip.addrDetail], *unique.node[net/netip.addrDetail]) bool
+R*struct { f func() bool; once sync.Once; valid bool; p interface {}; result bool }
+R*unique.canonMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+R*unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+R.].
+R;uD
+R@Mc
+REC)L
+RLock
+RLocker
+RUnlock	
+RXH9
+RY	Z
+Range
+RawControl
+RawRead
+RawWrite
+Rdev
+Read
+ReadAt
+ReadByte
+ReadDir
+ReadDirent
+ReadFrom
+ReadFromInet4
+ReadFromInet6
+ReadMsg
+ReadMsgInet4
+ReadMsgInet6
+ReadRune
+ReadString
+ReadVarint
+Readdir
+Readdirnames
+Recv
+Refill
+Release
+Reseed
+Reset
+ReturnIsPtr
+Root
+Round
+RuntimeError
+R|#H
+S H9P u@H
+S ^ 
+S!H9
+S$	#
+S$9Q$
+S(@0
+S(H9P(uM
+S(H9P(uXH
+S(H9P(uaH
+S(Hk
+S(I1
+S*[0]*unique.entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+S*func(*abi.SwissMapType, *maps.Map, uintptr, unsafe.Pointer) (unsafe.Pointer, bool)
+S*unique.uniqueMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+S*~+
+S.R_PD;
+S/\)
+S0H9P0ug
+S8H9P8
+S8H9P8t
+S@H9P@
+S@H9P@u[H
+SXL)
+SX\)
+S`L)
+Scan
+ScavengeAssistTime
+ScavengeBgTime
+ScavengeTotalTime
+Scope_id
+Scripts
+Second
+Seconds
+Seek
+Send
+Seq2
+SetBlocking
+SetBool
+SetBytes
+SetCap
+SetComplex
+SetDeadline
+SetFloat
+SetInt
+SetIterKey
+SetIterValue
+SetLen
+SetMapIndex
+SetPointer
+SetPos
+SetReadDeadline
+SetTree
+SetUint
+SetWriteDeadline
+SetZero
+Setctty
+Setpgid
+Setsid
+SetsockoptByte
+SetsockoptIPMreq
+SetsockoptIPMreqn
+SetsockoptIPv6Mreq
+SetsockoptInet4Addr
+SetsockoptInt
+SetsockoptLinger
+ShH9PhuaH
+Shape
+ShouldEnable
+ShouldPrint
+Shutdown
+Signal
+Signaled
+Size
+Size_
+Skuz
+Slice
+Slice3
+SlotSize
+SpH9Pp
+Stack
+Start
+Stat
+Stderr
+StderrPipe
+Stdin
+Stdout
+StdoutPipe
+Stime
+Stop
+StopSignal
+Stopped
+Store
+StoreRelease
+Strict 
+Stride
+String
+Struct	
+StructType
+Success
+Swap
+Sync
+SysFile
+SysProcAttr
+SysUsage
+Syscall
+SyscallConn
+Sysfd
+SystemTime
+T".!/"
+T"d&c+6
+T$ 1
+T$ 9T$$
+T$ @
+T$ A
+T$ C
+T$ D
+T$ E1
+T$ H
+T$ H)
+T$ H+:
+T$ H9
+T$ I
+T$ L
+T$ L)
+T$ L9
+T$ f
+T$#H
+T$#L
+T$$H
+T$%E	
+T$%H
+T$&H
+T$&K
+T$'H
+T$'L
+T$(1
+T$(D
+T$(H
+T$(H)
+T$(H+J
+T$(H9
+T$(I
+T$(Ic
+T$(J
+T$(K
+T$(L
+T$(M
+T$(M	D
+T$(f
+T$*H
+T$*L
+T$+H
+T$,H
+T$,Hc
+T$,I
+T$,L
+T$/8
+T$/I9
+T$/L
+T$01
+T$09
+T$0@
+T$0A
+T$0D
+T$0E
+T$0H
+T$0H)
+T$0H9
+T$0H9J
+T$0I
+T$0I)
+T$0J
+T$0K
+T$0L
+T$0M
+T$0f
+T$2f
+T$49
+T$4H
+T$6H
+T$7H
+T$7L
+T$81
+T$89
+T$8A
+T$8E
+T$8E1
+T$8H
+T$8H)
+T$8H9
+T$8Hc
+T$8I
+T$8I9
+T$8J
+T$8K
+T$8L
+T$8L9
+T$8M
+T$8M)
+T$8O
+T$8f
+T$:D8
+T$:H
+T$;D
+T$<f
+T$>D
+T$>E
+T$>H
+T$?D
+T$?H
+T$@1
+T$@9
+T$@A
+T$@D
+T$@E
+T$@H
+T$@H)
+T$@H9
+T$@Hc
+T$@Hi
+T$@I
+T$@I)
+T$@I9
+T$@L
+T$@L9
+T$@M
+T$@f
+T$@u
+T$AL
+T$B@
+T$BE
+T$BI
+T$Bf
+T$CE
+T$CH
+T$CI
+T$CL
+T$DE
+T$DH
+T$DHc
+T$EE1
+T$EL
+T$EL)
+T$FH
+T$FL
+T$G@
+T$GD
+T$GE
+T$GH
+T$GL
+T$GM
+T$H1
+T$H@
+T$HA
+T$HD
+T$HH
+T$HH)
+T$HH9
+T$HHc
+T$HI
+T$HI!
+T$HK
+T$HL
+T$HL)
+T$HL9
+T$HLcD$PH
+T$HLk
+T$HM
+T$HN
+T$HO
+T$Hf
+T$JH
+T$LA
+T$LH
+T$MH
+T$ND
+T$NL
+T$P1
+T$P@
+T$PA
+T$PD
+T$PH
+T$PH	
+T$PH)
+T$PH9
+T$PHcR
+T$PI
+T$PJ
+T$PK
+T$PL
+T$PL)
+T$PM
+T$PM9
+T$PN
+T$PO
+T$Pf
+T$X1
+T$X@
+T$XA
+T$XB
+T$XD
+T$XH
+T$XH	
+T$XH)
+T$XH+
+T$XH9
+T$XI
+T$XL
+T$XL)
+T$XM
+T$XO
+T$Xf
+T$XfA
+T$Xu
+T$_H
+T$_L
+T$`1
+T$`A
+T$`D
+T$`E1
+T$`H
+T$`H)
+T$`H+
+T$`H9
+T$`Hc
+T$`Hk
+T$`I
+T$`I9
+T$`K
+T$`L
+T$`L9
+T$`M
+T$`M!
+T$`M9
+T$`O
+T$`f
+T$gH
+T$h1
+T$hA
+T$hD
+T$hE1
+T$hF
+T$hH
+T$hH)
+T$hH9
+T$hI
+T$hI9
+T$hJ
+T$hK
+T$hL
+T$hL!
+T$hL)
+T$hM
+T$hM9
+T$hO
+T$hf
+T$iH
+T$mH
+T$p1
+T$pA
+T$pD
+T$pH
+T$pH)
+T$pH9
+T$pI
+T$pI9
+T$pL
+T$pL)
+T$pM
+T$pf
+T$tH
+T$x1
+T$x@
+T$xA
+T$xD
+T$xE1
+T$xG
+T$xH
+T$xH9
+T$xH9T$0u
+T$xI
+T$xI9
+T$xL
+T$xM
+T$xM9
+T$xf
+T${1
+T$}H
+T$}L
+T$~H
+T$~L
+T%k$
+T*func(*sync.entry[interface {},interface {}]) *sync.entry[interface {},interface {}]
+T*func(*unique.entry[net/netip.addrDetail], *unique.entry[net/netip.addrDetail]) bool
+T*func(*unique.indirect[net/netip.addrDetail]) *unique.indirect[net/netip.addrDetail]
+T*struct { f func() error; once sync.Once; valid bool; p interface {}; result error }
+TFlag
+TUUU
+TW$	#	$
+TZLlLtLuMn":%w./%%%vjsoreqgegtleltne%s"
+Text
+TextVar
+TfAX
+Timeout
+To fix this, add to lovable.toml:
+Token
+Tree
+True
+Truncate
+TryLock
+TryRLock
+TryRecv
+TrySend
+Tu#H
+Tu<H
+Type
+U"F!O$
+U1(\Q
+UQV.
+UQVEt
+UU%"("B""$"""
+UUUU
+UUUUUUUUH
+UUUUUUUUH!
+U^V	
+UidMappings
+Uint
+Uint64
+UintVar
+Uncommon
+Undocumented
+Unix
+UnixNano
+Unlock
+UnmarshalBinary
+UnmarshalJSON
+UnmarshalTOML
+UnmarshalText
+Unpin
+UnreadByte
+UnreadRune
+UnsafeAddr
+UnsafePointer
+Unshareflags
+Unwrap
+UpdateArrayTable
+UpdateTable
+Usage
+Usage:
+UseCgroupFD
+Usec
+Used
+UserTime
+Utime
+Uu\H
+Uw{A
+V	U	
+V	UVVi
+V H9
+V(	'
+V*struct { F uintptr; X0 *func(go.shape.*uint8); X1 *go.shape.*uint8; X2 *[11]uintptr }
+VDU:X
+Valid
+Value
+Valuu,f
+Vi,"
+Visit
+VisitAll
+Vite
+Vtube
+W'XTW
+W*atomic.Pointer[internal/sync.entry[go.shape.*internal/abi.Type,go.shape.interface {}]]
+W*func() go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts)
+W*struct { F uintptr; X0 int; X1 uintptr; X2 func(unsafe.Pointer, unsafe.Pointer) bool }
+W4vC
+W8X<W
+Wait
+Warning: failed to install lovable-tagger: %v
+Weekday
+Width
+WithPadding
+Write
+WriteAt
+WriteMsg
+WriteMsgInet4
+WriteMsgInet6
+WriteString
+WriteTo
+WriteToInet4
+WriteToInet6
+Writev
+X	a	
+X L9
+X Lk
+X*\I
+X*func(*sync.node[interface {},interface {}], *sync.node[interface {},interface {}]) bool
+X0H;CHteH
+X0fE
+X8I)
+X@H)
+X__pad0
+Xcount
+XmSx@
+Xu	H
+Xu$L
+Y Lk
+Y#UD
+Y#ZT
+Y(ZGY
+Y*go.shape.struct { internal/poll.rfd int; internal/poll.wfd int; internal/poll.data int }
+Y0H)
+YA H
+Y^Z	
+Y`	2
+Year
+YearDay
+YrfH)
+Z	ME
+Z Lk
+Z'P1O
+Z(Y	ZNY
+Z*YH
+Z*func(*sync.entry[interface {},interface {}], *sync.entry[interface {},interface {}]) bool
+Z*func(*sync.indirect[interface {},interface {}]) *sync.indirect[interface {},interface {}]
+Z*func(*unique.indirect[net/netip.addrDetail], *unique.indirect[net/netip.addrDetail]) bool
+Z*struct { F uintptr; X0 *struct { f func(); once sync.Once; valid bool; p interface {} } }
+Z070u
+Z070u"D
+Z07:00:0L
+Z07:00:0M9
+Z07:u
+Z8fE
+Z<YVZ
+ZI`S
+ZPH9
+ZQUY	
+Zero
+ZeroReadIsEOF
+ZnY	Z
+Zone
+ZoneBounds
+ZoneId
+Zw H
+ZxYT\
+[	VB
+["	c
+[(9	
+[8h#`
+[@L9X@
+[bisect-H
+[run]
+\$	H
+\$ 1
+\$ @
+\$ A
+\$ D
+\$ E
+\$ H
+\$ H	
+\$ H9
+\$ I
+\$ I9
+\$ L
+\$ M
+\$ f
+\$ t
+\$!H
+\$!L
+\$$1
+\$$H
+\$'H
+\$(1
+\$(9S
+\$(D
+\$(E
+\$(H
+\$(H)
+\$(H9
+\$(I
+\$(I!
+\$(I9
+\$(L
+\$(L)
+\$(M
+\$(N
+\$(f
+\$,H
+\$,L
+\$/H
+\$01
+\$0@
+\$0A
+\$0D
+\$0H
+\$0H)
+\$0H9
+\$0H9K
+\$0H9S
+\$0H9S0u!H
+\$0I
+\$0I)
+\$0L
+\$0M
+\$0N
+\$0f
+\$0f9C2u
+\$4H
+\$7H
+\$81
+\$8@
+\$8D
+\$8H
+\$8H)
+\$8H9
+\$8H9S@
+\$8H=
+\$8Hc
+\$8I
+\$8J
+\$8L
+\$8M
+\$8f
+\$:H
+\$;H9
+\$<H
+\$=L
+\$>H
+\$?D
+\$@1
+\$@@
+\$@A
+\$@B
+\$@D
+\$@E
+\$@H
+\$@H9
+\$@Hi
+\$@I
+\$@L
+\$@L9
+\$@M
+\$@M9
+\$@O
+\$@f
+\$@fA
+\$AH)
+\$B!
+\$C!
+\$CH
+\$CL
+\$DH)
+\$DHc
+\$DL
+\$EA
+\$EH9
+\$EI
+\$EL
+\$FA
+\$FD
+\$FH
+\$FI
+\$FL
+\$GD
+\$GE
+\$GH
+\$GL
+\$H1
+\$H@
+\$HA
+\$HD
+\$HE1
+\$HH
+\$HH)
+\$HH9
+\$HH95a
+\$HI
+\$HI9
+\$HK
+\$HL
+\$HL)
+\$HL9
+\$HM
+\$HM9
+\$HO
+\$Hf
+\$HfA
+\$LH
+\$OI
+\$OL
+\$P1
+\$P@
+\$PA
+\$PD
+\$PF
+\$PH
+\$PH9
+\$PH9H@v#H
+\$PI
+\$PI9
+\$PK
+\$PL
+\$PM
+\$Pf
+\$PfA
+\$VH
+\$WD
+\$WE
+\$X1
+\$X8
+\$X@
+\$XA
+\$XC
+\$XD
+\$XE
+\$XF
+\$XH
+\$XH)
+\$XH9
+\$XHc
+\$XI
+\$XIi
+\$XJ
+\$XL
+\$XL9
+\$XM
+\$XN
+\$Xf
+\$`1
+\$`@
+\$`A
+\$`D
+\$`E
+\$`H
+\$`H)
+\$`H9
+\$`Hc
+\$`I
+\$`J
+\$`L
+\$`M
+\$`M)
+\$`N
+\$`f
+\$`fA
+\$`fD
+\$`r
+\$`t
+\$d1
+\$h1
+\$hA
+\$hB
+\$hD
+\$hE
+\$hH
+\$hH)
+\$hH9
+\$hH9p@w
+\$hK
+\$hL
+\$hL9
+\$hM9K
+\$hN
+\$hf
+\$hfA
+\$ht
+\$ht*
+\$j1
+\$jE
+\$lH
+\$mH
+\$p1
+\$p@
+\$pA
+\$pD
+\$pD9
+\$pE
+\$pH
+\$pH9
+\$pI
+\$pI)
+\$pI9
+\$pJ
+\$pL
+\$pM
+\$pN
+\$pO
+\$pfC
+\$tE1
+\$tH
+\$tf
+\$x1
+\$xA
+\$xC
+\$xD
+\$xH
+\$xH)
+\$xH9
+\$xI
+\$xI)
+\$xL
+\$xL9
+\$xM
+\$xM9
+\$xO
+\$xf
+\$~s
+\*struct { F uintptr; X0 *func(go.shape.struct {}); X1 *go.shape.struct {}; X2 *[11]uintptr }
+\4DH
+\4GH
+\L.Y
+\UI6
+\\\'\"
+\kL	
+\kLu
+\u!H
+\u"L
+\u%04Xrdtscppopcnt want cmd/gonetdnsdefinedry-run--port=Flags:
+\u00
+\u0026
+\u003C
+\u003D
+\u003E
+\u00D
+\u00F
+\uIH
+\uPH
+\uPI
+\ufff
+\~TL
+]-b-a
+]7`	_i^
+]^^	
+]xEc
+^*func(*sync.node[*internal/abi.Type,interface {}]) *sync.node[*internal/abi.Type,interface {}]
+^p8G
+^wH~
+_*atomic.Pointer[unique.entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]]
+_*func(go.shape.struct { internal/poll.rfd int; internal/poll.wfd int; internal/poll.data int })
+_2fE9
+_Func
+_Lb%
+_R?Z}5
+_defer
+_func
+_interface
+_p&&<YX
+_panic
+_rt0_amd64
+_rt0_amd64_linux
+_uOE
+_u{L
+`	_'
+`	_(
+`%_%
+`&_H
+`*func(*sync.entry[*internal/abi.Type,interface {}]) *sync.entry[*internal/abi.Type,interface {}]
+`*func(*sync.indirect[interface {},interface {}], *sync.indirect[interface {},interface {}]) bool
+`+) *
+`,b,
+`.L9
+`3_(
+`4_ 
+`4_<
+`4_d
+`6_0
+`7_<
+`8L9
+`;_?
+`<_(
+`=_<
+`>_<
+`Bk|+
+`S_ 
+`a_(
+`b_F
+`c_*
+`d_(
+`eBeBeBeBeBeBeBeBeB
+`iC	
+`l_(
+`n' 
+`w_(
+a$'#
+a,e,
+aPM9
+a^b	
+abiType
+abiTypeSlow
+abid
+absSec
+accept
+accessed data from freed user arena runtime: wrong goroutine in newstackruntime: invalid pc-encoded table f=444089209850062616169452667236328125ryuFtoaFixed64 called with prec > 180123456789abcdefghijklmnopqrstuvwxyzTime.UnmarshalBinary: invalid lengthjson: encoding error for type %q: %qexceeded maximum template depth (%v)%s is not a method but has argumentsinternal error: associate not commonreflect: NumField of non-struct typeinvalid pattern syntax (+ after -): range length is larger than capacityexec: StdinPipe after process startedvalue too large for defined data typecannot exec a shared library directlyoperation not possible due to RF-killreflect: Bits of non-arithmetic Type reflect: NumField of non-struct type reflect: IsVariadic of non-func type reflect: OverflowInt of non-int type reflect: funcLayout of non-func type reflect.Value.Bytes of non-byte slicereflect.Value.Bytes of non-byte arrayreflect.Value.Bytes of non-rune slicemethod ABI and value ABI do not alignreflect.Value.Convert: value of type runtime: allocation size out of range) is smaller than minimum page size (/cpu/classes/gc/mark/idle:cpu-secondssetprofilebucket: profile already setfailed to reserve page summary memory_cgo_notify_runtime_init_done missingfatal: concurrent switchToCrashStack
+accumulate
+accumulateGCPauseTime
+acquire
+acquireStatus
+acquiretime
+action
+actionLine
+active
+activeStackChans
+actual
+addArg
+addErrorContext
+addHeap
+addRcvr	
+addSec
+addr
+adjust
+advance
+aeshashbody
+alllink
+alloc
+allocBitsForIndex
+allocCache
+allocCount
+allocCountBeforeCache
+allocLarge
+allocN
+allpSnapshot
+altiuCf
+append
+appendFormat
+appendFormatRFC3339
+appendMode
+appendStrictRFC3339
+appendTo
+argLen
+argLimit
+argp
+args
+argv
+array
+arrayEnc
+arrayIndex
+arrayIndexes
+arrayInterface
+arsY
+asserted
+assignFloatN
+assignIntN
+assignTo
+astate
+asyncSafePoint
+atEOF
+atRightDelim
+atTerminator
+ate L
+atomicInfo
+atomicstatus
+awaitGoroutines
+b	c	
+b	g,
+b!q&
+b"b"b
+bL K
+bTa<d
+backup
+backup2
+backup3
+bad addressfile existsbroken pipebad messagealarm clockstack faultvite.configshort writebad argSizemethodargs(reflect.SetassistQueuenetpollInitreflectOffsglobalAllocmSpanManualstart traceclobberfreegccheckmarkscheddetailunspecifiedcgocall nil s.nelems=   of size  ) returned runtime: p  ms clock,  nBSSRoots=runtime: P  exp.) for minTrigger=GOMEMLIMIT=bad m value, elemsize= freeindex= span.list=not reached, npages = , a123456=[ p->status= in status  idleprocs= gcwaiting= schedtick= timerslen= mallocing=bad timedivfloat64nan1float64nan2float64nan3float32nan2GOTRACEBACK) at entry+ (targetpc= , plugin: running < 0runtime: g : frame.sp=created by 30517578125time: file i/o timeoutfinal tokenMarshalJSONMarshalTextarray tablecall of nil (deleted)
+bad flag syntax: %sreflect.Value.IsNilreflect.Value.Floatbad unicode format exec: canceling Cmdbad file descriptortoo many open filesdirectory not emptydevice not a streamdisk quota exceededillegal instructionstopped (tty input)@lovable.dev/lovitereflect.Value.Bytesreflect.Value.Fieldreflect.Value.Indexreflect.Value.Slicereflect.Value.Clear are not comparablestrongFromWeakQueueGC mark terminationsync.WaitGroup.Waitchan send (durable)SIGTRAP: trace trapwait for debug call__vdso_gettimeofdaycgocall unavailablepanicwrap: no ( in panicwrap: no ) in  called using nil *unknown wait reasonnotesleep not on g0GC work not flushedunaligned sysUnused/gc/scan/heap:bytes/gc/heap/goal:bytes/gc/heap/live:bytesmarkroot: bad indexnwait > work.nprocs, gp->atomicstatus=marking free object KiB work (eager),  [controller reset]mspan.sweep: state=sysMemStat overflowbad sequence numberpanic during mallocpanic holding locksmissing deferreturnunexpected gp.parampanic during panic
+badVerb
+balance
+base
+baseaddr
+becomeSpinning
+bisect
+bitp
+bits
+blockControl
+blockUntilWaitable
+blocked
+booleanbdoUxXvintegercomplexfloat32float64 (trap writeatfstatatabortedstoppedsignal installinvaliduintptrChanDir using , type=closure Value>ConvertforcegcallocmWcpuprofallocmRunknowngctraceIO waitrunningsyscallwaitingforevernetworkUNKNOWNcleanup:events, goid=  mark  s=nil
+breakControl
+breakOK
+bt)A
+bubble
+buckHashSys
+buckets
+bufio.(*Scanner).Scan
+bufio.(*Scanner).Text
+bufio.(*Scanner).advance
+bufio.(*Scanner).setErr
+bufio.NewScanner
+bufio.ScanLines
+bufio.dropCR
+bufp
+build	-buildmode=exe
+build	-compiler=gc
+build	-ldflags="-s -w"
+build	CGO_ENABLED=0
+build	GOAMD64=v1
+build	GOARCH=amd64
+build	GOOS=linux
+build:deH
+builder
+bwbA
+byExactName
+byFoldedName
+byte
+bytedata
+bytep
+bytes
+bytes.(*Buffer).Available
+bytes.(*Buffer).AvailableBuffer
+bytes.(*Buffer).Bytes
+bytes.(*Buffer).Cap
+bytes.(*Buffer).Grow
+bytes.(*Buffer).Len
+bytes.(*Buffer).Next
+bytes.(*Buffer).Read
+bytes.(*Buffer).ReadByte
+bytes.(*Buffer).ReadBytes
+bytes.(*Buffer).ReadFrom
+bytes.(*Buffer).ReadRune
+bytes.(*Buffer).ReadString
+bytes.(*Buffer).Reset
+bytes.(*Buffer).String
+bytes.(*Buffer).Truncate
+bytes.(*Buffer).UnreadByte
+bytes.(*Buffer).UnreadRune
+bytes.(*Buffer).Write
+bytes.(*Buffer).WriteByte
+bytes.(*Buffer).WriteRune
+bytes.(*Buffer).WriteString
+bytes.(*Buffer).WriteTo
+bytes.(*Buffer).empty
+bytes.(*Buffer).grow
+bytes.(*Buffer).readSlice
+bytes.(*Buffer).tryGrowByReslice
+bytes.Buffer: reader returned negative count from ReadUsage: lovable-exec [flags] <task> [-- extra-args...]
+bytes.Equal
+bytes.Index
+bytes.IndexByte
+bytes.TrimFunc
+bytes.TrimLeftFunc
+bytes.TrimRightFunc
+bytes.TrimSpace
+bytes.growSlice
+bytes.growSlice.func1
+bytes.indexFunc
+bytes.lastIndexFunc
+bytesMarked
+b}$l
+c$	#
+c,d,
+c0M9
+c2c2c2c2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b"b"b"b"
+cache
+cacheEnd
+cacheStart
+cachedLookExtensions
+call
+call frame too large
+callRet
+called CompareAndSwap when value is not of comparable typejson: cannot set embedded pointer to unexported struct: %vreflect: reflect.Value.Elem on an invalid notinheap pointerreflect: indirection through nil pointer to embedded structruntime: mmap: too much locked memory (check 'ulimit -l').
+callers
+callingG
+canAddrEnc
+canonMap
+capNonSlice
+capacity
+captureStack
+catchPanic
+cgoCallers
+cgoCallersUse
+cgoCtxt
+cgrou
+cgrou\G
+chacha8
+changegstatus
+check
+checkArray
+checkArrayTable
+checkInlineTable
+checkInvariants
+checkKeyValue
+checkPipeline
+checkTable
+checkValid
+checkempty
+checknonempty
+child
+childIOFiles
+childStderr
+childStdin
+childStdout
+children
+chmod
+cleanup
+cleanupBlockHeader
+cleanups
+cleanupsQueued
+clear
+clearActionLine
+clearAllpSnapshot
+clearArrayTable
+clearSeq
+clearSmall
+clearflags
+clone
+cloneSeq
+close
+closeHandle
+closed
+closing
+cmp.Compare[go.shape.float64]
+cmp.Compare[go.shape.int64]
+cmp.Compare[go.shape.int]
+cmp.Compare[go.shape.string]
+cmp.Compare[go.shape.uint64]
+cmp.Compare[go.shape.uintptr]
+cmp.Less[go.shape.int]
+cmp.isNaN[go.shape.float64]
+cmpbody
+code
+column
+command
+common
+compareAndDelete
+compareAndSwap
+complexTokens
+compute
+concrete
+const lovableTagger = componentTagger();
+const userConfig = {{.ConfigExpr}};
+consume
+contains
+context
+context.init
+context.init.0
+continueControl
+continueOK
+controllerCooldown
+controllerFailed
+convertFloat
+convertNumber
+convertString
+copy
+copyFileRange
+coroarg
+coroexit
+count
+countAlloc
+countbody
+counts
+covctrs
+cpuStats
+create
+createdByStack
+createstack
+csema
+ct5H
+ctrl
+ctrls
+ctxt
+cuOffset
+curg
+currentIdx
+cutab
+cycles
+cyclesLost
+d$ A
+d$ H
+d$ I
+d$ I9
+d$ L
+d$ M
+d$ N
+d$(D
+d$(I
+d$(L
+d$(t8vUF
+d$01
+d$0H
+d$0L
+d$0M
+d$8H
+d$8I
+d$8L
+d$8L)
+d$8f
+d$9H
+d$9L
+d$:H
+d$:L
+d$;H
+d$;L
+d$<L
+d$@A
+d$@H
+d$@I
+d$@L
+d$@M
+d$@O
+d$AH)
+d$EA
+d$FH
+d$FL
+d$GA
+d$GH
+d$GL
+d$H1
+d$HA
+d$HE
+d$HE1
+d$HH
+d$HI
+d$HL
+d$HM)
+d$IE
+d$JE
+d$KE1
+d$NH
+d$PD
+d$PE
+d$PH
+d$PI
+d$PL
+d$PM
+d$PO
+d$VE
+d$VH
+d$XA
+d$XD
+d$XE
+d$XH
+d$XI
+d$XL
+d$XM
+d$XM9
+d$XN
+d$`1
+d$`A
+d$`D
+d$`H
+d$`I
+d$`K
+d$`L
+d$`M9
+d$`N
+d$`f
+d$h1
+d$hA
+d$hH
+d$hI
+d$hL
+d$hM
+d$hM)
+d$hN
+d$hfA
+d$jL
+d$mI
+d$pA
+d$pD
+d$pE
+d$pH
+d$pI
+d$pK
+d$pL
+d$pM
+d$pN
+d$pt
+d$q@
+d$qD
+d$qH
+d$qL
+d$qL)
+d$xI
+d$xL
+d$xM
+d$xN
+d$|1
+d$|L
+d$~H
+d*func(*sync.node[*internal/abi.Type,interface {}], *sync.node[*internal/abi.Type,interface {}]) bool
+d*struct { F uintptr; X0 *int; X1 *bool; X2 *parse.RangeNode; X3 func(reflect.Value, reflect.Value) }
+d*struct { f func() go.shape.bool; once sync.Once; valid bool; p interface {}; result go.shape.bool }
+d.->
+d4[I
+d5X.WA
+dYL.	
+d`cJf
+data
+datap
+dataqsiz
+de2?/
+dead
+debugCal
+debugCalH9
+debugCall1024
+debugCall128
+debugCall16384
+debugCall2048
+debugCall256
+debugCall32
+debugCall32768
+debugCall4096
+debugCall512
+debugCall64
+debugCall65536
+debugCall8192
+decPinCounter
+decodeQuantum
+decref
+dedup
+defaultUsage
+deferBitsOffset
+deferBitsPtr
+deferpoolbuf
+deferreturn
+deleteSmall
+dep	github.com/pelletier/go-toml/v2	v2.2.4	h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
+deps
+depth
+dequeue
+dequeueSudoG
+destroy
+diff
+difference
+dirIdx
+dirLen
+dirPtr
+directoryAt
+directoryIndex
+directorySet
+dirinfo
+disabled
+disallowUnknownFields
+discard
+dispatch
+dispose
+divMul
+divideByElemSize
+divmod
+dlogPerM
+dnt s
+doPrint
+doPrintf
+doScan
+doScanf
+doSlow
+done
+drain
+dsWH
+dsxH
+dump
+dw'H
+dying
+d}vH
+e	p	
+e.u$H
+e_f	
+ebss
+ecovctrs
+edata
+elem
+elemEnc
+elemsize
+elemtype
+elseControl
+elseEnc
+embed
+embed.(*file).Info
+embed.(*file).IsDir
+embed.(*file).ModTime
+embed.(*file).Mode
+embed.(*file).Name
+embed.(*file).Size
+embed.(*file).String
+embed.(*file).Sys
+embed.(*file).Type
+embed.(*openDir).Close
+embed.(*openDir).Read
+embed.(*openDir).ReadDir
+embed.(*openDir).Stat
+embed.(*openFile).Close
+embed.(*openFile).Read
+embed.(*openFile).ReadAt
+embed.(*openFile).Seek
+embed.(*openFile).Stat
+embed.FS.Open
+embed.FS.ReadFile
+embed.FS.lookup
+embed.FS.lookup.func1
+embed.FS.readDir
+embed.FS.readDir.func1
+embed.FS.readDir.func2
+embed.sortSearch
+embed.split
+embedfollowsymlinksgotestjsonbuildtextmultipartmaxheadersarray is incompleteunclosed left parenunknown branch typetemplate: %s:%d: %sunexpected %s in %sflag: help requestedtype not a pointer: invalid request codebad font file formatconnection timed outis a named type filekey has been revokedstopped (tty output)urgent I/O conditioninvalid write resultreflect: cannot use  returned zero Valuereflect.Value.IsZeroreflect.Value.Methodreflect.Value.SetIntreflect.Value.Slice3floating point errorGC sweep terminationResetDebugLog (test)chan send (nil chan)flushing proc cachesSIGALRM: alarm clockSIGTERM: termination__vdso_clock_gettimeclose of nil channelinconsistent lockedmnotetsleep not on g0bad system page size to unallocated span/gc/scan/stack:bytes/gc/scan/total:bytes/gc/heap/frees:bytes/gc/gomemlimit:bytesp mcache not flushed markroot jobs done
+emit
+emitComment
+emitItem
+empty
+emptyY
+enable@,L
+encode
+encoder
+encoding
+encoding/base64
+encoding/base64.(*CorruptInputError).Error
+encoding/base64.(*Encoding).AppendEncode
+encoding/base64.(*Encoding).Decode
+encoding/base64.(*Encoding).DecodedLen
+encoding/base64.(*Encoding).Encode
+encoding/base64.(*Encoding).EncodedLen
+encoding/base64.(*Encoding).decodeQuantum
+encoding/base64.CorruptInputError.Error
+encoding/base64.Encoding.WithPadding
+encoding/base64.NewEncoding
+encoding/base64.assemble32
+encoding/base64.assemble64
+encoding/base64.decodedLen
+encoding/base64.init
+encoding/json
+encoding/json.(*InvalidUnmarshalError).Error
+encoding/json.(*MarshalerError).Error
+encoding/json.(*MarshalerError).Unwrap
+encoding/json.(*Number).Float64
+encoding/json.(*Number).Int64
+encoding/json.(*Number).String
+encoding/json.(*RawMessage).MarshalJSON
+encoding/json.(*RawMessage).UnmarshalJSON
+encoding/json.(*SyntaxError).Error
+encoding/json.(*UnmarshalTypeError).Error
+encoding/json.(*UnsupportedTypeError).Error
+encoding/json.(*UnsupportedValueError).Error
+encoding/json.(*decodeState).addErrorContext
+encoding/json.(*decodeState).array
+encoding/json.(*decodeState).arrayInterface
+encoding/json.(*decodeState).convertNumber
+encoding/json.(*decodeState).init
+encoding/json.(*decodeState).literalInterface
+encoding/json.(*decodeState).literalStore
+encoding/json.(*decodeState).object
+encoding/json.(*decodeState).objectInterface
+encoding/json.(*decodeState).readIndex
+encoding/json.(*decodeState).rescanLiteral
+encoding/json.(*decodeState).saveError
+encoding/json.(*decodeState).scanNext
+encoding/json.(*decodeState).scanWhile
+encoding/json.(*decodeState).skip
+encoding/json.(*decodeState).unmarshal
+encoding/json.(*decodeState).value
+encoding/json.(*decodeState).valueInterface
+encoding/json.(*decodeState).valueQuoted
+encoding/json.(*encodeState).Available
+encoding/json.(*encodeState).AvailableBuffer
+encoding/json.(*encodeState).Bytes
+encoding/json.(*encodeState).Cap
+encoding/json.(*encodeState).Grow
+encoding/json.(*encodeState).Len
+encoding/json.(*encodeState).Next
+encoding/json.(*encodeState).Read
+encoding/json.(*encodeState).ReadByte
+encoding/json.(*encodeState).ReadBytes
+encoding/json.(*encodeState).ReadFrom
+encoding/json.(*encodeState).ReadRune
+encoding/json.(*encodeState).ReadString
+encoding/json.(*encodeState).Reset
+encoding/json.(*encodeState).String
+encoding/json.(*encodeState).Truncate
+encoding/json.(*encodeState).UnreadByte
+encoding/json.(*encodeState).UnreadRune
+encoding/json.(*encodeState).Write
+encoding/json.(*encodeState).WriteByte
+encoding/json.(*encodeState).WriteRune
+encoding/json.(*encodeState).WriteString
+encoding/json.(*encodeState).WriteTo
+encoding/json.(*encodeState).error
+encoding/json.(*encodeState).reflectValue
+encoding/json.(*jsonError).Error
+encoding/json.(*scanner).eof
+encoding/json.(*scanner).error
+encoding/json.(*scanner).popParseState
+encoding/json.(*scanner).pushParseState
+encoding/json.(*scanner).reset
+encoding/json.Number.Float64
+encoding/json.Number.Int64
+encoding/json.Number.String
+encoding/json.RawMessage.MarshalJSON
+encoding/json.Unmarshal
+encoding/json.addrMarshalerEncoder
+encoding/json.addrTextMarshalerEncoder
+encoding/json.appendCompact
+encoding/json.appendCompact.deferwrap1
+encoding/json.appendFoldedName
+encoding/json.appendHTMLEscape
+encoding/json.appendString[go.shape.[]uint8]
+encoding/json.appendString[go.shape.string]
+encoding/json.arrayEncoder.encode
+encoding/json.arrayEncoder.encode-fm
+encoding/json.boolEncoder
+encoding/json.cachedTypeFields
+encoding/json.checkValid
+encoding/json.condAddrEncoder.encode
+encoding/json.condAddrEncoder.encode-fm
+encoding/json.dominantField
+encoding/json.encodeByteSlice
+encoding/json.floatEncoder.encode
+encoding/json.floatEncoder.encode-fm
+encoding/json.foldName
+encoding/json.foldRune
+encoding/json.freeScanner
+encoding/json.getu4
+encoding/json.indirect
+encoding/json.init
+encoding/json.init.func1
+encoding/json.intEncoder
+encoding/json.interfaceEncoder
+encoding/json.invalidValueEncoder
+encoding/json.isEmptyValue
+encoding/json.isSpace
+encoding/json.isValidNumber
+encoding/json.isValidTag
+encoding/json.jsonError.Error
+encoding/json.mapEncoder.encode
+encoding/json.mapEncoder.encode-fm
+encoding/json.mapEncoder.encode.deferwrap1
+encoding/json.mapEncoder.encode.func1
+encoding/json.marshalerEncoder
+encoding/json.mayAppendQuote
+encoding/json.newArrayEncoder
+encoding/json.newCondAddrEncoder
+encoding/json.newMapEncoder
+encoding/json.newPtrEncoder
+encoding/json.newScanner
+encoding/json.newSliceEncoder
+encoding/json.newStructEncoder
+encoding/json.newTypeEncoder
+encoding/json.parseTag
+encoding/json.ptrEncoder.encode
+encoding/json.ptrEncoder.encode-fm
+encoding/json.ptrEncoder.encode.deferwrap1
+encoding/json.quoteChar
+encoding/json.resolveKeyName
+encoding/json.sliceEncoder.encode
+encoding/json.sliceEncoder.encode-fm
+encoding/json.sliceEncoder.encode.deferwrap1
+encoding/json.state0
+encoding/json.state1
+encoding/json.stateBeginString
+encoding/json.stateBeginStringOrEmpty
+encoding/json.stateBeginValue
+encoding/json.stateBeginValueOrEmpty
+encoding/json.stateDot
+encoding/json.stateDot0
+encoding/json.stateE
+encoding/json.stateE0
+encoding/json.stateESign
+encoding/json.stateEndTop
+encoding/json.stateEndValue
+encoding/json.stateError
+encoding/json.stateF
+encoding/json.stateFa
+encoding/json.stateFal
+encoding/json.stateFals
+encoding/json.stateInString
+encoding/json.stateInStringEsc
+encoding/json.stateInStringEscU
+encoding/json.stateInStringEscU1
+encoding/json.stateInStringEscU12
+encoding/json.stateInStringEscU123
+encoding/json.stateN
+encoding/json.stateNeg
+encoding/json.stateNu
+encoding/json.stateNul
+encoding/json.stateT
+encoding/json.stateTr
+encoding/json.stateTru
+encoding/json.stringEncoder
+encoding/json.structEncoder.encode
+encoding/json.structEncoder.encode-fm
+encoding/json.tagOptions.Contains
+encoding/json.textMarshalerEncoder
+encoding/json.typeByIndex
+encoding/json.typeEncoder
+encoding/json.typeEncoder.OnceValue[go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts)].func3
+encoding/json.typeEncoder.OnceValue[go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts)].func3.1
+encoding/json.typeEncoder.OnceValue[go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts)].func3.1.1
+encoding/json.typeEncoder.func1
+encoding/json.typeEncoder.func2
+encoding/json.typeEncoder.typeEncoder.OnceValue[go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts)].func3.func4
+encoding/json.typeEncoder.typeEncoder.OnceValue[go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts)].func3.func4.1
+encoding/json.typeFields
+encoding/json.typeFields.func1
+encoding/json.typeFields.func2
+encoding/json.typeFields.func3
+encoding/json.typeFields.func4
+encoding/json.typeFields.func5
+encoding/json.typeFields.func6
+encoding/json.uintEncoder
+encoding/json.unquote
+encoding/json.unquoteBytes
+encoding/json.unsupportedTypeEncoder
+encoding/json.valueEncoder
+end of filegocachehashgocachetesthttp2clienthttp2serverrandseednoparchive/tartls10servercrypto/x509archive/zipInlineTableexpected :=empty fieldexit status can't happenillegal seekinvalid slothost is downchild exitedI/O possiblepackage.jsonlovable.tomlshort buffer has no name has no typereflect.CopysweepWaiterscleanupQueuetraceStringsspanSetSpinemspanSpecialtraceTypeTabgcBitsArenasmheapSpecialgcpacertraceharddecommitmadvdontneeddumping heapchan receivesynctest.Runcleanup wait span.limit= span.state=bad flushGen MB stacks, scan: total scan: class worker mode  nDataRoots= nSpanRoots= wbuf1=<nil> wbuf2=<nil> gcscandone runtime: gp= found at *( s.elemsize= B (
+endControl
+endTop
+enoptrdata
+enqueue
+ensure
+ensureSwept
+ensured
+entries
+entry
+entryIdx
+entryOff
+entryOffset
+entryoff
+environ
+eofError
+equal
+errIntegral
+errOverflow
+error
+errorContext
+errorHandling
+errorString
+errorf
+erroring
+errors
+errors.(*errorString).Error
+errors.As
+errors.Is
+errors.New
+errors.as
+errors.init
+errors.is
+errs
+escapeHTML
+etbL
+etext
+etypes
+eu&H
+euCH
+euXH
+eudf
+euqH
+eusH
+evalArg
+evalBool
+evalCall
+evalChainNode
+evalCommand
+evalComplex
+evalEmptyInterface
+evalFieldChain
+evalFieldNode
+evalFunction
+evalInteger
+evalPipeline
+evalString
+evalUnsignedInteger
+evalVariableNode
+evict
+execute
+exit hook invoked panicpattern bits too long: expected value, not eof0123456789abcdefABCDEF_function %q not definedexec: Stdout already setexec: Stderr already setfunction not implementedlevel 2 not synchronizedlink number out of rangeout of streams resourcesconnection reset by peerstructure needs cleaningfloating point exceptionfile size limit exceededRawSockaddrAny too smallreflect.MapIter.SetValuereflect.StructOf: field reflect.Value.SetComplexreflect.Value.UnsafeAddrtracecheckstackownershiphash of unhashable type cannot open standard fdsspan has no free objectsruntime: found obj at *(/cgo/go-to-c-calls:calls/gc/heap/objects:objects/sched/latencies:secondsqueuefinalizer during GCcheckfinalizers: queue: update during transitionruntime: markroot index can't scan our own stackgcDrainN phase incorrectpageAlloc: out of memoryruntime: p.searchAddr = range partially overlapsruntime: epollctl failed [recovered, repanicked]stack trace unavailable
+exited
+exitedD
+expafH
+expand
+expect
+expectOneOf
+explicit	
+export default defineConfig(async (configEnv) => {
+exportedMethods
+expr
+extend
+extendSlice
+extra
+f	o	
+f*func(*sync.entry[*internal/abi.Type,interface {}], *sync.entry[*internal/abi.Type,interface {}]) bool
+f*func(*sync.indirect[*internal/abi.Type,interface {}]) *sync.indirect[*internal/abi.Type,interface {}]
+f*func(string, string, string, map[string]*parse.Tree, ...map[string]interface {}) (*parse.Tree, error)
+f,l,
+f9A2
+f9D$
+f9D$&r
+f9J8v^D
+f9S0u
+f9q2
+f9s2uFf
+failf
+fals
+falsB
+fdmu
+fdseq
+ffff
+fields
+fig.u
+file
+fileID
+fileLine
+files
+filetab
+filetabOffset
+fill
+find	
+findfunctab
+finobj()
+fipsIndicator
+first
+firstErr
+firstZoneUsed
+flag
+flag provided but not defined: -%sexecutable file not found in $PATHtoo many references: cannot splicereflect: Method index out of rangereflect: ChanDir of non-chan type reflect: Field of non-struct type reflect: Field index out of boundsreflect.FuncOf: too many argumentsreflect.StructOf: duplicate field " is anonymous but has PkgPath setreflect: string index out of rangereflect: recv on send-only channelreflect: send on recv-only channelreflect.Value.Grow: slice overflowslice bounds out of range [:%x:%y]slice bounds out of range [%x:%y:]SIGURG: urgent condition on socketruntime: standard file descriptor out of memory allocating allArenas... too many potential issues ...
+flag.(*FlagSet).Output
+flag.(*FlagSet).Parse
+flag.(*FlagSet).PrintDefaults
+flag.(*FlagSet).PrintDefaults.func1
+flag.(*FlagSet).Var
+flag.(*FlagSet).VisitAll
+flag.(*FlagSet).defaultUsage
+flag.(*FlagSet).defaultUsage-fm
+flag.(*FlagSet).failf
+flag.(*FlagSet).parseOne
+flag.(*FlagSet).sprintf
+flag.(*FlagSet).usage
+flag.(*boolValue).Get
+flag.(*boolValue).IsBoolFlag
+flag.(*boolValue).Set
+flag.(*boolValue).String
+flag.(*stringValue).Get
+flag.(*stringValue).Set
+flag.(*stringValue).String
+flag.Args
+flag.BoolVar
+flag.NewFlagSet
+flag.Parse
+flag.PrintDefaults
+flag.StringVar
+flag.UnquoteUsage
+flag.commandLineUsage
+flag.init.0
+flag.init.func1
+flag.isZeroValue
+flag.isZeroValue.func1
+flag.newBoolValue
+flag.newStringValue
+flag.sortFlags
+flag.sortFlags.func1
+float64HistOrInit
+floatToken
+flush
+flushGen
+flushScanStats
+flushedWork
+fmt.(*buffer).write
+fmt.(*buffer).writeByte
+fmt.(*buffer).writeRune
+fmt.(*buffer).writeString
+fmt.(*fmt).clearflags
+fmt.(*fmt).fmtBoolean
+fmt.(*fmt).fmtBs
+fmt.(*fmt).fmtBx
+fmt.(*fmt).fmtC
+fmt.(*fmt).fmtFloat
+fmt.(*fmt).fmtInteger
+fmt.(*fmt).fmtQ
+fmt.(*fmt).fmtQc
+fmt.(*fmt).fmtS
+fmt.(*fmt).fmtSbx
+fmt.(*fmt).fmtSx
+fmt.(*fmt).fmtUnicode
+fmt.(*fmt).init
+fmt.(*fmt).pad
+fmt.(*fmt).padString
+fmt.(*fmt).truncate
+fmt.(*fmt).truncateString
+fmt.(*fmt).writePadding
+fmt.(*pp).Flag
+fmt.(*pp).Precision
+fmt.(*pp).Width
+fmt.(*pp).Write
+fmt.(*pp).WriteString
+fmt.(*pp).argNumber
+fmt.(*pp).badArgNum
+fmt.(*pp).badVerb
+fmt.(*pp).catchPanic
+fmt.(*pp).doPrint
+fmt.(*pp).doPrintf
+fmt.(*pp).doPrintln
+fmt.(*pp).fmt0x64
+fmt.(*pp).fmtBool
+fmt.(*pp).fmtBytes
+fmt.(*pp).fmtComplex
+fmt.(*pp).fmtFloat
+fmt.(*pp).fmtInteger
+fmt.(*pp).fmtPointer
+fmt.(*pp).fmtString
+fmt.(*pp).free
+fmt.(*pp).handleMethods
+fmt.(*pp).handleMethods.deferwrap1
+fmt.(*pp).handleMethods.deferwrap2
+fmt.(*pp).handleMethods.deferwrap3
+fmt.(*pp).handleMethods.deferwrap4
+fmt.(*pp).missingArg
+fmt.(*pp).printArg
+fmt.(*pp).printValue
+fmt.(*pp).unknownType
+fmt.(*readRune).ReadRune
+fmt.(*readRune).UnreadRune
+fmt.(*readRune).readByte
+fmt.(*ss).Read
+fmt.(*ss).ReadRune
+fmt.(*ss).SkipSpace
+fmt.(*ss).Token
+fmt.(*ss).Token.func1
+fmt.(*ss).UnreadRune
+fmt.(*ss).Width
+fmt.(*ss).accept
+fmt.(*ss).complexTokens
+fmt.(*ss).consume
+fmt.(*ss).convertFloat
+fmt.(*ss).convertString
+fmt.(*ss).doScan
+fmt.(*ss).doScan.deferwrap1
+fmt.(*ss).error
+fmt.(*ss).errorString
+fmt.(*ss).floatToken
+fmt.(*ss).free
+fmt.(*ss).getBase
+fmt.(*ss).getRune
+fmt.(*ss).hexByte
+fmt.(*ss).hexString
+fmt.(*ss).mustReadRune
+fmt.(*ss).notEOF
+fmt.(*ss).okVerb
+fmt.(*ss).peek
+fmt.(*ss).quotedString
+fmt.(*ss).scanBasePrefix
+fmt.(*ss).scanBool
+fmt.(*ss).scanComplex
+fmt.(*ss).scanInt
+fmt.(*ss).scanNumber
+fmt.(*ss).scanOne
+fmt.(*ss).scanRune
+fmt.(*ss).scanUint
+fmt.(*ss).token
+fmt.(*stringReader).Read
+fmt.(*wrapError).Error
+fmt.(*wrapError).Unwrap
+fmt.(*wrapErrors).Error
+fmt.(*wrapErrors).Unwrap
+fmt.Errorf
+fmt.Fprint
+fmt.Fprintf
+fmt.Fprintln
+fmt.Fscan
+fmt.Print
+fmt.Printf
+fmt.Println
+fmt.Sprint
+fmt.Sprintf
+fmt.Sprintln
+fmt.Sscan
+fmt.errorHandler
+fmt.getField
+fmt.hasX
+fmt.hexDigit
+fmt.indexRune
+fmt.init.func1
+fmt.init.func2
+fmt.intFromArg
+fmt.isSpace
+fmt.newPrinter
+fmt.newScanState
+fmt.notSpace
+fmt.parseArgNumber
+fmt.parsenum
+fmt.tooLarge
+fmt0x64
+fmt: unknown base; can't happen.lib section in a.out corruptedcannot assign requested address cannot produce iter.Seq[Value]reflect: Len of non-array type reflect.MakeSlice: negative lenreflect.MakeSlice: negative capslice bounds out of range [:%x]slice bounds out of range [%x:]SIGSEGV: segmentation violationcall from within the Go runtimeinternal error - misuse of itab) not in usable address space: runtime: cannot allocate memorycheckmark found unmarked object/memory/classes/heap/free:bytes/memory/classes/os-stacks:bytespacer: sweep done at heap size non in-use span in unswept listruntime.Pinner: argument is nilcasgstatus: bad incoming valuesresetspinning: not a spinning mruntime: profBuf already closedfatal: bad g in signal handler
+fmtBool
+fmtBoolean
+fmtBs
+fmtBx
+fmtBytes
+fmtC
+fmtComplex
+fmtFlags
+fmtFloat
+fmtInteger
+fmtPointer
+fmtQ
+fmtQc
+fmtS
+fmtSbx
+fmtSx
+fmtUnicode
+formal
+format
+frameStore
+frames
+free
+freeIndexForScan
+freeWait
+freelink
+freg
+fregs
+fromParser
+ft)A
+ft,A
+ftGA
+ftab
+ftyp
+fu H)
+fu)H
+fuQH
+full
+funcID
+funcInfo
+funcName
+funcnameOffset
+funcnametab
+funcoff
+funcs
+fwGI9
+g,m,
+g0StackAccurate
+gFree
+gVfQp
+gc %: gp  *(in  n= - NaN  P m=  MPC=],  < end > and]:
+gcAssistBytes
+gcAssistTime
+gcBgMarkWorkerNode
+gcCyclesDone
+gcCyclesForced
+gcFractionalMarkTime
+gcMarkWorkerMode
+gcMarkWorkerStartTime
+gcStats
+gcStopTime
+gcWriteBarrier
+gcbss
+gcdata
+gcdatamask
+gcmarkBits
+gcscandone
+gdFe
+get1
+get2
+getBase
+getPinnerBits
+getRune
+getSlow
+getWithKey
+getWithKeySmall
+getWithoutKey
+getWithoutKeySmallFastStr
+gid_map
+github.com/lovable/sandbox-cli/internal/taskrunner.EnsureLovableTaggerInstalled
+github.com/lovable/sandbox-cli/internal/taskrunner.GenerateOverrideConfig
+github.com/lovable/sandbox-cli/internal/taskrunner.GetCommand
+github.com/lovable/sandbox-cli/internal/taskrunner.GetDevServerPort
+github.com/lovable/sandbox-cli/internal/taskrunner.GetViteConfigPath
+github.com/lovable/sandbox-cli/internal/taskrunner.IsViteCommand
+github.com/lovable/sandbox-cli/internal/taskrunner.IsViteOverrideEnabled
+github.com/lovable/sandbox-cli/internal/taskrunner.IsViteProject
+github.com/lovable/sandbox-cli/internal/taskrunner.IsViteTask
+github.com/lovable/sandbox-cli/internal/taskrunner.NeedsViteOverride
+github.com/lovable/sandbox-cli/internal/taskrunner.UsesLovableTagger
+github.com/lovable/sandbox-cli/internal/taskrunner.UsesLovite
+github.com/lovable/sandbox-cli/internal/taskrunner.checkJustfile
+github.com/lovable/sandbox-cli/internal/taskrunner.checkLovableToml
+github.com/lovable/sandbox-cli/internal/taskrunner.checkPackageManager
+github.com/lovable/sandbox-cli/internal/taskrunner.detectPackageManager
+github.com/lovable/sandbox-cli/internal/taskrunner.formatOverrideConfig
+github.com/lovable/sandbox-cli/internal/taskrunner.getPackageScript
+github.com/lovable/sandbox-cli/internal/taskrunner.hasJustRecipe
+github.com/lovable/sandbox-cli/internal/taskrunner.hasUnsupportedViteConfig
+github.com/lovable/sandbox-cli/internal/taskrunner.init
+github.com/lovable/sandbox-cli/internal/taskrunner.parseCommand
+github.com/lovable/sandbox-cli/internal/taskrunner.scriptUsesVite
+github.com/pelletier/go-toml/v2
+github.com/pelletier/go-toml/v2.(*DecodeError).Error
+github.com/pelletier/go-toml/v2.(*DecodeError).Key
+github.com/pelletier/go-toml/v2.(*DecodeError).Position
+github.com/pelletier/go-toml/v2.(*DecodeError).String
+github.com/pelletier/go-toml/v2.(*LocalDate).AsTime
+github.com/pelletier/go-toml/v2.(*LocalDate).MarshalText
+github.com/pelletier/go-toml/v2.(*LocalDate).String
+github.com/pelletier/go-toml/v2.(*LocalDate).UnmarshalText
+github.com/pelletier/go-toml/v2.(*LocalDateTime).AsTime
+github.com/pelletier/go-toml/v2.(*LocalDateTime).MarshalText
+github.com/pelletier/go-toml/v2.(*LocalDateTime).String
+github.com/pelletier/go-toml/v2.(*LocalDateTime).UnmarshalText
+github.com/pelletier/go-toml/v2.(*LocalTime).MarshalText
+github.com/pelletier/go-toml/v2.(*LocalTime).String
+github.com/pelletier/go-toml/v2.(*LocalTime).UnmarshalText
+github.com/pelletier/go-toml/v2.(*StrictMissingError).Error
+github.com/pelletier/go-toml/v2.(*StrictMissingError).String
+github.com/pelletier/go-toml/v2.(*decoder).FromParser
+github.com/pelletier/go-toml/v2.(*decoder).arrayIndex
+github.com/pelletier/go-toml/v2.(*decoder).expr
+github.com/pelletier/go-toml/v2.(*decoder).fromParser
+github.com/pelletier/go-toml/v2.(*decoder).handleArrayTable
+github.com/pelletier/go-toml/v2.(*decoder).handleArrayTableCollection
+github.com/pelletier/go-toml/v2.(*decoder).handleArrayTableCollection-fm
+github.com/pelletier/go-toml/v2.(*decoder).handleArrayTableCollectionLast
+github.com/pelletier/go-toml/v2.(*decoder).handleArrayTablePart
+github.com/pelletier/go-toml/v2.(*decoder).handleKeyPart
+github.com/pelletier/go-toml/v2.(*decoder).handleKeyValue
+github.com/pelletier/go-toml/v2.(*decoder).handleKeyValueInner
+github.com/pelletier/go-toml/v2.(*decoder).handleKeyValuePart
+github.com/pelletier/go-toml/v2.(*decoder).handleKeyValues
+github.com/pelletier/go-toml/v2.(*decoder).handleRootExpression
+github.com/pelletier/go-toml/v2.(*decoder).handleTable
+github.com/pelletier/go-toml/v2.(*decoder).handleTable-fm
+github.com/pelletier/go-toml/v2.(*decoder).handleTablePart
+github.com/pelletier/go-toml/v2.(*decoder).handleValue
+github.com/pelletier/go-toml/v2.(*decoder).keyFromData
+github.com/pelletier/go-toml/v2.(*decoder).nextExpr
+github.com/pelletier/go-toml/v2.(*decoder).stashExpr
+github.com/pelletier/go-toml/v2.(*decoder).tryTextUnmarshaler
+github.com/pelletier/go-toml/v2.(*decoder).typeMismatchError
+github.com/pelletier/go-toml/v2.(*decoder).typeMismatchString
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalArray
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalBool
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalDateTime
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalFloat
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalInlineTable
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalInteger
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalLocalDate
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalLocalDateTime
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalLocalTime
+github.com/pelletier/go-toml/v2.(*decoder).unmarshalString
+github.com/pelletier/go-toml/v2.(*strict).EnterArrayTable
+github.com/pelletier/go-toml/v2.(*strict).EnterKeyValue
+github.com/pelletier/go-toml/v2.(*strict).EnterTable
+github.com/pelletier/go-toml/v2.(*strict).Error
+github.com/pelletier/go-toml/v2.(*strict).ExitKeyValue
+github.com/pelletier/go-toml/v2.(*strict).MissingField
+github.com/pelletier/go-toml/v2.(*strict).MissingTable
+github.com/pelletier/go-toml/v2.LocalDate.AsTime
+github.com/pelletier/go-toml/v2.LocalDate.MarshalText
+github.com/pelletier/go-toml/v2.LocalDate.String
+github.com/pelletier/go-toml/v2.LocalDateTime.AsTime
+github.com/pelletier/go-toml/v2.LocalDateTime.MarshalText
+github.com/pelletier/go-toml/v2.LocalDateTime.String
+github.com/pelletier/go-toml/v2.LocalTime.MarshalText
+github.com/pelletier/go-toml/v2.LocalTime.String
+github.com/pelletier/go-toml/v2.Unmarshal
+github.com/pelletier/go-toml/v2.afterLines
+github.com/pelletier/go-toml/v2.beforeLines
+github.com/pelletier/go-toml/v2.checkAndRemoveUnderscoresFloats
+github.com/pelletier/go-toml/v2.checkAndRemoveUnderscoresIntegers
+github.com/pelletier/go-toml/v2.daysIn
+github.com/pelletier/go-toml/v2.fieldByIndex
+github.com/pelletier/go-toml/v2.forEachField
+github.com/pelletier/go-toml/v2.formatLineNumber
+github.com/pelletier/go-toml/v2.init
+github.com/pelletier/go-toml/v2.init.0
+github.com/pelletier/go-toml/v2.initAndDereferencePointer
+github.com/pelletier/go-toml/v2.isDigit
+github.com/pelletier/go-toml/v2.isLeap
+github.com/pelletier/go-toml/v2.isSign
+github.com/pelletier/go-toml/v2.isValidDate
+github.com/pelletier/go-toml/v2.keyLocation
+github.com/pelletier/go-toml/v2.linesOfContext
+github.com/pelletier/go-toml/v2.makeMapStringInterface
+github.com/pelletier/go-toml/v2.makeSliceInterface
+github.com/pelletier/go-toml/v2.parseDateTime
+github.com/pelletier/go-toml/v2.parseDecimalDigits
+github.com/pelletier/go-toml/v2.parseFloat
+github.com/pelletier/go-toml/v2.parseIntBin
+github.com/pelletier/go-toml/v2.parseIntDec
+github.com/pelletier/go-toml/v2.parseIntHex
+github.com/pelletier/go-toml/v2.parseIntOct
+github.com/pelletier/go-toml/v2.parseInteger
+github.com/pelletier/go-toml/v2.parseLocalDate
+github.com/pelletier/go-toml/v2.parseLocalDateTime
+github.com/pelletier/go-toml/v2.parseLocalTime
+github.com/pelletier/go-toml/v2.positionAtEnd
+github.com/pelletier/go-toml/v2.structFieldPath
+github.com/pelletier/go-toml/v2.structFieldPath.func1
+github.com/pelletier/go-toml/v2.wrapDecodeError
+github.com/pelletier/go-toml/v2/internal/characters.InvalidAscii
+github.com/pelletier/go-toml/v2/internal/characters.Utf8TomlValidAlreadyEscaped
+github.com/pelletier/go-toml/v2/internal/characters.Utf8ValidNext
+github.com/pelletier/go-toml/v2/internal/characters.utf8Err.Zero
+github.com/pelletier/go-toml/v2/internal/danger.BytesRange
+github.com/pelletier/go-toml/v2/internal/danger.Stride
+github.com/pelletier/go-toml/v2/internal/danger.SubsliceOffset
+github.com/pelletier/go-toml/v2/internal/tracker.(*KeyTracker).Key
+github.com/pelletier/go-toml/v2/internal/tracker.(*KeyTracker).Pop
+github.com/pelletier/go-toml/v2/internal/tracker.(*KeyTracker).Push
+github.com/pelletier/go-toml/v2/internal/tracker.(*KeyTracker).UpdateArrayTable
+github.com/pelletier/go-toml/v2/internal/tracker.(*KeyTracker).UpdateTable
+github.com/pelletier/go-toml/v2/internal/tracker.(*KeyTracker).reset
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).CheckExpression
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).checkArray
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).checkArrayTable
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).checkInlineTable
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).checkKeyValue
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).checkTable
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).clear
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).create
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).find
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).reset
+github.com/pelletier/go-toml/v2/internal/tracker.(*SeenTracker).setExplicitFlag
+github.com/pelletier/go-toml/v2/internal/tracker.(*keyKind).String
+github.com/pelletier/go-toml/v2/internal/tracker.init.func1
+github.com/pelletier/go-toml/v2/internal/tracker.keyKind.String
+github.com/pelletier/go-toml/v2/unstable.(*Iterator).IsLast
+github.com/pelletier/go-toml/v2/unstable.(*Iterator).Next
+github.com/pelletier/go-toml/v2/unstable.(*Iterator).Node
+github.com/pelletier/go-toml/v2/unstable.(*Kind).String
+github.com/pelletier/go-toml/v2/unstable.(*Node).Child
+github.com/pelletier/go-toml/v2/unstable.(*Node).Children
+github.com/pelletier/go-toml/v2/unstable.(*Node).Key
+github.com/pelletier/go-toml/v2/unstable.(*Node).Next
+github.com/pelletier/go-toml/v2/unstable.(*Node).Valid
+github.com/pelletier/go-toml/v2/unstable.(*Node).Value
+github.com/pelletier/go-toml/v2/unstable.(*Parser).Data
+github.com/pelletier/go-toml/v2/unstable.(*Parser).Error
+github.com/pelletier/go-toml/v2/unstable.(*Parser).Expression
+github.com/pelletier/go-toml/v2/unstable.(*Parser).NextExpression
+github.com/pelletier/go-toml/v2/unstable.(*Parser).Range
+github.com/pelletier/go-toml/v2/unstable.(*Parser).Raw
+github.com/pelletier/go-toml/v2/unstable.(*Parser).Reset
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseArrayTable
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseBasicString
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseComment
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseExpression
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseInlineTable
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseIntOrFloatOrDateTime
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseKey
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseKeyval
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseLiteralString
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseMultilineBasicString
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseMultilineLiteralString
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseNewline
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseOptionalWhitespaceCommentNewline
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseOptionalWhitespaceCommentNewline.func1
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseSimpleKey
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseStdTable
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseTable
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseVal
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseValArray
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseValArray.func1
+github.com/pelletier/go-toml/v2/unstable.(*Parser).parseWhitespace
+github.com/pelletier/go-toml/v2/unstable.(*Parser).scanDateTime
+github.com/pelletier/go-toml/v2/unstable.(*Parser).scanIntOrFloat
+github.com/pelletier/go-toml/v2/unstable.(*ParserError).Error
+github.com/pelletier/go-toml/v2/unstable.(*builder).AttachChild
+github.com/pelletier/go-toml/v2/unstable.(*builder).Chain
+github.com/pelletier/go-toml/v2/unstable.(*builder).NodeAt
+github.com/pelletier/go-toml/v2/unstable.(*builder).Push
+github.com/pelletier/go-toml/v2/unstable.(*builder).PushAndChain
+github.com/pelletier/go-toml/v2/unstable.(*builder).Reset
+github.com/pelletier/go-toml/v2/unstable.(*root).at
+github.com/pelletier/go-toml/v2/unstable.Kind.String
+github.com/pelletier/go-toml/v2/unstable.NewParserError
+github.com/pelletier/go-toml/v2/unstable.atmost
+github.com/pelletier/go-toml/v2/unstable.expect
+github.com/pelletier/go-toml/v2/unstable.hexToRune
+github.com/pelletier/go-toml/v2/unstable.isDigit
+github.com/pelletier/go-toml/v2/unstable.isUnquotedKeyChar
+github.com/pelletier/go-toml/v2/unstable.isValidBinaryRune
+github.com/pelletier/go-toml/v2/unstable.isValidHexRune
+github.com/pelletier/go-toml/v2/unstable.isValidOctalRune
+github.com/pelletier/go-toml/v2/unstable.scanBasicString
+github.com/pelletier/go-toml/v2/unstable.scanComment
+github.com/pelletier/go-toml/v2/unstable.scanFollows
+github.com/pelletier/go-toml/v2/unstable.scanFollowsFalse
+github.com/pelletier/go-toml/v2/unstable.scanFollowsInf
+github.com/pelletier/go-toml/v2/unstable.scanFollowsMultilineBasicStringDelimiter
+github.com/pelletier/go-toml/v2/unstable.scanFollowsMultilineLiteralStringDelimiter
+github.com/pelletier/go-toml/v2/unstable.scanFollowsNan
+github.com/pelletier/go-toml/v2/unstable.scanFollowsTrue
+github.com/pelletier/go-toml/v2/unstable.scanLiteralString
+github.com/pelletier/go-toml/v2/unstable.scanMultilineBasicString
+github.com/pelletier/go-toml/v2/unstable.scanMultilineLiteralString
+github.com/pelletier/go-toml/v2/unstable.scanUnquotedKey
+github.com/pelletier/go-toml/v2/unstable.scanWhitespace
+github.com/pelletier/go-toml/v2/unstable.scanWindowsNewline
+globalDepth
+globalShift
+globalsScan
+go.shape
+go1.25.8
+go:textfipsend
+go:textfipsstart
+goSigStack
+goal , cons/mark  maxTrigger= pages/byte
+goexit
+gofunc
+gogo
+goid
+goidcacheend
+gomaxprocs
+goodArgNum
+gopau
+gopau/f
+gopc
+goroutineErr
+goroutineProfiled
+gosave_systemstack_switch
+group
+groups
+grow
+growToSmall
+growToTable
+growY
+grownKeyElem
+growthLeft
+gsignal
+gu<H
+guintptr
+h gQ
+h'u'
+h0fE
+h2fE9
+h5A	
+hUgbj
+handle
+handleArrayTable
+handleArrayTableCollection
+handleArrayTableCollectionLast
+handleArrayTablePart
+handleKeyPart
+handleKeyValue
+handleKeyValueInner
+handleKeyValuePart
+handleKeyValues
+handleMethods
+handleRootExpression
+handleTable
+handleTablePart
+handleTransientAcquire
+handleTransientRelease
+handleValue
+hasCgoOnStack
+hasFunction
+hasWeakPointer
+hash
+hasmain
+hchan
+head
+headTail
+heap
+heapBits
+heapBitsSmallForAddr
+heapGoal
+heapScan
+heapScanWork
+heapStatsDelta
+helpt
+hexByte
+hiter
+http2debugrsa1024mincrypto/rsacrypto/tlswinsymlinkx509rsacrtArrayTabledefinition
+hu&H
+human
+i	j	i
+i+	!
+i0dL
+i2fE9
+i5j>i
+i^j	
+idealConstant
+ieg!
+ignore
+ime.L
+import { componentTagger } from "lovable-tagger";
+import { defineConfig } from "vite";
+inHeap
+inList
+inMarkAssist
+inRoot
+inStacks
+inSweep
+inUse
+inWorkBufs
+incPinCounter
+incgo
+incref
+increfAndClose
+index
+indexbody
+indexbytebody
+indirect
+ineIu
+info
+init
+initHeap
+initHeapBits
+initInlineMarkBits
+initMu
+initOpenCodedDefers
+initSlow
+inited
+inlineMarkBits
+input
+inputOverflow
+insert
+insertBack
+insideAction
+installTableSplit
+instruction bytes:mp.gsignal stack [bad manualFreeListruntime: textAddr  frames elided...
+intbuf
+internal/abi
+internal/abi.(*ArrayType).Align
+internal/abi.(*ArrayType).ArrayType
+internal/abi.(*ArrayType).ChanDir
+internal/abi.(*ArrayType).Common
+internal/abi.(*ArrayType).ExportedMethods
+internal/abi.(*ArrayType).FieldAlign
+internal/abi.(*ArrayType).FuncType
+internal/abi.(*ArrayType).GcSlice
+internal/abi.(*ArrayType).HasName
+internal/abi.(*ArrayType).IfaceIndir
+internal/abi.(*ArrayType).InterfaceType
+internal/abi.(*ArrayType).IsDirectIface
+internal/abi.(*ArrayType).Key
+internal/abi.(*ArrayType).Kind
+internal/abi.(*ArrayType).MapType
+internal/abi.(*ArrayType).NumMethod
+internal/abi.(*ArrayType).Pointers
+internal/abi.(*ArrayType).Size
+internal/abi.(*ArrayType).StructType
+internal/abi.(*ArrayType).Uncommon
+internal/abi.(*FuncType).Align
+internal/abi.(*FuncType).ArrayType
+internal/abi.(*FuncType).ChanDir
+internal/abi.(*FuncType).Common
+internal/abi.(*FuncType).Elem
+internal/abi.(*FuncType).ExportedMethods
+internal/abi.(*FuncType).FieldAlign
+internal/abi.(*FuncType).FuncType
+internal/abi.(*FuncType).GcSlice
+internal/abi.(*FuncType).HasName
+internal/abi.(*FuncType).IfaceIndir
+internal/abi.(*FuncType).In
+internal/abi.(*FuncType).InSlice
+internal/abi.(*FuncType).InterfaceType
+internal/abi.(*FuncType).IsDirectIface
+internal/abi.(*FuncType).IsVariadic
+internal/abi.(*FuncType).Key
+internal/abi.(*FuncType).Kind
+internal/abi.(*FuncType).Len
+internal/abi.(*FuncType).MapType
+internal/abi.(*FuncType).NumIn
+internal/abi.(*FuncType).NumMethod
+internal/abi.(*FuncType).NumOut
+internal/abi.(*FuncType).Out
+internal/abi.(*FuncType).OutSlice
+internal/abi.(*FuncType).Pointers
+internal/abi.(*FuncType).Size
+internal/abi.(*FuncType).StructType
+internal/abi.(*FuncType).Uncommon
+internal/abi.(*IntArgRegBitmap).Get
+internal/abi.(*IntArgRegBitmap).Set
+internal/abi.(*InterfaceType).Align
+internal/abi.(*InterfaceType).ArrayType
+internal/abi.(*InterfaceType).ChanDir
+internal/abi.(*InterfaceType).Common
+internal/abi.(*InterfaceType).Elem
+internal/abi.(*InterfaceType).ExportedMethods
+internal/abi.(*InterfaceType).FieldAlign
+internal/abi.(*InterfaceType).FuncType
+internal/abi.(*InterfaceType).GcSlice
+internal/abi.(*InterfaceType).HasName
+internal/abi.(*InterfaceType).IfaceIndir
+internal/abi.(*InterfaceType).InterfaceType
+internal/abi.(*InterfaceType).IsDirectIface
+internal/abi.(*InterfaceType).Key
+internal/abi.(*InterfaceType).Kind
+internal/abi.(*InterfaceType).Len
+internal/abi.(*InterfaceType).MapType
+internal/abi.(*InterfaceType).NumMethod
+internal/abi.(*InterfaceType).Pointers
+internal/abi.(*InterfaceType).Size
+internal/abi.(*InterfaceType).StructType
+internal/abi.(*InterfaceType).Uncommon
+internal/abi.(*Kind).String
+internal/abi.(*Name).Data
+internal/abi.(*Name).DataChecked
+internal/abi.(*Name).HasTag
+internal/abi.(*Name).IsBlank
+internal/abi.(*Name).IsEmbedded
+internal/abi.(*Name).IsExported
+internal/abi.(*Name).Name
+internal/abi.(*Name).ReadVarint
+internal/abi.(*Name).Tag
+internal/abi.(*PtrType).Align
+internal/abi.(*PtrType).ArrayType
+internal/abi.(*PtrType).ChanDir
+internal/abi.(*PtrType).Common
+internal/abi.(*PtrType).ExportedMethods
+internal/abi.(*PtrType).FieldAlign
+internal/abi.(*PtrType).FuncType
+internal/abi.(*PtrType).GcSlice
+internal/abi.(*PtrType).HasName
+internal/abi.(*PtrType).IfaceIndir
+internal/abi.(*PtrType).InterfaceType
+internal/abi.(*PtrType).IsDirectIface
+internal/abi.(*PtrType).Key
+internal/abi.(*PtrType).Kind
+internal/abi.(*PtrType).Len
+internal/abi.(*PtrType).MapType
+internal/abi.(*PtrType).NumMethod
+internal/abi.(*PtrType).Pointers
+internal/abi.(*PtrType).Size
+internal/abi.(*PtrType).StructType
+internal/abi.(*PtrType).Uncommon
+internal/abi.(*RegArgs).Dump
+internal/abi.(*RegArgs).IntRegArgAddr
+internal/abi.(*StructField).Embedded
+internal/abi.(*StructType).Align
+internal/abi.(*StructType).ArrayType
+internal/abi.(*StructType).ChanDir
+internal/abi.(*StructType).Common
+internal/abi.(*StructType).Elem
+internal/abi.(*StructType).ExportedMethods
+internal/abi.(*StructType).FieldAlign
+internal/abi.(*StructType).FuncType
+internal/abi.(*StructType).GcSlice
+internal/abi.(*StructType).HasName
+internal/abi.(*StructType).IfaceIndir
+internal/abi.(*StructType).InterfaceType
+internal/abi.(*StructType).IsDirectIface
+internal/abi.(*StructType).Key
+internal/abi.(*StructType).Kind
+internal/abi.(*StructType).Len
+internal/abi.(*StructType).MapType
+internal/abi.(*StructType).NumMethod
+internal/abi.(*StructType).Pointers
+internal/abi.(*StructType).Size
+internal/abi.(*StructType).StructType
+internal/abi.(*StructType).Uncommon
+internal/abi.(*SwissMapType).Align
+internal/abi.(*SwissMapType).ArrayType
+internal/abi.(*SwissMapType).ChanDir
+internal/abi.(*SwissMapType).Common
+internal/abi.(*SwissMapType).ExportedMethods
+internal/abi.(*SwissMapType).FieldAlign
+internal/abi.(*SwissMapType).FuncType
+internal/abi.(*SwissMapType).GcSlice
+internal/abi.(*SwissMapType).HasName
+internal/abi.(*SwissMapType).HashMightPanic
+internal/abi.(*SwissMapType).IfaceIndir
+internal/abi.(*SwissMapType).IndirectElem
+internal/abi.(*SwissMapType).IndirectKey
+internal/abi.(*SwissMapType).InterfaceType
+internal/abi.(*SwissMapType).IsDirectIface
+internal/abi.(*SwissMapType).Kind
+internal/abi.(*SwissMapType).Len
+internal/abi.(*SwissMapType).MapType
+internal/abi.(*SwissMapType).NeedKeyUpdate
+internal/abi.(*SwissMapType).NumMethod
+internal/abi.(*SwissMapType).Pointers
+internal/abi.(*SwissMapType).Size
+internal/abi.(*SwissMapType).StructType
+internal/abi.(*SwissMapType).Uncommon
+internal/abi.(*Type).Align
+internal/abi.(*Type).ArrayType
+internal/abi.(*Type).ChanDir
+internal/abi.(*Type).Common
+internal/abi.(*Type).Elem
+internal/abi.(*Type).ExportedMethods
+internal/abi.(*Type).FieldAlign
+internal/abi.(*Type).FuncType
+internal/abi.(*Type).GcSlice
+internal/abi.(*Type).HasName
+internal/abi.(*Type).IfaceIndir
+internal/abi.(*Type).InterfaceType
+internal/abi.(*Type).IsDirectIface
+internal/abi.(*Type).Key
+internal/abi.(*Type).Kind
+internal/abi.(*Type).Len
+internal/abi.(*Type).MapType
+internal/abi.(*Type).NumMethod
+internal/abi.(*Type).Pointers
+internal/abi.(*Type).Size
+internal/abi.(*Type).StructType
+internal/abi.(*Type).Uncommon
+internal/abi.(*UncommonType).ExportedMethods
+internal/abi.(*UncommonType).Methods
+internal/abi.Escape[go.shape.*uint8]
+internal/abi.Kind.String
+internal/abi.Name.Data
+internal/abi.Name.DataChecked
+internal/abi.Name.HasTag
+internal/abi.Name.IsBlank
+internal/abi.Name.IsEmbedded
+internal/abi.Name.IsExported
+internal/abi.Name.Name
+internal/abi.Name.ReadVarint
+internal/abi.Name.Tag
+internal/abi.NewName
+internal/abi.NoEscape
+internal/abi.TypeFor[go.shape.float64]
+internal/abi.TypeFor[go.shape.interface { Error() string }]
+internal/abi.TypeFor[go.shape.interface { IsZero() bool }]
+internal/abi.TypeFor[go.shape.interface { MarshalJSON() ([]uint8, error) }]
+internal/abi.TypeFor[go.shape.interface { MarshalText() ([]uint8, error) }]
+internal/abi.TypeFor[go.shape.interface { String() string }]
+internal/abi.TypeFor[go.shape.interface { UnmarshalText([]uint8) error }]
+internal/abi.TypeFor[go.shape.string]
+internal/abi.TypeFor[go.shape.struct { Pid int; os.state sync/atomic.Uint32; os.sigMu sync.RWMutex; os.handle *os.processHandle; os.cleanup runtime.Cleanup }]
+internal/abi.TypeFor[go.shape.struct { internal/poll.splicePipeFields; internal/poll.cleanup runtime.Cleanup }]
+internal/abi.TypeFor[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+internal/abi.TypeFor[go.shape.struct { reflect.typ_ *internal/abi.Type; reflect.ptr unsafe.Pointer; reflect.flag }]
+internal/abi.TypeFor[go.shape.struct {}]
+internal/abi.TypeOf
+internal/abi.addChecked
+internal/abi.writeVarint
+internal/bisect
+internal/bisect.(*Matcher).FileLine
+internal/bisect.(*Matcher).MarkerOnly
+internal/bisect.(*Matcher).ShouldEnable
+internal/bisect.(*Matcher).ShouldPrint
+internal/bisect.(*Matcher).Stack
+internal/bisect.(*Matcher).fileLine
+internal/bisect.(*Matcher).matchResult
+internal/bisect.(*Matcher).stack
+internal/bisect.(*dedup).seen
+internal/bisect.(*dedup).seenLossy
+internal/bisect.(*parseError).Error
+internal/bisect.AppendMarker
+internal/bisect.Hash
+internal/bisect.New
+internal/bisect.PrintMarker
+internal/bisect.appendFileLine
+internal/bisect.fnv
+internal/bisect.fnvString
+internal/bisect.fnvUint32
+internal/bisect.fnvUint64
+internal/bisect.printFileLine
+internal/bisect.printStack
+internal/bytealg.Compare
+internal/bytealg.CompareString
+internal/bytealg.CountString
+internal/bytealg.Cutover
+internal/bytealg.HashStrRev[go.shape.string]
+internal/bytealg.HashStr[go.shape.[]uint8]
+internal/bytealg.HashStr[go.shape.string]
+internal/bytealg.Index
+internal/bytealg.IndexByte
+internal/bytealg.IndexByteString
+internal/bytealg.IndexRabinKarp[go.shape.[]uint8]
+internal/bytealg.IndexRabinKarp[go.shape.string]
+internal/bytealg.IndexString
+internal/bytealg.LastIndexByteString
+internal/bytealg.MakeNoZero
+internal/bytealg.countGenericString
+internal/bytealg.init.0
+internal/byteorder.BEPutUint32
+internal/byteorder.BEPutUint64
+internal/byteorder.LEUint16
+internal/byteorder.LEUint32
+internal/byteorder.LEUint64
+internal/chacha8rand
+internal/chacha8rand.(*State).Init
+internal/chacha8rand.(*State).Init64
+internal/chacha8rand.(*State).Next
+internal/chacha8rand.(*State).Refill
+internal/chacha8rand.(*State).Reseed
+internal/chacha8rand.block
+internal/cpu
+internal/cpu.Initialize
+internal/cpu.cpuid
+internal/cpu.doinit
+internal/cpu.getGOAMD64level
+internal/cpu.indexByte
+internal/cpu.isSet
+internal/cpu.processOptions
+internal/cpu.xgetbv
+internal/filepathlite.(*lazybuf).append
+internal/filepathlite.(*lazybuf).index
+internal/filepathlite.(*lazybuf).string
+internal/filepathlite.Base
+internal/filepathlite.Clean
+internal/filepathlite.IsAbs
+internal/filepathlite.IsPathSeparator
+internal/filepathlite.VolumeName
+internal/fmtsort
+internal/fmtsort.Sort
+internal/fmtsort.Sort.func1
+internal/fmtsort.compare
+internal/fmtsort.nilCompare
+internal/godebug
+internal/godebug.(*Setting).IncNonDefault
+internal/godebug.(*Setting).IncNonDefault-fm
+internal/godebug.(*Setting).Name
+internal/godebug.(*Setting).Undocumented
+internal/godebug.(*Setting).Value
+internal/godebug.(*Setting).Value.func1
+internal/godebug.(*Setting).register
+internal/godebug.(*Setting).register-fm
+internal/godebug.(*runtimeStderr).Write
+internal/godebug.New
+internal/godebug.init.0
+internal/godebug.lookup
+internal/godebug.newIncNonDefault
+internal/godebug.parse
+internal/godebug.registerMetric
+internal/godebug.setNewIncNonDefault
+internal/godebug.setUpdate
+internal/godebug.update
+internal/godebug.update.deferwrap1
+internal/godebug.update.func1
+internal/godebug.update.func2
+internal/godebugs
+internal/godebugs.Lookup
+internal/itoa.Itoa
+internal/itoa.Uitoa
+internal/poll
+internal/poll.(*DeadlineExceededError).Error
+internal/poll.(*DeadlineExceededError).Temporary
+internal/poll.(*DeadlineExceededError).Timeout
+internal/poll.(*FD).Accept
+internal/poll.(*FD).Accept.deferwrap1
+internal/poll.(*FD).Close
+internal/poll.(*FD).Dup
+internal/poll.(*FD).Dup.deferwrap1
+internal/poll.(*FD).Fchdir
+internal/poll.(*FD).Fchdir.deferwrap1
+internal/poll.(*FD).Fchmod
+internal/poll.(*FD).Fchmod.deferwrap1
+internal/poll.(*FD).Fchmod.func1
+internal/poll.(*FD).Fchown
+internal/poll.(*FD).Fchown.deferwrap1
+internal/poll.(*FD).Fchown.func1
+internal/poll.(*FD).Fstat
+internal/poll.(*FD).Fstat.deferwrap1
+internal/poll.(*FD).Fstat.func1
+internal/poll.(*FD).Fstatat
+internal/poll.(*FD).Fstatat.deferwrap1
+internal/poll.(*FD).Fstatat.func1
+internal/poll.(*FD).Fsync
+internal/poll.(*FD).Fsync.deferwrap1
+internal/poll.(*FD).Fsync.func1
+internal/poll.(*FD).Ftruncate
+internal/poll.(*FD).Ftruncate.deferwrap1
+internal/poll.(*FD).Ftruncate.func1
+internal/poll.(*FD).GetsockoptInt
+internal/poll.(*FD).GetsockoptInt.deferwrap1
+internal/poll.(*FD).Init
+internal/poll.(*FD).Pread
+internal/poll.(*FD).Pread.func1
+internal/poll.(*FD).Pwrite
+internal/poll.(*FD).Pwrite.deferwrap1
+internal/poll.(*FD).RawControl
+internal/poll.(*FD).RawControl.deferwrap1
+internal/poll.(*FD).RawRead
+internal/poll.(*FD).RawRead.deferwrap1
+internal/poll.(*FD).RawWrite
+internal/poll.(*FD).RawWrite.deferwrap1
+internal/poll.(*FD).Read
+internal/poll.(*FD).Read.deferwrap1
+internal/poll.(*FD).ReadDirent
+internal/poll.(*FD).ReadDirent.deferwrap1
+internal/poll.(*FD).ReadFrom
+internal/poll.(*FD).ReadFrom.deferwrap1
+internal/poll.(*FD).ReadFromInet4
+internal/poll.(*FD).ReadFromInet4.deferwrap1
+internal/poll.(*FD).ReadFromInet6
+internal/poll.(*FD).ReadFromInet6.deferwrap1
+internal/poll.(*FD).ReadMsg
+internal/poll.(*FD).ReadMsg.deferwrap1
+internal/poll.(*FD).ReadMsgInet4
+internal/poll.(*FD).ReadMsgInet4.deferwrap1
+internal/poll.(*FD).ReadMsgInet6
+internal/poll.(*FD).ReadMsgInet6.deferwrap1
+internal/poll.(*FD).Seek
+internal/poll.(*FD).Seek.deferwrap1
+internal/poll.(*FD).SetBlocking
+internal/poll.(*FD).SetBlocking.deferwrap1
+internal/poll.(*FD).SetDeadline
+internal/poll.(*FD).SetReadDeadline
+internal/poll.(*FD).SetWriteDeadline
+internal/poll.(*FD).SetsockoptByte
+internal/poll.(*FD).SetsockoptByte.deferwrap1
+internal/poll.(*FD).SetsockoptIPMreq
+internal/poll.(*FD).SetsockoptIPMreq.deferwrap1
+internal/poll.(*FD).SetsockoptIPMreqn
+internal/poll.(*FD).SetsockoptIPMreqn.deferwrap1
+internal/poll.(*FD).SetsockoptIPv6Mreq
+internal/poll.(*FD).SetsockoptIPv6Mreq.deferwrap1
+internal/poll.(*FD).SetsockoptInet4Addr
+internal/poll.(*FD).SetsockoptInet4Addr.deferwrap1
+internal/poll.(*FD).SetsockoptInt
+internal/poll.(*FD).SetsockoptInt.deferwrap1
+internal/poll.(*FD).SetsockoptLinger
+internal/poll.(*FD).SetsockoptLinger.deferwrap1
+internal/poll.(*FD).Shutdown
+internal/poll.(*FD).Shutdown.deferwrap1
+internal/poll.(*FD).WaitWrite
+internal/poll.(*FD).Write
+internal/poll.(*FD).Write.deferwrap1
+internal/poll.(*FD).WriteMsg
+internal/poll.(*FD).WriteMsg.deferwrap1
+internal/poll.(*FD).WriteMsgInet4
+internal/poll.(*FD).WriteMsgInet4.deferwrap1
+internal/poll.(*FD).WriteMsgInet6
+internal/poll.(*FD).WriteMsgInet6.deferwrap1
+internal/poll.(*FD).WriteOnce
+internal/poll.(*FD).WriteOnce.deferwrap1
+internal/poll.(*FD).WriteTo
+internal/poll.(*FD).WriteTo.deferwrap1
+internal/poll.(*FD).WriteToInet4
+internal/poll.(*FD).WriteToInet4.deferwrap1
+internal/poll.(*FD).WriteToInet6
+internal/poll.(*FD).WriteToInet6.deferwrap1
+internal/poll.(*FD).Writev
+internal/poll.(*FD).Writev.deferwrap1
+internal/poll.(*FD).decref
+internal/poll.(*FD).destroy
+internal/poll.(*FD).eofError
+internal/poll.(*FD).incref
+internal/poll.(*FD).readLock
+internal/poll.(*FD).readUnlock
+internal/poll.(*FD).writeLock
+internal/poll.(*FD).writeUnlock
+internal/poll.(*SysFile).destroy
+internal/poll.(*errNetClosing).Error
+internal/poll.(*errNetClosing).Temporary
+internal/poll.(*errNetClosing).Timeout
+internal/poll.(*fdMutex).decref
+internal/poll.(*fdMutex).incref
+internal/poll.(*fdMutex).increfAndClose
+internal/poll.(*fdMutex).rwlock
+internal/poll.(*fdMutex).rwunlock
+internal/poll.(*pollDesc).close
+internal/poll.(*pollDesc).evict
+internal/poll.(*pollDesc).init
+internal/poll.(*pollDesc).pollable
+internal/poll.(*pollDesc).prepare
+internal/poll.(*pollDesc).prepareRead
+internal/poll.(*pollDesc).prepareWrite
+internal/poll.(*pollDesc).wait
+internal/poll.(*pollDesc).waitRead
+internal/poll.(*pollDesc).waitWrite
+internal/poll.CopyFileRange
+internal/poll.DupCloseOnExec
+internal/poll.SendFile
+internal/poll.Splice
+internal/poll.Splice.deferwrap1
+internal/poll.accept
+internal/poll.consume
+internal/poll.convertErr
+internal/poll.copyFileRange
+internal/poll.copyFileRange.deferwrap1
+internal/poll.copyFileRange.deferwrap2
+internal/poll.copyFileRange.func1
+internal/poll.destroyPipe
+internal/poll.dupCloseOnExecOld
+internal/poll.dupCloseOnExecOld.deferwrap1
+internal/poll.errClosing
+internal/poll.errNetClosing.Error
+internal/poll.errNetClosing.Temporary
+internal/poll.errNetClosing.Timeout
+internal/poll.errnoErr
+internal/poll.getPipe
+internal/poll.handleCopyFileRangeErr
+internal/poll.ignoringEINTR
+internal/poll.ignoringEINTR2[go.shape.int64]
+internal/poll.ignoringEINTR2[go.shape.int]
+internal/poll.ignoringEINTRIO
+internal/poll.init
+internal/poll.init.OnceValue[go.shape.bool].func4
+internal/poll.init.OnceValue[go.shape.bool].func4.1
+internal/poll.init.OnceValue[go.shape.bool].func4.1.1
+internal/poll.init.func1
+internal/poll.init.func2
+internal/poll.init.func3
+internal/poll.newPipe
+internal/poll.newPoolPipe
+internal/poll.newPoolPipe.func1
+internal/poll.putPipe
+internal/poll.runtime_Semacquire
+internal/poll.runtime_Semrelease
+internal/poll.runtime_pollClose
+internal/poll.runtime_pollOpen
+internal/poll.runtime_pollReset
+internal/poll.runtime_pollServerInit
+internal/poll.runtime_pollSetDeadline
+internal/poll.runtime_pollUnblock
+internal/poll.runtime_pollWait
+internal/poll.sendFile
+internal/poll.sendFile.deferwrap1
+internal/poll.sendFile.func1
+internal/poll.sendFileChunk
+internal/poll.setDeadlineImpl
+internal/poll.setDeadlineImpl.deferwrap1
+internal/poll.splice
+internal/poll.spliceDrain
+internal/poll.spliceDrain.deferwrap1
+internal/poll.splicePump
+internal/poll.splicePump.deferwrap1
+internal/poll.supportCopyFileRange
+internal/poll.writev
+internal/reflectlite
+internal/reflectlite.(*ValueError).Error
+internal/reflectlite.(*rtype).Align
+internal/reflectlite.(*rtype).ArrayType
+internal/reflectlite.(*rtype).AssignableTo
+internal/reflectlite.(*rtype).ChanDir
+internal/reflectlite.(*rtype).Common
+internal/reflectlite.(*rtype).Comparable
+internal/reflectlite.(*rtype).Elem
+internal/reflectlite.(*rtype).ExportedMethods
+internal/reflectlite.(*rtype).FieldAlign
+internal/reflectlite.(*rtype).FuncType
+internal/reflectlite.(*rtype).GcSlice
+internal/reflectlite.(*rtype).HasName
+internal/reflectlite.(*rtype).IfaceIndir
+internal/reflectlite.(*rtype).Implements
+internal/reflectlite.(*rtype).In
+internal/reflectlite.(*rtype).InterfaceType
+internal/reflectlite.(*rtype).IsDirectIface
+internal/reflectlite.(*rtype).Key
+internal/reflectlite.(*rtype).Kind
+internal/reflectlite.(*rtype).Len
+internal/reflectlite.(*rtype).MapType
+internal/reflectlite.(*rtype).Name
+internal/reflectlite.(*rtype).NumField
+internal/reflectlite.(*rtype).NumIn
+internal/reflectlite.(*rtype).NumMethod
+internal/reflectlite.(*rtype).NumOut
+internal/reflectlite.(*rtype).Out
+internal/reflectlite.(*rtype).PkgPath
+internal/reflectlite.(*rtype).Pointers
+internal/reflectlite.(*rtype).Size
+internal/reflectlite.(*rtype).String
+internal/reflectlite.(*rtype).StructType
+internal/reflectlite.(*rtype).Uncommon
+internal/reflectlite.(*rtype).common
+internal/reflectlite.TypeOf
+internal/reflectlite.Value.Elem
+internal/reflectlite.Value.IsNil
+internal/reflectlite.Value.Kind
+internal/reflectlite.Value.Set
+internal/reflectlite.Value.Type
+internal/reflectlite.Value.assignTo
+internal/reflectlite.Value.numMethod
+internal/reflectlite.ValueOf
+internal/reflectlite.add
+internal/reflectlite.directlyAssignable
+internal/reflectlite.elem
+internal/reflectlite.flag.kind
+internal/reflectlite.flag.mustBeAssignable
+internal/reflectlite.flag.mustBeExported
+internal/reflectlite.flag.ro
+internal/reflectlite.haveIdenticalType
+internal/reflectlite.haveIdenticalUnderlyingType
+internal/reflectlite.ifaceE2I
+internal/reflectlite.implements
+internal/reflectlite.methodName
+internal/reflectlite.name.data
+internal/reflectlite.name.name
+internal/reflectlite.name.readVarint
+internal/reflectlite.packEface
+internal/reflectlite.pkgPath
+internal/reflectlite.resolveNameOff
+internal/reflectlite.resolveTypeOff
+internal/reflectlite.rtype.Align
+internal/reflectlite.rtype.ArrayType
+internal/reflectlite.rtype.AssignableTo
+internal/reflectlite.rtype.ChanDir
+internal/reflectlite.rtype.Common
+internal/reflectlite.rtype.Comparable
+internal/reflectlite.rtype.Elem
+internal/reflectlite.rtype.ExportedMethods
+internal/reflectlite.rtype.FieldAlign
+internal/reflectlite.rtype.FuncType
+internal/reflectlite.rtype.GcSlice
+internal/reflectlite.rtype.HasName
+internal/reflectlite.rtype.IfaceIndir
+internal/reflectlite.rtype.Implements
+internal/reflectlite.rtype.In
+internal/reflectlite.rtype.InterfaceType
+internal/reflectlite.rtype.IsDirectIface
+internal/reflectlite.rtype.Key
+internal/reflectlite.rtype.Kind
+internal/reflectlite.rtype.Len
+internal/reflectlite.rtype.MapType
+internal/reflectlite.rtype.Name
+internal/reflectlite.rtype.NumField
+internal/reflectlite.rtype.NumIn
+internal/reflectlite.rtype.NumMethod
+internal/reflectlite.rtype.NumOut
+internal/reflectlite.rtype.Out
+internal/reflectlite.rtype.PkgPath
+internal/reflectlite.rtype.Pointers
+internal/reflectlite.rtype.Size
+internal/reflectlite.rtype.String
+internal/reflectlite.rtype.StructType
+internal/reflectlite.rtype.Uncommon
+internal/reflectlite.rtype.common
+internal/reflectlite.rtype.exportedMethods
+internal/reflectlite.rtype.nameOff
+internal/reflectlite.rtype.typeOff
+internal/reflectlite.rtype.uncommon
+internal/reflectlite.toType
+internal/reflectlite.typedmemmove
+internal/reflectlite.unpackEface
+internal/reflectlite.unsafe_New
+internal/reflectlite.valueInterface
+internal/runtime/atomic
+internal/runtime/atomic.(*Bool).Load
+internal/runtime/atomic.(*Bool).Store
+internal/runtime/atomic.(*Float64).Load
+internal/runtime/atomic.(*Float64).Store
+internal/runtime/atomic.(*Int32).Add
+internal/runtime/atomic.(*Int32).CompareAndSwap
+internal/runtime/atomic.(*Int32).Load
+internal/runtime/atomic.(*Int32).Store
+internal/runtime/atomic.(*Int32).Swap
+internal/runtime/atomic.(*Int64).Add
+internal/runtime/atomic.(*Int64).CompareAndSwap
+internal/runtime/atomic.(*Int64).Load
+internal/runtime/atomic.(*Int64).Store
+internal/runtime/atomic.(*Int64).Swap
+internal/runtime/atomic.(*Pointer[go.shape.5f566b8060af5dcf2bb32599f0d90d9b6c002cd445f22159b86edf45e23a5dae]).CompareAndSwapNoWB
+internal/runtime/atomic.(*Pointer[go.shape.5f566b8060af5dcf2bb32599f0d90d9b6c002cd445f22159b86edf45e23a5dae]).Load
+internal/runtime/atomic.(*Pointer[go.shape.func()]).CompareAndSwap
+internal/runtime/atomic.(*Pointer[go.shape.func()]).Load
+internal/runtime/atomic.(*Pointer[go.shape.func(string) func()]).Load
+internal/runtime/atomic.(*Pointer[go.shape.func(string) func()]).Store
+internal/runtime/atomic.(*Pointer[go.shape.func(string, string)]).Load
+internal/runtime/atomic.(*Pointer[go.shape.func(string, string)]).Store
+internal/runtime/atomic.(*Pointer[go.shape.string]).Load
+internal/runtime/atomic.(*Pointer[go.shape.string]).Store
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).CompareAndSwap
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).CompareAndSwapNoWB
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).Load
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).Store
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.heap bool; runtime.rangefunc bool; runtime.sp uintptr; runtime.pc uintptr; runtime.fn func(); runtime.link *runtime._defer; runtime.head *internal/runtime/atomic.Pointer[runtime._defer] }]).StoreNoWB
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.r runtime.profAtomic; runtime.w runtime.profAtomic; runtime.overflow internal/runtime/atomic.Uint64; runtime.overflowTime internal/runtime/atomic.Uint64; runtime.eof internal/runtime/atomic.Uint32; runtime.hdrsize uintptr; runtime.data []uint64; runtime.tags []unsafe.Pointer; runtime.rNext runtime.profIndex; runtime.overflowBuf []uint64; runtime.wait runtime.note }]).Load
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.r runtime.profAtomic; runtime.w runtime.profAtomic; runtime.overflow internal/runtime/atomic.Uint64; runtime.overflowTime internal/runtime/atomic.Uint64; runtime.eof internal/runtime/atomic.Uint32; runtime.hdrsize uintptr; runtime.data []uint64; runtime.tags []unsafe.Pointer; runtime.rNext runtime.profIndex; runtime.overflowBuf []uint64; runtime.wait runtime.note }]).Store
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.spanSetBlockHeader2; runtime.spans [512]runtime.atomicMSpanPointer }]).Load
+internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.spanSetBlockHeader2; runtime.spans [512]runtime.atomicMSpanPointer }]).StoreNoWB
+internal/runtime/atomic.(*Pointer[runtime._defer]).CompareAndSwap
+internal/runtime/atomic.(*Pointer[runtime._defer]).CompareAndSwapNoWB
+internal/runtime/atomic.(*Pointer[runtime._defer]).Load
+internal/runtime/atomic.(*Pointer[runtime._defer]).Store
+internal/runtime/atomic.(*Pointer[runtime._defer]).StoreNoWB
+internal/runtime/atomic.(*Uint32).Add
+internal/runtime/atomic.(*Uint32).And
+internal/runtime/atomic.(*Uint32).CompareAndSwap
+internal/runtime/atomic.(*Uint32).CompareAndSwapRelease
+internal/runtime/atomic.(*Uint32).Load
+internal/runtime/atomic.(*Uint32).LoadAcquire
+internal/runtime/atomic.(*Uint32).Or
+internal/runtime/atomic.(*Uint32).Store
+internal/runtime/atomic.(*Uint32).StoreRelease
+internal/runtime/atomic.(*Uint32).Swap
+internal/runtime/atomic.(*Uint64).Add
+internal/runtime/atomic.(*Uint64).CompareAndSwap
+internal/runtime/atomic.(*Uint64).Load
+internal/runtime/atomic.(*Uint64).LoadAcquire
+internal/runtime/atomic.(*Uint64).Store
+internal/runtime/atomic.(*Uint64).StoreRelease
+internal/runtime/atomic.(*Uint64).Swap
+internal/runtime/atomic.(*Uint8).And
+internal/runtime/atomic.(*Uint8).Load
+internal/runtime/atomic.(*Uint8).Or
+internal/runtime/atomic.(*Uint8).Store
+internal/runtime/atomic.(*Uintptr).Add
+internal/runtime/atomic.(*Uintptr).CompareAndSwap
+internal/runtime/atomic.(*Uintptr).Load
+internal/runtime/atomic.(*Uintptr).LoadAcquire
+internal/runtime/atomic.(*Uintptr).Store
+internal/runtime/atomic.(*Uintptr).StoreRelease
+internal/runtime/atomic.(*Uintptr).Swap
+internal/runtime/atomic.(*UnsafePointer).CompareAndSwap
+internal/runtime/atomic.(*UnsafePointer).CompareAndSwapNoWB
+internal/runtime/atomic.(*UnsafePointer).Load
+internal/runtime/atomic.(*UnsafePointer).Store
+internal/runtime/atomic.(*UnsafePointer).StoreNoWB
+internal/runtime/atomic.(*noCopy).Lock
+internal/runtime/atomic.(*noCopy).Unlock
+internal/runtime/atomic.casPointer
+internal/runtime/atomic.storePointer
+internal/runtime/cgroup
+internal/runtime/cgroup.(*lineReader).line
+internal/runtime/cgroup.(*lineReader).next
+internal/runtime/cgroup.(*stringError).Error
+internal/runtime/cgroup.CPU.Close
+internal/runtime/cgroup.FindCPU
+internal/runtime/cgroup.FindCPUMountPoint
+internal/runtime/cgroup.FindCPURelativePath
+internal/runtime/cgroup.OpenCPU
+internal/runtime/cgroup.ReadCPULimit
+internal/runtime/cgroup.checkBufferSize
+internal/runtime/cgroup.containsCPU
+internal/runtime/cgroup.newLineReader
+internal/runtime/cgroup.parseCPUMount
+internal/runtime/cgroup.parseCPURelativePath
+internal/runtime/cgroup.parseV1Number
+internal/runtime/cgroup.parseV2Limit
+internal/runtime/cgroup.readV1Number
+internal/runtime/cgroup.readV2Limit
+internal/runtime/cgroup.stringError.Error
+internal/runtime/cgroup.throw
+internal/runtime/cgroup.unescapePath
+internal/runtime/exithook.Run
+internal/runtime/exithook.Run.deferwrap1
+internal/runtime/exithook.Run.deferwrap2
+internal/runtime/exithook.Run.func1
+internal/runtime/maps
+internal/runtime/maps.(*Iter).Elem
+internal/runtime/maps.(*Iter).Init
+internal/runtime/maps.(*Iter).Initialized
+internal/runtime/maps.(*Iter).Key
+internal/runtime/maps.(*Iter).Map
+internal/runtime/maps.(*Iter).Next
+internal/runtime/maps.(*Iter).grownKeyElem
+internal/runtime/maps.(*Iter).nextDirIdx
+internal/runtime/maps.(*Map).Clear
+internal/runtime/maps.(*Map).Clone
+internal/runtime/maps.(*Map).Delete
+internal/runtime/maps.(*Map).Get
+internal/runtime/maps.(*Map).Put
+internal/runtime/maps.(*Map).PutSlot
+internal/runtime/maps.(*Map).Used
+internal/runtime/maps.(*Map).clearSmall
+internal/runtime/maps.(*Map).deleteSmall
+internal/runtime/maps.(*Map).directoryAt
+internal/runtime/maps.(*Map).directoryIndex
+internal/runtime/maps.(*Map).directorySet
+internal/runtime/maps.(*Map).getWithKey
+internal/runtime/maps.(*Map).getWithKeySmall
+internal/runtime/maps.(*Map).getWithoutKey
+internal/runtime/maps.(*Map).getWithoutKeySmallFastStr
+internal/runtime/maps.(*Map).growToSmall
+internal/runtime/maps.(*Map).growToTable
+internal/runtime/maps.(*Map).installTableSplit
+internal/runtime/maps.(*Map).putSlotSmall
+internal/runtime/maps.(*Map).putSlotSmallFast32
+internal/runtime/maps.(*Map).putSlotSmallFast64
+internal/runtime/maps.(*Map).putSlotSmallFastPtr
+internal/runtime/maps.(*Map).putSlotSmallFastStr
+internal/runtime/maps.(*Map).replaceTable
+internal/runtime/maps.(*ctrlGroup).get
+internal/runtime/maps.(*ctrlGroup).set
+internal/runtime/maps.(*ctrlGroup).setEmpty
+internal/runtime/maps.(*groupReference).ctrls
+internal/runtime/maps.(*groupReference).elem
+internal/runtime/maps.(*groupReference).key
+internal/runtime/maps.(*groupsReference).group
+internal/runtime/maps.(*table).Clear
+internal/runtime/maps.(*table).Delete
+internal/runtime/maps.(*table).Get
+internal/runtime/maps.(*table).Print
+internal/runtime/maps.(*table).PutSlot
+internal/runtime/maps.(*table).Used
+internal/runtime/maps.(*table).clone
+internal/runtime/maps.(*table).getWithKey
+internal/runtime/maps.(*table).getWithoutKey
+internal/runtime/maps.(*table).grow
+internal/runtime/maps.(*table).maxGrowthLeft
+internal/runtime/maps.(*table).pruneTombstones
+internal/runtime/maps.(*table).rehash
+internal/runtime/maps.(*table).reset
+internal/runtime/maps.(*table).split
+internal/runtime/maps.(*table).tombstones
+internal/runtime/maps.(*table).uncheckedPutSlot
+internal/runtime/maps.(*unhashableTypeError).Error
+internal/runtime/maps.(*unhashableTypeError).RuntimeError
+internal/runtime/maps.NewEmptyMap
+internal/runtime/maps.NewMap
+internal/runtime/maps.alignUpPow2
+internal/runtime/maps.bitset.count
+internal/runtime/maps.bitset.first
+internal/runtime/maps.bitset.lowestSet
+internal/runtime/maps.bitset.removeBelow
+internal/runtime/maps.bitset.removeFirst
+internal/runtime/maps.bitset.shiftOutLowest
+internal/runtime/maps.cloneGroup
+internal/runtime/maps.ctrlGroup.matchEmpty
+internal/runtime/maps.ctrlGroup.matchEmptyOrDeleted
+internal/runtime/maps.ctrlGroup.matchFull
+internal/runtime/maps.ctrlGroup.matchH2
+internal/runtime/maps.depthToShift
+internal/runtime/maps.dump
+internal/runtime/maps.fatal
+internal/runtime/maps.h1
+internal/runtime/maps.h2
+internal/runtime/maps.localDepthMask
+internal/runtime/maps.longStringQuickEqualityTest
+internal/runtime/maps.makeProbeSeq
+internal/runtime/maps.mapKeyError
+internal/runtime/maps.mapKeyError2
+internal/runtime/maps.newGroups
+internal/runtime/maps.newTable
+internal/runtime/maps.newarray
+internal/runtime/maps.newobject
+internal/runtime/maps.probeSeq.next
+internal/runtime/maps.rand
+internal/runtime/maps.typeString
+internal/runtime/maps.typedmemclr
+internal/runtime/maps.typedmemmove
+internal/runtime/maps.unhashableTypeError.Error
+internal/runtime/maps.unhashableTypeError.RuntimeError
+internal/runtime/strconv.Atoi
+internal/runtime/strconv.Atoi32
+internal/runtime/strconv.Atoi64
+internal/runtime/sys
+internal/runtime/sys.LeadingZeros64
+internal/runtime/sys.LeadingZeros8
+internal/runtime/sys.OnesCount64
+internal/runtime/syscall.Close
+internal/runtime/syscall.EpollCreate1
+internal/runtime/syscall.EpollCtl
+internal/runtime/syscall.EpollWait
+internal/runtime/syscall.Eventfd
+internal/runtime/syscall.Open
+internal/runtime/syscall.Pread
+internal/runtime/syscall.Read
+internal/runtime/syscall.Syscall6
+internal/stringslite.Clone
+internal/stringslite.Cut
+internal/stringslite.CutPrefix
+internal/stringslite.CutSuffix
+internal/stringslite.HasPrefix
+internal/stringslite.HasSuffix
+internal/stringslite.Index
+internal/stringslite.IndexByte
+internal/stringslite.TrimSuffix
+internal/sync
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).All
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).Clear
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).CompareAndDelete
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).CompareAndSwap
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).Delete
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).Load
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).LoadAndDelete
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).LoadOrStore
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).Range
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).Store
+internal/sync.(*HashTrieMap[*internal/abi.Type,interface {}]).Swap
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).All
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).All.func1
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).Clear
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).CompareAndDelete
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).CompareAndSwap
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).CompareAndSwap.deferwrap1
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).Delete
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).Load
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).LoadAndDelete
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).LoadOrStore
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).LoadOrStore.deferwrap1
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).Range
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).Store
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).Swap
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).Swap.deferwrap1
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).expand
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).find
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).init
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).initSlow
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).initSlow.deferwrap1
+internal/sync.(*HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]).iter
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).All
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).All.func1
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).Clear
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).CompareAndDelete
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).CompareAndSwap
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).CompareAndSwap.deferwrap1
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).Delete
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).Load
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).LoadAndDelete
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).LoadOrStore
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).LoadOrStore.deferwrap1
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).Range
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).Store
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).Swap
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).Swap.deferwrap1
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).expand
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).find
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).init
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).initSlow
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).initSlow.deferwrap1
+internal/sync.(*HashTrieMap[go.shape.interface {},go.shape.interface {}]).iter
+internal/sync.(*HashTrieMap[interface {},interface {}]).All
+internal/sync.(*HashTrieMap[interface {},interface {}]).Clear
+internal/sync.(*HashTrieMap[interface {},interface {}]).CompareAndDelete
+internal/sync.(*HashTrieMap[interface {},interface {}]).CompareAndSwap
+internal/sync.(*HashTrieMap[interface {},interface {}]).Delete
+internal/sync.(*HashTrieMap[interface {},interface {}]).Load
+internal/sync.(*HashTrieMap[interface {},interface {}]).LoadAndDelete
+internal/sync.(*HashTrieMap[interface {},interface {}]).LoadOrStore
+internal/sync.(*HashTrieMap[interface {},interface {}]).Range
+internal/sync.(*HashTrieMap[interface {},interface {}]).Store
+internal/sync.(*HashTrieMap[interface {},interface {}]).Swap
+internal/sync.(*Mutex).Lock
+internal/sync.(*Mutex).TryLock
+internal/sync.(*Mutex).Unlock
+internal/sync.(*Mutex).lockSlow
+internal/sync.(*Mutex).unlockSlow
+internal/sync.(*entry[go.shape.*internal/abi.Type,go.shape.interface {}]).compareAndDelete
+internal/sync.(*entry[go.shape.*internal/abi.Type,go.shape.interface {}]).compareAndSwap
+internal/sync.(*entry[go.shape.*internal/abi.Type,go.shape.interface {}]).loadAndDelete
+internal/sync.(*entry[go.shape.*internal/abi.Type,go.shape.interface {}]).lookup
+internal/sync.(*entry[go.shape.*internal/abi.Type,go.shape.interface {}]).lookupWithValue
+internal/sync.(*entry[go.shape.*internal/abi.Type,go.shape.interface {}]).swap
+internal/sync.(*entry[go.shape.interface {},go.shape.interface {}]).compareAndDelete
+internal/sync.(*entry[go.shape.interface {},go.shape.interface {}]).compareAndSwap
+internal/sync.(*entry[go.shape.interface {},go.shape.interface {}]).loadAndDelete
+internal/sync.(*entry[go.shape.interface {},go.shape.interface {}]).lookup
+internal/sync.(*entry[go.shape.interface {},go.shape.interface {}]).lookupWithValue
+internal/sync.(*entry[go.shape.interface {},go.shape.interface {}]).swap
+internal/sync.(*indirect[go.shape.*internal/abi.Type,go.shape.interface {}]).empty
+internal/sync.(*indirect[go.shape.interface {},go.shape.interface {}]).empty
+internal/sync.(*node[go.shape.*internal/abi.Type,go.shape.interface {}]).entry
+internal/sync.(*node[go.shape.*internal/abi.Type,go.shape.interface {}]).indirect
+internal/sync.(*node[go.shape.interface {},go.shape.interface {}]).entry
+internal/sync.(*node[go.shape.interface {},go.shape.interface {}]).indirect
+internal/sync.fatal
+internal/sync.newEntryNode[go.shape.*internal/abi.Type,go.shape.interface {}]
+internal/sync.newEntryNode[go.shape.interface {},go.shape.interface {}]
+internal/sync.newIndirectNode[go.shape.*internal/abi.Type,go.shape.interface {}]
+internal/sync.newIndirectNode[go.shape.interface {},go.shape.interface {}]
+internal/sync.runtime_SemacquireMutex
+internal/sync.runtime_Semrelease
+internal/sync.runtime_canSpin
+internal/sync.runtime_doSpin
+internal/sync.runtime_nanotime
+internal/sync.throw
+internal/syscall/execenv.Default
+internal/syscall/unix.(*SiginfoChild).WaitStatus
+internal/syscall/unix.CopyFileRange
+internal/syscall/unix.Eaccess
+internal/syscall/unix.Fcntl
+internal/syscall/unix.Fstatat
+internal/syscall/unix.HasNonblockFlag
+internal/syscall/unix.KernelVersion
+internal/syscall/unix.PidFDOpen
+internal/syscall/unix.PidFDSendSignal
+internal/syscall/unix.Waitid
+internal/testlog.Getenv
+internal/testlog.Logger
+internal/testlog.Open
+internal/testlog.PanicOnExit0
+internal/testlog.PanicOnExit0.deferwrap1
+internal/testlog.Stat
+internal/unsafeheader
+invalid base '%c', should have been checked by scanIntOrFloatstrings.Reader.UnreadRune: previous operation was not ReadRunereflect.ArrayOf: array size would exceed virtual address spacereflect: reflect.Value.Pointer on an invalid notinheap pointerfound bad pointer in Go heap (incorrect use of unsafe or cgo?)limiterEvent.stop: found wrong event in p's limiter event slotruntime: internal error: misuse of lockOSThread/unlockOSThreadruntime.AddCleanup: ptr is equal to arg, cleanup will never runinternal/sync.HashTrieMap: ran out of hash bits while iteratinginternal/sync.HashTrieMap: ran out of hash bits while inserting  may be in the same tiny block as cleanup or cleanup argument
+invalid g statusGOTRACEBACK=nonecastogscanstatusbad g transitionschedule: in cgoreflect mismatch untyped locals missing stackmapbad symbol tablenon-Go function
+invalid timer: fake time but no syncgroup34694469519536141888238489627838134765625strconv: illegal AppendInt/FormatInt basetime: Reset called on uninitialized Timertime: missing Location in call to Time.InTime.UnmarshalBinary: unsupported versionbytes.Buffer.WriteTo: invalid Write countexpecting colon between hours and minuteswrong type for value; expected %s; got %s""" not allowed in multiline basic stringtoml: expected %s to be a table, not a %sError: unexpected argument %q before "--"
+io.Copy
+io.ReadAtLeast
+io.ReadFull
+io.WriteString
+io.copyBuffer
+io/fs
+io/fs.(*FileMode).IsDir
+io/fs.(*FileMode).IsRegular
+io/fs.(*FileMode).Perm
+io/fs.(*FileMode).String
+io/fs.(*FileMode).Type
+io/fs.(*PathError).Error
+io/fs.(*PathError).Timeout
+io/fs.(*PathError).Unwrap
+io/fs.FileMode.IsDir
+io/fs.FileMode.IsRegular
+io/fs.FileMode.Perm
+io/fs.FileMode.String
+io/fs.FileMode.Type
+io/fs.FormatDirEntry
+io/fs.FormatFileInfo
+io/fs.ValidPath
+io/fs.init
+iovecs
+ireg
+iregs
+isBlocking
+isChan
+isDST
+isEmpty
+isEntry
+isExtraInC
+isExtraInSig
+isFake
+isFile
+isFree
+isFreeOrNewlyAllocated
+isIdleInSynctest
+isMutexWait
+isSelect
+isUnusedUserArenaChunk
+isUserArenaChunk
+isV6
+isWaitingForSuspendG
+isZero
+isextra
+isstd
+isutc
+item
+itemList
+iter
+iter.init
+iu+-,
+iu^H
+ixJy
+ixJy	
+j	iDj
+j iB
+j!i+
+j"k)l
+j*struct { F uintptr; X0 *sync.HashTrieMap[go.shape.interface {},go.shape.interface {}]; X1 *[144]uintptr }
+j*struct { f func() json.encoderFunc; once sync.Once; valid bool; p interface {}; result json.encoderFunc }
+j,i	j
+j:U&
+j;i'l
+jHAH
+jU'9
+jZkbk
+json:"scripts"
+k"!"
+k8PiO
+keyFromData
+keyHash
+kh   (
+khh`   (
+kill
+kind
+kyl]
+l!%(
+l"=!
+l#)(
+l$	I
+l$ L
+l$ M
+l$ M9
+l$ M9,$
+l$ M9,$u
+l$ f
+l$(H
+l$(L
+l$(M
+l$(M9,$
+l$(M9,$u
+l$(f
+l$0A
+l$0H
+l$0L
+l$0M
+l$0M9,$
+l$0M9,$u
+l$8L
+l$8M
+l$8M9,$
+l$8M9,$u
+l$8f
+l$>I
+l$>fE
+l$@1
+l$@H
+l$@L
+l$@M
+l$@M9,$u
+l$DI
+l$DL
+l$FD
+l$GH
+l$HA
+l$HH
+l$HI
+l$HI9
+l$HL
+l$HL!
+l$HM
+l$HM)
+l$HM9,$u
+l$Hf
+l$Hi
+l$PE1
+l$PI
+l$PL
+l$PL)
+l$PM
+l$PM9,$
+l$PM9,$u
+l$PO
+l$Pf
+l$XA
+l$XG
+l$XH
+l$XL
+l$XM
+l$XM9,$
+l$XM9,$u
+l$`M
+l$`M9,$
+l$`M9,$u
+l$`f
+l$gH
+l$gI
+l$hA
+l$hD
+l$hH
+l$hH9
+l$hI
+l$hL
+l$hM
+l$hM9,$
+l$hN
+l$pH
+l$pI
+l$pL
+l$pL!
+l$pM9,$
+l$pfA
+l$rD
+l$rH
+l$rL
+l$rL)
+l$xA
+l$xL
+l$xM9,$
+l$xM9,$u
+l$xN
+l&PL
+l(@D
+l*func(*sync.indirect[*internal/abi.Type,interface {}], *sync.indirect[*internal/abi.Type,interface {}]) bool
+l*kJN$	
+l-8#7
+l102u
+l128
+l163u
+l204
+l256f
+l327u
+l409u
+l512
+l655u
+l819um
+l9g_-Cf2_OLXviZcrcfO/KW_ZfM6RrIvvAbTyv1G_/79jXD1D3F3SNCbPSwknt/vnMQX3f9b4EOIXqwaR3n
+lQ?2
+labM
+labels
+largeAlloc
+largeAllocCount
+largeFreeCount
+last
+lastIdx
+lastRead
+lastTime
+layout
+left
+lenNonSlice
+lenPos
+lengthMask
+lerau(f
+less
+lessThan
+lfnode
+libcall
+libcallg
+limit
+limiterEvent
+line
+link
+linktimehash
+list
+literalInterface
+literalStore
+loadAndDelete
+locabs
+local
+localDepth
+lock
+lock: lock countbad system huge page sizearena already initialized to unused region of spanunaligned sysNoHugePageOS/sched/gomaxprocs:threadsmissing type in finalizerremaining pointer buffersruntime: epollwait on fd slice bounds out of range_cgo_thread_start missingallgadd: bad status Gidleruntime: program exceeds startm: p has runnable gsstoplockedm: not runnablereleasep: invalid p statecheckdead: no p for timercheckdead: no m for timerunexpected fault address missing stack in newstackbad status in shrinkstackmissing traceGCSweepStart29103830456733703613281252006-01-02T15:04:05Z07:00inconsistent poll.fdMutexjson: Unexpected key typejson: unsupported value: hour cannot be greater 23unable to parse float: %wcan't evaluate command %qexpected string; found %scan't print %s of type %shash of unhashable type: GODEBUG: can not enable "impossible cgroup versionwindows new line expectedillegal number syntax: %qreflect.Value.CanInterfaceinteger overflow on token no message of desired typeno CSI structure availableinvalid request descriptorname not unique on networkrequired key not available using unaddressable valueunknown ABI parameter kind using zero Value argumentreflect.Value.MethodByNamereflect.Value.OverflowUintall goroutines stack traceSIGSTOP: stop, unblockableGC background sweeper waitcall from unknown functionnotewakeup - double wakeuppersistentalloc: size == 0/gc/cycles/total:gc-cyclesbad type kind in finalizernegative idle mark workersuse of invalid sweepLockerruntime: bad span s.state=forEachP: P did not run fnwakep: negative nmspinningstartlockedm: locked to meinittask with no functionsunlock of unlocked rwmutexcorrupted semaphore ticketout of memory (stackalloc)shrinking stack in libcallruntime: pcHeader: magic= traceRegion: out of memory1455191522836685180664062572759576141834259033203125: day-of-year out of rangeencountered a cycle via %sinvalid date-time timezoneinvalid value; expected %sexpected integer; found %sexpected complex; found %stoo many slice indexes: %dnon-function %s of type %snon-comparable type %s: %vinline table is incompleteunterminated quoted stringunexpected . after term %qinvalid boolean flag %s: %vflag needs an argument: -%sinconsistent process statusos: unsupported signal typeos: process not initializedchannel number out of rangecommunication error on sendnot a XENIX named type filekey was rejected by servicereflect.Value.OverflowFloatreflect.Value.UnsafePointer is not assignable to type PageCachePagesLeaked (test)SIGILL: illegal instructionSIGXCPU: cpu limit exceededmakechan: size out of rangeG waiting list is corruptedM structure uses sizeclass runtime
+lock: sleeping while lock is availableP has cached GC work at end of mark terminationfailed to acquire lock to start a GC transitionfinishGCTransition called without starting one?tried to sleep scavenger from another goroutineracy sudog adjustment due to parking on channelfunction symbol table not sorted by PC offset: attempted to trace a bad status for a goroutinefloat decimal point must be preceded by a digitfloat decimal point must be followed by a digitreflect: CallSlice with too many input argumentsslice bounds out of range [:%x] with capacity %y  is reachable from cleanup or cleanup argument
+lockAddr
+lockRankStruct
+lockSlow
+lockedg
+lockedm
+locks
+locksHeldLen
+lookPathErr
+lookup
+lookupFirstZone
+lookupName
+lookupWithValue
+lstatat
+lstatatNolog
+m E1
+m6r'
+mCacheInUse
+mLockProfile
+mSpanInUse
+mSpanSys
+mSyscallID
+m^n	NI
+magic
+main
+main.main
+main.main.func1
+main.needsQuoting
+main.overridePortArg
+makeArg
+makeFuncCtxt
+malformed GOMEMLIMIT; see `go doc runtime/debug.SetMemoryLimit`parser should not permit expression of kind %s at document root0000000000000000000000000000000000000000000000000000000000000000																																																																reflect.StructOf: struct size would exceed virtual address spaceruntime.SetFinalizer: first argument was allocated into an arenaattempted to trace stack of a goroutine this thread does not ownjson: invalid number literal, trying to unmarshal %q into NumberABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_reflect: StructOf does not support methods of embedded interfacesuser arena chunk size is not a multiple of the physical page sizeruntime.SetFinalizer: pointer not at beginning of allocated blockreflect: indirection through nil pointer to embedded struct field runtime: unexpected error while checking standard file descriptor casGToWaitingForSuspendG with non-isWaitingForSuspendG wait reasontoml: key %s already exists as a %s,  but should be an array tablereflect: reflect.Value.UnsafePointer on an invalid notinheap pointerAllThreadsSyscall6 results differ between threads; runtime corruptedstrict mode: fields in the document are missing in the target structreflect: embedded interface with unexported method(s) not implementedruntime.Pinner: found leaking pinned pointer; forgot to call Unpin()?bytes.Buffer: UnreadByte: previous operation was not a successful readexec: command with a non-nil Cancel was not created with CommandContextrange function recovered a loop body panic and did not resume panickingtoo many concurrent operations on a single file or socket (max 1048575)json: invalid use of ,string struct tag, trying to unmarshal %q into %vtoml: cannot redefine table %s that has already been explicitly definedreflect: embedded type with methods not implemented for non-pointer typeruntime.Goexit called in a thread that was not created by the Go runtimebytes.Buffer: UnreadRune: previous operation was not a successful ReadRuneMapIter.Next called on an iterator that does not have an associated map Valueinvalid function signature for %s: second return value should be error; is %sreflect: embedded type with methods not implemented if type is not first fieldrange function continued iteration after function for loop body returned falsecannot convert slice with length %y to array or pointer to array with length %xlocal datetimes are expected to have the format YYYY-MM-DDTHH:MM:SS[.NNNNNNNNN] (bad use of unsafe.Pointer or having race conditions? try -d=checkptr or -race)
+manualFreeList
+map[L
+mark
+markBitsForBase
+markBitsForIndex
+marshal
+mask
+match 0xH
+matchResult
+math.Abs
+math.Copysign
+math.Float32bits
+math.Float32frombits
+math.Float64bits
+math.Float64frombits
+math.Inf
+math.IsInf
+math.IsNaN
+math.Ldexp
+math.NaN
+math.init
+math.ldexp
+math.normalize
+math/bits.LeadingZeros64
+math/bits.Mul32
+math/bits.TrailingZeros
+math/randtlsrsakexLocalDateLocalTime{{break}}Error: %v
+maxGrowthLeft
+maxStackScanDelta
+maxWid
+maxpc
+mayNeedWorker
+maySweep
+maybeAdd
+maybeRunAsync
+maybeRunChan
+maybeWakeLocked
+mcache
+memProfRate
+memeqbody
+memprofiL9
+merge
+message
+method
+meu;H
+minLC
+minWhenHeap
+minWhenModified
+minpc
+minus
+missing
+missingArg
+missingKey
+missingMethod
+mod	github.com/lovable/sandbox-cli	(devel)	
+modTime
+mode
+modify
+modulehashes
+modulename
+mono
+morebuf
+moveInlineMarks
+mspancache
+mstartfn
+mstartm not found in allmstopm holding lockssemaRoot rotateLeftbad notifyList sizeruntime: preempt g0runtime: pcdata is 14901161193847656257450580596923828125bad value for field/usr/lib/locale/TZ/skip this directory2006-01-02 15:04:05file already existsfile does not existfile already closedafter array element/cpu.cfs_period_us
+muFuncs
+muTmpl
+mustBe
+mustBeAssignable
+mustBeAssignableSlow
+mustBeExported
+mustBeExportedSlow
+mustReadRune
+n	>;
+n	k	
+n,p,
+n5m	n
+n6%!
+nMZzx
+nXRW
+name
+nameEscHTML
+nameNonEsc
+nameOff
+nbuf
+ncgo
+ncgocall
+nd 3fH
+nd}}L
+needPerThreadSyscall
+needextram
+needsAdd
+needzero
+nelems
+net/netip.init
+net/url.QueryEscape
+net/url.escape
+net/url.shouldEscape
+newBool
+newBreak
+newChain
+newCommand
+newComment
+newContinue
+newDot
+newElse
+newEnd
+newField
+newIf
+newList
+newNil
+newPinnerBits
+newPipeline
+newRange
+newSigstack
+newTemplate
+newText
+newVariable
+newWith
+next
+nextDirIdx
+nextExpr
+nextFree
+nextFreeIndex
+nextItem
+nextNonSpace
+nextPC
+nextSample
+nextSeq
+nextp
+nfiles
+nfns
+nfunc
+niu'
+nlIsEnd
+noCopy
+noReadFrom
+nobj
+nocgocallback
+node
+nodes
+nonDefault
+nonDefaultOnce
+nonblock
+noptrbss
+noscan
+notAFunction
+notEOF
+npages
+npcdata
+nsec
+nt-H
+ntelu
+nu_H
+null
+null&lt;&gt;\u00none
+nullA
+numObjects
+nuzL
+nwKA
+nwRA
+o$_j
+o0M9
+o5T)]<
+o8p-oNN
+oF0L
+oHpkk
+oO f
+oO0f
+oVPI
+oX0fD
+o^`H
+objBase
+objIndex
+object
+objectInterface
+oc/self/H
+oc@f
+ocation(H
+offset
+ofpL1
+ofu]F
+okVerb
+oldp
+oldthrowsplit
+omitZero
+on a locked thread with no template threadunexpected signal during runtime execution received but handler not on signal stack
+onUM
+once
+ones
+onuzH
+opaque
+opcode
+operand
+option
+options
+os.(*File).Chdir
+os.(*File).Chmod
+os.(*File).Chown
+os.(*File).Close
+os.(*File).Fd
+os.(*File).Name
+os.(*File).Read
+os.(*File).Read-fm
+os.(*File).ReadAt
+os.(*File).ReadDir
+os.(*File).ReadFrom
+os.(*File).Readdir
+os.(*File).Readdirnames
+os.(*File).Seek
+os.(*File).SetDeadline
+os.(*File).SetReadDeadline
+os.(*File).SetWriteDeadline
+os.(*File).Stat
+os.(*File).Sync
+os.(*File).SyscallConn
+os.(*File).Truncate
+os.(*File).Write
+os.(*File).WriteAt
+os.(*File).WriteString
+os.(*File).WriteTo
+os.(*File).checkValid
+os.(*File).chmod
+os.(*File).copyFileRange
+os.(*File).fd
+os.(*File).lstatat
+os.(*File).lstatatNolog
+os.(*File).pread
+os.(*File).pwrite
+os.(*File).read
+os.(*File).readFrom
+os.(*File).readdir
+os.(*File).readdir.deferwrap1
+os.(*File).seek
+os.(*File).setDeadline
+os.(*File).setReadDeadline
+os.(*File).setWriteDeadline
+os.(*File).spliceToFile
+os.(*File).wrapErr
+os.(*File).write
+os.(*File).writeTo
+os.(*File).writeTo.func1
+os.(*Process).Kill
+os.(*Process).Release
+os.(*Process).Signal
+os.(*Process).Wait
+os.(*Process).blockUntilWaitable
+os.(*Process).blockUntilWaitable.func1
+os.(*Process).doRelease
+os.(*Process).handleTransientAcquire
+os.(*Process).handleTransientRelease
+os.(*Process).kill
+os.(*Process).pidSignal
+os.(*Process).pidSignal.deferwrap1
+os.(*Process).pidStatus
+os.(*Process).pidWait
+os.(*Process).pidWait.func1
+os.(*Process).pidfdSendSignal
+os.(*Process).pidfdSendSignal.deferwrap1
+os.(*Process).pidfdWait
+os.(*Process).pidfdWait.deferwrap1
+os.(*Process).pidfdWait.func1
+os.(*Process).signal
+os.(*Process).wait
+os.(*ProcessState).ExitCode
+os.(*ProcessState).Exited
+os.(*ProcessState).Pid
+os.(*ProcessState).String
+os.(*ProcessState).Success
+os.(*ProcessState).Sys
+os.(*ProcessState).SysUsage
+os.(*ProcessState).SystemTime
+os.(*ProcessState).UserTime
+os.(*ProcessState).exited
+os.(*ProcessState).success
+os.(*ProcessState).sys
+os.(*ProcessState).sysUsage
+os.(*ProcessState).systemTime
+os.(*ProcessState).userTime
+os.(*SyscallError).Error
+os.(*SyscallError).Timeout
+os.(*SyscallError).Unwrap
+os.(*dirInfo).close
+os.(*file).close
+os.(*fileStat).IsDir
+os.(*fileStat).ModTime
+os.(*fileStat).Mode
+os.(*fileStat).Name
+os.(*fileStat).Size
+os.(*fileStat).Sys
+os.(*fileWithoutReadFrom).Chdir
+os.(*fileWithoutReadFrom).Chmod
+os.(*fileWithoutReadFrom).Chown
+os.(*fileWithoutReadFrom).Close
+os.(*fileWithoutReadFrom).Fd
+os.(*fileWithoutReadFrom).Name
+os.(*fileWithoutReadFrom).Read
+os.(*fileWithoutReadFrom).ReadAt
+os.(*fileWithoutReadFrom).ReadDir
+os.(*fileWithoutReadFrom).Readdir
+os.(*fileWithoutReadFrom).Readdirnames
+os.(*fileWithoutReadFrom).Seek
+os.(*fileWithoutReadFrom).SetDeadline
+os.(*fileWithoutReadFrom).SetReadDeadline
+os.(*fileWithoutReadFrom).SetWriteDeadline
+os.(*fileWithoutReadFrom).Stat
+os.(*fileWithoutReadFrom).Sync
+os.(*fileWithoutReadFrom).SyscallConn
+os.(*fileWithoutReadFrom).Truncate
+os.(*fileWithoutReadFrom).Write
+os.(*fileWithoutReadFrom).WriteAt
+os.(*fileWithoutReadFrom).WriteString
+os.(*fileWithoutReadFrom).WriteTo
+os.(*fileWithoutWriteTo).Chdir
+os.(*fileWithoutWriteTo).Chmod
+os.(*fileWithoutWriteTo).Chown
+os.(*fileWithoutWriteTo).Close
+os.(*fileWithoutWriteTo).Fd
+os.(*fileWithoutWriteTo).Name
+os.(*fileWithoutWriteTo).Read
+os.(*fileWithoutWriteTo).ReadAt
+os.(*fileWithoutWriteTo).ReadDir
+os.(*fileWithoutWriteTo).ReadFrom
+os.(*fileWithoutWriteTo).Readdir
+os.(*fileWithoutWriteTo).Readdirnames
+os.(*fileWithoutWriteTo).Seek
+os.(*fileWithoutWriteTo).SetDeadline
+os.(*fileWithoutWriteTo).SetReadDeadline
+os.(*fileWithoutWriteTo).SetWriteDeadline
+os.(*fileWithoutWriteTo).Stat
+os.(*fileWithoutWriteTo).Sync
+os.(*fileWithoutWriteTo).SyscallConn
+os.(*fileWithoutWriteTo).Truncate
+os.(*fileWithoutWriteTo).Write
+os.(*fileWithoutWriteTo).WriteAt
+os.(*fileWithoutWriteTo).WriteString
+os.(*noReadFrom).ReadFrom
+os.(*noWriteTo).WriteTo
+os.(*processHandle).acquire
+os.(*processHandle).closeHandle
+os.(*processHandle).release
+os.(*rawConn).Control
+os.(*rawConn).Read
+os.(*rawConn).Write
+os.(*unixDirent).Info
+os.(*unixDirent).IsDir
+os.(*unixDirent).Name
+os.(*unixDirent).String
+os.(*unixDirent).Type
+os.Chdir
+os.Environ
+os.Exit
+os.Getenv
+os.Getwd
+os.IsNotExist
+os.Lstat
+os.Mkdir
+os.MkdirAll
+os.MkdirAll.Mkdir.func1
+os.NewFile
+os.NewSyscallError
+os.Open
+os.OpenFile
+os.Pipe
+os.ReadFile
+os.ReadFile.deferwrap1
+os.SameFile
+os.StartProcess
+os.Stat
+os.WriteFile
+os.checkClonePidfd
+os.checkPidfd
+os.checkPidfd.deferwrap1
+os.checkPidfd.func1
+os.convertESRCH
+os.direntIno
+os.direntNamlen
+os.direntReclen
+os.direntType
+os.ensurePidfd
+os.epipecheck
+os.fileWithoutReadFrom.Chdir
+os.fileWithoutReadFrom.Chmod
+os.fileWithoutReadFrom.Chown
+os.fileWithoutReadFrom.Close
+os.fileWithoutReadFrom.Fd
+os.fileWithoutReadFrom.Name
+os.fileWithoutReadFrom.Read
+os.fileWithoutReadFrom.ReadAt
+os.fileWithoutReadFrom.ReadDir
+os.fileWithoutReadFrom.Readdir
+os.fileWithoutReadFrom.Readdirnames
+os.fileWithoutReadFrom.Seek
+os.fileWithoutReadFrom.SetDeadline
+os.fileWithoutReadFrom.SetReadDeadline
+os.fileWithoutReadFrom.SetWriteDeadline
+os.fileWithoutReadFrom.Stat
+os.fileWithoutReadFrom.Sync
+os.fileWithoutReadFrom.SyscallConn
+os.fileWithoutReadFrom.Truncate
+os.fileWithoutReadFrom.Write
+os.fileWithoutReadFrom.WriteAt
+os.fileWithoutReadFrom.WriteString
+os.fileWithoutReadFrom.WriteTo
+os.fileWithoutWriteTo.Chdir
+os.fileWithoutWriteTo.Chmod
+os.fileWithoutWriteTo.Chown
+os.fileWithoutWriteTo.Close
+os.fileWithoutWriteTo.Fd
+os.fileWithoutWriteTo.Name
+os.fileWithoutWriteTo.Read
+os.fileWithoutWriteTo.ReadAt
+os.fileWithoutWriteTo.ReadDir
+os.fileWithoutWriteTo.ReadFrom
+os.fileWithoutWriteTo.Readdir
+os.fileWithoutWriteTo.Readdirnames
+os.fileWithoutWriteTo.Seek
+os.fileWithoutWriteTo.SetDeadline
+os.fileWithoutWriteTo.SetReadDeadline
+os.fileWithoutWriteTo.SetWriteDeadline
+os.fileWithoutWriteTo.Stat
+os.fileWithoutWriteTo.Sync
+os.fileWithoutWriteTo.SyscallConn
+os.fileWithoutWriteTo.Truncate
+os.fileWithoutWriteTo.Write
+os.fileWithoutWriteTo.WriteAt
+os.fileWithoutWriteTo.WriteString
+os.fillFileStatFromSys
+os.genericReadFrom
+os.genericWriteTo
+os.getPidfd
+os.getPollFDAndNetwork
+os.ignoringEINTR
+os.ignoringEINTR2[go.shape.int]
+os.ignoringEINTR2[go.shape.string]
+os.init
+os.init.0
+os.init.OnceValue[go.shape.interface { Error() string }].func2
+os.init.OnceValue[go.shape.interface { Error() string }].func2.1
+os.init.OnceValue[go.shape.interface { Error() string }].func2.1.1
+os.init.func1
+os.isUnixOrTCP
+os.joinPath
+os.lstatNolog
+os.lstatNolog.func1
+os.newFile
+os.newFileFromNewFile
+os.newHandleProcess
+os.newPIDProcess
+os.newRawConn
+os.newUnixDirent
+os.noReadFrom.ReadFrom
+os.noWriteTo.WriteTo
+os.open
+os.openDirNolog
+os.openDirNolog.func1
+os.openFileNolog
+os.openFileNolog.func1
+os.pidfdWorks
+os.readFileContents
+os.readInt
+os.readIntLE
+os.runtime_args
+os.runtime_beforeExit
+os.sameFile
+os.sigpipe
+os.startProcess
+os.statNolog
+os.statNolog.func1
+os.statOrZero
+os.syscallMode
+os.tryLimitedReader
+os.underlyingError
+os.underlyingErrorIs
+os.wrapSyscallError
+os/exec
+os/exec.(*Cmd).CombinedOutput
+os/exec.(*Cmd).Environ
+os/exec.(*Cmd).Output
+os/exec.(*Cmd).Run
+os/exec.(*Cmd).Start
+os/exec.(*Cmd).Start.func1
+os/exec.(*Cmd).Start.func2
+os/exec.(*Cmd).Start.gowrap1
+os/exec.(*Cmd).Start.gowrap2
+os/exec.(*Cmd).StderrPipe
+os/exec.(*Cmd).StdinPipe
+os/exec.(*Cmd).StdoutPipe
+os/exec.(*Cmd).String
+os/exec.(*Cmd).Wait
+os/exec.(*Cmd).argv
+os/exec.(*Cmd).awaitGoroutines
+os/exec.(*Cmd).awaitGoroutines.func1
+os/exec.(*Cmd).childStderr
+os/exec.(*Cmd).childStdin
+os/exec.(*Cmd).childStdin.func1
+os/exec.(*Cmd).childStdout
+os/exec.(*Cmd).environ
+os/exec.(*Cmd).watchCtx
+os/exec.(*Cmd).writerDescriptor
+os/exec.(*Cmd).writerDescriptor.func1
+os/exec.(*Error).Error
+os/exec.(*Error).Unwrap
+os/exec.(*ExitError).Error
+os/exec.(*ExitError).ExitCode
+os/exec.(*ExitError).Exited
+os/exec.(*ExitError).Pid
+os/exec.(*ExitError).String
+os/exec.(*ExitError).Success
+os/exec.(*ExitError).Sys
+os/exec.(*ExitError).SysUsage
+os/exec.(*ExitError).SystemTime
+os/exec.(*ExitError).UserTime
+os/exec.(*prefixSuffixSaver).Bytes
+os/exec.(*prefixSuffixSaver).Write
+os/exec.(*prefixSuffixSaver).fill
+os/exec.(*wrappedError).Error
+os/exec.(*wrappedError).Unwrap
+os/exec.Command
+os/exec.Command.func1
+os/exec.ExitError.ExitCode
+os/exec.ExitError.Exited
+os/exec.ExitError.Pid
+os/exec.ExitError.String
+os/exec.ExitError.Success
+os/exec.ExitError.Sys
+os/exec.ExitError.SysUsage
+os/exec.ExitError.SystemTime
+os/exec.ExitError.UserTime
+os/exec.L
+os/exec.LookPath
+os/exec.closeDescriptors
+os/exec.dedupEnv
+os/exec.dedupEnvCase
+os/exec.findExecutable
+os/exec.interfaceEqual
+os/exec.interfaceEqual.func1
+os/exec.skipStdinCopyError
+os/exec.validateLookPath
+os/exec.wrappedError.Error
+os/exec.wrappedError.Unwrap
+os/execL
+os/signal.signal_ignored
+os: invalid use of WriteAt on file opened with O_APPENDinternal error: negative process handle reference countreflect: internal error: invalid use of makeMethodValuereflect.FuncOf: last arg of variadic func must be slicemheap.freeSpanLocked - invalid free of user arena chunkcasfrom_Gscanstatus:top gp->status is not in scan statebufio.Scanner: SplitFunc returns negative advance counttimes are expected to have the format HH:MM:SS[.NNNNNN]number must have at least one digit between underscoresstrings: illegal use of non-zero Builder copied by valuenon-empty pointer map passed for non-pointer-size valuesreflect: Value.SetIterValue called on exhausted iteratorrange function continued iteration after loop body panicrange function continued iteration after whole loop exitprofilealloc called without a P or outside bootstrappingdetected possible issues with cleanups and/or finalizersin gcMark expecting to see gcphase as _GCmarkterminationruntime: netpoll: eventfd ready for something unexpectedcannot decode TOML %s into struct field %s.%s of type %scannot run executable found relative to current directory (set GODEBUG=execwait=2 to capture stacks for debugging)runtime: checkmarks found unexpected unmarked object obj=runtime: failed to disable profiling timer; timer_delete(non-Go code set up signal handler without SA_ONSTACK flagcan't handle assignment of %s to empty interface argumentTasks: install, dev, build, build:dev, test, lint, start
+osif{{}}*/intnil01_PWD../devbunaddrunnpmEOFmapptrKey...
+otherSys
+outRegPtrs
+output
+overflow
+oxpfD
+p t 
+p!p`
+p$o"
+p$o%
+p$oZ
+p'o2
+p*struct { F uintptr; X0 *sync.HashTrieMap[go.shape.*internal/abi.Type,go.shape.interface {}]; X1 *[144]uintptr }
+p-R4
+p0H9
+p2f9
+p7o<
+p8H)
+p9o<
+p;o(
+p;o?
+p<o<
+p<o>
+p@H)
+p@H9
+pBo"
+pHH9
+pLo2
+pPH9
+pUo2
+pWR?V
+pXH9
+pXI9
+pacer: assist ratio=workbuf is not emptybad use of bucket.mpbad use of bucket.bpruntime: double waitpreempt off reason: forcegc: phase errorgopark: bad g statusgo of nil func valueselectgo: bad wakeupsemaRoot rotateRightreflect.makeFuncStubtrace: out of memorywirep: already in go37252902984619140625time: invalid number/usr/share/zoneinfo/json: Unmarshal(nil)json: Unmarshal(nil json: error calling expected digit (0-9)if/with can't use %vnil is not a commanderror calling %s: %windex of untyped nilindex of nil pointerslice of untyped nilhttplaxcontentlengthx509usefallbackrootsinteger overflow: %qmissing value for %sfeature-vite-overrideflag %q begins with -%s flag redefined: %sreflect.Value.Complexexec: already startedblock device requiredread-only file systempackage not installedlink has been severedstate not recoverabletrace/breakpoint trapuser defined signal 1user defined signal 2virtual timer expiredlovable-tagger@latestvite_override.tmpl.tsunsupported operationunknown ABI part kind of unexported methodunexpected value stepreflect.Value.SetZeroreflect.Value.Pointerreflect.Value.SetUintnegative shift amountdataindependenttimingsystem goroutine wait/gc/heap/allocs:bytesruntime: work.nwait=  previous allocCount=, levelBits[level] = runtime: searchIdx = profiler hash bucketsdefer on system stackpanic on system stackasync stack too large_cgo_unsetenv missingstartm: m is spinningstartlockedm: m has pfindrunnable: wrong ppreempt at unknown pcreleasep: invalid argcheckdead: runnable gruntime: newstack at runtime: newstack sp=runtime: confused by  pcHeader.textStart= timer data corruption186264514923095703125931322574615478515625time zone offset hourbad type in compare: after top-level valuein string escape codeunhandled kv part: %sconcurrent map writesinvalid character %#Uexpected character %cbad number syntax: %qundefined variable %q 	
+pack
+pad1
+pad2
+padChar
+palloc
+panicNotBool
+panicNotMap
+paniconfault
+pao6
+param
+parenDepth
+parent
+parentGoid
+parentIOPipes
+park
+parked
+parkingOnChan
+parse
+parse errorbad verb '%0123456789_/dev/stdout/dev/stderrunreachable bytes ...
+parseArrayTable
+parseBasicString
+parseComment
+parseControl
+parseDefinition
+parseExpression
+parseFuncs
+parseInlineTable
+parseIntOrFloatOrDateTime
+parseKey
+parseKeyval
+parseLiteralString
+parseMultilineBasicString
+parseMultilineLiteralString
+parseNewline
+parseOne
+parseSimpleKey
+parseState
+parseStdTable
+parseTable
+parseTemplateName
+parseVal
+parseValArray
+parseWhitespace
+parsed
+path	github.com/lovable/sandbox-cli/cmd/lovable-exec
+path/filepath.Abs
+path/filepath.Base
+path/filepath.Clean
+path/filepath.IsAbs
+path/filepath.Join
+path/filepath.SplitList
+path/filepath.abs
+path/filepath.init
+path/filepath.join
+path/filepath.splitList
+path/filepath.unixAbs
+pcHeader
+pcache
+pcfile
+pcln
+pclnOffset
+pcsp
+pctab
+pctabOffset
+pcvalueCache
+pdo<
+peek
+peekNonSpace
+peekRune
+pendBuf
+pending
+peo2
+period
+pidWait
+pidfdSendSignal
+pinSlow
+pinner
+pinnerBitSize
+pinnerBits
+pinnerCache
+pipeline
+pluginpath
+plus
+plusV
+pointer
+pointerless type not in ranges:
+pollable
+poolDequeue
+poolLocalInternal
+popHead
+popParseState
+popTail
+popVars
+position
+pppp
+pread
+prec
+precPresent
+preempt
+preemptGen
+preemptShrink
+preemptStop
+preemptoff
+prefix
+prepare
+prepareForSweep
+prepareRead
+prepareWrite
+prev
+prevRune
+printArg
+printControllerReset
+printValue
+private
+procid
+profileTimer
+profileTimerValid
+prune
+pruneTombstones
+pt'I
+ptab
+ptrBuf
+ptrLevel
+ptrSeen
+ptrSize
+ptrTo
+ptrbit
+pu:L
+publishInfo
+push
+pushAll
+pushHead
+pushParseState
+pushcnt
+putObj
+putObjBatch
+putObjFast
+putSlotSmall
+putSlotSmallFast32
+putSlotSmallFast64
+putSlotSmallFastPtr
+putSlotSmallFastStr
+pvo2
+pwrite
+pyo6
+q0r }
+q@H9
+qKguDid
+qNdT	
+qQrJ
+qVF	
+qcount
+qhH9
+qtj:i
+quiet
+quoted
+quotedString
+r	H9
+r H)
+r$Hc
+r%H9
+r%kf
+r'H)
+r(H)
+r(L)
+r)H)
+r)L)
+r,H)
+r,u,
+r-H)
+r0H9r
+r3H)
+r3M;f
+r8H9r
+r9H9
+r<H)
+r<H9
+r=H)
+r=H9
+r@L)
+rA|"{
+rFB,8
+rFI9x
+rME1
+rMqSv
+rUnlockSlow
+rWH)
+rXH+rPH
+r`H)
+raceCtx
+raceaddr
+racectx
+raceignore
+raceprocctx
+rand
+rangeControl
+rangeDepth
+rank
+rcvr
+rdL9
+read
+readByte
+readFrom
+readLock
+readUnlock
+readdir
+reader
+readerCount
+readerWait
+ready
+readyNextGen
+reason
+recent
+recordUnlock
+recover
+recv
+recvq
+recvx
+refStore
+refill
+refillAllocCache
+reflect
+reflect.
+reflect.(*ChanDir).String
+reflect.(*Kind).String
+reflect.(*MapIter).Key
+reflect.(*MapIter).Next
+reflect.(*MapIter).Reset
+reflect.(*MapIter).Value
+reflect.(*Method).IsExported
+reflect.(*StructField).IsExported
+reflect.(*StructTag).Get
+reflect.(*StructTag).Lookup
+reflect.(*Value).Addr
+reflect.(*Value).Bool
+reflect.(*Value).Bytes
+reflect.(*Value).Call
+reflect.(*Value).CallSlice
+reflect.(*Value).CanAddr
+reflect.(*Value).CanComplex
+reflect.(*Value).CanConvert
+reflect.(*Value).CanFloat
+reflect.(*Value).CanInt
+reflect.(*Value).CanInterface
+reflect.(*Value).CanSet
+reflect.(*Value).CanUint
+reflect.(*Value).Cap
+reflect.(*Value).Clear
+reflect.(*Value).Close
+reflect.(*Value).Comparable
+reflect.(*Value).Complex
+reflect.(*Value).Convert
+reflect.(*Value).Elem
+reflect.(*Value).Equal
+reflect.(*Value).Field
+reflect.(*Value).FieldByIndex
+reflect.(*Value).FieldByIndexErr
+reflect.(*Value).FieldByName
+reflect.(*Value).FieldByNameFunc
+reflect.(*Value).Float
+reflect.(*Value).Grow
+reflect.(*Value).Index
+reflect.(*Value).Int
+reflect.(*Value).Interface
+reflect.(*Value).InterfaceData
+reflect.(*Value).IsNil
+reflect.(*Value).IsValid
+reflect.(*Value).IsZero
+reflect.(*Value).Kind
+reflect.(*Value).Len
+reflect.(*Value).MapIndex
+reflect.(*Value).MapKeys
+reflect.(*Value).MapRange
+reflect.(*Value).Method
+reflect.(*Value).MethodByName
+reflect.(*Value).NumField
+reflect.(*Value).NumMethod
+reflect.(*Value).OverflowComplex
+reflect.(*Value).OverflowFloat
+reflect.(*Value).OverflowInt
+reflect.(*Value).OverflowUint
+reflect.(*Value).Pointer
+reflect.(*Value).Recv
+reflect.(*Value).Send
+reflect.(*Value).Seq
+reflect.(*Value).Seq2
+reflect.(*Value).Set
+reflect.(*Value).SetBool
+reflect.(*Value).SetBytes
+reflect.(*Value).SetCap
+reflect.(*Value).SetComplex
+reflect.(*Value).SetFloat
+reflect.(*Value).SetInt
+reflect.(*Value).SetIterKey
+reflect.(*Value).SetIterValue
+reflect.(*Value).SetLen
+reflect.(*Value).SetMapIndex
+reflect.(*Value).SetPointer
+reflect.(*Value).SetString
+reflect.(*Value).SetUint
+reflect.(*Value).SetZero
+reflect.(*Value).Slice
+reflect.(*Value).Slice3
+reflect.(*Value).String
+reflect.(*Value).TryRecv
+reflect.(*Value).TrySend
+reflect.(*Value).Type
+reflect.(*Value).Uint
+reflect.(*Value).UnsafeAddr
+reflect.(*Value).UnsafePointer
+reflect.(*ValueError).Error
+reflect.(*abiSeq).addArg
+reflect.(*abiSeq).addRcvr
+reflect.(*abiSeq).assignFloatN
+reflect.(*abiSeq).assignIntN
+reflect.(*abiSeq).regAssign
+reflect.(*abiSeq).stackAssign
+reflect.(*abiSeq).stepsForValue
+reflect.(*bitVector).append
+reflect.(*interfaceType).Method
+reflect.(*interfaceType).MethodByName
+reflect.(*interfaceType).NumMethod
+reflect.(*interfaceType).nameOff
+reflect.(*interfaceType).typeOff
+reflect.(*ptrType).Align
+reflect.(*ptrType).ArrayType
+reflect.(*ptrType).ChanDir
+reflect.(*ptrType).Common
+reflect.(*ptrType).ExportedMethods
+reflect.(*ptrType).FieldAlign
+reflect.(*ptrType).FuncType
+reflect.(*ptrType).GcSlice
+reflect.(*ptrType).HasName
+reflect.(*ptrType).IfaceIndir
+reflect.(*ptrType).InterfaceType
+reflect.(*ptrType).IsDirectIface
+reflect.(*ptrType).Key
+reflect.(*ptrType).Kind
+reflect.(*ptrType).Len
+reflect.(*ptrType).MapType
+reflect.(*ptrType).NumMethod
+reflect.(*ptrType).Pointers
+reflect.(*ptrType).Size
+reflect.(*ptrType).StructType
+reflect.(*ptrType).Uncommon
+reflect.(*rtype).Align
+reflect.(*rtype).AssignableTo
+reflect.(*rtype).Bits
+reflect.(*rtype).CanSeq
+reflect.(*rtype).CanSeq2
+reflect.(*rtype).ChanDir
+reflect.(*rtype).Comparable
+reflect.(*rtype).ConvertibleTo
+reflect.(*rtype).Elem
+reflect.(*rtype).Field
+reflect.(*rtype).FieldAlign
+reflect.(*rtype).FieldByIndex
+reflect.(*rtype).FieldByName
+reflect.(*rtype).FieldByNameFunc
+reflect.(*rtype).Implements
+reflect.(*rtype).In
+reflect.(*rtype).IsVariadic
+reflect.(*rtype).Key
+reflect.(*rtype).Kind
+reflect.(*rtype).Len
+reflect.(*rtype).Method
+reflect.(*rtype).MethodByName
+reflect.(*rtype).Name
+reflect.(*rtype).NumField
+reflect.(*rtype).NumIn
+reflect.(*rtype).NumMethod
+reflect.(*rtype).NumOut
+reflect.(*rtype).Out
+reflect.(*rtype).OverflowComplex
+reflect.(*rtype).OverflowFloat
+reflect.(*rtype).OverflowInt
+reflect.(*rtype).OverflowUint
+reflect.(*rtype).PkgPath
+reflect.(*rtype).Size
+reflect.(*rtype).String
+reflect.(*rtype).common
+reflect.(*rtype).exportedMethods
+reflect.(*rtype).nameOff
+reflect.(*rtype).ptrTo
+reflect.(*rtype).textOff
+reflect.(*rtype).typeOff
+reflect.(*rtype).uncommon
+reflect.(*structType).Align
+reflect.(*structType).ArrayType
+reflect.(*structType).ChanDir
+reflect.(*structType).Common
+reflect.(*structType).Elem
+reflect.(*structType).ExportedMethods
+reflect.(*structType).Field
+reflect.(*structType).FieldAlign
+reflect.(*structType).FieldByIndex
+reflect.(*structType).FieldByName
+reflect.(*structType).FieldByName.func1
+reflect.(*structType).FieldByNameFunc
+reflect.(*structType).FuncType
+reflect.(*structType).GcSlice
+reflect.(*structType).HasName
+reflect.(*structType).IfaceIndir
+reflect.(*structType).InterfaceType
+reflect.(*structType).IsDirectIface
+reflect.(*structType).Key
+reflect.(*structType).Kind
+reflect.(*structType).Len
+reflect.(*structType).MapType
+reflect.(*structType).NumMethod
+reflect.(*structType).Pointers
+reflect.(*structType).Size
+reflect.(*structType).Uncommon
+reflect.Append
+reflect.ArrayOf
+reflect.ArrayOf.func1
+reflect.ChanDir.String
+reflect.Copy
+reflect.FuncOf
+reflect.FuncOf.deferwrap1
+reflect.FuncOf.func1
+reflect.H9
+reflect.Kind.String
+reflect.MakeFunc
+reflect.MakeMap
+reflect.MakeMapWithSize
+reflect.MakeSlice
+reflect.Method.IsExported
+reflect.New
+reflect.PointerTo
+reflect.SliceOf
+reflect.StructField.IsExported
+reflect.StructOf
+reflect.StructOf.deferwrap1
+reflect.StructOf.func1
+reflect.StructOf.func2
+reflect.StructTag.Get
+reflect.StructTag.Lookup
+reflect.TypeFor[go.shape.float64]
+reflect.TypeFor[go.shape.interface { Error() string }]
+reflect.TypeFor[go.shape.interface { IsZero() bool }]
+reflect.TypeFor[go.shape.interface { MarshalJSON() ([]uint8, error) }]
+reflect.TypeFor[go.shape.interface { MarshalText() ([]uint8, error) }]
+reflect.TypeFor[go.shape.interface { String() string }]
+reflect.TypeFor[go.shape.interface { UnmarshalText([]uint8) error }]
+reflect.TypeFor[go.shape.string]
+reflect.TypeFor[go.shape.struct { reflect.typ_ *internal/abi.Type; reflect.ptr unsafe.Pointer; reflect.flag }]
+reflect.TypeFor[go.shape.struct {}]
+reflect.TypeOf
+reflect.Value.Addr
+reflect.Value.Bool
+reflect.Value.Bytes
+reflect.Value.Call
+reflect.Value.CallSlice
+reflect.Value.CanAddr
+reflect.Value.CanComplex
+reflect.Value.CanConvert
+reflect.Value.CanFloat
+reflect.Value.CanInt
+reflect.Value.CanInterface
+reflect.Value.CanSet
+reflect.Value.CanUint
+reflect.Value.Cap
+reflect.Value.Clear
+reflect.Value.Close
+reflect.Value.Comparable
+reflect.Value.Complex
+reflect.Value.Convert
+reflect.Value.Elem
+reflect.Value.Equal
+reflect.Value.Field
+reflect.Value.FieldByIndex
+reflect.Value.FieldByIndexErr
+reflect.Value.FieldByName
+reflect.Value.FieldByNameFunc
+reflect.Value.Float
+reflect.Value.Grow
+reflect.Value.Index
+reflect.Value.Int
+reflect.Value.Interface
+reflect.Value.InterfaceData
+reflect.Value.IsNil
+reflect.Value.IsValid
+reflect.Value.IsZero
+reflect.Value.Kind
+reflect.Value.Len
+reflect.Value.MapIndex
+reflect.Value.MapKeys
+reflect.Value.MapRange
+reflect.Value.Method
+reflect.Value.MethodByName
+reflect.Value.NumField
+reflect.Value.NumMethod
+reflect.Value.OverflowComplex
+reflect.Value.OverflowFloat
+reflect.Value.OverflowInt
+reflect.Value.OverflowUint
+reflect.Value.Pointer
+reflect.Value.Recv
+reflect.Value.Send
+reflect.Value.Seq
+reflect.Value.Seq.func1
+reflect.Value.Seq.func1.1
+reflect.Value.Seq.func2
+reflect.Value.Seq.func3
+reflect.Value.Seq.func4
+reflect.Value.Seq.func5
+reflect.Value.Seq.func6
+reflect.Value.Seq.rangeNum[go.shape.int,go.shape.int64].func7
+reflect.Value.Seq.rangeNum[go.shape.int16,go.shape.int64].func9
+reflect.Value.Seq.rangeNum[go.shape.int32,go.shape.int64].func10
+reflect.Value.Seq.rangeNum[go.shape.int64,go.shape.int64].func11
+reflect.Value.Seq.rangeNum[go.shape.int8,go.shape.int64].func8
+reflect.Value.Seq.rangeNum[go.shape.uint,go.shape.uint64].func12
+reflect.Value.Seq.rangeNum[go.shape.uint16,go.shape.uint64].func14
+reflect.Value.Seq.rangeNum[go.shape.uint32,go.shape.uint64].func15
+reflect.Value.Seq.rangeNum[go.shape.uint64,go.shape.uint64].func16
+reflect.Value.Seq.rangeNum[go.shape.uint8,go.shape.uint64].func13
+reflect.Value.Seq.rangeNum[go.shape.uintptr,go.shape.uint64].func17
+reflect.Value.Seq2
+reflect.Value.Seq2.func1
+reflect.Value.Seq2.func1.1
+reflect.Value.Seq2.func2
+reflect.Value.Seq2.func3
+reflect.Value.Seq2.func4
+reflect.Value.Seq2.func5
+reflect.Value.Set
+reflect.Value.SetBool
+reflect.Value.SetBytes
+reflect.Value.SetCap
+reflect.Value.SetComplex
+reflect.Value.SetFloat
+reflect.Value.SetInt
+reflect.Value.SetIterKey
+reflect.Value.SetIterValue
+reflect.Value.SetLen
+reflect.Value.SetMapIndex
+reflect.Value.SetPointer
+reflect.Value.SetString
+reflect.Value.SetUint
+reflect.Value.SetZero
+reflect.Value.Slice
+reflect.Value.Slice3
+reflect.Value.String
+reflect.Value.TryRecv
+reflect.Value.TrySend
+reflect.Value.Type
+reflect.Value.Uint
+reflect.Value.UnsafeAddr
+reflect.Value.UnsafePointer
+reflect.Value.abiType
+reflect.Value.abiTypeSlow
+reflect.Value.assignTo
+reflect.Value.bytesSlow
+reflect.Value.call
+reflect.Value.capNonSlice
+reflect.Value.extendSlice
+reflect.Value.grow
+reflect.Value.lenNonSlice
+reflect.Value.panicNotBool
+reflect.Value.pointer
+reflect.Value.recv
+reflect.Value.runes
+reflect.Value.send
+reflect.Value.setRunes
+reflect.Value.stringNonString
+reflect.Value.typeSlow
+reflect.ValueOf
+reflect.Zero
+reflect.add
+reflect.addReflectOff
+reflect.addTypeBits
+reflect.align
+reflect.archFloat32ToReg
+reflect.arrayAt
+reflect.callMethod
+reflect.callReflect
+reflect.canRangeFunc
+reflect.canRangeFunc2
+reflect.chancap
+reflect.chanclose
+reflect.chanlen
+reflect.chanrecv
+reflect.chansend
+reflect.chansend0
+reflect.contentEscapes
+reflect.convertOp
+reflect.copyVal
+reflect.cvtBytesString
+reflect.cvtComplex
+reflect.cvtDirect
+reflect.cvtFloat
+reflect.cvtFloatInt
+reflect.cvtFloatUint
+reflect.cvtI2I
+reflect.cvtInt
+reflect.cvtIntFloat
+reflect.cvtIntString
+reflect.cvtRunesString
+reflect.cvtSliceArray
+reflect.cvtSliceArrayPtr
+reflect.cvtStringBytes
+reflect.cvtStringRunes
+reflect.cvtT2I
+reflect.cvtUint
+reflect.cvtUintFloat
+reflect.cvtUintString
+reflect.directlyAssignable
+reflect.elem
+reflect.embeddedIfaceMethStub
+reflect.emitGCMask
+reflect.escapes
+reflect.flag.kind
+reflect.flag.mustBe
+reflect.flag.mustBeAssignable
+reflect.flag.mustBeAssignableSlow
+reflect.flag.mustBeExported
+reflect.flag.mustBeExportedSlow
+reflect.flag.panicNotMap
+reflect.flag.ro
+reflect.floatFromReg
+reflect.floatToReg
+reflect.fnv1
+reflect.funcLayout
+reflect.funcLayout.func1
+reflect.funcName
+reflect.funcStr
+reflect.growslice
+reflect.haveIdenticalType
+reflect.haveIdenticalUnderlyingType
+reflect.ifaceE2I
+reflect.implements
+reflect.init
+reflect.initFuncTypes
+reflect.initFuncTypes.deferwrap1
+reflect.intFromReg
+reflect.intToReg
+reflect.isLetter
+reflect.isPaddedField
+reflect.isRegularMemory
+reflect.isValidFieldName
+reflect.isZero
+reflect.makeBytes
+reflect.makeComplex
+reflect.makeFloat
+reflect.makeFloat32
+reflect.makeFuncStub
+reflect.makeInt
+reflect.makeMethodValue
+reflect.makeRunes
+reflect.makeString
+reflect.makemap
+reflect.mapIterNext
+reflect.mapIterStart
+reflect.mapaccess
+reflect.mapaccess_faststr
+reflect.mapassign
+reflect.mapassign0
+reflect.mapassign_faststr
+reflect.mapassign_faststr0
+reflect.mapclear
+reflect.mapdelete
+reflect.mapdelete_faststr
+reflect.maplen
+reflect.memmove
+reflect.methodReceiver
+reflect.methodValueCall
+reflect.methodValueCallCodePtr
+reflect.moveMakeFuncArgPtrs
+reflect.nameFor
+reflect.nameOffFor
+reflect.newAbiDesc
+reflect.newName
+reflect.overflowFloat32
+reflect.packEface
+reflect.packIfaceValueIntoEmptyIface
+reflect.pkgPath
+reflect.pkgPathFor
+reflect.ptrTo
+reflect.rangeNum[go.shape.int,go.shape.int64]
+reflect.rangeNum[go.shape.int16,go.shape.int64]
+reflect.rangeNum[go.shape.int32,go.shape.int64]
+reflect.rangeNum[go.shape.int64,go.shape.int64]
+reflect.rangeNum[go.shape.int8,go.shape.int64]
+reflect.rangeNum[go.shape.uint,go.shape.uint64]
+reflect.rangeNum[go.shape.uint16,go.shape.uint64]
+reflect.rangeNum[go.shape.uint32,go.shape.uint64]
+reflect.rangeNum[go.shape.uint64,go.shape.uint64]
+reflect.rangeNum[go.shape.uint8,go.shape.uint64]
+reflect.rangeNum[go.shape.uintptr,go.shape.uint64]
+reflect.resolveNameOff
+reflect.resolveReflectName
+reflect.resolveReflectText
+reflect.resolveReflectType
+reflect.resolveTextOff
+reflect.resolveTypeOff
+reflect.rtypeOff
+reflect.runtimeStructField
+reflect.specialChannelAssignability
+reflect.storeRcvr
+reflect.stringFor
+reflect.textOffFor
+reflect.toType
+reflect.typeOffFor
+reflect.typedarrayclear
+reflect.typedmemclr
+reflect.typedmemclrpartial
+reflect.typedmemmove
+reflect.typedslicecopy
+reflect.typelinks
+reflect.typeptrdata
+reflect.typesByString
+reflect.typesMustMatch
+reflect.unpackEface
+reflect.unsafe_New
+reflect.unsafe_NewArray
+reflect.valueInterface
+reflect.valueMethodName
+reflect.verifyNotInHeapPtr
+reflect: embedded type with methods not implemented if there is more than one fieldexpected all size classes up to min size for malloc header to fit in one-page spansjson: invalid use of ,string struct tag, trying to unmarshal unquoted value into %vreflect.Value.Interface: cannot return value obtained from unexported field or methodreflect: New of type that may not be allocated in heap (possibly undefined cgo C type)no command found for task %q
+reflect: non-interface type passed to Type.Implementsreflect.Value.Slice: string slice index out of boundsnon-concurrent sweep failed to drain all sweep queuesexited a goroutine internally locked to the OS threadbufio.Scan: too many empty tokens without progressingsmall map with no empty slot (concurrent map writes?)unique.canonMap: ran out of hash bits while iteratingunique.canonMap: ran out of hash bits while insertingpanic calling String method on zero %v for flag %s: %vfmt: scanning called UnreadRune with no rune availablereflect: Value.SetIterKey called on exhausted iteratorruntime.m memory alignment too small for spinbit mutexmin size of malloc header is not a size class boundarygcControllerState.findRunnable: blackening not enabledno goroutines (main called runtime.Goexit) - deadlock!trace: non-empty full trace buffer for done generationtrace: non-empty full trace buffer for next generation	goroutine running on other thread; stack unavailable
+reflectValue
+refreshPinnerBits
+refs
+regPtrs
+register
+rehash
+release
+releaseAll
+released
+releasetime
+remove
+removeGreaterEqual
+repanicked
+replaceTable
+reportZombies
+rescanLiteral
+reset
+result
+retZH
+retpc
+rhH92w
+rhL)
+rightDelim
+roc/selfH
+rodata
+root
+rrun
+rsema
+rseq
+rt	H
+rtH)
+runSafePointFn
+runes
+runnableTime
+runnext
+running
+runningCleanups
+runq
+runqhead
+runqtail
+runtime
+runtime H
+runtime stack:
+runtime.
+runtime.(*Cleanup).Stop
+runtime.(*Frames).Next
+runtime.(*Func).Entry
+runtime.(*Func).Name
+runtime.(*Func).funcInfo
+runtime.(*PanicNilError).Error
+runtime.(*PanicNilError).RuntimeError
+runtime.(*Pinner).Pin
+runtime.(*Pinner).Pin.func1
+runtime.(*Pinner).Unpin
+runtime.(*TypeAssertionError).Error
+runtime.(*TypeAssertionError).RuntimeError
+runtime.(*_func).funcInfo
+runtime.(*_func).isInlined
+runtime.(*_panic).initOpenCodedDefers
+runtime.(*_panic).nextDefer
+runtime.(*_panic).nextFrame
+runtime.(*_panic).nextFrame.func1
+runtime.(*_panic).start
+runtime.(*activeSweep).begin
+runtime.(*activeSweep).end
+runtime.(*activeSweep).isDone
+runtime.(*activeSweep).markDrained
+runtime.(*activeSweep).reset
+runtime.(*activeSweep).sweepers
+runtime.(*addrRanges).add
+runtime.(*addrRanges).cloneInto
+runtime.(*addrRanges).findAddrGreaterEqual
+runtime.(*addrRanges).findSucc
+runtime.(*addrRanges).init
+runtime.(*atomicHeadTailIndex).cas
+runtime.(*atomicHeadTailIndex).incTail
+runtime.(*atomicHeadTailIndex).load
+runtime.(*atomicHeadTailIndex).reset
+runtime.(*atomicMSpanPointer).Load
+runtime.(*atomicMSpanPointer).StoreNoWB
+runtime.(*atomicOffAddr).Clear
+runtime.(*atomicOffAddr).Load
+runtime.(*atomicOffAddr).StoreMarked
+runtime.(*atomicOffAddr).StoreMin
+runtime.(*atomicOffAddr).StoreUnmark
+runtime.(*atomicScavChunkData).load
+runtime.(*atomicScavChunkData).store
+runtime.(*atomicSpanSetSpinePointer).Load
+runtime.(*atomicSpanSetSpinePointer).StoreNoWB
+runtime.(*boundsError).Error
+runtime.(*boundsError).RuntimeError
+runtime.(*bucket).bp
+runtime.(*bucket).mp
+runtime.(*bucket).stk
+runtime.(*cleanupBlock).empty
+runtime.(*cleanupBlock).enqueue
+runtime.(*cleanupBlock).full
+runtime.(*cleanupBlock).take
+runtime.(*cleanupQueue).addWork
+runtime.(*cleanupQueue).beginRunningCleanups
+runtime.(*cleanupQueue).createGs
+runtime.(*cleanupQueue).dequeue
+runtime.(*cleanupQueue).endRunningCleanups
+runtime.(*cleanupQueue).enqueue
+runtime.(*cleanupQueue).flush
+runtime.(*cleanupQueue).needG
+runtime.(*cleanupQueue).needsWake
+runtime.(*cleanupQueue).readQueueStats
+runtime.(*cleanupQueue).tryTakeWork
+runtime.(*cleanupQueue).wake
+runtime.(*consistentHeapStats).acquire
+runtime.(*consistentHeapStats).release
+runtime.(*cpuProfile).add
+runtime.(*cpuProfile).addExtra
+runtime.(*cpuProfile).addNonGo
+runtime.(*cpuStats).accumulate
+runtime.(*cpuStats).accumulateGCPauseTime
+runtime.(*errorAddressString).Addr
+runtime.(*errorAddressString).Error
+runtime.(*errorAddressString).RuntimeError
+runtime.(*errorString).Error
+runtime.(*errorString).RuntimeError
+runtime.(*fixalloc).alloc
+runtime.(*fixalloc).free
+runtime.(*fixalloc).init
+runtime.(*g).guintptr
+runtime.(*gList).empty
+runtime.(*gList).pop
+runtime.(*gList).push
+runtime.(*gList).pushAll
+runtime.(*gQueue).empty
+runtime.(*gQueue).pop
+runtime.(*gQueue).popList
+runtime.(*gQueue).push
+runtime.(*gQueue).pushBack
+runtime.(*gQueue).pushBackAll
+runtime.(*gTraceState).reset
+runtime.(*gcBits).bitp
+runtime.(*gcBits).bytep
+runtime.(*gcBitsArena).tryAlloc
+runtime.(*gcCPULimiterState).accumulate
+runtime.(*gcCPULimiterState).addAssistTime
+runtime.(*gcCPULimiterState).addIdleTime
+runtime.(*gcCPULimiterState).finishGCTransition
+runtime.(*gcCPULimiterState).limiting
+runtime.(*gcCPULimiterState).needUpdate
+runtime.(*gcCPULimiterState).resetCapacity
+runtime.(*gcCPULimiterState).startGCTransition
+runtime.(*gcCPULimiterState).tryLock
+runtime.(*gcCPULimiterState).unlock
+runtime.(*gcCPULimiterState).update
+runtime.(*gcCPULimiterState).updateLocked
+runtime.(*gcControllerState).addGlobals
+runtime.(*gcControllerState).addIdleMarkWorker
+runtime.(*gcControllerState).addScannableStack
+runtime.(*gcControllerState).commit
+runtime.(*gcControllerState).endCycle
+runtime.(*gcControllerState).enlistWorker
+runtime.(*gcControllerState).findRunnableGCWorker
+runtime.(*gcControllerState).findRunnableGCWorker.func1
+runtime.(*gcControllerState).heapGoal
+runtime.(*gcControllerState).heapGoalInternal
+runtime.(*gcControllerState).init
+runtime.(*gcControllerState).markWorkerStop
+runtime.(*gcControllerState).memoryLimitHeapGoal
+runtime.(*gcControllerState).needIdleMarkWorker
+runtime.(*gcControllerState).removeIdleMarkWorker
+runtime.(*gcControllerState).resetLive
+runtime.(*gcControllerState).revise
+runtime.(*gcControllerState).setGCPercent
+runtime.(*gcControllerState).setMaxIdleMarkWorkers
+runtime.(*gcControllerState).setMemoryLimit
+runtime.(*gcControllerState).startCycle
+runtime.(*gcControllerState).trigger
+runtime.(*gcControllerState).update
+runtime.(*gcWork).balance
+runtime.(*gcWork).dispose
+runtime.(*gcWork).empty
+runtime.(*gcWork).flushScanStats
+runtime.(*gcWork).init
+runtime.(*gcWork).putObj
+runtime.(*gcWork).putObjBatch
+runtime.(*gcWork).putObjFast
+runtime.(*gcWork).tryGetObj
+runtime.(*gcWork).tryGetObjFast
+runtime.(*godebugInc).IncNonDefault
+runtime.(*goroutineProfileStateHolder).CompareAndSwap
+runtime.(*goroutineProfileStateHolder).Load
+runtime.(*goroutineProfileStateHolder).Store
+runtime.(*guintptr).cas
+runtime.(*guintptr).set
+runtime.(*hchan).raceaddr
+runtime.(*hchan).sortkey
+runtime.(*immortalWeakHandle).handle
+runtime.(*immortalWeakHandleMap).getOrAdd
+runtime.(*inlineUnwinder).fileLine
+runtime.(*inlineUnwinder).isInlined
+runtime.(*inlineUnwinder).next
+runtime.(*inlineUnwinder).resolveInternal
+runtime.(*inlineUnwinder).srcFunc
+runtime.(*itabTableType).add
+runtime.(*itabTableType).add-fm
+runtime.(*itabTableType).find
+runtime.(*lfstack).empty
+runtime.(*lfstack).pop
+runtime.(*lfstack).push
+runtime.(*limiterEvent).consume
+runtime.(*limiterEvent).start
+runtime.(*limiterEvent).stop
+runtime.(*linearAlloc).alloc
+runtime.(*lockRank).String
+runtime.(*m).becomeSpinning
+runtime.(*m).clearAllpSnapshot
+runtime.(*m).hasCgoOnStack
+runtime.(*m).snapshotAllp
+runtime.(*mLockProfile).captureStack
+runtime.(*mLockProfile).captureStack.func1
+runtime.(*mLockProfile).end
+runtime.(*mLockProfile).recordUnlock
+runtime.(*mLockProfile).start
+runtime.(*mLockProfile).store
+runtime.(*mLockProfile).storeSlow
+runtime.(*mProfCycleHolder).increment
+runtime.(*mProfCycleHolder).read
+runtime.(*mProfCycleHolder).setFlushed
+runtime.(*mSpanList).init
+runtime.(*mSpanList).insert
+runtime.(*mSpanList).isEmpty
+runtime.(*mSpanList).remove
+runtime.(*mSpanList).takeAll
+runtime.(*mSpanStateBox).get
+runtime.(*mSpanStateBox).set
+runtime.(*markBits).advance
+runtime.(*mcache).allocLarge
+runtime.(*mcache).nextFree
+runtime.(*mcache).prepareForSweep
+runtime.(*mcache).refill
+runtime.(*mcache).releaseAll
+runtime.(*mcentral).cacheSpan
+runtime.(*mcentral).fullSwept
+runtime.(*mcentral).fullUnswept
+runtime.(*mcentral).grow
+runtime.(*mcentral).init
+runtime.(*mcentral).partialSwept
+runtime.(*mcentral).partialUnswept
+runtime.(*mcentral).uncacheSpan
+runtime.(*memRecordCycle).add
+runtime.(*metricValue).float64HistOrInit
+runtime.(*mheap).alloc
+runtime.(*mheap).alloc.func1
+runtime.(*mheap).allocMSpanLocked
+runtime.(*mheap).allocManual
+runtime.(*mheap).allocNeedsZero
+runtime.(*mheap).allocSpan
+runtime.(*mheap).allocSpan.func1
+runtime.(*mheap).enableMetadataHugePages
+runtime.(*mheap).freeMSpanLocked
+runtime.(*mheap).freeManual
+runtime.(*mheap).freeSpan
+runtime.(*mheap).freeSpanLocked
+runtime.(*mheap).grow
+runtime.(*mheap).init
+runtime.(*mheap).initSpan
+runtime.(*mheap).nextSpanForSweep
+runtime.(*mheap).reclaim
+runtime.(*mheap).reclaimChunk
+runtime.(*mheap).setSpans
+runtime.(*mheap).sysAlloc
+runtime.(*mheap).tryAllocMSpan
+runtime.(*moduledata).funcName
+runtime.(*moduledata).textAddr
+runtime.(*moduledata).textOff
+runtime.(*mspan).allocBitsForIndex
+runtime.(*mspan).base
+runtime.(*mspan).countAlloc
+runtime.(*mspan).decPinCounter
+runtime.(*mspan).divideByElemSize
+runtime.(*mspan).ensureSwept
+runtime.(*mspan).getPinnerBits
+runtime.(*mspan).heapBits
+runtime.(*mspan).heapBitsSmallForAddr
+runtime.(*mspan).incPinCounter
+runtime.(*mspan).init
+runtime.(*mspan).initHeapBits
+runtime.(*mspan).isFree
+runtime.(*mspan).isFreeOrNewlyAllocated
+runtime.(*mspan).markBitsForBase
+runtime.(*mspan).markBitsForIndex
+runtime.(*mspan).newPinnerBits
+runtime.(*mspan).nextFreeIndex
+runtime.(*mspan).objBase
+runtime.(*mspan).objIndex
+runtime.(*mspan).pinnerBitSize
+runtime.(*mspan).refillAllocCache
+runtime.(*mspan).refreshPinnerBits
+runtime.(*mspan).reportZombies
+runtime.(*mspan).setPinnerBits
+runtime.(*mspan).setUserArenaChunkToFault
+runtime.(*mspan).setUserArenaChunkToFault.func1
+runtime.(*mspan).specialFindSplicePoint
+runtime.(*mspan).typePointersOf
+runtime.(*mspan).typePointersOfType
+runtime.(*mspan).typePointersOfUnchecked
+runtime.(*mspan).writeHeapBitsSmall
+runtime.(*muintptr).set
+runtime.(*notInHeap).add
+runtime.(*p).destroy
+runtime.(*p).destroy.freemcache.func2
+runtime.(*p).destroy.func1
+runtime.(*p).init
+runtime.(*pageAlloc).alloc
+runtime.(*pageAlloc).allocRange
+runtime.(*pageAlloc).allocToCache
+runtime.(*pageAlloc).chunkOf
+runtime.(*pageAlloc).enableChunkHugePages
+runtime.(*pageAlloc).find
+runtime.(*pageAlloc).find.func1
+runtime.(*pageAlloc).findMappedAddr
+runtime.(*pageAlloc).free
+runtime.(*pageAlloc).grow
+runtime.(*pageAlloc).init
+runtime.(*pageAlloc).scavenge
+runtime.(*pageAlloc).scavenge.func1
+runtime.(*pageAlloc).scavengeOne
+runtime.(*pageAlloc).sysGrow
+runtime.(*pageAlloc).sysGrow.func1
+runtime.(*pageAlloc).sysGrow.func2
+runtime.(*pageAlloc).sysGrow.func3
+runtime.(*pageAlloc).sysInit
+runtime.(*pageAlloc).update
+runtime.(*pageBits).block64
+runtime.(*pageBits).clear
+runtime.(*pageBits).clearAll
+runtime.(*pageBits).clearBlock64
+runtime.(*pageBits).clearRange
+runtime.(*pageBits).popcntRange
+runtime.(*pageBits).set
+runtime.(*pageBits).setAll
+runtime.(*pageBits).setBlock64
+runtime.(*pageBits).setRange
+runtime.(*pageCache).alloc
+runtime.(*pageCache).allocN
+runtime.(*pageCache).empty
+runtime.(*pageCache).flush
+runtime.(*pallocBits).allocAll
+runtime.(*pallocBits).allocPages64
+runtime.(*pallocBits).allocRange
+runtime.(*pallocBits).find
+runtime.(*pallocBits).find1
+runtime.(*pallocBits).findLargeN
+runtime.(*pallocBits).findSmallN
+runtime.(*pallocBits).free
+runtime.(*pallocBits).free1
+runtime.(*pallocBits).freeAll
+runtime.(*pallocBits).pages64
+runtime.(*pallocBits).summarize
+runtime.(*pallocData).allocAll
+runtime.(*pallocData).allocRange
+runtime.(*pallocData).findScavengeCandidate
+runtime.(*piController).next
+runtime.(*piController).reset
+runtime.(*pinState).isMultiPinned
+runtime.(*pinState).isPinned
+runtime.(*pinState).set
+runtime.(*pinState).setMultiPinned
+runtime.(*pinState).setPinned
+runtime.(*pinner).unpin
+runtime.(*pinnerBits).ofObject
+runtime.(*plainError).Error
+runtime.(*plainError).RuntimeError
+runtime.(*pollCache).alloc
+runtime.(*pollCache).free
+runtime.(*pollDesc).info
+runtime.(*pollDesc).makeArg
+runtime.(*pollDesc).publishInfo
+runtime.(*pollDesc).setEventErr
+runtime.(*profAtomic).cas
+runtime.(*profAtomic).load
+runtime.(*profAtomic).store
+runtime.(*profBuf).canWriteRecord
+runtime.(*profBuf).canWriteTwoRecords
+runtime.(*profBuf).close
+runtime.(*profBuf).hasOverflow
+runtime.(*profBuf).incrementOverflow
+runtime.(*profBuf).read
+runtime.(*profBuf).takeOverflow
+runtime.(*profBuf).wakeupExtra
+runtime.(*profBuf).write
+runtime.(*puintptr).set
+runtime.(*randomEnum).done
+runtime.(*randomEnum).next
+runtime.(*randomEnum).position
+runtime.(*randomOrder).reset
+runtime.(*randomOrder).start
+runtime.(*rwmutex).init
+runtime.(*rwmutex).lock
+runtime.(*rwmutex).lock.func1
+runtime.(*rwmutex).rlock
+runtime.(*rwmutex).rlock.func1
+runtime.(*rwmutex).runlock
+runtime.(*rwmutex).unlock
+runtime.(*scavChunkData).alloc
+runtime.(*scavChunkData).free
+runtime.(*scavChunkFlags).isEmpty
+runtime.(*scavChunkFlags).setEmpty
+runtime.(*scavChunkFlags).setNonEmpty
+runtime.(*scavengeIndex).alloc
+runtime.(*scavengeIndex).find
+runtime.(*scavengeIndex).free
+runtime.(*scavengeIndex).grow
+runtime.(*scavengeIndex).init
+runtime.(*scavengeIndex).nextGen
+runtime.(*scavengeIndex).setEmpty
+runtime.(*scavengeIndex).sysGrow
+runtime.(*scavengeIndex).sysInit
+runtime.(*scavengerState).controllerFailed
+runtime.(*scavengerState).init
+runtime.(*scavengerState).init.func1
+runtime.(*scavengerState).init.func2
+runtime.(*scavengerState).init.func3
+runtime.(*scavengerState).init.func4
+runtime.(*scavengerState).park
+runtime.(*scavengerState).ready
+runtime.(*scavengerState).run
+runtime.(*scavengerState).sleep
+runtime.(*scavengerState).wake
+runtime.(*semTable).rootFor
+runtime.(*semaRoot).dequeue
+runtime.(*semaRoot).queue
+runtime.(*semaRoot).rotateLeft
+runtime.(*semaRoot).rotateRight
+runtime.(*sigctxt).cs
+runtime.(*sigctxt).fault
+runtime.(*sigctxt).fs
+runtime.(*sigctxt).gs
+runtime.(*sigctxt).preparePanic
+runtime.(*sigctxt).pushCall
+runtime.(*sigctxt).r10
+runtime.(*sigctxt).r11
+runtime.(*sigctxt).r12
+runtime.(*sigctxt).r13
+runtime.(*sigctxt).r14
+runtime.(*sigctxt).r15
+runtime.(*sigctxt).r8
+runtime.(*sigctxt).r9
+runtime.(*sigctxt).rax
+runtime.(*sigctxt).rbp
+runtime.(*sigctxt).rbx
+runtime.(*sigctxt).rcx
+runtime.(*sigctxt).rdi
+runtime.(*sigctxt).rdx
+runtime.(*sigctxt).regs
+runtime.(*sigctxt).rflags
+runtime.(*sigctxt).rip
+runtime.(*sigctxt).rsi
+runtime.(*sigctxt).rsp
+runtime.(*sigctxt).set_rip
+runtime.(*sigctxt).set_rsp
+runtime.(*sigctxt).sigFromSeccomp
+runtime.(*sigctxt).sigFromUser
+runtime.(*sigctxt).sigaddr
+runtime.(*sigctxt).sigcode
+runtime.(*sigctxt).sigpc
+runtime.(*sigctxt).sigsp
+runtime.(*spanSet).pop
+runtime.(*spanSet).push
+runtime.(*spanSet).reset
+runtime.(*spanSetBlockAlloc).alloc
+runtime.(*spanSetBlockAlloc).free
+runtime.(*specialsIter).next
+runtime.(*specialsIter).unlinkAndNext
+runtime.(*specialsIter).valid
+runtime.(*stackObject).setRecord
+runtime.(*stackObjectRecord).gcdata
+runtime.(*stackScanState).addObject
+runtime.(*stackScanState).buildIndex
+runtime.(*stackScanState).findObject
+runtime.(*stackScanState).getPtr
+runtime.(*stackScanState).putPtr
+runtime.(*stkframe).argBytes
+runtime.(*stkframe).argMapInternal
+runtime.(*stkframe).getStackMap
+runtime.(*sweepClass).clear
+runtime.(*sweepClass).load
+runtime.(*sweepClass).update
+runtime.(*sweepLocked).sweep
+runtime.(*sweepLocked).sweep.(*mheap).freeSpan.func2
+runtime.(*sweepLocked).sweep.(*mheap).freeSpan.func3
+runtime.(*sweepLocked).sweep.func1
+runtime.(*sweepLocker).tryAcquire
+runtime.(*synctestBubble).changegstatus
+runtime.(*synctestBubble).changegstatus.goready.func1
+runtime.(*synctestBubble).decActive
+runtime.(*synctestBubble).decActive.goready.func1
+runtime.(*synctestBubble).incActive
+runtime.(*synctestBubble).maybeWakeLocked
+runtime.(*sysMemStat).add
+runtime.(*sysMemStat).load
+runtime.(*ticksType).init
+runtime.(*timeHistogram).record
+runtime.(*timeHistogram).write
+runtime.(*timer).hchan
+runtime.(*timer).init
+runtime.(*timer).lock
+runtime.(*timer).maybeAdd
+runtime.(*timer).maybeRunAsync
+runtime.(*timer).maybeRunAsync.func1
+runtime.(*timer).maybeRunChan
+runtime.(*timer).maybeRunChan.func1
+runtime.(*timer).modify
+runtime.(*timer).modify.func1
+runtime.(*timer).needsAdd
+runtime.(*timer).reset
+runtime.(*timer).stop
+runtime.(*timer).unlock
+runtime.(*timer).unlockAndRun
+runtime.(*timer).unlockAndRun.func1
+runtime.(*timer).updateHeap
+runtime.(*timers).addHeap
+runtime.(*timers).adjust
+runtime.(*timers).check
+runtime.(*timers).cleanHead
+runtime.(*timers).deleteMin
+runtime.(*timers).initHeap
+runtime.(*timers).lock
+runtime.(*timers).run
+runtime.(*timers).siftDown
+runtime.(*timers).siftUp
+runtime.(*timers).take
+runtime.(*timers).unlock
+runtime.(*timers).updateMinWhenHeap
+runtime.(*timers).updateMinWhenModified
+runtime.(*timers).wakeTime
+runtime.(*timespec).setNsec
+runtime.(*traceAdvancerState).stop
+runtime.(*traceBuf).available
+runtime.(*traceBuf).byte
+runtime.(*traceBuf).stringData
+runtime.(*traceBuf).varint
+runtime.(*traceBuf).varintAt
+runtime.(*traceBuf).varintReserve
+runtime.(*traceBufQueue).empty
+runtime.(*traceBufQueue).push
+runtime.(*traceMap).newTraceMapNode
+runtime.(*traceMap).put
+runtime.(*traceMap).reset
+runtime.(*traceRegionAlloc).alloc
+runtime.(*traceRegionAlloc).alloc.func1
+runtime.(*traceRegionAlloc).drop
+runtime.(*traceSchedResourceState).acquireStatus
+runtime.(*traceSchedResourceState).nextSeq
+runtime.(*traceSchedResourceState).readyNextGen
+runtime.(*traceSchedResourceState).setStatusTraced
+runtime.(*traceSchedResourceState).statusWasTraced
+runtime.(*traceStackTable).dump
+runtime.(*traceStackTable).put
+runtime.(*traceStringTable).put
+runtime.(*traceStringTable).put.func1
+runtime.(*traceStringTable).reset
+runtime.(*traceStringTable).reset.func1
+runtime.(*traceStringTable).writeString
+runtime.(*traceTypeTable).dump
+runtime.(*traceTypeTable).put
+runtime.(*unwinder).cgoCallers
+runtime.(*unwinder).finishInternal
+runtime.(*unwinder).init
+runtime.(*unwinder).initAt
+runtime.(*unwinder).next
+runtime.(*unwinder).resolveInternal
+runtime.(*unwinder).symPC
+runtime.(*unwinder).valid
+runtime.(*waitReason).String
+runtime.(*waitq).dequeue
+runtime.(*waitq).dequeueSudoG
+runtime.(*waitq).enqueue
+runtime.(*wakeableSleep).close
+runtime.(*wakeableSleep).wake
+runtime.(*wbBuf).discard
+runtime.(*wbBuf).get1
+runtime.(*wbBuf).get2
+runtime.(*wbBuf).reset
+runtime.(*workbuf).checkempty
+runtime.(*workbuf).checknonempty
+runtime.AddCleanup: ptr is arena-allocatedMapIter.Value called on exhausted iteratorreflect: negative length passed to ArrayOfreflect: Call with too few input argumentsmismatch between ABI description and typesreflect: cannot convert slice with length  bytes; incompatible with mutex flag mask persistentalloc: align is not a power of 2/cpu/classes/gc/mark/dedicated:cpu-seconds/memory/classes/metadata/mcache/free:bytes/memory/classes/metadata/mspan/inuse:bytesnon-empty mark queue after concurrent marksweep: tried to preserve a user arena spanruntime: blocked write on closing polldescunexpected state passed to panicrangestateacquireSudog: found s.elem != nil in cachefatal error: cgo callback before cgo call
+runtime.AddCleanup: ptr not in allocated blockboth Setctty and Foreground set in SysProcAttrreflect: Value.SetIterValue called before Nextreflect: nil type passed to Type.ConvertibleToreflect.Struct: fields with different PkgPath reflect.StructOf: illegal embedded field type  returned value obtained from unexported fieldreflect: slice capacity out of range in SetCapreflect.Value.Slice: slice index out of boundsslice bounds out of range [:%x] with length %ypanicwrap: unexpected string after type name: memory reservation exceeds address space limittried to park scavenger from another goroutinereleased less than one physical page of memorysysGrow bounds not aligned to pallocChunkBytesruntime: failed to create new OS thread (have runtime: panic before malloc heap initialized
+runtime.AddCleanup[go.shape.struct { Pid int; os.state sync/atomic.Uint32; os.sigMu sync.RWMutex; os.handle *os.processHandle; os.cleanup runtime.Cleanup },go.shape.*uint8]
+runtime.AddCleanup[go.shape.struct { Pid int; os.state sync/atomic.Uint32; os.sigMu sync.RWMutex; os.handle *os.processHandle; os.cleanup runtime.Cleanup },go.shape.*uint8].func1
+runtime.AddCleanup[go.shape.struct { internal/poll.splicePipeFields; internal/poll.cleanup runtime.Cleanup },go.shape.struct { internal/poll.rfd int; internal/poll.wfd int; internal/poll.data int }]
+runtime.AddCleanup[go.shape.struct { internal/poll.splicePipeFields; internal/poll.cleanup runtime.Cleanup },go.shape.struct { internal/poll.rfd int; internal/poll.wfd int; internal/poll.data int }].func1
+runtime.AddCleanup[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string },go.shape.struct {}]
+runtime.AddCleanup[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string },go.shape.struct {}].func1
+runtime.Caller
+runtime.Callers
+runtime.CallersFrames
+runtime.Cleanup.Stop
+runtime.FuncForPC
+runtime.GC
+runtime.GOMAXPROCS
+runtime.GOROOT
+runtime.Gosched
+runtime.H
+runtime.H9
+runtime.H90@
+runtime.NumCgoCall
+runtime.SetFinalizer
+runtime.SetFinalizer.func1
+runtime.SetFinalizer.func2
+runtime.Stack
+runtime.Stack.func1
+runtime.Stack.func1.tracebackothers.1
+runtime._ELF_ST_BIND
+runtime._ELF_ST_TYPE
+runtime._ExternalCode
+runtime._GC
+runtime._LostContendedRuntimeLock
+runtime._LostExternalCode
+runtime._LostSIGPROFDuringAtomic64
+runtime._System
+runtime._VDSO
+runtime.abort
+runtime.acquireLockRankAndM
+runtime.acquireSudog
+runtime.acquirem
+runtime.acquirep
+runtime.activeModules
+runtime.add
+runtime.add1
+runtime.addCleanup
+runtime.addExtraM
+runtime.addb
+runtime.addfinalizer
+runtime.addrRange.contains
+runtime.addrRange.size
+runtime.addrRange.subtract
+runtime.addrsToSummaryRange
+runtime.addspecial
+runtime.adjustCgroupGOMAXPROCS
+runtime.adjustSignalStack
+runtime.adjustSignalStack2
+runtime.adjustctxt
+runtime.adjustdefers
+runtime.adjustframe
+runtime.adjustpanics
+runtime.adjustpointer
+runtime.adjustpointers
+runtime.adjustsudogs
+runtime.alginit
+runtime.alignDown
+runtime.alignUp
+runtime.allGsSnapshot
+runtime.allZero
+runtime.allgadd
+runtime.allocm
+runtime.allocm.func1
+runtime.allocmcache
+runtime.allocmcache.func1
+runtime.appendIntStr
+runtime.arenaIndex
+runtime.args
+runtime.argv_index
+runtime.asmcgocall
+runtime.asmcgocall_landingpad
+runtime.asminit
+runtime.assertE2I
+runtime.assertE2I2
+runtime.asyncPreempt
+runtime.asyncPreempt2
+runtime.atomicAllG
+runtime.atomicAllGIndex
+runtime.atomicstorep
+runtime.atomicwb
+runtime.badDefer
+runtime.badPointer
+runtime.badTimer
+runtime.badctxt
+runtime.badmcall
+runtime.badmcall2
+runtime.badmorestackg0
+runtime.badmorestackg0.func1
+runtime.badmorestackgsignal
+runtime.badreflectcall
+runtime.badsignal
+runtime.badsystemstack
+runtime.badunlockosthread
+runtime.bgscavenge
+runtime.bgsweep
+runtime.binarySearchTree
+runtime.bitCursor.offset
+runtime.bitCursor.write
+runtime.blockAlignSummaryRange
+runtime.blockTimerChan
+runtime.blockableSig
+runtime.blockevent
+runtime.blocksampled
+runtime.bool2int
+runtime.bootstrapRand
+runtime.bootstrapRandReseed
+runtime.boundsError.Error
+runtime.boundsError.RuntimeError
+runtime.buildGCMask
+runtime.buildInterfaceSwitchCache
+runtime.buildInterfaceSwitchCache.func1
+runtime.buildTypeAssertCache
+runtime.buildTypeAssertCache.func1
+runtime.bulkBarrierBitmap
+runtime.bulkBarrierPreWrite
+runtime.bulkBarrierPreWriteSrcOnly
+runtime.bytes
+runtime.c128equal
+runtime.c128hash
+runtime.c64equal
+runtime.c64hash
+runtime.call1024
+runtime.call1048576
+runtime.call1073741824
+runtime.call128
+runtime.call131072
+runtime.call134217728
+runtime.call16
+runtime.call16384
+runtime.call16777216
+runtime.call2048
+runtime.call2097152
+runtime.call256
+runtime.call262144
+runtime.call268435456
+runtime.call32
+runtime.call32768
+runtime.call33554432
+runtime.call4096
+runtime.call4194304
+runtime.call512
+runtime.call524288
+runtime.call536870912
+runtime.call64
+runtime.call65536
+runtime.call67108864
+runtime.call8192
+runtime.call8388608
+runtime.callCgoMmap
+runtime.callCgoMunmap
+runtime.callCgoSigaction
+runtime.callCgoSymbolizer
+runtime.callbackUpdateSystemStack
+runtime.callers
+runtime.callers.func1
+runtime.canPreemptM
+runtime.canpanic
+runtime.cansemacquire
+runtime.casGFromPreempted
+runtime.casGToPreemptScan
+runtime.casGToWaiting
+runtime.casGToWaitingForSuspendG
+runtime.casfrom_Gscanstatus
+runtime.casgstatus
+runtime.casgstatus.func1
+runtime.casgstatus.func2
+runtime.casgstatus.func3
+runtime.castogscanstatus
+runtime.ceil
+runtime.cgoContextPCs
+runtime.cgoSigtramp
+runtime.cgocall
+runtime.chanbuf
+runtime.chancap
+runtime.chanlen
+runtime.chanparkcommit
+runtime.chanrecv
+runtime.chanrecv.func1
+runtime.chanrecv1
+runtime.chansend
+runtime.chansend.func1
+runtime.chansend1
+runtime.cheaprand
+runtime.cheaprand64
+runtime.cheaprandn
+runtime.check
+runtime.checkASM
+runtime.checkFinalizersAndCleanups
+runtime.checkFinalizersAndCleanups.func1
+runtime.checkFinalizersAndCleanups.func1.1
+runtime.checkIdleGCNoP
+runtime.checkRunqsNoP
+runtime.checkTimersNoP
+runtime.checkdead
+runtime.checkdead.func1
+runtime.checkfds
+runtime.checkmcount
+runtime.chunkBase
+runtime.chunkIdx.l1
+runtime.chunkIdx.l2
+runtime.chunkIndex
+runtime.chunkPageIndex
+runtime.clearCleanupContext
+runtime.clearFinalizerContext
+runtime.clearSignalHandlers
+runtime.clearpools
+runtime.clobberfree
+runtime.clone
+runtime.closechan
+runtime.closechan.goready.func1
+runtime.closefd
+runtime.cmpstring
+runtime.compute0
+runtime.concatstring2
+runtime.concatstring3
+runtime.concatstring4
+runtime.concatstring5
+runtime.concatstrings
+runtime.convT
+runtime.convT16
+runtime.convT32
+runtime.convT64
+runtime.convTnoptr
+runtime.convTslice
+runtime.convTstring
+runtime.copystack
+runtime.countSub
+runtime.cpuinit
+runtime.cputicks
+runtime.crash
+runtime.createfing
+runtime.debugCallCheck
+runtime.debugCallCheck.func1
+runtime.debugCallPanicked
+runtime.debugCallV2
+runtime.debugCallWrap
+runtime.debugCallWrap.func1
+runtime.debugCallWrap.func2
+runtime.debugCallWrap1
+runtime.debugCallWrap1.func1
+runtime.debugCallWrap2
+runtime.debugCallWrap2.func1
+runtime.debugPinnerV1
+runtime.decoderune
+runtime.deductAssistCredit
+runtime.deductSweepCredit
+runtime.defaultGOMAXPROCS
+runtime.defaultGOMAXPROCSInit
+runtime.defaultGOMAXPROCSUpdateEnable
+runtime.defaultGOMAXPROCSUpdateGODEBUG
+runtime.deferconvert
+runtime.deferprocStack
+runtime.deferreturn
+runtime.dieFromSignal
+runtime.divRoundUp
+runtime.doInit
+runtime.doInit1
+runtime.doRecordGoroutineProfile
+runtime.doRecordGoroutineProfile.func1
+runtime.doSigPreempt
+runtime.dolockOSThread
+runtime.dopanic_m
+runtime.dopanic_m.func1
+runtime.dopanic_m.tracebackothers.func2
+runtime.dounlockOSThread
+runtime.dropg
+runtime.dropm
+runtime.duffcopy
+runtime.duffzero
+runtime.dumpScanStats
+runtime.dumpStacksRec
+runtime.dumpTypesRec
+runtime.dumpgstatus
+runtime.dumpregs
+runtime.efaceeq
+runtime.elideWrapperCalling
+runtime.empty
+runtime.encoderune
+runtime.endCheckmarks
+runtime.entersyscall
+runtime.entersyscall_gcwait
+runtime.entersyscall_sysmon
+runtime.entersyscallblock
+runtime.entersyscallblock.func1
+runtime.entersyscallblock.func2
+runtime.entersyscallblock.func3
+runtime.entersyscallblock_handoff
+runtime.envKeyEqual
+runtime.eqslice
+runtime.errorAddressString.Addr
+runtime.errorAddressString.Error
+runtime.errorAddressString.RuntimeError
+runtime.errorString.Error
+runtime.errorString.RuntimeError
+runtime.execute
+runtime.exit
+runtime.exitThread
+runtime.exitsyscall
+runtime.exitsyscall.func1
+runtime.exitsyscall.func2
+runtime.exitsyscall0
+runtime.exitsyscallfast
+runtime.exitsyscallfast.func1
+runtime.exitsyscallfast_pidle
+runtime.exitsyscallfast_reacquired
+runtime.exitsyscallfast_reacquired.func1
+runtime.expandCgoFrames
+runtime.f32equal
+runtime.f32hash
+runtime.f64equal
+runtime.f64hash
+runtime.fastexprand
+runtime.fastlog2
+runtime.fatal
+runtime.fatal.func1
+runtime.fatalpanic
+runtime.fatalpanic.func1
+runtime.fatalpanic.func2
+runtime.fatalsignal
+runtime.fatalthrow
+runtime.fatalthrow.func1
+runtime.fcntl
+runtime.fillAligned
+runtime.fillAligned.func1
+runtime.fillstack
+runtime.finReadQueueStats
+runtime.finalizercommit
+runtime.findBitRange64
+runtime.findObject
+runtime.findRunnable
+runtime.findfunc
+runtime.findmoduledatap
+runtime.findnull
+runtime.findsghi
+runtime.finishDebugVarsSetup
+runtime.finishsweep_m
+runtime.float64bits
+runtime.float64frombits
+runtime.floor
+runtime.fmtNSAsMS
+runtime.forEachG
+runtime.forEachGRace
+runtime.forEachP
+runtime.forEachPInternal
+runtime.forEachSpecial
+runtime.forcegchelper
+runtime.fpTracebackPCs
+runtime.fpTracebackPartialExpand
+runtime.fpTracebackPartialExpand.func1
+runtime.fpunwindExpand
+runtime.fpunwindExpand.func1
+runtime.freeSomeWbufs
+runtime.freeSomeWbufs.func1
+runtime.freeSpecial
+runtime.freeStackSpans
+runtime.freemcache
+runtime.freezetheworld
+runtime.full
+runtime.funcInfo.entry
+runtime.funcInfo.srcFunc
+runtime.funcInfo.valid
+runtime.funcMaxSPDelta
+runtime.funcNameForPrint
+runtime.funcNamePiecesForPrint
+runtime.funcdata
+runtime.funcfile
+runtime.funcline
+runtime.funcline1
+runtime.funcname
+runtime.funcpkgpath
+runtime.funcspdelta
+runtime.futex
+runtime.futexsleep
+runtime.futexwakeup
+runtime.futexwakeup.func1
+runtime.gcAssistAlloc
+runtime.gcAssistAlloc.func1
+runtime.gcAssistAlloc.func2
+runtime.gcAssistAlloc1
+runtime.gcBgMarkPrepare
+runtime.gcBgMarkStartWorkers
+runtime.gcBgMarkStartWorkers.gowrap1
+runtime.gcBgMarkWorker
+runtime.gcBgMarkWorker.func1
+runtime.gcBgMarkWorker.func2
+runtime.gcComputeStartingStackSize
+runtime.gcControllerCommit
+runtime.gcDrain
+runtime.gcDrainMarkWorkerDedicated
+runtime.gcDrainMarkWorkerFractional
+runtime.gcDrainMarkWorkerIdle
+runtime.gcDrainN
+runtime.gcDumpObject
+runtime.gcFlushBgCredit
+runtime.gcMark
+runtime.gcMarkDone
+runtime.gcMarkDone.forEachP.func5
+runtime.gcMarkDone.func1
+runtime.gcMarkDone.func2
+runtime.gcMarkDone.func3
+runtime.gcMarkDone.func4
+runtime.gcMarkRootCheck
+runtime.gcMarkRootCheck.func1
+runtime.gcMarkTermination
+runtime.gcMarkTermination.forEachP.func6
+runtime.gcMarkTermination.func1
+runtime.gcMarkTermination.func2
+runtime.gcMarkTermination.func2.1
+runtime.gcMarkTermination.func3
+runtime.gcMarkTermination.func4
+runtime.gcMarkTermination.func4.1
+runtime.gcMarkTermination.func5
+runtime.gcMarkTinyAllocs
+runtime.gcMarkWorkAvailable
+runtime.gcPaceScavenger
+runtime.gcPaceSweeper
+runtime.gcParkAssist
+runtime.gcParkStrongFromWeak
+runtime.gcPrepareMarkRoots
+runtime.gcPrepareMarkRoots.func1
+runtime.gcResetMarkState
+runtime.gcResetMarkState.func1
+runtime.gcScanCleanup
+runtime.gcScanFinalizer
+runtime.gcStart
+runtime.gcStart.func1
+runtime.gcStart.func2
+runtime.gcStart.func3
+runtime.gcStart.func4
+runtime.gcSweep
+runtime.gcTrigger.test
+runtime.gcWaitOnMark
+runtime.gcWakeAllAssists
+runtime.gcWakeAllStrongFromWeak
+runtime.gcWriteBarrier1
+runtime.gcWriteBarrier2
+runtime.gcWriteBarrier3
+runtime.gcWriteBarrier4
+runtime.gcWriteBarrier5
+runtime.gcWriteBarrier6
+runtime.gcWriteBarrier7
+runtime.gcWriteBarrier8
+runtime.gcallers
+runtime.gcd
+runtime.gcenable
+runtime.gcenable.gowrap1
+runtime.gcenable.gowrap2
+runtime.gcinit
+runtime.gclinkptr.ptr
+runtime.gcmarknewobject
+runtime.gcount
+runtime.gcstopm
+runtime.gdestroy
+runtime.getCPUCount
+runtime.getCheckmark
+runtime.getCleanupContext
+runtime.getExtraM
+runtime.getGCMask
+runtime.getGCMaskOnDemand
+runtime.getGCMaskOnDemand.func1
+runtime.getGodebugEarly
+runtime.getHugePageSize
+runtime.getMCache
+runtime.getOrAddWeakHandle
+runtime.getStaticuint64s
+runtime.getWeakHandle
+runtime.getcallerfp
+runtime.getempty
+runtime.getempty.func1
+runtime.getfp
+runtime.getitab
+runtime.getpid
+runtime.getsig
+runtime.gettid
+runtime.gfget
+runtime.gfget.func1
+runtime.gfget.func2
+runtime.gfpurge
+runtime.gfput
+runtime.globrunqget
+runtime.globrunqgetbatch
+runtime.globrunqput
+runtime.globrunqputbatch
+runtime.globrunqputhead
+runtime.goPanicIndex
+runtime.goPanicIndexU
+runtime.goPanicSlice3Alen
+runtime.goPanicSlice3C
+runtime.goPanicSliceAcap
+runtime.goPanicSliceAcapU
+runtime.goPanicSliceAlen
+runtime.goPanicSliceAlenU
+runtime.goPanicSliceB
+runtime.goPanicSliceBU
+runtime.goStatusToTraceGoStatus
+runtime.goargs
+runtime.godebugNotify
+runtime.goenvs
+runtime.goenvs_unix
+runtime.goexit
+runtime.goexit0
+runtime.goexit1
+runtime.gogetenv
+runtime.gogo
+runtime.gopanic
+runtime.gopark
+runtime.goparkunlock
+runtime.gopreempt_m
+runtime.goready
+runtime.gorecover
+runtime.goroutineheader
+runtime.goschedIfBusy
+runtime.goschedImpl
+runtime.gosched_m
+runtime.goschedguarded
+runtime.goschedguarded_m
+runtime.gostartcall
+runtime.gostartcallfn
+runtime.gostring
+runtime.gostringnocopy
+runtime.gotraceback
+runtime.goyield
+runtime.goyield_m
+runtime.greyobject
+runtime.growslice
+runtime.guintptr.ptr
+runtime.gwrite
+runtime.handoff
+runtime.handoffp
+runtime.headTailIndex.head
+runtime.headTailIndex.split
+runtime.heapBitsInSpan
+runtime.heapBitsSlice
+runtime.heapRetained
+runtime.heapSetTypeLarge
+runtime.heapSetTypeNoHeader
+runtime.heapSetTypeSmallHeader
+runtime.hexdumpWords
+runtime.ifaceeq
+runtime.inUserArenaChunk
+runtime.inVDSOPage
+runtime.incidlelocked
+runtime.init
+runtime.init.0
+runtime.init.1
+runtime.init.4
+runtime.init.5
+runtime.init.6
+runtime.init.6.func1
+runtime.init.7
+runtime.init.func1
+runtime.init.func2
+runtime.initAlgAES
+runtime.initMetrics
+runtime.initMetrics.func1
+runtime.initMetrics.func10
+runtime.initMetrics.func11
+runtime.initMetrics.func12
+runtime.initMetrics.func13
+runtime.initMetrics.func14
+runtime.initMetrics.func15
+runtime.initMetrics.func16
+runtime.initMetrics.func17
+runtime.initMetrics.func18
+runtime.initMetrics.func19
+runtime.initMetrics.func2
+runtime.initMetrics.func20
+runtime.initMetrics.func21
+runtime.initMetrics.func22
+runtime.initMetrics.func23
+runtime.initMetrics.func24
+runtime.initMetrics.func25
+runtime.initMetrics.func26
+runtime.initMetrics.func27
+runtime.initMetrics.func28
+runtime.initMetrics.func29
+runtime.initMetrics.func3
+runtime.initMetrics.func30
+runtime.initMetrics.func31
+runtime.initMetrics.func32
+runtime.initMetrics.func33
+runtime.initMetrics.func34
+runtime.initMetrics.func35
+runtime.initMetrics.func36
+runtime.initMetrics.func37
+runtime.initMetrics.func38
+runtime.initMetrics.func39
+runtime.initMetrics.func4
+runtime.initMetrics.func40
+runtime.initMetrics.func41
+runtime.initMetrics.func42
+runtime.initMetrics.func43
+runtime.initMetrics.func44
+runtime.initMetrics.func45
+runtime.initMetrics.func46
+runtime.initMetrics.func47
+runtime.initMetrics.func48
+runtime.initMetrics.func49
+runtime.initMetrics.func5
+runtime.initMetrics.func50
+runtime.initMetrics.func51
+runtime.initMetrics.func52
+runtime.initMetrics.func53
+runtime.initMetrics.func54
+runtime.initMetrics.func55
+runtime.initMetrics.func56
+runtime.initMetrics.func6
+runtime.initMetrics.func7
+runtime.initMetrics.func8
+runtime.initMetrics.func9
+runtime.initsig
+runtime.injectglist
+runtime.injectglist.func1
+runtime.inlineFrame.valid
+runtime.interequal
+runtime.interfaceSwitch
+runtime.interhash
+runtime.intstring
+runtime.isAbortPC
+runtime.isAsyncSafePoint
+runtime.isDirectIface
+runtime.isExportedRuntime
+runtime.isFinite
+runtime.isGoPointerWithoutSpan
+runtime.isInf
+runtime.isNaN
+runtime.isPowerOfTwo
+runtime.isShrinkStackSafe
+runtime.isSweepDone
+runtime.isSystemGoroutine
+runtime.itabAdd
+runtime.itabHashFunc
+runtime.itabInit
+runtime.itabsinit
+runtime.iterate_itabs
+runtime.itoa
+runtime.itoaDiv
+runtime.levelIndexToOffAddr
+runtime.lfnodeValidate
+runtime.lfstackPack
+runtime.lfstackUnpack
+runtime.limiterEventStamp.duration
+runtime.limiterEventStamp.typ
+runtime.lock
+runtime.lock2
+runtime.lockOSThread
+runtime.lockRank.String
+runtime.lockVerifyMSize
+runtime.lockWithRank
+runtime.lockextra
+runtime.mPark
+runtime.mProfStackInit
+runtime.mProf_Flush
+runtime.mProf_FlushLocked
+runtime.mProf_Free
+runtime.mProf_Malloc
+runtime.mProf_Malloc.func1
+runtime.mProf_NextCycle
+runtime.mProf_PostSweep
+runtime.mReserveID
+runtime.madvise
+runtime.main
+runtime.main.func1
+runtime.main.func2
+runtime.makeAddrRange
+runtime.makeHeadTailIndex
+runtime.makeLimiterEventStamp
+runtime.makeProfStack
+runtime.makeProfStackFP
+runtime.makeSpanClass
+runtime.makeStatDepSet
+runtime.makeTraceFrame
+runtime.makeTraceFrames
+runtime.makechan
+runtime.makemap
+runtime.makemap_small
+runtime.makeslice
+runtime.makeslicecopy
+runtime.malg
+runtime.malg.func1
+runtime.mallocgc
+runtime.mallocgcLarge
+runtime.mallocgcSmallNoscan
+runtime.mallocgcSmallScanHeader
+runtime.mallocgcSmallScanNoHeader
+runtime.mallocgcTiny
+runtime.mallocinit
+runtime.mapIterNext
+runtime.mapIterStart
+runtime.mapaccess1
+runtime.mapaccess1_fast32
+runtime.mapaccess1_fast64
+runtime.mapaccess1_faststr
+runtime.mapaccess2
+runtime.mapaccess2_fast32
+runtime.mapaccess2_fast64
+runtime.mapaccess2_faststr
+runtime.mapassign
+runtime.mapassign_fast32
+runtime.mapassign_fast64
+runtime.mapassign_fast64ptr
+runtime.mapassign_faststr
+runtime.mapclear
+runtime.mapdelete
+runtime.mapdelete_faststr
+runtime.mapinitnoop
+runtime.markBits.isMarked
+runtime.markBits.setMarked
+runtime.markBits.setMarkedNonAtomic
+runtime.markroot
+runtime.markroot.func1
+runtime.markrootBlock
+runtime.markrootFreeGStacks
+runtime.markrootSpans
+runtime.maxCleanupGs
+runtime.mcall
+runtime.mcommoninit
+runtime.mcount
+runtime.memclrHasPointers
+runtime.memclrNoHeapPointers
+runtime.memclrNoHeapPointersChunked
+runtime.memequal
+runtime.memequal0
+runtime.memequal128
+runtime.memequal16
+runtime.memequal32
+runtime.memequal64
+runtime.memequal8
+runtime.memequal_varlen
+runtime.memhash
+runtime.memhash128
+runtime.memhash32
+runtime.memhash32Fallback
+runtime.memhash64
+runtime.memhash64Fallback
+runtime.memhashFallback
+runtime.memhash_varlen
+runtime.memmove
+runtime.mergeSummaries
+runtime.metricReader.compute
+runtime.metricReader.compute-fm
+runtime.metricsLock
+runtime.metricsUnlock
+runtime.mexit
+runtime.mget
+runtime.mincore
+runtime.minit
+runtime.minitSignalMask
+runtime.minitSignalStack
+runtime.minitSignals
+runtime.mix
+runtime.mmap
+runtime.mmap.func1
+runtime.modf
+runtime.moduledataverify
+runtime.moduledataverify1
+runtime.modulesinit
+runtime.morestack
+runtime.morestack_noctxt
+runtime.morestackc
+runtime.mpreinit
+runtime.mprotect
+runtime.mput
+runtime.mrandinit
+runtime.msigrestore
+runtime.mspinning
+runtime.mstart
+runtime.mstart0
+runtime.mstart1
+runtime.mstartm0
+runtime.muintptr.ptr
+runtime.munmap
+runtime.munmap.func1
+runtime.mutexPreferLowLatency
+runtime.mutexSampleContention
+runtime.mutexWaitListHead
+runtime.nanotime
+runtime.nanotime1
+runtime.needm
+runtime.netpoll
+runtime.netpollAdjustWaiters
+runtime.netpollAnyWaiters
+runtime.netpollBreak
+runtime.netpollDeadline
+runtime.netpollGenericInit
+runtime.netpollReadDeadline
+runtime.netpollWriteDeadline
+runtime.netpollblock
+runtime.netpollblockcommit
+runtime.netpollcheckerr
+runtime.netpollclose
+runtime.netpolldeadlineimpl
+runtime.netpollgoready
+runtime.netpollgoready.goready.func1
+runtime.netpollinit
+runtime.netpollinited
+runtime.netpollopen
+runtime.netpollready
+runtime.netpollunblock
+runtime.newAllocBits
+runtime.newArenaMayUnlock
+runtime.newBucket
+runtime.newInlineUnwinder
+runtime.newMarkBits
+runtime.newarray
+runtime.newextram
+runtime.newm
+runtime.newm1
+runtime.newobject
+runtime.newosproc
+runtime.newosproc.func1
+runtime.newproc
+runtime.newproc.func1
+runtime.newproc1
+runtime.newstack
+runtime.nextFreeFast
+runtime.nextMarkBitArenaEpoch
+runtime.nextSample
+runtime.nextslicecap
+runtime.nilfunc
+runtime.nilinterequal
+runtime.nilinterhash
+runtime.noSignalStack
+runtime.noteclear
+runtime.notesleep
+runtime.notetsleep
+runtime.notetsleep_internal
+runtime.notetsleepg
+runtime.notewakeup
+runtime.nsToSec
+runtime.offAddr.add
+runtime.offAddr.diff
+runtime.offAddr.equal
+runtime.offAddr.lessEqual
+runtime.offAddr.lessThan
+runtime.offAddrToLevelIndex
+runtime.oneNewExtraM
+runtime.open
+runtime.osinit
+runtime.osyield
+runtime.osyield_no_g
+runtime.pMask.clear
+runtime.pMask.read
+runtime.pMask.set
+runtime.packPallocSum
+runtime.pageIndexOf
+runtime.pallocSum.end
+runtime.pallocSum.max
+runtime.pallocSum.start
+runtime.pallocSum.unpack
+runtime.panicCheck1
+runtime.panicCheck2
+runtime.panicIndex
+runtime.panicIndexU
+runtime.panicSlice3Alen
+runtime.panicSlice3C
+runtime.panicSliceAcap
+runtime.panicSliceAcapU
+runtime.panicSliceAlen
+runtime.panicSliceAlenU
+runtime.panicSliceB
+runtime.panicSliceBU
+runtime.panicdivide
+runtime.panicdottypeE
+runtime.panicdottypeI
+runtime.panicfloat
+runtime.panicmakeslicecap
+runtime.panicmakeslicelen
+runtime.panicmem
+runtime.panicmemAddr
+runtime.panicnildottype
+runtime.panicoverflow
+runtime.panicrangestate
+runtime.panicshift
+runtime.panicunsafeslicelen
+runtime.panicunsafeslicelen1
+runtime.panicunsafeslicenilptr
+runtime.panicunsafeslicenilptr1
+runtime.panicunsafestringlen
+runtime.panicunsafestringnilptr
+runtime.panicwrap
+runtime.park_m
+runtime.parkunlock_c
+runtime.parseByteCount
+runtime.parseRuntimeDebugVars
+runtime.parsegodebug
+runtime.pcdatastart
+runtime.pcdatavalue
+runtime.pcdatavalue1
+runtime.pcdatavalue2
+runtime.pcvalue
+runtime.pcvalueCacheKey
+runtime.persistentalloc
+runtime.persistentalloc.func1
+runtime.persistentalloc1
+runtime.pidleget
+runtime.pidlegetSpinning
+runtime.pidleput
+runtime.pinnerGetPtr
+runtime.pkgPath
+runtime.plainError.Error
+runtime.plainError.RuntimeError
+runtime.pollFractionalWorkerExit
+runtime.pollInfo.closing
+runtime.pollInfo.eventErr
+runtime.pollInfo.expiredReadDeadline
+runtime.pollInfo.expiredWriteDeadline
+runtime.pollWork
+runtime.popDefer
+runtime.postMallocgcDebug
+runtime.preMallocgcDebug
+runtime.preemptM
+runtime.preemptPark
+runtime.preemptall
+runtime.preemptone
+runtime.prepareFreeWorkbufs
+runtime.preprintpanics
+runtime.preprintpanics.func1
+runtime.printAncestorTraceback
+runtime.printAncestorTracebackFuncInfo
+runtime.printArgs
+runtime.printArgs.func1
+runtime.printArgs.func2
+runtime.printArgs.func3
+runtime.printCgoTraceback
+runtime.printCgoTraceback.func1
+runtime.printFuncName
+runtime.printOneCgoTraceback
+runtime.printScavTrace
+runtime.printanycustomtype
+runtime.printbool
+runtime.printcomplex
+runtime.printcreatedby
+runtime.printcreatedby1
+runtime.printfloat
+runtime.printhex
+runtime.printindented
+runtime.printint
+runtime.printlock
+runtime.printnl
+runtime.printpanics
+runtime.printpanicval
+runtime.printpointer
+runtime.printslice
+runtime.printsp
+runtime.printstring
+runtime.printuint
+runtime.printuintptr
+runtime.printunlock
+runtime.procPin
+runtime.procUnpin
+runtime.procresize
+runtime.procyield
+runtime.profIndex.addCountsAndClearFlags
+runtime.profIndex.tagCount
+runtime.profilealloc
+runtime.progToPointerMask
+runtime.publicationBarrier
+runtime.puintptr.ptr
+runtime.putExtraM
+runtime.putempty
+runtime.putfull
+runtime.queuefinalizer
+runtime.r4
+runtime.r8
+runtime.raise
+runtime.raisebadsignal
+runtime.raiseproc
+runtime.rand
+runtime.randinit
+runtime.rawbyteslice
+runtime.rawruneslice
+runtime.rawstring
+runtime.rawstringtmp
+runtime.read
+runtime.readGOGC
+runtime.readGOMEMLIMIT
+runtime.readRandom
+runtime.readTimeRandom
+runtime.readUintptr
+runtime.readUnaligned32
+runtime.readUnaligned64
+runtime.readgstatus
+runtime.readvarint
+runtime.readvarintUnsafe
+runtime.ready
+runtime.readyWithTime
+runtime.readyWithTime.goready.func1
+runtime.recordForPanic
+runtime.recordspan
+runtime.recovery
+runtime.recv
+runtime.recv.goready.func1
+runtime.recvDirect
+runtime.reentersyscall
+runtime.reentersyscall.func1
+runtime.reentersyscall.func2
+runtime.reentersyscall.func3
+runtime.reflectOffsLock
+runtime.reflectOffsUnlock
+runtime.reflectcall
+runtime.reflectcallmove
+runtime.releaseLockRankAndM
+runtime.releaseSudog
+runtime.releasem
+runtime.releasep
+runtime.releasepNoTrace
+runtime.removefinalizer
+runtime.removespecial
+runtime.reparsedebugvars
+runtime.resetspinning
+runtime.resolveNameOff
+runtime.resolveTypeOff
+runtime.restoreGsignalStack
+runtime.resumeG
+runtime.retake
+runtime.retryOnEAGAIN
+runtime.round2
+runtime.roundupsize
+runtime.rt0_go
+runtime.rt_sigaction
+runtime.rtsigprocmask
+runtime.rtype.nameOff
+runtime.rtype.pkgpath
+runtime.rtype.string
+runtime.rtype.textOff
+runtime.rtype.typeOff
+runtime.rtype.uncommon
+runtime.runCheckmark
+runtime.runCleanups
+runtime.runExitHooks
+runtime.runFinalizers
+runtime.runGCProg
+runtime.runPerThreadSyscall
+runtime.runSafePointFn
+runtime.runqdrain
+runtime.runqempty
+runtime.runqget
+runtime.runqgrab
+runtime.runqput
+runtime.runqputbatch
+runtime.runqputslow
+runtime.runqsteal
+runtime.save
+runtime.saveAncestors
+runtime.saveBlockEventStack
+runtime.saveblockevent
+runtime.saveg
+runtime.scanConservative
+runtime.scanblock
+runtime.scanframeworker
+runtime.scanobject
+runtime.scanstack
+runtime.scavChunkData.pack
+runtime.scavChunkData.shouldScavenge
+runtime.schedEnableUser
+runtime.schedEnabled
+runtime.sched_getaffinity
+runtime.schedinit
+runtime.schedtrace
+runtime.schedtrace.func1
+runtime.schedule
+runtime.secure
+runtime.secureEnv
+runtime.selectgo
+runtime.selectgo.func2
+runtime.selectgo.func3
+runtime.selectnbrecv
+runtime.selectnbsend
+runtime.sellock
+runtime.selparkcommit
+runtime.selunlock
+runtime.semacquire
+runtime.semacquire1
+runtime.semasleep
+runtime.semawakeup
+runtime.semrelease
+runtime.semrelease1
+runtime.send
+runtime.send.goready.func1
+runtime.sendDirect
+runtime.setCheckmark
+runtime.setCleanupContext
+runtime.setFinalizerContext
+runtime.setGCPhase
+runtime.setGNoWB
+runtime.setGsignalStack
+runtime.setMNoWB
+runtime.setPinned
+runtime.setPinned.func1
+runtime.setPinned.func2
+runtime.setSignalstackSP
+runtime.setThreadCPUProfiler
+runtime.setTinyBlockContext
+runtime.setVMAName
+runtime.setVMANameSupported
+runtime.setg
+runtime.setprofilebucket
+runtime.setsig
+runtime.setsigstack
+runtime.settls
+runtime.shade
+runtime.shouldPushSigpanic
+runtime.showframe
+runtime.showfuncinfo
+runtime.shrinkstack
+runtime.sigFetchG
+runtime.sigInitIgnored
+runtime.sigInstallGoHandler
+runtime.sigNotOnStack
+runtime.sigaction
+runtime.sigaction.func1
+runtime.sigaddset
+runtime.sigaltstack
+runtime.sigblock
+runtime.sigdelset
+runtime.sigfillset
+runtime.sigfwd
+runtime.sigfwdgo
+runtime.sighandler
+runtime.sighandler.tracebackothers.func1
+runtime.signalDuringFork
+runtime.signalM
+runtime.signalstack
+runtime.signame
+runtime.sigpanic
+runtime.sigpanic0
+runtime.sigpipe
+runtime.sigprocmask
+runtime.sigprof
+runtime.sigprofNonGo
+runtime.sigprofNonGoPC
+runtime.sigprofNonGoWrapper
+runtime.sigreturn__sigaction
+runtime.sigsave
+runtime.sigsend
+runtime.sigtramp
+runtime.sigtrampgo
+runtime.slicebytetostring
+runtime.slicecopy
+runtime.slicerunetostring
+runtime.spanAllocType.manual
+runtime.spanClass.noscan
+runtime.spanClass.sizeclass
+runtime.spanHasNoSpecials
+runtime.spanHasSpecials
+runtime.spanHeapBitsRange
+runtime.spanOf
+runtime.spanOfHeap
+runtime.spanOfUnchecked
+runtime.spillArgs
+runtime.srcFunc.name
+runtime.stackalloc
+runtime.stackcache_clear
+runtime.stackcacherefill
+runtime.stackcacherelease
+runtime.stackcheck
+runtime.stackfree
+runtime.stackinit
+runtime.stacklog2
+runtime.stackmapdata
+runtime.stackpoolalloc
+runtime.stackpoolfree
+runtime.startCheckmarks
+runtime.startCheckmarks.func1
+runtime.startPCForTrace
+runtime.startTemplateThread
+runtime.startTheWorld
+runtime.startTheWorld.func1
+runtime.startTheWorldGC
+runtime.startTheWorldWithSema
+runtime.startlockedm
+runtime.startm
+runtime.startpanic_m
+runtime.stealWork
+runtime.step
+runtime.stkbucket
+runtime.stkobjinit
+runtime.stopTheWorld
+runtime.stopTheWorld.func1
+runtime.stopTheWorldGC
+runtime.stopTheWorldWithSema
+runtime.stoplockedm
+runtime.stopm
+runtime.strequal
+runtime.strhash
+runtime.strhashFallback
+runtime.stringDataOnStack
+runtime.stringtoslicebyte
+runtime.stringtoslicerune
+runtime.stwReason.String
+runtime.stwReason.isGC
+runtime.subtract1
+runtime.subtractb
+runtime.suspendG
+runtime.sweepClass.split
+runtime.sweepone
+runtime.sweepone.func1
+runtime.switchToCrashStack
+runtime.switchToCrashStack0
+runtime.syncadjustsudogs
+runtime.sysAlloc
+runtime.sysAllocOS
+runtime.sysFault
+runtime.sysFaultOS
+runtime.sysFree
+runtime.sysFreeOS
+runtime.sysHugePage
+runtime.sysHugePageOS
+runtime.sysMap
+runtime.sysMapOS
+runtime.sysMmap
+runtime.sysMunmap
+runtime.sysNoHugePage
+runtime.sysNoHugePageOS
+runtime.sysReserve
+runtime.sysReserveAligned
+runtime.sysReserveOS
+runtime.sysSigaction
+runtime.sysSigaction.func1
+runtime.sysUnused
+runtime.sysUnusedOS
+runtime.sysUsed
+runtime.sysUsedOS
+runtime.sysargs
+runtime.sysauxv
+runtime.sysmon
+runtime.sysmonUpdateGOMAXPROCS
+runtime.systemstack
+runtime.systemstack_switch
+runtime.taggedPointer.pointer
+runtime.taggedPointer.tag
+runtime.taggedPointerPack
+runtime.templateThread
+runtime.testAtomic64
+runtime.tgkill
+runtime.throw
+runtime.throw.func1
+runtime.timeHistogramMetricsBuckets
+runtime.timeSleepUntil
+runtime.timediv
+runtime.timerWhen.less
+runtime.timer_create
+runtime.timer_delete
+runtime.timer_settime
+runtime.timerchandrain
+runtime.totalMutexWaitTimeNanos
+runtime.traceAcquire
+runtime.traceAcquireEnabled
+runtime.traceAdvance
+runtime.traceAdvance.forEachP.func7
+runtime.traceAdvance.func1
+runtime.traceAdvance.func1.1
+runtime.traceAdvance.func2
+runtime.traceAdvance.func3
+runtime.traceAdvance.func4
+runtime.traceAdvance.func5
+runtime.traceAdvance.func6
+runtime.traceAllocFreeEnabled
+runtime.traceBufFlush
+runtime.traceCPUFlush
+runtime.traceCPUFlush.func1
+runtime.traceCPUSample
+runtime.traceClockNow
+runtime.traceCompressStackSize
+runtime.traceEnabled
+runtime.traceEventWriter.event
+runtime.traceExitedSyscall
+runtime.traceExitingSyscall
+runtime.traceGoroutineStackID
+runtime.traceHeapObjectID
+runtime.traceLockInit
+runtime.traceLocker.GCActive
+runtime.traceLocker.GCDone
+runtime.traceLocker.GCMarkAssistDone
+runtime.traceLocker.GCMarkAssistStart
+runtime.traceLocker.GCStart
+runtime.traceLocker.GCSweepDone
+runtime.traceLocker.GCSweepSpan
+runtime.traceLocker.GCSweepStart
+runtime.traceLocker.GoCreate
+runtime.traceLocker.GoCreateSyscall
+runtime.traceLocker.GoDestroySyscall
+runtime.traceLocker.GoEnd
+runtime.traceLocker.GoPark
+runtime.traceLocker.GoPreempt
+runtime.traceLocker.GoSched
+runtime.traceLocker.GoStart
+runtime.traceLocker.GoStop
+runtime.traceLocker.GoSysCall
+runtime.traceLocker.GoSysExit
+runtime.traceLocker.GoUnpark
+runtime.traceLocker.Gomaxprocs
+runtime.traceLocker.GoroutineStackAlloc
+runtime.traceLocker.GoroutineStackFree
+runtime.traceLocker.HeapAlloc
+runtime.traceLocker.HeapGoal
+runtime.traceLocker.HeapObjectAlloc
+runtime.traceLocker.HeapObjectFree
+runtime.traceLocker.ProcStart
+runtime.traceLocker.ProcSteal
+runtime.traceLocker.ProcStop
+runtime.traceLocker.STWDone
+runtime.traceLocker.STWStart
+runtime.traceLocker.SpanAlloc
+runtime.traceLocker.SpanFree
+runtime.traceLocker.emitUnblockStatus
+runtime.traceLocker.eventWriter
+runtime.traceLocker.ok
+runtime.traceLocker.rtype
+runtime.traceLocker.stack
+runtime.traceLocker.startPC
+runtime.traceLocker.string
+runtime.traceLocker.writer
+runtime.traceNextGen
+runtime.traceReadCPU
+runtime.traceReader
+runtime.traceReaderAvailable
+runtime.traceRegisterLabelsAndReasons
+runtime.traceRelease
+runtime.traceShuttingDown
+runtime.traceSpanID
+runtime.traceSpanTypeAndClass
+runtime.traceStack
+runtime.traceStopReadCPU
+runtime.traceSyncBatch
+runtime.traceSyncBatch.func1
+runtime.traceThreadDestroy
+runtime.traceThreadDestroy.func1
+runtime.traceWriter.end
+runtime.traceWriter.ensure
+runtime.traceWriter.event
+runtime.traceWriter.flush
+runtime.traceWriter.flush.func1
+runtime.traceWriter.refill
+runtime.traceWriter.refill.func1
+runtime.traceWriter.writeGoStatus
+runtime.traceWriter.writeProcStatus
+runtime.traceWriter.writeProcStatusForP
+runtime.traceback
+runtime.traceback1
+runtime.traceback1.func1
+runtime.traceback2
+runtime.traceback2.func1
+runtime.tracebackHexdump
+runtime.tracebackHexdump.func1
+runtime.tracebackPCs
+runtime.tracebackothers
+runtime.tracebacksomeothers
+runtime.tracebacksomeothers.func1
+runtime.tracebacktrap
+runtime.tracefpunwindoff
+runtime.tryRecordGoroutineProfile
+runtime.tryRecordGoroutineProfileWB
+runtime.trygetfull
+runtime.typeAssert
+runtime.typeBitsBulkBarrier
+runtime.typePointers.fastForward
+runtime.typePointers.next
+runtime.typePointers.nextFast
+runtime.typedmemclr
+runtime.typedmemmove
+runtime.typedslicecopy
+runtime.typehash
+runtime.typelinksinit
+runtime.typesEqual
+runtime.unblockTimerChan
+runtime.unblocksig
+runtime.unlock
+runtime.unlock2
+runtime.unlock2Wake
+runtime.unlockOSThread
+runtime.unlockWithRank
+runtime.unlockextra
+runtime.unminit
+runtime.unminitSignals
+runtime.unpackScavChunkData
+runtime.unreachableMethod
+runtime.unspillArgs
+runtime.updateMaxProcsGoroutine
+runtime.usleep
+runtime.usleep_no_g
+runtime.validSIGPROF
+runtime.vdsoFindVersion
+runtime.vdsoInitFromSysinfoEhdr
+runtime.vdsoParseSymbols
+runtime.vdsoParseSymbols.func1
+runtime.vdsoauxv
+runtime.vgetrandom1
+runtime.vgetrandomDestroy
+runtime.vgetrandomInit
+runtime.waitReason.String
+runtime.waitReason.isIdleInSynctest
+runtime.waitReason.isMutexWait
+runtime.waitReason.isWaitingForSuspendG
+runtime.wakeNetPoller
+runtime.wakefing
+runtime.wakep
+runtime.wantAsyncPreempt
+runtime.wbBufFlush
+runtime.wbBufFlush.func1
+runtime.wbBufFlush1
+runtime.wbMove
+runtime.wbZero
+runtime.wirep
+runtime.wirep.func1
+runtime.wirep.func2
+runtime.write
+runtime.write1
+runtime.writeErr
+runtime.writeErrData
+runtime.writeErrStr
+runtime/debug.SetTraceback
+runtime: cannot map pages in arena address spaceruntime: malformed profBuf buffer - invalid sizeruntime: taggedPointerPack invalid packing: ptr=attempt to trace invalid or unsupported P statusstrconv: illegal AppendFloat/FormatFloat bitSizenot enough significant bits after mult64bitPow10dates are expected to have the format YYYY-MM-DDcannot decode TOML %s into a Go value of type %sextra characters at the end of a local date timetoml: negative number %d does not fit in an uintcan't use %v iterate over more than one variablestrings.Reader.UnreadByte: at beginning of stringstrings.Reader.UnreadRune: at beginning of stringstrings.Reader.WriteTo: invalid WriteString countinvalid or incomplete multibyte or wide characterreflect.Value.Slice: slice of unaddressable arrayslice bounds out of range [::%x] with capacity %yinvalid memory address or nil pointer dereferencepanicwrap: unexpected string after package name: s.allocCount != s.nelems && freeIndex == s.nelemsruntime.reflect_makemap: unsupported map key typesweeper left outstanding across sweep generationsfully empty unfreed span set block found in resetcasgstatus: waiting for Gwaiting but is Grunnablenot enough significant bits after mult128bitPow10datetime separator is expected to be T or a spacetoml: negative number %d does not fit in an uint8toml: error parsing key of type %s from float: %wexpected character %c but the document ended heresubslice address (%d) is before data address (%d)reflect.Value.Slice3: slice of unaddressable arraymallocgc called with gcphase == _GCmarkterminationruntime.Pinner: object was allocated into an arenaruntime.Pinner: decreased non-existing pin counterrecursive call during initialization - linker skewattempt to execute system stack code on user stacktoml: negative number %d does not fit in an uint64toml: negative number %d does not fit in an uint32toml: negative number %d does not fit in an uint16%s has arguments but cannot be invoked as functionfunction %s has %d return values; should be 1 or 2slice offset (%d) is farther than data length (%d)ScanState's Read should not be called. Use ReadRuneinternal error: too many releases of process handlelimiterEvent.stop: invalid limiter event type foundpotentially overlapping in-use allocations detectedfatal: systemstack called from unexpected goroutinegodebug: Value of name not listed in godebugs.All: JSON decoder out of sync - data changing underfoot?toml: error unmarshalling key type %s from text: %wtoml: error parsing key of type %s from integer: %wcan't use %v to iterate over more than one variableexpected = after a key, but the document ends thereslice ends (%d+%d) is farther than data length (%d)errors: *target must be interface or implement errorfailed to correctly flush all P-owned cleanup blocksruntime: cannot disable permissions in address spaceruntime.SetFinalizer: pointer not in allocated blockruntime: use of FixAlloc_Alloc before FixAlloc_Init
+runtime: casgstatus: oldval=gcstopm: negative nmspinningfindrunnable: netpoll with psave on system g not allowednewproc1: newg missing stacknewproc1: new g is not GdeadFixedStack is not power-of-2missing stack in shrinkstack args stack map entries for invalid runtime symbol tableruntime: no module data for mismatched isSending updates[originating from goroutine traceRegion: alloc too large18189894035458564758300781259094947017729282379150390625unsupported compression for abi.NewName: name too long: json: Unmarshal(non-pointer !#$%&()*+-./:;<=>?@[]^_{|}~ unexpected end of JSON inputminutes cannot be greater 59seconds cannot be greater 60%q is not a defined functionnil pointer evaluating %s.%sinvalid slice index: %d > %dreflect: In of non-func typereflect: Key of non-map typeinvalid path escape sequenceexpected newline but got %#Uinvalid character in commentError: command not found: %s
+runtime: may need to increase max user processes (ulimit -u)
+runtime: mp.lockedInt = runqsteal: runq overflowgoroutine stack (system)unexpected syncgroup setdouble traceGCSweepStartbad use of trace.seqlock116415321826934814453125582076609134674072265625/usr/share/lib/zoneinfo/json: unsupported type: expected float; found %shtmlmetacontenturlescapeinvalid pattern syntax: need a character after \no hex data for %x stringno such file or directoryno such device or addressinvalid cross-device linkresource deadlock avoidedsocket type not supportedno buffer space availableoperation now in progressreflect.Value.SetMapIndexreflect: Bits of nil Typereflect.StructOf: field "reflect.Value.OverflowIntgoroutine profile cleanupGOMAXPROCS updater (idle)chansend: spurious wakeup when attempting to open runtime
+runtime: sp=abi mismatchwrong timerstrace buffer152587890625762939453125not pollableinvalid kind
+runtime: split stack overflow: ...additional frames elided...
+runtimeCtx
+runtimehash
+rusage
+rwH)
+rwlock
+rwunlock
+rxH)
+rzL)
+r}L)
+r~H)
+r~H9
+s	tM
+s!=P
+s#UQV
+s,v,
+s.state =  s.base()= heapGoal=GOMEMLIMIT KiB now,  pages at  sweepgen= sweepgen , bound = , limit = page alloc returned ,errno=0}
+s3X)a
+s9fD
+sHH9
+sLfA
+sSfA
+s[H9J
+s`H)
+savedError
+scalar
+scan
+scanBasePrefix
+scanBool
+scanComplex
+scanDateTime
+scanIdx
+scanInt
+scanIntOrFloat
+scanNext
+scanNumber
+scanOne
+scanPercent
+scanRune
+scanUint
+scannedBitsForIndex
+scannedStackSize
+scannedStacks
+scav
+scavenge
+sched
+seed
+seek
+seen	
+selectDone
+self
+sema
+send
+sendLock
+sendq
+sendx
+seqlock
+setDeadline
+setEventErr
+setExplicitFlag
+setLoc 
+setMono
+setPinnerBits
+setReadDeadline
+setRunes
+setStatusTraced
+setUserArenaChunkToFault
+setVar
+setWriteDeadline
+setg_gcc
+setting
+shared
+sharp
+sharpV
+shouldStop
+siftDown
+siftUp
+sigMu
+sigaction failed23841857910156250123456789ABCDEFtime: bad [0-9]*after object keyextra characterstemplate: %s: %sunknown node: %s%s overflows intGODEBUG: value "output too smallallowmultiplevcshttpcookiemaxnumexpected 'false'unclosed commentWorking directory0123456789ABCDEFX0123456789abcdefxreflect.Value.Intillegal hex digitcan't scan type: pidfd_send_signalexec: killing Cmdexec: not startedexec format errorpermission deniedno data availablestale file handlewrong medium typepackage-lock.jsonunknown type kind has invalid namereflect: call of reflect.Value.Capreflect.Value.Lenreflect: New(nil)containermaxprocsgoroutine profileAllThreadsSyscallGC assist markingselect (no cases)sync.RWMutex.Lockwait for GC cycletrace proc statusSIGINT: interruptSIGBUS: bus errorSIGCONT: continuesync.(*Cond).Wait: missing method notetsleepg on g0bad TinySizeClassimmortal metadataruntime: pointer g already scannedmark - bad statusscanobject n == 0swept cached spanmarkBits overflowruntime: summary[runtime: level = , p.searchAddr = futexwakeup addr=, 0, {interval: {ns}}, nil) errno=results: got {r1=internal/runtime/thread exhaustionlocked m0 woke upentersyscallblock spinningthreads=gp.waiting != niltaggedPointerPackunknown caller pcstack: frame={sp:trace arena allocruntime: nameOff runtime: typeOff runtime: textOff 1192092895507812559604644775390625invalid bit size Time.AppendText: corrupt zip file fractional second from a write of in string literal%s at position %dmultipartmaxpartsurlmaxqueryparamswinreadlinkvolumenon-hex characterincomplete numberinvalid characterbad character %#Uvalue out of rangeflag %q contains =flag redefined: %sreflect.Value.Uintunexpected newlinecannot be negativeinput/output errorno child processesfile name too longno locks availableidentifier removedmultihop attemptedRFS specific errorstreams pipe errorconnection refusedoperation canceledsegmentation faultreflect.Value.Callreflect.Value.Elemreflect.Value.Sendreflect.Value.Typereflect: Zero(nil)adaptivestackstartdontfreezetheworldtraceadvanceperiodtracebackancestorsgarbage collectionsync.RWMutex.RLockGC worker (active)stopping the worldwait until GC endssystem page size (  but memory size /gc/pauses:seconds because dotdotdotruntime: npages = invalid skip valueruntime: range = {index out of rangeruntime:   gp: gp=runtime: getg:  g=forEachP: not done in async preempt
+sigcode0
+sigcode1
+sigmask
+signal
+signalPending
+signed
+sigpc
+simplifyComplex
+size
+skip
+skipUntilTable
+skipped
+sleep
+sleepController
+sleepRatio
+slices.(*xorshift).Next
+slices.Compare[go.shape.[]int,go.shape.int]
+slices.Contains[go.shape.[]int,go.shape.int]
+slices.Grow[go.shape.[]uint8,go.shape.uint8]
+slices.Index[go.shape.[]int,go.shape.int]
+slices.SortFunc[go.shape.[]*flag.Flag,go.shape.*uint8]
+slices.SortFunc[go.shape.[]encoding/json.field,go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.SortFunc[go.shape.[]encoding/json.reflectWithString,go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.SortStableFunc[go.shape.[]internal/fmtsort.KeyValue,go.shape.struct { Key reflect.Value; Value reflect.Value }]
+slices.Sort[go.shape.[]int,go.shape.int]
+slices.breakPatternsCmpFunc[go.shape.*uint8]
+slices.breakPatternsCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.breakPatternsCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.breakPatternsOrdered[go.shape.int]
+slices.choosePivotCmpFunc[go.shape.*uint8]
+slices.choosePivotCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.choosePivotCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.choosePivotOrdered[go.shape.int]
+slices.heapSortCmpFunc[go.shape.*uint8]
+slices.heapSortCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.heapSortCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.heapSortOrdered[go.shape.int]
+slices.insertionSortCmpFunc[go.shape.*uint8]
+slices.insertionSortCmpFunc[go.shape.struct { Key reflect.Value; Value reflect.Value }]
+slices.insertionSortCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.insertionSortCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.insertionSortOrdered[go.shape.int]
+slices.medianAdjacentCmpFunc[go.shape.*uint8]
+slices.medianAdjacentCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.medianAdjacentCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.medianAdjacentOrdered[go.shape.int]
+slices.medianCmpFunc[go.shape.*uint8]
+slices.medianCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.medianCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.medianOrdered[go.shape.int]
+slices.nextPowerOfTwo
+slices.order2CmpFunc[go.shape.*uint8]
+slices.order2CmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.order2CmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.order2Ordered[go.shape.int]
+slices.partialInsertionSortCmpFunc[go.shape.*uint8]
+slices.partialInsertionSortCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.partialInsertionSortCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.partialInsertionSortOrdered[go.shape.int]
+slices.partitionCmpFunc[go.shape.*uint8]
+slices.partitionCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.partitionCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.partitionEqualCmpFunc[go.shape.*uint8]
+slices.partitionEqualCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.partitionEqualCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.partitionEqualOrdered[go.shape.int]
+slices.partitionOrdered[go.shape.int]
+slices.pdqsortCmpFunc[go.shape.*uint8]
+slices.pdqsortCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.pdqsortCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.pdqsortOrdered[go.shape.int]
+slices.reverseRangeCmpFunc[go.shape.*uint8]
+slices.reverseRangeCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.reverseRangeCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.reverseRangeOrdered[go.shape.int]
+slices.rotateCmpFunc[go.shape.struct { Key reflect.Value; Value reflect.Value }]
+slices.siftDownCmpFunc[go.shape.*uint8]
+slices.siftDownCmpFunc[go.shape.struct { encoding/json.name string; encoding/json.nameBytes []uint8; encoding/json.nameNonEsc string; encoding/json.nameEscHTML string; encoding/json.tag bool; encoding/json.index []int; encoding/json.typ reflect.Type; encoding/json.omitEmpty bool; encoding/json.omitZero bool; encoding/json.isZero func(reflect.Value) bool; encoding/json.quoted bool; encoding/json.encoder encoding/json.encoderFunc }]
+slices.siftDownCmpFunc[go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }]
+slices.siftDownOrdered[go.shape.int]
+slices.stableCmpFunc[go.shape.struct { Key reflect.Value; Value reflect.Value }]
+slices.swapRangeCmpFunc[go.shape.struct { Key reflect.Value; Value reflect.Value }]
+slices.symMergeCmpFunc[go.shape.struct { Key reflect.Value; Value reflect.Value }]
+slots
+slotsOffset
+slotsPtr
+smallAllocCount
+smallFreeCount
+snapshotAllp
+sockaddr
+sortkey
+sourceFunc
+space
+span set block with unpopped elements found in resetcasfrom_Gscanstatus: gp->status is not in scan statewrong number of args for %s: want at least %d got %dwrong number of args for %s: got %d want at least %dunexpected character 'i' while scanning for a numberunexpected character 'n' while scanning for a numberWarning: failed to generate Vite config override: %v
+spanq
+sparseObjsScanned
+specialFindSplicePoint
+speciallock
+specials
+spill
+spinning
+splicePipeFields
+spliceToFile	
+split
+sprintf
+srcFunc
+ssave
+stack
+stack not a power of 2minpc or maxpc invalidnon-Go function at pc=4656612873077392578125/lib/time/zoneinfo.zip into Go struct field json: unknown field %qexpected a : separatorundefined variable: %sindex out of range: %dreflectlite.Value.Elemexit hook invoked exitunexpected right parenexpected end; found %sparenthesized pipelineError: exec failed: %v
+stackAssign
+stackBytes
+stackCallArgsSize
+stackDepth	
+stackID
+stackcache
+stackguard0
+stackguard1
+stamp
+start
+startPC
+startParse
+startSP
+startTheWorld: inconsistent mp->nextpCouldn't put Gs into empty local runqruntime: unexpected SPWRITE function all goroutines are asleep - deadlock!2220446049250313080847263336181640625timezone hour outside of range [0,23]bytes.Buffer: truncation out of rangegodebug: unexpected IncNonDefault of couldn't parse hexadecimal number: %wcannot have underscore after exponent%q is an incomplete or empty templatedereference of nil pointer of type %scannot index slice/array with type %sruntime: cgroup invalid buffer lengthbisect.Hash: unexpected argument typeinvalid character at start of key: %cliteral strings cannot have new linescomment ends before closing delimiterunrecognized character in action: %#Uflag %s set at %s before being definedexec: StdoutPipe after process startedexec: StderrPipe after process startedstrings.Reader.ReadAt: negative offsetstrings.Reader.Seek: negative positionstrings: Repeat output length overflowcan not access a needed shared libraryreflect.typeptrdata: unexpected type, reflect: close of receive-only channelreflect: Method on nil interface valueindex out of range [%x] with length %ymakechan: invalid channel element typeunreachable method called. linker bug?gcBgMarkWorker: blackening not enabledcannot read stack of running goroutineruntime: blocked read on free polldescruntime: sudog with non-false isSelectarg size to reflect.call more than 1GBv could not fit in traceBytesPerNumber1110223024625156540423631668090820312555511151231257827021181583404541015625time: missing Location in call to Dateafter decimal point in numeric literalextra bytes at the end of the timezonecannot have underscore before exponenttemplate: %s: executing %q at <%s>: %scan't give argument to non-function %sindirection through explicit nil in %sevalEmptyInterface: nil (can't happen)concurrent map iteration and map writeKind.String() not implemented for '%d'exec: environment variable contains NULtransport endpoint is already connectedSetctty set but Ctty not valid in childsyscall.releaseForkLock: negative count cannot produce iter.Seq2[Value, Value]reflect: OverflowUint of non-uint type reflect.MakeMapWithSize of non-map typemismatched count during itab table copyout of memory allocating heap arena map/cpu/classes/gc/mark/assist:cpu-seconds/cpu/classes/scavenge/total:cpu-seconds/memory/classes/profiling/buckets:bytesmspan.sweep: bad span state after sweepruntime: blocked write on free polldescruntime.Pinner: object already unpinnedsuspendG from non-preemptible goroutineruntime: casfrom_Gscanstatus failed gp=stack growth not allowed in system calltraceback: unexpected SPWRITE function traceRegion: alloc with concurrent drop2775557561562891351059079170227050781252006-01-02 15:04:05.999999999 -0700 MSTcannot store inline table in Go type %stoml: number %d does not fit in an int8time: Stop called on uninitialized Timeraddress family not supported by protocolerrors: target must be a non-nil pointerMapIter.Key called on exhausted iteratorreflect: FieldByName of non-struct type reflect.Value.Call: call of nil functionreflect.Value.Call: wrong argument countattempted to copy pointer to FP registerreflect.Value.SetBytes of non-byte slicereflect.Value.setRunes of non-rune sliceinvalid span in heapArena for user arenabulkBarrierPreWrite: unaligned argumentsruntime: typeBitsBulkBarrier with type  refill of span with free space remaining/cpu/classes/scavenge/assist:cpu-secondsruntime.SetFinalizer: first argument is failed to acquire lock to reset capacitymarkWorkerStop: unknown mark worker modecannot free workbufs when work.full != 0runtime: out of memory: cannot allocate runtime: netpollBreak write failed with stopTheWorld: broken CPU time accountingglobal runq empty with non-zero runqsizemust be able to track idle limiter eventgoroutine stack size is not a power of 213877787807814456755295395851135253906256938893903907228377647697925567626953125ryuFtoaFixed32 called with negative precfloat can have at most one decimal pointtoml: number %d does not fit in an int32toml: number %d does not fit in an int16unicode point needs %d character, not %dtoml: key %s should be a table, not a %sunexpected call to os.Exit(0) during testclone(CLONE_PIDFD) failed to return pidfdempty command for task %q in lovable.tomlcan't call pointer on a non-pointer ValueMapIter.Next called on exhausted iteratorreflect: FieldByIndex of non-struct type reflect: OverflowFloat of non-float type reflect.Value.Addr of unaddressable value closed, unable to open /dev/null, errno=runtime: typeBitsBulkBarrier without typeWARNING: LIKELY CLEANUP/FINALIZER ISSUES
+startTicks
+started
+startm: P required for spinning=true) is not Grunnable or Gscanrunnable
+startpc
+stashedExpr
+state
+stats
+statsSeq
+status
+statusTraced
+statusWasTraced
+stdoutOrErr
+step
+steps
+stepsForValue
+stkOff
+stktopsp
+stop
+stop of synctest timer from outside bubbletraceStopReadCPU called with trace enabledattempted to trace a bad status for a procout of memory allocating checkmarks bitmap173472347597680709441192448139190673828125867361737988403547205962240695953369140625Time.MarshalBinary: unexpected zone offsetsync/atomic: store of nil value into Valuelooking for beginning of object key stringleading zero not allowed on decimal numbercannot have underscore after decimal pointinternal error: no fields in evalChainNodefunction name %q is not a valid identifierKeyValue should have at least two childrenarray elements must be separated by commasexec: WaitDelay expired before I/O completeinterrupted system call should be restartedmultiple Read calls return no data or errorreflect: nil type passed to Type.ImplementsGcSlice can't handle on-demand gcdata typesreflect: CallSlice of non-variadic functionreflect: Call with too many input argumentsruntime: opened unexpected file descriptor /memory/classes/metadata/mcache/inuse:bytesruntime.SetFinalizer: first argument is nilruntime.SetFinalizer: finalizer already setgcBgMarkWorker: unexpected gcMarkWorkerModenon in-use span found with specials bit setgrew heap, but no adequate free space foundroot level max pages doesn't fit in summaryruntime.Pinner: argument is not a pointer: runtime: releaseSudog with non-nil gp.paramunknown runnable goroutine during bootstrapruntime: casfrom_Gscanstatus bad oldval gp=runtime:stoplockedm: lockedg (atomicstatus=methodValueCallFrameObjs is not in a modulereset of synctest timer from outside bubblesynctest timer accessed from outside bubblemult64bitPow10: power of 10 is out of rangeexpecting colon between minutes and secondscannot have underscore before decimal pointtoml: decoding pointer target cannot be nilextra characters at the end of a local time%s is an unexported field of struct type %swrong number of args for %s: want %d got %dwrong number of args for %s: got %d want %d''' not allowed in multiline literal stringnon executable command in pipeline stage %dreflect: call of MakeFunc with non-Func typereflect: Value.SetIterKey called before Nextreflect: FieldByNameFunc of non-struct type reflect: funcLayout with interface receiver  using value obtained using unexported fieldreflect: function created by MakeFunc using reflect: slice length out of range in SetLenspan on userArena.faultList has invalid sizesend on synctest channel from outside bubbleout of memory allocating heap arena metadataruntime: cannot remap pages in address space/cpu/classes/scavenge/background:cpu-secondsruntime: unexpected metric registration for gcmarknewobject called while doing checkmarkactive sweepers found at start of mark phaseno P available, write barriers are forbiddencannot trace user goroutine on its own stackunsafe.Slice: ptr is nil and len is not zeromult128bitPow10: power of 10 is out of rangeneed at least one digit after fraction pointincompatible types for comparison: %v and %vencoding alphabet contains newline characterencoding alphabet includes duplicate symbolsmultiline basic string not terminated by """this should not be a top level node type: %stemplate: multiple definition of template %qhandleTransientAcquire called in invalid modehandleTransientRelease called in invalid modecannot send after transport endpoint shutdownreflect: OverflowComplex of non-complex type reflect: nil type passed to Type.AssignableToreflect: internal error: invalid method indexclose of synctest channel from outside bubble  may be in the same tiny block as finalizer
+stopTheWorld: not stopped (status != _Pgcstop)select on synctest channel from outside bubbleruntime: name offset base pointer out of rangeruntime: type offset base pointer out of rangeruntime: text offset base pointer out of rangeTime.UnmarshalJSON: input is not a JSON stringinvariant failed: growthLeft is unexpectedly 0multiline literal string not terminated by '''Enable Vite config override for legacy projectsunexpected error wrapping poll.ErrFileClosing: attempting to link in too many shared librariesreflect.Value.Bytes of unaddressable byte arrayreflect: CallSlice with too few input argumentsregister-based return value has stack componentreflect.Value.Slice3: slice index out of boundsreflect.Value.UnsafeAddr of unaddressable valueslice bounds out of range [::%x] with length %yreceive on synctest channel from outside bubbleruntime
+stopm spinning nmidlelocked= needspinning= schedticks=[ randinit twicestore64 failedsemaRoot queuebad allocCountbad span statestack overflow untyped args  out of range no module data in goroutine runtime: seq1=runtime: goid=invalid syntax1907348632812595367431640625: extra text: unreachable:  %04d-%02d-%02d%02d:%02d:%02dlen of type %s
+store
+strconv
+strconv.(*NumError).Error
+strconv.(*NumError).Unwrap
+strconv.(*decimal).Assign
+strconv.(*decimal).Round
+strconv.(*decimal).RoundDown
+strconv.(*decimal).RoundUp
+strconv.(*decimal).RoundedInteger
+strconv.(*decimal).Shift
+strconv.(*decimal).floatBits
+strconv.(*decimal).set
+strconv.AppendBool
+strconv.AppendFloat
+strconv.AppendInt
+strconv.AppendQuote
+strconv.AppendQuoteRune
+strconv.AppendQuoteRuneToASCII
+strconv.AppendQuoteToASCII
+strconv.AppendUint
+strconv.Atoi
+strconv.CanBackquote
+strconv.FormatBool
+strconv.FormatFloat
+strconv.FormatInt
+strconv.FormatUint
+strconv.IsPrint
+strconv.Itoa
+strconv.ParseBool
+strconv.ParseFloat
+strconv.ParseInt
+strconv.ParseUint
+strconv.Quote
+strconv.Unquote
+strconv.UnquoteChar
+strconv.appendEscapedRune
+strconv.appendQuotedRuneWith
+strconv.appendQuotedWith
+strconv.atof32
+strconv.atof32exact
+strconv.atof64
+strconv.atof64exact
+strconv.atofHex
+strconv.baseError
+strconv.bigFtoa
+strconv.bitSizeError
+strconv.bsearch[go.shape.[]uint16,go.shape.uint16]
+strconv.bsearch[go.shape.[]uint32,go.shape.uint32]
+strconv.commonPrefixLenIgnoreCase
+strconv.computeBounds
+strconv.contains
+strconv.divisibleByPower5
+strconv.divmod1e9
+strconv.eiselLemire32
+strconv.eiselLemire64
+strconv.fmtB
+strconv.fmtE
+strconv.fmtF
+strconv.fmtX
+strconv.formatBits
+strconv.formatDecimal
+strconv.formatDigits
+strconv.genericFtoa
+strconv.index
+strconv.isInGraphicList
+strconv.isPowerOfTwo
+strconv.leftShift
+strconv.lower
+strconv.mulByLog10Log2
+strconv.mulByLog2Log10
+strconv.mult128bitPow10
+strconv.mult64bitPow10
+strconv.parseFloatPrefix
+strconv.prefixIsLessThan
+strconv.quoteWith
+strconv.rangeError
+strconv.readFloat
+strconv.rightShift
+strconv.roundShortest
+strconv.ryuDigits
+strconv.ryuDigits32
+strconv.ryuFtoaFixed32
+strconv.ryuFtoaFixed64
+strconv.ryuFtoaShortest
+strconv.shouldRoundUp
+strconv.small
+strconv.special
+strconv.syntaxError
+strconv.trim
+strconv.underscoreOK
+strconv.unhex
+strconv.unquote
+strict
+stringData
+stringNonString
+stringOffsets
+strings
+strings.(*Builder).Cap
+strings.(*Builder).Grow
+strings.(*Builder).Len
+strings.(*Builder).Reset
+strings.(*Builder).String
+strings.(*Builder).Write
+strings.(*Builder).WriteByte
+strings.(*Builder).WriteRune
+strings.(*Builder).WriteString
+strings.(*Builder).copyCheck
+strings.(*Builder).grow
+strings.(*Reader).Len
+strings.(*Reader).Read
+strings.(*Reader).ReadAt
+strings.(*Reader).ReadByte
+strings.(*Reader).ReadRune
+strings.(*Reader).Reset
+strings.(*Reader).Seek
+strings.(*Reader).Size
+strings.(*Reader).UnreadByte
+strings.(*Reader).UnreadRune
+strings.(*Reader).WriteTo
+strings.(*asciiSet).contains
+strings.Compare
+strings.Contains
+strings.ContainsAny
+strings.ContainsRune
+strings.Count
+strings.Cut
+strings.Fields
+strings.FieldsFunc
+strings.HasPrefix
+strings.HasSuffix
+strings.Index
+strings.IndexAny
+strings.IndexByte
+strings.IndexFunc
+strings.IndexRune
+strings.Join
+strings.LastIndex
+strings.Map
+strings.NewReader
+strings.Repeat
+strings.Replace
+strings.ReplaceAll
+strings.Split
+strings.ToLower
+strings.Trim
+strings.TrimLeft
+strings.TrimRight
+strings.explode
+strings.genSplit
+strings.indexFunc
+strings.makeASCIISet
+strings.trimLeftASCII
+strings.trimLeftByte
+strings.trimLeftUnicode
+strings.trimRightASCII
+strings.trimRightByte
+strings.trimRightUnicode
+struct {H
+structType
+subtract
+success
+successD
+sudogbuf
+sudogcache
+suffix
+swap
+sweepgen
+swept
+sx^Qd
+sync
+sync.(*Map).Load
+sync.(*Map).LoadOrStore
+sync.(*Map).Range
+sync.(*Map).Store
+sync.(*Mutex).Lock
+sync.(*Mutex).TryLock
+sync.(*Mutex).Unlock
+sync.(*Once).Do
+sync.(*Once).doSlow
+sync.(*Once).doSlow.deferwrap1
+sync.(*Once).doSlow.deferwrap2
+sync.(*Pool).Get
+sync.(*Pool).Put
+sync.(*Pool).getSlow
+sync.(*Pool).pin
+sync.(*Pool).pinSlow
+sync.(*Pool).pinSlow.deferwrap1
+sync.(*RWMutex).Lock
+sync.(*RWMutex).RLock
+sync.(*RWMutex).RLocker
+sync.(*RWMutex).RUnlock
+sync.(*RWMutex).TryLock
+sync.(*RWMutex).TryRLock
+sync.(*RWMutex).Unlock
+sync.(*RWMutex).rUnlockSlow
+sync.(*noCopy).Lock
+sync.(*noCopy).Unlock
+sync.(*poolChain).popHead
+sync.(*poolChain).popTail
+sync.(*poolChain).pushHead
+sync.(*poolDequeue).pack
+sync.(*poolDequeue).popHead
+sync.(*poolDequeue).popTail
+sync.(*poolDequeue).pushHead
+sync.(*poolDequeue).unpack
+sync.(*rlocker).Lock
+sync.(*rlocker).Unlock
+sync.OnceFunc
+sync.OnceValue[go.shape.bool]
+sync.OnceValue[go.shape.func(*encoding/json.encodeState, reflect.Value, encoding/json.encOpts)]
+sync.OnceValue[go.shape.interface { Error() string }]
+sync.event
+sync.fatal
+sync.indexLocal
+sync.init.0
+sync.init.1
+sync.poolCleanup
+sync.runtime_SemacquireRWMutex
+sync.runtime_SemacquireRWMutexR
+sync.runtime_Semrelease
+sync.runtime_notifyListCheck
+sync.runtime_procPin
+sync.runtime_procUnpin
+sync.runtime_registerPoolCleanup
+sync/atomic
+sync/atomic.(*Bool).CompareAndSwap
+sync/atomic.(*Bool).Load
+sync/atomic.(*Bool).Store
+sync/atomic.(*Bool).Swap
+sync/atomic.(*Int32).Add
+sync/atomic.(*Int32).And
+sync/atomic.(*Int32).CompareAndSwap
+sync/atomic.(*Int32).Load
+sync/atomic.(*Int32).Or
+sync/atomic.(*Int32).Store
+sync/atomic.(*Int32).Swap
+sync/atomic.(*Pointer[go.shape.interface { Chdir(string); Getenv(string); Open(string); Stat(string) }]).Load
+sync/atomic.(*Pointer[go.shape.struct { Cur uint64; Max uint64 }]).Load
+sync/atomic.(*Pointer[go.shape.struct { Cur uint64; Max uint64 }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/bisect.recent [128][4]uint64; internal/bisect.mu sync.Mutex; internal/bisect.m map[uint64]bool }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { internal/bisect.recent [128][4]uint64; internal/bisect.mu sync.Mutex; internal/bisect.m map[uint64]bool }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/bisect.recent [128][4]uint64; internal/bisect.mu sync.Mutex; internal/bisect.m map[uint64]bool }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/bisect.recent [128][4]uint64; internal/bisect.mu sync.Mutex; internal/bisect.m map[uint64]bool }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { internal/godebug.text string; internal/godebug.bisect *internal/bisect.Matcher }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { internal/godebug.text string; internal/godebug.bisect *internal/bisect.Matcher }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/godebug.text string; internal/godebug.bisect *internal/bisect.Matcher }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/godebug.text string; internal/godebug.bisect *internal/bisect.Matcher }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.isEntry bool }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.isEntry bool }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.isEntry bool }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.isEntry bool }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[*internal/abi.Type,interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[*internal/abi.Type,interface {}]; internal/sync.children [16]sync/atomic.Pointer[internal/sync.node[*internal/abi.Type,interface {}]] }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[*internal/abi.Type,interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[*internal/abi.Type,interface {}]; internal/sync.children [16]sync/atomic.Pointer[internal/sync.node[*internal/abi.Type,interface {}]] }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[*internal/abi.Type,interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[*internal/abi.Type,interface {}]; internal/sync.children [16]sync/atomic.Pointer[internal/sync.node[*internal/abi.Type,interface {}]] }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[*internal/abi.Type,interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[*internal/abi.Type,interface {}]; internal/sync.children [16]sync/atomic.Pointer[internal/sync.node[*internal/abi.Type,interface {}]] }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[*internal/abi.Type,interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]; internal/sync.key *internal/abi.Type; internal/sync.value interface {} }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[*internal/abi.Type,interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]; internal/sync.key *internal/abi.Type; internal/sync.value interface {} }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[*internal/abi.Type,interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]; internal/sync.key *internal/abi.Type; internal/sync.value interface {} }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[*internal/abi.Type,interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]; internal/sync.key *internal/abi.Type; internal/sync.value interface {} }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[go.shape.*internal/abi.Type,go.shape.interface {}]]; internal/sync.key go.shape.*internal/abi.Type; internal/sync.value go.shape.interface {} }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[go.shape.*internal/abi.Type,go.shape.interface {}]]; internal/sync.key go.shape.*internal/abi.Type; internal/sync.value go.shape.interface {} }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.interface {},go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.interface {},go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[go.shape.interface {},go.shape.interface {}]]; internal/sync.key go.shape.interface {}; internal/sync.value go.shape.interface {} }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[go.shape.interface {},go.shape.interface {}]]; internal/sync.key go.shape.interface {}; internal/sync.value go.shape.interface {} }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[interface {},interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[interface {},interface {}]; internal/sync.children [16]sync/atomic.Pointer[internal/sync.node[interface {},interface {}]] }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[interface {},interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[interface {},interface {}]; internal/sync.children [16]sync/atomic.Pointer[internal/sync.node[interface {},interface {}]] }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[interface {},interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[interface {},interface {}]; internal/sync.children [16]sync/atomic.Pointer[internal/sync.node[interface {},interface {}]] }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[interface {},interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[interface {},interface {}]; internal/sync.children [16]sync/atomic.Pointer[internal/sync.node[interface {},interface {}]] }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[interface {},interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[interface {},interface {}]]; internal/sync.key interface {}; internal/sync.value interface {} }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[interface {},interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[interface {},interface {}]]; internal/sync.key interface {}; internal/sync.value interface {} }]).Load
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[interface {},interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[interface {},interface {}]]; internal/sync.key interface {}; internal/sync.value interface {} }]).Store
+sync/atomic.(*Pointer[go.shape.struct { internal/sync.node = internal/sync.node[interface {},interface {}]; internal/sync.overflow sync/atomic.Pointer[internal/sync.entry[interface {},interface {}]]; internal/sync.key interface {}; internal/sync.value interface {} }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { os.mu sync.Mutex; os.buf *[]uint8; os.nbuf int; os.bufp int }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { os.mu sync.Mutex; os.buf *[]uint8; os.nbuf int; os.bufp int }]).Load
+sync/atomic.(*Pointer[go.shape.struct { os.mu sync.Mutex; os.buf *[]uint8; os.nbuf int; os.bufp int }]).Store
+sync/atomic.(*Pointer[go.shape.struct { os.mu sync.Mutex; os.buf *[]uint8; os.nbuf int; os.bufp int }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { sync.poolDequeue; sync.next sync/atomic.Pointer[sync.poolChainElt]; sync.prev sync/atomic.Pointer[sync.poolChainElt] }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { sync.poolDequeue; sync.next sync/atomic.Pointer[sync.poolChainElt]; sync.prev sync/atomic.Pointer[sync.poolChainElt] }]).Load
+sync/atomic.(*Pointer[go.shape.struct { sync.poolDequeue; sync.next sync/atomic.Pointer[sync.poolChainElt]; sync.prev sync/atomic.Pointer[sync.poolChainElt] }]).Store
+sync/atomic.(*Pointer[go.shape.struct { unique.isEntry bool }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { unique.isEntry bool }]).Load
+sync/atomic.(*Pointer[go.shape.struct { unique.isEntry bool }]).Store
+sync/atomic.(*Pointer[go.shape.struct { unique.isEntry bool }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }] }]).Load
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }] }]).Store
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.overflow sync/atomic.Pointer[unique.entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]]; unique.key weak.Pointer[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.hash uintptr }]).Load
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.overflow sync/atomic.Pointer[unique.entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]]; unique.key weak.Pointer[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.hash uintptr }]).Store
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[net/netip.addrDetail]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[net/netip.addrDetail]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[unique.node[net/netip.addrDetail]] }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[net/netip.addrDetail]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[net/netip.addrDetail]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[unique.node[net/netip.addrDetail]] }]).Load
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[net/netip.addrDetail]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[net/netip.addrDetail]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[unique.node[net/netip.addrDetail]] }]).Store
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[net/netip.addrDetail]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[net/netip.addrDetail]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[unique.node[net/netip.addrDetail]] }]).Swap
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[net/netip.addrDetail]; unique.overflow sync/atomic.Pointer[unique.entry[net/netip.addrDetail]]; unique.key weak.Pointer[net/netip.addrDetail]; unique.hash uintptr }]).CompareAndSwap
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[net/netip.addrDetail]; unique.overflow sync/atomic.Pointer[unique.entry[net/netip.addrDetail]]; unique.key weak.Pointer[net/netip.addrDetail]; unique.hash uintptr }]).Load
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[net/netip.addrDetail]; unique.overflow sync/atomic.Pointer[unique.entry[net/netip.addrDetail]]; unique.key weak.Pointer[net/netip.addrDetail]; unique.hash uintptr }]).Store
+sync/atomic.(*Pointer[go.shape.struct { unique.node = unique.node[net/netip.addrDetail]; unique.overflow sync/atomic.Pointer[unique.entry[net/netip.addrDetail]]; unique.key weak.Pointer[net/netip.addrDetail]; unique.hash uintptr }]).Swap
+sync/atomic.(*Pointer[internal/bisect.dedup]).CompareAndSwap
+sync/atomic.(*Pointer[internal/bisect.dedup]).Load
+sync/atomic.(*Pointer[internal/bisect.dedup]).Store
+sync/atomic.(*Pointer[internal/bisect.dedup]).Swap
+sync/atomic.(*Pointer[internal/godebug.value]).CompareAndSwap
+sync/atomic.(*Pointer[internal/godebug.value]).Load
+sync/atomic.(*Pointer[internal/godebug.value]).Store
+sync/atomic.(*Pointer[internal/godebug.value]).Swap
+sync/atomic.(*Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]).CompareAndSwap
+sync/atomic.(*Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]).Load
+sync/atomic.(*Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]).Store
+sync/atomic.(*Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]).Swap
+sync/atomic.(*Pointer[internal/sync.entry[interface {},interface {}]]).CompareAndSwap
+sync/atomic.(*Pointer[internal/sync.entry[interface {},interface {}]]).Load
+sync/atomic.(*Pointer[internal/sync.entry[interface {},interface {}]]).Store
+sync/atomic.(*Pointer[internal/sync.entry[interface {},interface {}]]).Swap
+sync/atomic.(*Pointer[internal/sync.indirect[*internal/abi.Type,interface {}]]).CompareAndSwap
+sync/atomic.(*Pointer[internal/sync.indirect[*internal/abi.Type,interface {}]]).Load
+sync/atomic.(*Pointer[internal/sync.indirect[*internal/abi.Type,interface {}]]).Store
+sync/atomic.(*Pointer[internal/sync.indirect[*internal/abi.Type,interface {}]]).Swap
+sync/atomic.(*Pointer[internal/sync.indirect[interface {},interface {}]]).CompareAndSwap
+sync/atomic.(*Pointer[internal/sync.indirect[interface {},interface {}]]).Load
+sync/atomic.(*Pointer[internal/sync.indirect[interface {},interface {}]]).Store
+sync/atomic.(*Pointer[internal/sync.indirect[interface {},interface {}]]).Swap
+sync/atomic.(*Pointer[internal/sync.node[*internal/abi.Type,interface {}]]).CompareAndSwap
+sync/atomic.(*Pointer[internal/sync.node[*internal/abi.Type,interface {}]]).Load
+sync/atomic.(*Pointer[internal/sync.node[*internal/abi.Type,interface {}]]).Store
+sync/atomic.(*Pointer[internal/sync.node[*internal/abi.Type,interface {}]]).Swap
+sync/atomic.(*Pointer[internal/sync.node[interface {},interface {}]]).CompareAndSwap
+sync/atomic.(*Pointer[internal/sync.node[interface {},interface {}]]).Load
+sync/atomic.(*Pointer[internal/sync.node[interface {},interface {}]]).Store
+sync/atomic.(*Pointer[internal/sync.node[interface {},interface {}]]).Swap
+sync/atomic.(*Pointer[os.dirInfo]).CompareAndSwap
+sync/atomic.(*Pointer[os.dirInfo]).Load
+sync/atomic.(*Pointer[os.dirInfo]).Store
+sync/atomic.(*Pointer[os.dirInfo]).Swap
+sync/atomic.(*Pointer[unique.entry[net/netip.addrDetail]]).CompareAndSwap
+sync/atomic.(*Pointer[unique.entry[net/netip.addrDetail]]).Load
+sync/atomic.(*Pointer[unique.entry[net/netip.addrDetail]]).Store
+sync/atomic.(*Pointer[unique.entry[net/netip.addrDetail]]).Swap
+sync/atomic.(*Pointer[unique.indirect[net/netip.addrDetail]]).CompareAndSwap
+sync/atomic.(*Pointer[unique.indirect[net/netip.addrDetail]]).Load
+sync/atomic.(*Pointer[unique.indirect[net/netip.addrDetail]]).Store
+sync/atomic.(*Pointer[unique.indirect[net/netip.addrDetail]]).Swap
+sync/atomic.(*Pointer[unique.node[net/netip.addrDetail]]).CompareAndSwap
+sync/atomic.(*Pointer[unique.node[net/netip.addrDetail]]).Load
+sync/atomic.(*Pointer[unique.node[net/netip.addrDetail]]).Store
+sync/atomic.(*Pointer[unique.node[net/netip.addrDetail]]).Swap
+sync/atomic.(*Uint32).Add
+sync/atomic.(*Uint32).And
+sync/atomic.(*Uint32).CompareAndSwap
+sync/atomic.(*Uint32).Load
+sync/atomic.(*Uint32).Or
+sync/atomic.(*Uint32).Store
+sync/atomic.(*Uint32).Swap
+sync/atomic.(*Uint64).Add
+sync/atomic.(*Uint64).And
+sync/atomic.(*Uint64).CompareAndSwap
+sync/atomic.(*Uint64).Load
+sync/atomic.(*Uint64).Load-fm
+sync/atomic.(*Uint64).Or
+sync/atomic.(*Uint64).Store
+sync/atomic.(*Uint64).Swap
+sync/atomic.(*Value).Load
+sync/atomic.(*Value).Store
+sync/atomic.(*noCopy).Lock
+sync/atomic.(*noCopy).Unlock
+sync/atomic.CompareAndSwapPointer
+sync/atomic.CompareAndSwapUintptr
+sync/atomic.StorePointer
+sync/atomic.StoreUintptr
+sync/atomic.SwapPointer
+sync/atomic.SwapUintptr
+sync/atomic.b32
+sync/atomic.runtime_procPin
+sync/atomic.runtime_procUnpin
+syncSafePoint
+syntax error scanning booleanexec: Wait was already calledtoo many open files in systemnumerical result out of rangemachine is not on the networkprotocol family not supportedoperation already in progressno XENIX semaphores availablereflect: Key of non-map type reflect: In of non-func type reflect.Value.OverflowComplex cannot be converted to type sync.WaitGroup.Wait (durable)SIGPIPE: write to broken pipeSIGPWR: power failure restartexecuting on Go runtime stackruntime: mmap: access denied
+sysD
+sysStats
+sysUsage
+sysUsageD
+syscall
+syscall.(*Errno).Error
+syscall.(*Errno).Is
+syscall.(*Errno).Temporary
+syscall.(*Errno).Timeout
+syscall.(*Iovec).SetLen
+syscall.(*Msghdr).SetControllen
+syscall.(*Signal).Signal
+syscall.(*Signal).String
+syscall.(*SockaddrInet4).sockaddr
+syscall.(*SockaddrInet6).sockaddr
+syscall.(*SockaddrLinklayer).sockaddr
+syscall.(*SockaddrNetlink).sockaddr
+syscall.(*SockaddrUnix).sockaddr
+syscall.(*Timespec).Nano
+syscall.(*Timespec).Unix
+syscall.(*Timeval).Nano
+syscall.(*Timeval).Unix
+syscall.(*WaitStatus).Continued
+syscall.(*WaitStatus).CoreDump
+syscall.(*WaitStatus).ExitStatus
+syscall.(*WaitStatus).Exited
+syscall.(*WaitStatus).Signal
+syscall.(*WaitStatus).Signaled
+syscall.(*WaitStatus).StopSignal
+syscall.(*WaitStatus).Stopped
+syscall.(*WaitStatus).TrapCause
+syscall.Accept4
+syscall.BytePtrFromString
+syscall.ByteSliceFromString
+syscall.Chdir
+syscall.Close
+syscall.CloseOnExec
+syscall.Dup
+syscall.Environ
+syscall.Environ.deferwrap1
+syscall.Errno.Error
+syscall.Errno.Is
+syscall.Errno.Temporary
+syscall.Errno.Timeout
+syscall.Exec
+syscall.Exit
+syscall.Faccessat
+syscall.Fchdir
+syscall.Fchmod
+syscall.Fchown
+syscall.Fstat
+syscall.Fsync
+syscall.Ftruncate
+syscall.Getcwd
+syscall.Getdents
+syscall.Getegid
+syscall.Getenv
+syscall.Getenv.deferwrap1
+syscall.Geteuid
+syscall.Getgid
+syscall.Getgroups
+syscall.Getpid
+syscall.Getrlimit
+syscall.GetsockoptInt
+syscall.Getuid
+syscall.Getwd
+syscall.Kill
+syscall.Lstat
+syscall.Mkdir
+syscall.Mkdirat
+syscall.Open
+syscall.Pipe2
+syscall.Pread
+syscall.Pwrite
+syscall.RawSyscall
+syscall.RawSyscall6
+syscall.Read
+syscall.ReadDirent
+syscall.Recvfrom
+syscall.Recvmsg
+syscall.Seek
+syscall.Sendfile
+syscall.SendmsgN
+syscall.Sendto
+syscall.SetNonblock
+syscall.Setrlimit
+syscall.SetsockoptByte
+syscall.SetsockoptIPMreq
+syscall.SetsockoptIPMreqn
+syscall.SetsockoptIPv6Mreq
+syscall.SetsockoptInet4Addr
+syscall.SetsockoptInt
+syscall.SetsockoptLinger
+syscall.Shutdown
+syscall.Signal.Signal
+syscall.Signal.String
+syscall.SlicePtrFromStrings
+syscall.Splice
+syscall.StartProcess
+syscall.Stat
+syscall.Syscall
+syscall.Syscall6
+syscall.Uname
+syscall.Wait4
+syscall.WaitStatus.Continued
+syscall.WaitStatus.CoreDump
+syscall.WaitStatus.ExitStatus
+syscall.WaitStatus.Exited
+syscall.WaitStatus.Signal
+syscall.WaitStatus.Signaled
+syscall.WaitStatus.StopSignal
+syscall.WaitStatus.Stopped
+syscall.WaitStatus.TrapCause
+syscall.Write
+syscall.accept4
+syscall.acquireForkLock
+syscall.acquireForkLock.deferwrap1
+syscall.anyToSockaddr
+syscall.capToIndex
+syscall.capToMask
+syscall.doCheckClonePidfd
+syscall.errnoErr
+syscall.faccessat
+syscall.faccessat2
+syscall.fcntl
+syscall.forkAndExecFailureCleanup
+syscall.forkAndExecInChild
+syscall.forkAndExecInChild1
+syscall.forkExec
+syscall.forkExecPipe
+syscall.formatIDMappings
+syscall.fstatat
+syscall.getgroups
+syscall.getsockopt
+syscall.hasWaitingReaders
+syscall.init
+syscall.init.0
+syscall.init.OnceFunc.func3
+syscall.init.OnceFunc.func3.1
+syscall.init.OnceFunc.func3.1.1
+syscall.init.func1
+syscall.isCapDacOverrideSet
+syscall.isGroupMember
+syscall.mmap
+syscall.munmap
+syscall.openat
+syscall.os_checkClonePidfd.deferwrap1
+syscall.pipe2
+syscall.pread
+syscall.prlimit1
+syscall.pwrite
+syscall.rawSyscallNoError
+syscall.rawVforkSyscall
+syscall.read
+syscall.readlen
+syscall.recvfrom
+syscall.recvfromInet4
+syscall.recvfromInet6
+syscall.recvmsg
+syscall.recvmsgInet4
+syscall.recvmsgInet6
+syscall.recvmsgRaw
+syscall.releaseForkLock
+syscall.releaseForkLock.deferwrap1
+syscall.runtime_AfterExec
+syscall.runtime_AfterFork
+syscall.runtime_AfterForkInChild
+syscall.runtime_BeforeExec
+syscall.runtime_BeforeFork
+syscall.runtime_envs
+syscall.sendfile
+syscall.sendmsg
+syscall.sendmsgN
+syscall.sendmsgNInet4
+syscall.sendmsgNInet6
+syscall.sendto
+syscall.sendtoInet4
+syscall.sendtoInet6
+syscall.setrlimit
+syscall.setsockopt
+syscall.wait4
+syscall.write
+syscall.writeIDMappings
+syscall.writeSetgroups
+syscall.writeUidGidMappings
+syscalltick
+syscallwhen
+sysmonWake
+sysmontick
+system huge page size (runtime: s.allocCount= s.allocCount > s.nelems/gc/heap/allocs:objectsruntime: internal errorwork.nwait > work.nprocleft over markroot jobsgcDrain phase incorrectMB during sweep; swept bad profile stack countruntime: eventfd failedruntime: netpoll failedpanic during preemptoffnanotime returning zeroschedule: holding locksprocresize: invalid argmisuse of profBuf.writeunexpected signal valuespan has no free stacksstack growth after forkshrinkstack at bad timereflect.methodValueCall23283064365386962890625time zone offset minutetime zone offset secondbytes.Buffer: too largejson: cannot unmarshal  into Go value of type unexpected map key typetemplate %q not definedcannot assign nil to %sexpected bool; found %s", missing CPU support
+systemTime
+systemTimeD
+t	Hc
+t H9
+t!I9
+t$ 1
+t$ @
+t$ A
+t$ D
+t$ H
+t$ H	
+t$ H)
+t$ H9
+t$ Hi
+t$ I
+t$ L
+t$ M
+t$ f
+t$!f
+t$#@8
+t$#D
+t$#I
+t$$@
+t$$D
+t$$H
+t$$L
+t$$f
+t$$f9D$$w
+t$%H)
+t$&@
+t$'@
+t$'I
+t$(1
+t$(D
+t$(H
+t$(H)
+t$(H9
+t$(H9q@L
+t$(I
+t$(L
+t$(M
+t$(f
+t$,D
+t$,H
+t$,H9B
+t$.A
+t$.D
+t$.H
+t$.L
+t$/@
+t$/D
+t$/L
+t$01
+t$0@8
+t$0D
+t$0H
+t$0H9
+t$0H9F
+t$0H9F t
+t$0H9F(t
+t$0H9F0t
+t$0H9N(u
+t$0H9N8u
+t$0H9N@uBH
+t$0I
+t$0K
+t$0L
+t$0f
+t$4H
+t$7@
+t$7E1
+t$7H
+t$7L
+t$7M
+t$81
+t$8D
+t$8H
+t$8H)
+t$8H)F
+t$8H9
+t$8I
+t$8L
+t$8M
+t$;H
+t$<H
+t$<M
+t$>H
+t$>fC
+t$?H
+t$@1
+t$@A
+t$@D
+t$@E1
+t$@H
+t$@H)
+t$@H9
+t$@I
+t$@L
+t$@M
+t$@f
+t$D9
+t$DD
+t$DL
+t$ED
+t$EH
+t$F@
+t$FH
+t$FI
+t$GD
+t$GH
+t$GH9
+t$GL
+t$H1
+t$H9
+t$H@
+t$HA
+t$HD
+t$HH
+t$HH!
+t$HH)
+t$HH9
+t$HI
+t$HL
+t$HM
+t$Hc
+t$Hf
+t$IL
+t$LH
+t$O@
+t$OH
+t$OL
+t$P1
+t$P@
+t$PA
+t$PD
+t$PD9
+t$PE
+t$PE1
+t$PH
+t$PH)
+t$PH9
+t$PH9H
+t$PI
+t$PL
+t$PM
+t$PN
+t$Q@
+t$X1
+t$X@
+t$XA
+t$XE
+t$XH
+t$XH9
+t$XI
+t$XI9
+t$XL
+t$Xf
+t$`1
+t$`@
+t$`A
+t$`D
+t$`H
+t$`H)
+t$`H9
+t$`H9H
+t$`I
+t$`J
+t$`L
+t$dL
+t$h1
+t$hD
+t$hH
+t$hH)
+t$hH9
+t$hI
+t$hL
+t$hf
+t$j@
+t$kH
+t$kf
+t$lH
+t$p1
+t$pA
+t$pE
+t$pH
+t$pH)
+t$pH9
+t$pH9t$Hu
+t$pI
+t$pL
+t$pf
+t$x1
+t$x@
+t$xD
+t$xE1
+t$xH
+t$xH9
+t$xI
+t$xL
+t$xfA
+t$yH
+t(fD
+t+M9i
+t,I9
+t,fH
+t-fH
+t/E1
+t1H9
+t1t&D
+t5H9
+t8H9
+t;H9N
+t>H9
+t@M9
+tA8Z
+tEM9
+tFH9
+tGH9
+tHH9
+tIH=
+tJL9
+tL=) 
+tMH9Z
+tPD9
+tQI9z
+tRH9
+tSH9
+tWH9z
+tYL9
+tZ=) 
+t]H9
+t]H;
+t_L9
+taH9O
+taL9
+tail
+take
+takeAll
+takeFromBack
+takeFromFront
+targetCPUFraction
+targetpc
+tau$H
+tcdH
+tdM9J
+te kfH
+templateControl
+term
+teu H
+text
+text/template
+text/template.(*ExecError).Error
+text/template.(*ExecError).Unwrap
+text/template.(*Template).AddParseTree
+text/template.(*Template).AddParseTree.deferwrap1
+text/template.(*Template).Execute
+text/template.(*Template).Lookup
+text/template.(*Template).Lookup.deferwrap1
+text/template.(*Template).Name
+text/template.(*Template).New
+text/template.(*Template).Parse
+text/template.(*Template).associate
+text/template.(*Template).execute
+text/template.(*Template).execute.deferwrap1
+text/template.(*Template).init
+text/template.(*state).at
+text/template.(*state).errorf
+text/template.(*state).evalArg
+text/template.(*state).evalBool
+text/template.(*state).evalCall
+text/template.(*state).evalCall.func1
+text/template.(*state).evalChainNode
+text/template.(*state).evalCommand
+text/template.(*state).evalComplex
+text/template.(*state).evalEmptyInterface
+text/template.(*state).evalField
+text/template.(*state).evalFieldChain
+text/template.(*state).evalFieldNode
+text/template.(*state).evalFloat
+text/template.(*state).evalFunction
+text/template.(*state).evalInteger
+text/template.(*state).evalPipeline
+text/template.(*state).evalString
+text/template.(*state).evalUnsignedInteger
+text/template.(*state).evalVariableNode
+text/template.(*state).idealConstant
+text/template.(*state).mark
+text/template.(*state).notAFunction
+text/template.(*state).pop
+text/template.(*state).printValue
+text/template.(*state).push
+text/template.(*state).setTopVar
+text/template.(*state).setVar
+text/template.(*state).validateType
+text/template.(*state).varValue
+text/template.(*state).walk
+text/template.(*state).walkIfOrWith
+text/template.(*state).walkIfOrWith.deferwrap1
+text/template.(*state).walkRange
+text/template.(*state).walkRange-range1
+text/template.(*state).walkRange-range2
+text/template.(*state).walkRange-range3
+text/template.(*state).walkRange.deferwrap1
+text/template.(*state).walkRange.func1
+text/template.(*state).walkRange.func2
+text/template.(*state).walkRange.func2.1
+text/template.(*state).walkRange.func2.deferwrap1
+text/template.(*state).walkTemplate
+text/template.(*state).writeError
+text/template.ExecError.Error
+text/template.ExecError.Unwrap
+text/template.HTMLEscape
+text/template.HTMLEscapeString
+text/template.HTMLEscaper
+text/template.JSEscape
+text/template.JSEscapeString
+text/template.JSEscaper
+text/template.New
+text/template.URLQueryEscaper
+text/template.addValueFuncs
+text/template.and
+text/template.basicKind
+text/template.builtinFuncs
+text/template.builtinFuncs.func1
+text/template.builtins
+text/template.call
+text/template.canBeNil
+text/template.canCompare
+text/template.createValueFuncs
+text/template.doublePercent
+text/template.emptyCall
+text/template.eq
+text/template.errRecover
+text/template.evalArgs
+text/template.findFunction
+text/template.findFunction.deferwrap1
+text/template.ge
+text/template.goodFunc
+text/template.goodName
+text/template.gt
+text/template.index
+text/template.indexArg
+text/template.indirect
+text/template.indirectInterface
+text/template.init
+text/template.intLike
+text/template.isHexInt
+text/template.isMissing
+text/template.isNil
+text/template.isRuneInt
+text/template.isTrue
+text/template.jsIsSpecial
+text/template.le
+text/template.length
+text/template.lt
+text/template.ne
+text/template.not
+text/template.or
+text/template.prepareArg
+text/template.printableValue
+text/template.safeCall
+text/template.safeCall.func1
+text/template.slice
+text/template.truth
+text/template/parse
+text/template/parse.(*ActionNode).Copy
+text/template/parse.(*ActionNode).Position
+text/template/parse.(*ActionNode).String
+text/template/parse.(*ActionNode).Type
+text/template/parse.(*ActionNode).tree
+text/template/parse.(*ActionNode).writeTo
+text/template/parse.(*BoolNode).Copy
+text/template/parse.(*BoolNode).Position
+text/template/parse.(*BoolNode).String
+text/template/parse.(*BoolNode).Type
+text/template/parse.(*BoolNode).tree
+text/template/parse.(*BoolNode).writeTo
+text/template/parse.(*BranchNode).Copy
+text/template/parse.(*BranchNode).Position
+text/template/parse.(*BranchNode).String
+text/template/parse.(*BranchNode).Type
+text/template/parse.(*BranchNode).tree
+text/template/parse.(*BranchNode).writeTo
+text/template/parse.(*BreakNode).Copy
+text/template/parse.(*BreakNode).Position
+text/template/parse.(*BreakNode).String
+text/template/parse.(*BreakNode).Type
+text/template/parse.(*BreakNode).tree
+text/template/parse.(*BreakNode).writeTo
+text/template/parse.(*ChainNode).Add
+text/template/parse.(*ChainNode).Copy
+text/template/parse.(*ChainNode).Position
+text/template/parse.(*ChainNode).String
+text/template/parse.(*ChainNode).Type
+text/template/parse.(*ChainNode).tree
+text/template/parse.(*ChainNode).writeTo
+text/template/parse.(*CommandNode).Copy
+text/template/parse.(*CommandNode).Position
+text/template/parse.(*CommandNode).String
+text/template/parse.(*CommandNode).Type
+text/template/parse.(*CommandNode).append
+text/template/parse.(*CommandNode).tree
+text/template/parse.(*CommandNode).writeTo
+text/template/parse.(*CommentNode).Copy
+text/template/parse.(*CommentNode).Position
+text/template/parse.(*CommentNode).String
+text/template/parse.(*CommentNode).Type
+text/template/parse.(*CommentNode).tree
+text/template/parse.(*CommentNode).writeTo
+text/template/parse.(*ContinueNode).Copy
+text/template/parse.(*ContinueNode).Position
+text/template/parse.(*ContinueNode).String
+text/template/parse.(*ContinueNode).Type
+text/template/parse.(*ContinueNode).tree
+text/template/parse.(*ContinueNode).writeTo
+text/template/parse.(*DotNode).Copy
+text/template/parse.(*DotNode).Position
+text/template/parse.(*DotNode).String
+text/template/parse.(*DotNode).Type
+text/template/parse.(*DotNode).tree
+text/template/parse.(*DotNode).writeTo
+text/template/parse.(*FieldNode).Copy
+text/template/parse.(*FieldNode).Position
+text/template/parse.(*FieldNode).String
+text/template/parse.(*FieldNode).Type
+text/template/parse.(*FieldNode).tree
+text/template/parse.(*FieldNode).writeTo
+text/template/parse.(*IdentifierNode).Copy
+text/template/parse.(*IdentifierNode).Position
+text/template/parse.(*IdentifierNode).SetPos
+text/template/parse.(*IdentifierNode).SetTree
+text/template/parse.(*IdentifierNode).String
+text/template/parse.(*IdentifierNode).Type
+text/template/parse.(*IdentifierNode).tree
+text/template/parse.(*IdentifierNode).writeTo
+text/template/parse.(*IfNode).Copy
+text/template/parse.(*IfNode).Position
+text/template/parse.(*IfNode).String
+text/template/parse.(*IfNode).Type
+text/template/parse.(*IfNode).tree
+text/template/parse.(*IfNode).writeTo
+text/template/parse.(*ListNode).Copy
+text/template/parse.(*ListNode).CopyList
+text/template/parse.(*ListNode).Position
+text/template/parse.(*ListNode).String
+text/template/parse.(*ListNode).Type
+text/template/parse.(*ListNode).append
+text/template/parse.(*ListNode).tree
+text/template/parse.(*ListNode).writeTo
+text/template/parse.(*NilNode).Copy
+text/template/parse.(*NilNode).Position
+text/template/parse.(*NilNode).String
+text/template/parse.(*NilNode).Type
+text/template/parse.(*NilNode).tree
+text/template/parse.(*NilNode).writeTo
+text/template/parse.(*NodeType).Type
+text/template/parse.(*NumberNode).Copy
+text/template/parse.(*NumberNode).Position
+text/template/parse.(*NumberNode).String
+text/template/parse.(*NumberNode).Type
+text/template/parse.(*NumberNode).simplifyComplex
+text/template/parse.(*NumberNode).tree
+text/template/parse.(*NumberNode).writeTo
+text/template/parse.(*PipeNode).Copy
+text/template/parse.(*PipeNode).CopyPipe
+text/template/parse.(*PipeNode).Position
+text/template/parse.(*PipeNode).String
+text/template/parse.(*PipeNode).Type
+text/template/parse.(*PipeNode).append
+text/template/parse.(*PipeNode).tree
+text/template/parse.(*PipeNode).writeTo
+text/template/parse.(*Pos).Position
+text/template/parse.(*RangeNode).Copy
+text/template/parse.(*RangeNode).Position
+text/template/parse.(*RangeNode).String
+text/template/parse.(*RangeNode).Type
+text/template/parse.(*RangeNode).tree
+text/template/parse.(*RangeNode).writeTo
+text/template/parse.(*StringNode).Copy
+text/template/parse.(*StringNode).Position
+text/template/parse.(*StringNode).String
+text/template/parse.(*StringNode).Type
+text/template/parse.(*StringNode).tree
+text/template/parse.(*StringNode).writeTo
+text/template/parse.(*TemplateNode).Copy
+text/template/parse.(*TemplateNode).Position
+text/template/parse.(*TemplateNode).String
+text/template/parse.(*TemplateNode).Type
+text/template/parse.(*TemplateNode).tree
+text/template/parse.(*TemplateNode).writeTo
+text/template/parse.(*TextNode).Copy
+text/template/parse.(*TextNode).Position
+text/template/parse.(*TextNode).String
+text/template/parse.(*TextNode).Type
+text/template/parse.(*TextNode).tree
+text/template/parse.(*TextNode).writeTo
+text/template/parse.(*Tree).Copy
+text/template/parse.(*Tree).ErrorContext
+text/template/parse.(*Tree).Parse
+text/template/parse.(*Tree).Parse.deferwrap1
+text/template/parse.(*Tree).action
+text/template/parse.(*Tree).add
+text/template/parse.(*Tree).backup
+text/template/parse.(*Tree).backup2
+text/template/parse.(*Tree).backup3
+text/template/parse.(*Tree).blockControl
+text/template/parse.(*Tree).breakControl
+text/template/parse.(*Tree).checkPipeline
+text/template/parse.(*Tree).clearActionLine
+text/template/parse.(*Tree).command
+text/template/parse.(*Tree).continueControl
+text/template/parse.(*Tree).elseControl
+text/template/parse.(*Tree).endControl
+text/template/parse.(*Tree).error
+text/template/parse.(*Tree).errorf
+text/template/parse.(*Tree).expect
+text/template/parse.(*Tree).expectOneOf
+text/template/parse.(*Tree).hasFunction
+text/template/parse.(*Tree).ifControl
+text/template/parse.(*Tree).itemList
+text/template/parse.(*Tree).newAction
+text/template/parse.(*Tree).newBool
+text/template/parse.(*Tree).newBreak
+text/template/parse.(*Tree).newChain
+text/template/parse.(*Tree).newCommand
+text/template/parse.(*Tree).newComment
+text/template/parse.(*Tree).newContinue
+text/template/parse.(*Tree).newDot
+text/template/parse.(*Tree).newElse
+text/template/parse.(*Tree).newEnd
+text/template/parse.(*Tree).newField
+text/template/parse.(*Tree).newIf
+text/template/parse.(*Tree).newList
+text/template/parse.(*Tree).newNil
+text/template/parse.(*Tree).newNumber
+text/template/parse.(*Tree).newPipeline
+text/template/parse.(*Tree).newRange
+text/template/parse.(*Tree).newString
+text/template/parse.(*Tree).newTemplate
+text/template/parse.(*Tree).newText
+text/template/parse.(*Tree).newVariable
+text/template/parse.(*Tree).newWith
+text/template/parse.(*Tree).next
+text/template/parse.(*Tree).nextNonSpace
+text/template/parse.(*Tree).operand
+text/template/parse.(*Tree).parse
+text/template/parse.(*Tree).parseControl
+text/template/parse.(*Tree).parseControl.deferwrap1
+text/template/parse.(*Tree).parseDefinition
+text/template/parse.(*Tree).parseTemplateName
+text/template/parse.(*Tree).peek
+text/template/parse.(*Tree).peekNonSpace
+text/template/parse.(*Tree).pipeline
+text/template/parse.(*Tree).popVars
+text/template/parse.(*Tree).rangeControl
+text/template/parse.(*Tree).recover
+text/template/parse.(*Tree).startParse
+text/template/parse.(*Tree).stopParse
+text/template/parse.(*Tree).templateControl
+text/template/parse.(*Tree).term
+text/template/parse.(*Tree).term.func1
+text/template/parse.(*Tree).textOrAction
+text/template/parse.(*Tree).textOrAction.deferwrap1
+text/template/parse.(*Tree).unexpected
+text/template/parse.(*Tree).useVar
+text/template/parse.(*Tree).withControl
+text/template/parse.(*VariableNode).Copy
+text/template/parse.(*VariableNode).Position
+text/template/parse.(*VariableNode).String
+text/template/parse.(*VariableNode).Type
+text/template/parse.(*VariableNode).tree
+text/template/parse.(*VariableNode).writeTo
+text/template/parse.(*WithNode).Copy
+text/template/parse.(*WithNode).Position
+text/template/parse.(*WithNode).String
+text/template/parse.(*WithNode).Type
+text/template/parse.(*WithNode).tree
+text/template/parse.(*WithNode).writeTo
+text/template/parse.(*elseNode).Copy
+text/template/parse.(*elseNode).Position
+text/template/parse.(*elseNode).String
+text/template/parse.(*elseNode).Type
+text/template/parse.(*elseNode).tree
+text/template/parse.(*elseNode).writeTo
+text/template/parse.(*endNode).Copy
+text/template/parse.(*endNode).Position
+text/template/parse.(*endNode).String
+text/template/parse.(*endNode).Type
+text/template/parse.(*endNode).tree
+text/template/parse.(*endNode).writeTo
+text/template/parse.(*item).String
+text/template/parse.(*lexer).accept
+text/template/parse.(*lexer).acceptRun
+text/template/parse.(*lexer).atRightDelim
+text/template/parse.(*lexer).atTerminator
+text/template/parse.(*lexer).backup
+text/template/parse.(*lexer).emit
+text/template/parse.(*lexer).emitItem
+text/template/parse.(*lexer).errorf
+text/template/parse.(*lexer).ignore
+text/template/parse.(*lexer).next
+text/template/parse.(*lexer).nextItem
+text/template/parse.(*lexer).peek
+text/template/parse.(*lexer).scanNumber
+text/template/parse.(*lexer).thisItem
+text/template/parse.ActionNode.Position
+text/template/parse.ActionNode.Type
+text/template/parse.BoolNode.Position
+text/template/parse.BoolNode.Type
+text/template/parse.BranchNode.Position
+text/template/parse.BranchNode.Type
+text/template/parse.BreakNode.Position
+text/template/parse.BreakNode.Type
+text/template/parse.ChainNode.Position
+text/template/parse.ChainNode.Type
+text/template/parse.CommandNode.Position
+text/template/parse.CommandNode.Type
+text/template/parse.CommentNode.Position
+text/template/parse.CommentNode.Type
+text/template/parse.ContinueNode.Position
+text/template/parse.ContinueNode.Type
+text/template/parse.DotNode.Position
+text/template/parse.FieldNode.Position
+text/template/parse.FieldNode.Type
+text/template/parse.IdentifierNode.Position
+text/template/parse.IdentifierNode.Type
+text/template/parse.IfNode.Position
+text/template/parse.IfNode.Type
+text/template/parse.IsEmptyTree
+text/template/parse.ListNode.Position
+text/template/parse.ListNode.Type
+text/template/parse.New
+text/template/parse.NewIdentifier
+text/template/parse.NilNode.Position
+text/template/parse.NodeType.Type
+text/template/parse.NumberNode.Position
+text/template/parse.NumberNode.Type
+text/template/parse.Parse
+text/template/parse.PipeNode.Position
+text/template/parse.PipeNode.Type
+text/template/parse.Pos.Position
+text/template/parse.RangeNode.Position
+text/template/parse.RangeNode.Type
+text/template/parse.StringNode.Position
+text/template/parse.StringNode.Type
+text/template/parse.TemplateNode.Position
+text/template/parse.TemplateNode.Type
+text/template/parse.TextNode.Position
+text/template/parse.TextNode.Type
+text/template/parse.VariableNode.Position
+text/template/parse.VariableNode.Type
+text/template/parse.WithNode.Position
+text/template/parse.WithNode.Type
+text/template/parse.elseNode.Position
+text/template/parse.endNode.Position
+text/template/parse.endNode.Type
+text/template/parse.hasLeftTrimMarker
+text/template/parse.hasRightTrimMarker
+text/template/parse.init
+text/template/parse.isAlphaNumeric
+text/template/parse.isSpace
+text/template/parse.item.String
+text/template/parse.leftTrimLength
+text/template/parse.lex
+text/template/parse.lexChar
+text/template/parse.lexComment
+text/template/parse.lexField
+text/template/parse.lexFieldOrVariable
+text/template/parse.lexIdentifier
+text/template/parse.lexInsideAction
+text/template/parse.lexLeftDelim
+text/template/parse.lexNumber
+text/template/parse.lexQuote
+text/template/parse.lexRawQuote
+text/template/parse.lexRightDelim
+text/template/parse.lexSpace
+text/template/parse.lexText
+text/template/parse.lexVariable
+text/template/parse.map.init.0
+text/template/parse.rightTrimLength
+textAddr
+textOff
+textOrAction
+textsectmap
+tgroups
+thisItem
+throwing
+throwsplit
+ticket
+time
+time.(*Duration).Abs
+time.(*Duration).Hours
+time.(*Duration).Microseconds
+time.(*Duration).Milliseconds
+time.(*Duration).Minutes
+time.(*Duration).Nanoseconds
+time.(*Duration).Round
+time.(*Duration).Seconds
+time.(*Duration).String
+time.(*Duration).Truncate
+time.(*Location).String
+time.(*Location).firstZoneUsed
+time.(*Location).get
+time.(*Location).lookup
+time.(*Location).lookupFirstZone
+time.(*Location).lookupName
+time.(*Month).String
+time.(*ParseError).Error
+time.(*Time).Add
+time.(*Time).AddDate
+time.(*Time).After
+time.(*Time).AppendBinary
+time.(*Time).AppendFormat
+time.(*Time).AppendText
+time.(*Time).Before
+time.(*Time).Clock
+time.(*Time).Compare
+time.(*Time).Date
+time.(*Time).Day
+time.(*Time).Equal
+time.(*Time).Format
+time.(*Time).GoString
+time.(*Time).GobDecode
+time.(*Time).GobEncode
+time.(*Time).Hour
+time.(*Time).ISOWeek
+time.(*Time).In
+time.(*Time).IsDST
+time.(*Time).IsZero
+time.(*Time).Local
+time.(*Time).Location
+time.(*Time).MarshalBinary
+time.(*Time).MarshalJSON
+time.(*Time).MarshalText
+time.(*Time).Minute
+time.(*Time).Month
+time.(*Time).Nanosecond
+time.(*Time).Round
+time.(*Time).Second
+time.(*Time).String
+time.(*Time).Sub
+time.(*Time).Truncate
+time.(*Time).UTC
+time.(*Time).Unix
+time.(*Time).UnixMicro
+time.(*Time).UnixMilli
+time.(*Time).UnixNano
+time.(*Time).UnmarshalBinary
+time.(*Time).UnmarshalJSON
+time.(*Time).UnmarshalText
+time.(*Time).Weekday
+time.(*Time).Year
+time.(*Time).YearDay
+time.(*Time).Zone
+time.(*Time).ZoneBounds
+time.(*Time).addSec
+time.(*Time).nsec
+time.(*Time).sec
+time.(*Time).setLoc
+time.(*Time).stripMono
+time.(*Time).unixSec
+time.(*Timer).Reset
+time.(*Timer).Stop
+time.(*Weekday).String
+time.(*dataIO).big4
+time.(*dataIO).big8
+time.(*dataIO).byte
+time.(*dataIO).read
+time.(*dataIO).rest
+time.(*fileSizeError).Error
+time.DatH
+time.Date
+time.Duration.Abs
+time.Duration.Hours
+time.Duration.Microseconds
+time.Duration.Milliseconds
+time.Duration.Minutes
+time.Duration.Nanoseconds
+time.Duration.Round
+time.Duration.Seconds
+time.Duration.String
+time.Duration.Truncate
+time.Duration.format
+time.FixedZone
+time.FixedZone.func1
+time.LoadLocationFromTZData
+time.LocH
+time.LocL
+time.Month.String
+time.NewTimer
+time.Now
+time.Parse
+time.Time.Add
+time.Time.AddDate
+time.Time.After
+time.Time.AppendBinary
+time.Time.AppendFormat
+time.Time.AppendText
+time.Time.Before
+time.Time.Clock
+time.Time.Compare
+time.Time.Date
+time.Time.Day
+time.Time.Equal
+time.Time.Format
+time.Time.GoString
+time.Time.GobEncode
+time.Time.Hour
+time.Time.ISOWeek
+time.Time.In
+time.Time.IsDST
+time.Time.IsZero
+time.Time.Local
+time.Time.Location
+time.Time.MarshalBinary
+time.Time.MarshalJSON
+time.Time.MarshalText
+time.Time.Minute
+time.Time.Month
+time.Time.Nanosecond
+time.Time.Round
+time.Time.Second
+time.Time.String
+time.Time.Sub
+time.Time.Truncate
+time.Time.UTC
+time.Time.Unix
+time.Time.UnixMicro
+time.Time.UnixMilli
+time.Time.UnixNano
+time.Time.Weekday
+time.Time.Year
+time.Time.YearDay
+time.Time.Zone
+time.Time.ZoneBounds
+time.Time.absSec
+time.Time.appendFormat
+time.Time.appendFormatRFC3339
+time.Time.appendStrictRFC3339
+time.Time.appendStrictRFC3339.func1
+time.Time.appendTo
+time.Time.locabs
+time.UTCL
+time.Unix
+time.Until
+time.Weekday.String
+time.absCentury.leap
+time.absCentury.year
+time.absDays.date
+time.absDays.split
+time.absDays.weekday
+time.absDays.yearYday
+time.absMonth.month
+time.absSeconds.clock
+time.absSeconds.days
+time.absYday.janFeb
+time.absYday.split
+time.absYday.yday
+time.appendInt
+time.appendInt.func1
+time.appendNano
+time.atoi[go.shape.[]uint8]
+time.atoi[go.shape.string]
+time.byteString
+time.closefd
+time.commaOrPeriod
+time.cutspace
+time.dateToAbsDays
+time.daysBefore
+time.daysIn
+time.digitsLen
+time.div
+time.fileSizeError.Error
+time.findZone
+time.fixedZone
+time.fmtFrac
+time.fmtInt
+time.get2
+time.get4
+time.getnum
+time.getnum3
+time.gorootZoneSource
+time.init
+time.initLocal
+time.isDigit[go.shape.[]uint8]
+time.isDigit[go.shape.string]
+time.isLeap
+time.leadingInt[go.shape.[]uint8]
+time.leadingInt[go.shape.string]
+time.lessThanHalf
+time.loadLocation
+time.loadTzinfo
+time.loadTzinfoFromDirOrZip
+time.loadTzinfoFromZip
+time.loadTzinfoFromZip.deferwrap1
+time.lookup
+time.match
+time.newParseError
+time.newTimer
+time.nextStdChunk
+time.norm
+time.now
+time.open
+time.parse
+time.parseGMT
+time.parseNanoseconds[go.shape.[]uint8]
+time.parseNanoseconds[go.shape.string]
+time.parseRFC3339[go.shape.[]uint8]
+time.parseRFC3339[go.shape.[]uint8].func1
+time.parseRFC3339[go.shape.string]
+time.parseRFC3339[go.shape.string].func1
+time.parseSignedOffset
+time.parseStrictRFC3339
+time.parseTimeZone
+time.preadn
+time.quote
+time.read
+time.readFile
+time.readFile.deferwrap1
+time.resetTimer
+time.runtimeIsBubbled
+time.runtimeNano
+time.runtimeNow
+time.sendTime
+time.separator
+time.skip
+time.startsWithLowerCase
+time.stdFracSecond
+time.stopTimer
+time.subMono
+time.syncTimer
+time.tzruleTime
+time.tzset
+time.tzsetName
+time.tzsetNum
+time.tzsetOffset
+time.tzsetRule
+time.unixTime
+time.when
+timer
+timers
+tiny
+tinyAllocCount
+tinyAllocs
+tinyoffset
+tmpl
+token
+tombstonePossible
+tombstones
+toml:"dev_server"
+toml:"override"
+toml:"port"
+toml:"run"
+toml:"vite"
+total
+totalAllocated
+totalAllocs
+totalFreed
+totalFrees
+trace
+trace1
+traceBufHeader
+traceSchedResourceState
+tracking
+trackingSeq
+trackingStamp
+transitioning GC to the same state as before?produced a trigger greater than the heap goaltried to run scavenger from another goroutineruntime: failed mSpanList.remove span.npages=exitsyscall: syscall frame is no longer validunsafe.String: ptr is nil and len is not zerobufio.Scanner: Read returned impossible countjson.RawMessage: UnmarshalJSON on nil pointerfloat integer part cannot have leading zeroesescape sequence is invalid Unicode code pointUsage: lovable-exec <task> [-- extra-args...]
+tree
+treeSet
+tried to trace goroutine with invalid or unsupported statussync/atomic: store of inconsistently typed value into Valuebufio.Scanner: SplitFunc returns advance count beyond inputtoml: decoding can only be performed into a pointer, not %stoml: cannot convert map key of type %s to expected type %sreflect: call of reflect.Value.Cap on ptr to non-array Valuereflect: call of reflect.Value.Len on ptr to non-array Valuecalled CompareAndDelete when value is not of comparable typemanual span allocation called with non-manually-managed typeaddr range base and limit are not in the same memory segmentruntime: failed to configure profiling timer; timer_settime(runtime: malformed profBuf buffer - tag and data out of synctoml: error parsing key of type %s from unsigned integer: %wstart pointer address (%d) is after end pointer address (%d)exec: Cmd started a Process but leaked without a call to Waitreflect: wrong return count from function created by MakeFunc  is in a tiny block with other (possibly long-lived) values
+true
+truetWf
+truncate
+truncateString
+tryGetObjFast
+tryGetSpan
+tryGrowByReslice
+tryGrowByResliceY
+tryTextUnmarshaler
+tu"H
+tu|H
+twLk
+txD9
+txH9
+tyM9
+typ_
+type:.eq.[16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }]
+type:.eq.[16]sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }]
+type:.eq.[16]sync/atomic.Pointer[internal/sync.node[*internal/abi.Type,interface {}]]
+type:.eq.[16]sync/atomic.Pointer[internal/sync.node[interface {},interface {}]]
+type:.eq.[16]sync/atomic.Pointer[unique.node[net/netip.addrDetail]]
+type:.eq.[1]text/template.variable
+type:.eq.[1]time.zone
+type:.eq.[1]time.zoneTrans
+type:.eq.[2]runtime.Frame
+type:.eq.[2]string
+type:.eq.[3]string
+type:.eq.[3]text/template/parse.item
+type:.eq.[7]internal/cpu.option
+type:.eq.embed.file
+type:.eq.encoding/base64.Encoding
+type:.eq.encoding/json.MarshalerError
+type:.eq.encoding/json.SyntaxError
+type:.eq.encoding/json.UnmarshalTypeError
+type:.eq.encoding/json.UnsupportedValueError
+type:.eq.encoding/json.reflectWithString
+type:.eq.flag.Flag
+type:.eq.fmt.fmt
+type:.eq.fmt.readRune
+type:.eq.fmt.ssave
+type:.eq.fmt.wrapError
+type:.eq.github.com/pelletier/go-toml/v2/unstable.Iterator
+type:.eq.go.shape.struct { encoding/json.v reflect.Value; encoding/json.ks string }
+type:.eq.go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }
+type:.eq.go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.interface {},go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }
+type:.eq.go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }
+type:.eq.go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }] }
+type:.eq.internal/abi.ITab
+type:.eq.internal/abi.RegArgs
+type:.eq.internal/abi.UncommonType
+type:.eq.internal/bisect.cond
+type:.eq.internal/chacha8rand.State
+type:.eq.internal/cpu.option
+type:.eq.internal/godebug.Setting
+type:.eq.internal/godebug.setting
+type:.eq.internal/godebug.value
+type:.eq.internal/godebugs.Info
+type:.eq.internal/poll.FD
+type:.eq.internal/reflectlite.ValueError
+type:.eq.internal/runtime/atomic.Int64
+type:.eq.internal/runtime/atomic.Uint64
+type:.eq.internal/runtime/maps.Iter
+type:.eq.internal/runtime/maps.Map
+type:.eq.internal/runtime/maps.table
+type:.eq.internal/runtime/sys.NotInHeap
+type:.eq.internal/sync.entry[*internal/abi.Type,interface {}]
+type:.eq.internal/sync.entry[go.shape.*internal/abi.Type,go.shape.interface {}]
+type:.eq.internal/sync.entry[go.shape.interface {},go.shape.interface {}]
+type:.eq.internal/sync.entry[interface {},interface {}]
+type:.eq.internal/sync.indirect[*internal/abi.Type,interface {}]
+type:.eq.internal/sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]
+type:.eq.internal/sync.indirect[go.shape.interface {},go.shape.interface {}]
+type:.eq.internal/sync.indirect[interface {},interface {}]
+type:.eq.io.LimitedReader
+type:.eq.io/fs.PathError
+type:.eq.net/netip.addrDetail
+type:.eq.os.LinkError
+type:.eq.os.Process
+type:.eq.os.ProcessState
+type:.eq.os.SyscallError
+type:.eq.os.dirInfo
+type:.eq.os.file
+type:.eq.os.fileStat
+type:.eq.os.processHandle
+type:.eq.os.unixDirent
+type:.eq.os/exec.Error
+type:.eq.os/exec.ctxResult
+type:.eq.os/exec.goroutineStatus
+type:.eq.os/exec.wrappedError
+type:.eq.reflect.MapIter
+type:.eq.reflect.Method
+type:.eq.reflect.ValueError
+type:.eq.reflect.makeFuncCtxt
+type:.eq.reflect.methodValue
+type:.eq.runtime.Frame
+type:.eq.runtime.PanicNilError
+type:.eq.runtime.TypeAssertionError
+type:.eq.runtime._func
+type:.eq.runtime._panic
+type:.eq.runtime.bitvector
+type:.eq.runtime.boundsError
+type:.eq.runtime.cleanupBlock
+type:.eq.runtime.cleanupBlockHeader
+type:.eq.runtime.errorAddressString
+type:.eq.runtime.funcinl
+type:.eq.runtime.gList
+type:.eq.runtime.gTraceState
+type:.eq.runtime.gcBits
+type:.eq.runtime.gcWork
+type:.eq.runtime.hchan
+type:.eq.runtime.limiterEvent
+type:.eq.runtime.mOS
+type:.eq.runtime.mSpanList
+type:.eq.runtime.mTraceState
+type:.eq.runtime.mcache
+type:.eq.runtime.modulehash
+type:.eq.runtime.mspan
+type:.eq.runtime.notInHeap
+type:.eq.runtime.pTraceState
+type:.eq.runtime.piController
+type:.eq.runtime.special
+type:.eq.runtime.synctestDeadlockError
+type:.eq.runtime.traceBuf
+type:.eq.runtime.traceSchedResourceState
+type:.eq.runtime.untracedG
+type:.eq.runtime.workbuf
+type:.eq.strconv.NumError
+type:.eq.strings.Reader
+type:.eq.struct { ImportLine string; ConfigExpr string }
+type:.eq.struct { encoding/json.ptr interface {}; encoding/json.len int }
+type:.eq.struct { os/exec.in string; os/exec.out string }
+type:.eq.sync.Mutex
+type:.eq.sync.Once
+type:.eq.sync.RWMutex
+type:.eq.sync.poolChain
+type:.eq.sync.poolLocal
+type:.eq.sync.poolLocalInternal
+type:.eq.sync.rlocker
+type:.eq.sync/atomic.Bool
+type:.eq.sync/atomic.Int32
+type:.eq.sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }]
+type:.eq.sync/atomic.Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.*internal/abi.Type,go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }]
+type:.eq.sync/atomic.Pointer[go.shape.struct { internal/sync.node = internal/sync.node[go.shape.interface {},go.shape.interface {}]; internal/sync.dead sync/atomic.Bool; internal/sync.mu internal/sync.Mutex; internal/sync.parent *internal/sync.indirect[go.shape.interface {},go.shape.interface {}]; internal/sync.children [16]sync/atomic.Pointer[go.shape.struct { internal/sync.isEntry bool }] }]
+type:.eq.sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }]
+type:.eq.sync/atomic.Pointer[go.shape.struct { unique.node = unique.node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.dead sync/atomic.Bool; unique.parent *unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]; unique.mu sync.Mutex; unique.children [16]sync/atomic.Pointer[go.shape.struct { unique.isEntry bool }] }]
+type:.eq.sync/atomic.Pointer[internal/bisect.dedup]
+type:.eq.sync/atomic.Pointer[internal/godebug.value]
+type:.eq.sync/atomic.Pointer[internal/sync.entry[*internal/abi.Type,interface {}]]
+type:.eq.sync/atomic.Pointer[internal/sync.entry[go.shape.*internal/abi.Type,go.shape.interface {}]]
+type:.eq.sync/atomic.Pointer[internal/sync.entry[go.shape.interface {},go.shape.interface {}]]
+type:.eq.sync/atomic.Pointer[internal/sync.entry[interface {},interface {}]]
+type:.eq.sync/atomic.Pointer[internal/sync.indirect[*internal/abi.Type,interface {}]]
+type:.eq.sync/atomic.Pointer[internal/sync.indirect[interface {},interface {}]]
+type:.eq.sync/atomic.Pointer[internal/sync.node[*internal/abi.Type,interface {}]]
+type:.eq.sync/atomic.Pointer[internal/sync.node[interface {},interface {}]]
+type:.eq.sync/atomic.Pointer[os.dirInfo]
+type:.eq.sync/atomic.Pointer[sync.poolChainElt]
+type:.eq.sync/atomic.Pointer[unique.entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]]
+type:.eq.sync/atomic.Pointer[unique.entry[net/netip.addrDetail]]
+type:.eq.sync/atomic.Pointer[unique.indirect[net/netip.addrDetail]]
+type:.eq.sync/atomic.Pointer[unique.node[net/netip.addrDetail]]
+type:.eq.sync/atomic.Uint32
+type:.eq.sync/atomic.Uint64
+type:.eq.syscall.SockaddrInet4
+type:.eq.syscall.SockaddrLinklayer
+type:.eq.syscall.SockaddrUnix
+type:.eq.text/template.ExecError
+type:.eq.text/template.Template
+type:.eq.text/template.variable
+type:.eq.text/template/parse.BoolNode
+type:.eq.text/template/parse.CommentNode
+type:.eq.text/template/parse.IdentifierNode
+type:.eq.text/template/parse.NumberNode
+type:.eq.text/template/parse.StringNode
+type:.eq.text/template/parse.TemplateNode
+type:.eq.text/template/parse.item
+type:.eq.text/template/parse.lexer
+type:.eq.time.ParseError
+type:.eq.time.Timer
+type:.eq.time.zone
+type:.eq.time.zoneTrans
+type:.eq.unique.entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+type:.eq.unique.entry[net/netip.addrDetail]
+type:.eq.unique.indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+type:.eq.unique.indirect[net/netip.addrDetail]
+type:.eq.weak.Pointer[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+type:.eq.weak.Pointer[net/netip.addrDetail]
+type:.hash.net/netip.addrDetail
+typeMismatchError
+typeMismatchString
+typeOff
+typePointersOf
+typePointersOfType
+typePointersOfUnchecked
+typeSlow
+typemap
+types
+tzdau0
+t}Hi
+u	@8w
+u	D8
+u	H9
+u y 
+u"$!
+u$Hc
+u$L9
+u$fA
+u%z#
+u&z$
+u'z%
+u)L9
+u)z'
+u,H9
+u-<,w
+u-f9
+u/z-
+u202
+u202@
+u202F
+u3H9
+u3I9
+u4H9
+u6L9
+u9z7f
+u;z9
+u>H9
+u@H=
+uBH9
+uGI)
+uGzE
+uJH9x@
+uJH9{
+uKH9
+uKI9zP}
+uMzK
+uMzKf
+uQH9
+uRDZZ
+uRfH
+uRzP
+uZF)
+u_z]
+ue</t
+ue}}L
+uid_map
+ujH9x@vQH
+ujH=
+ukH9
+uncheckedPutSlot
+uncommon
+undef
+unexpected
+unicode
+unicode.In
+unicode.Is
+unicode.IsDigit
+unicode.IsLetter
+unicode.IsPrint
+unicode.IsSpace
+unicode.SimpleFold
+unicode.To
+unicode.ToLower
+unicode.convertCase
+unicode.init
+unicode.is16
+unicode.is32
+unicode.isExcludingLatin
+unicode.lookupCaseRange
+unicode.to
+unicode/utf16.DecodeRune
+unicode/utf16.IsSurrogate
+unicode/utf8.AppendRune
+unicode/utf8.DecodeLastRune
+unicode/utf8.DecodeLastRuneInString
+unicode/utf8.DecodeRune
+unicode/utf8.DecodeRuneInString
+unicode/utf8.EncodeRune
+unicode/utf8.FullRune
+unicode/utf8.RuneCount
+unicode/utf8.RuneCountInString
+unicode/utf8.RuneLen
+unicode/utf8.RuneStart
+unicode/utf8.ValidRune
+unicode/utf8.ValidString
+unicode/utf8.appendRuneNonASCII
+unicode/utf8.encodeRuneNonASCII
+union
+unique
+unique.(*Handle[net/netip.addrDetail]).Value
+unique.(*canonMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).Load
+unique.(*canonMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).LoadOrStore
+unique.(*canonMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).LoadOrStore.deferwrap1
+unique.(*canonMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).LoadOrStore.func1
+unique.(*canonMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).cleanup
+unique.(*canonMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).expand
+unique.(*canonMap[net/netip.addrDetail]).Load
+unique.(*canonMap[net/netip.addrDetail]).LoadOrStore
+unique.(*entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).hasWeakPointer
+unique.(*entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).lookup
+unique.(*entry[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).prune
+unique.(*indirect[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).empty
+unique.(*node[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]).entry
+unique.(*uniqueMap[net/netip.addrDetail]).Load
+unique.(*uniqueMap[net/netip.addrDetail]).LoadOrStore
+unique.Handle[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }].Value
+unique.Handle[net/netip.addrDetail].Value
+unique.Make[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+unique.buildArrayCloneSeq
+unique.buildStructCloneSeq
+unique.clone[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+unique.makeCloneSeq
+unique.newCanonMap[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+unique.newEntryNode[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+unique.newIndirectNode[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+unique.uniqueMap[net/netip.addrDetail].Load
+unique.uniqueMap[net/netip.addrDetail].LoadOrStore
+unixSec
+unknownType
+unlock
+unlock: lock countprogToPointerMask: overflow/gc/cycles/forced:gc-cycles/memory/classes/other:bytes/memory/classes/total:bytesfailed to set sweep barrierwork.nwait was > work.nproc not in stack roots range [allocated pages below zero?address not a stack addressmspan.sweep: bad span stateinvalid profile bucket typeruntime: corrupted polldescruntime: netpollinit failedruntime: asyncPreemptStack=runtime: thread ID overflowstopTheWorld: holding locksgcstopm: not waiting for gcruntime: checkdead: nmidle=runtime: checkdead: find g runlock of unlocked rwmutexsignal received during forksigsend: inconsistent statemakeslice: len out of rangemakeslice: cap out of rangegrowslice: len out of rangestack size not a power of 2timer when must be positive: unexpected return pc for 363797880709171295166015625abi.NewName: tag too long: after object key:value pairfloat cannot end with a dotinvalid type for comparisonrange can't iterate over %vmap has no entry for key %qcan't index item of type %scan't slice item of type %sreflectlite.Value.Interfacereflectlite.Value.NumMethodhttpservecontentkeepheadersexpected key but found noneunterminated literal string in action started at %s:%d{{break}} outside {{range}}too many declarations in %soverflow on character value os: process already finishedos: process already releasedprotocol driver not attachedfile descriptor in bad statedestination address requirederrors: target cannot be nilreflect.MakeSlice: len > capSIGHUP: terminal line hangupSIGWINCH: window size changeGC mark assist wait for workcomparing uncomparable type notewakeup - double wakeup (region exceeds uintptr range/gc/heap/frees-by-size:bytes/gc/heap/tiny/allocs:objects/sched/goroutines:goroutinesgcBgMarkWorker: mode not setmspan.sweep: m is not lockedfound pointer to free objectmheap.freeSpanLocked - span fatal: morestack on gsignal
+unlockAndRun
+unlockSlow
+unmarshalArray
+unmarshalBool
+unmarshalDateTime
+unmarshalFloat
+unmarshalInlineTable
+unmarshalInteger
+unmarshalLocalDate
+unmarshalLocalDateTime
+unmarshalLocalTime
+unmarshalString
+unmarshalerInterface
+unpack
+unpin
+unsafe
+unsafe.String: len out of range11368683772161602973937988281255684341886080801486968994140625malformed time zone informationinvalid return from write: got json: invalid number literal %qin literal true (expecting 'r')in literal true (expecting 'u')in literal true (expecting 'e')in literal null (expecting 'u')in literal null (expecting 'l')invalid timezone offset minutescouldn't parse octal number: %wcannot store a table in a slicemissing argument for comparisonrange over send-only channel %vvalue has type %s; should be %sreflect: NumIn of non-func typewindows new line should be \r\ncannot call BytesRange with niltoml: key %s is already definedunterminated character constantpidStatus called in invalid moderesource temporarily unavailablenumerical argument out of domainsoftware caused connection abortimport baseConfig from "../%s";
+untinfo
+updateHeap
+updateMaxProcsGoroutine: phase errorruntime: bad notifyList size - sync=signal arrived during cgo execution
+updateMinWhenHeap
+updateMinWhenModified
+upt9H
+upuNG
+usage
+useVar
+used
+user
+userArenaChunkFree
+userArenaNextFree
+userTime
+userTimeD
+uszq
+uwH9
+v	E1
+v	H9
+v H9
+v UH
+v!UH
+v"UH
+v#UH
+v$UH
+v%UH
+v&H9L$ r
+v&UH
+v'UH
+v(H9
+v(UH
+v)H9
+v)UH
+v*UH
+v+UH
+v,UH
+v,n%
+v-UH
+v.UH
+v/UH
+v0UH
+v1UH
+v2UH
+v3UH
+v4UH
+v5UH
+v6I9
+v6UH
+v7UH
+v8UH
+v9UH
+v:UH
+v:k\
+v;UH
+v<UH
+v=UH
+v>UH
+v?UH
+v@UH
+vAUH
+vBUH
+vCUH
+vDH95
+vDUH
+vEUH
+vFUH
+vGUH
+vH7B
+vHUH
+vIUH
+vJUH
+vKUH
+vLUH
+vMUH
+vNUH
+vOUH
+vPUH
+vQUH
+vRUH
+vSUH
+vTUH
+vUUH
+vVH)
+vVUH
+vWUH
+vXUH
+vYUH
+vZUH
+v[UH
+v\/	0
+v\UH
+v]UH
+v^UH
+v_UH
+v`UH
+vaUH
+vaddr
+valEqual
+valPC
+valgrindStackID
+valid
+validateType
+vals
+value
+valueInterface
+valueQuoted
+valueStart
+varValue
+varint
+varintAt
+varintReserve
+vars
+vbUH
+vcUH
+vdUH
+vdsoPC
+vdsoSP
+veUH
+verbose
+verify
+vfUH
+vgUH
+vgetrandomState
+vhUH
+viUH
+victim
+victimSize
+vite.conH9
+vjUH
+vkUH
+vlUH
+vmUH
+vnUH
+voUH
+vpUH
+vqUH
+vrUH
+vsUH
+vtUH
+vu#H9
+vuUH
+vuUI
+vvUH
+vwUH
+vxUH
+vyUH
+vzUH
+v{UH
+v|UH
+v}UH
+w	H9
+w%9H
+w%z	
+w(3D
+w)H9
+w*H9
+w-=`0+./S<L~dy--%q%di), )(tvrRuUeEaAlLsS01bBoOxX+-nNiIfFpP: ..|0|1-d{}[]>
+w/9H
+w/H)
+w/Hc
+w0H)
+w2fE
+w3H)
+w8M9
+w9H9V
+w<H9
+w=Hc
+w?H)
+w@H9r@u1H
+w@fA
+wAH9
+wDH)
+wGH)
+wLI)
+wNH)
+wQI)
+wRH)
+wUL)
+waLi
+wait
+waitCanceled
+waitRead
+waitTime
+waitTraceBlockReason
+waitTraceSkip
+waiter
+waiters
+waiting
+waitlink
+waitlock
+waitreason
+waitsema
+waittail
+waitunlockf
+wake
+wakeTime
+walk
+walkIfOrWith
+walkTemplate
+wall
+watchCtx
+wbBuf
+wbuf1
+wbuf2
+weak
+weak.(*Pointer[net/netip.addrDetail]).Value
+weak.Make[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }]
+weak.Pointer[go.shape.struct { net/netip.isV6 bool; net/netip.zoneV6 string }].Value
+weak.Pointer[net/netip.addrDetail].Value
+weak.runtime_makeStrongFromWeak
+weak.runtime_registerWeakPointer
+wfL)
+when
+widPresent
+winsyscall
+withControl
+workbufhdr
+wqBv/?
+wqH)
+wrapErr
+wrapErrs
+wrappedErrs
+write
+writeError
+writeHeapBitsSmall
+writePadding
+writeString
+writeTo
+writeUnlock
+writeUserArenaHeapBits
+writebuf
+writerDescriptor
+writing
+wrun
+wsema
+wseq
+wsj=
+wt	H
+wu	H
+wu;H
+wwwwwwwwH
+wwwwwwwwH!
+w|H)
+w}H=
+x 	u
+x 	u0H
+x L)
+x(D)
+x(H9
+x509negativeserialneed a \n after \r  lovable-exec dev
+x@H9
+xXH)
+xXH9
+x`H)
+xtXH
+xu3_
+xuRCk
+y 	u
+y 	uNL
+y2f9
+z 	u
+z | 
+z(H9z0
+z0H)
+z0H9
+z2H9
+z2fE9
+z3zr
+zHH)
+zHH9~Hu8
+zP@8~Pu.
+zPH9
+zQ@8~Qu$
+zR	Q
+zS@8~Su
+z^KD
+zc%C1
+zero
+zombies
+zone
+zoneV6
+zu)I
+{@H9
+{[o>
+{\j	
+{`H)
+{{.ImportLine}}
+{{break}H
+{{continH
+{{else}}H
+{{else}}N
+{{en
+{{templaM
+|	H9
+|	y	
+|	yT
+|$	@
+|$	H
+|$ 1
+|$ @
+|$ D
+|$ H
+|$ H9
+|$ I
+|$ J
+|$ L
+|$ dL
+|$ f
+|$$1
+|$$D
+|$$H
+|$$L
+|$'@
+|$'D
+|$'H
+|$(1
+|$(A
+|$(D
+|$(H
+|$(H)
+|$(H9
+|$(Hk
+|$(I
+|$(I9
+|$(L
+|$(f
+|$(fH
+|$*H
+|$,D
+|$,E)
+|$,H
+|$,f
+|$.H
+|$.L
+|$/D
+|$/H
+|$01
+|$0@
+|$0@8
+|$0D
+|$0H
+|$0H)
+|$0H9
+|$0H98
+|$0H9w uEH
+|$0H=
+|$0I
+|$0J
+|$0L
+|$0M
+|$0f
+|$0uFH
+|$2@
+|$2H
+|$3@
+|$49
+|$4A
+|$4D
+|$4H
+|$6@
+|$7@
+|$81
+|$8A
+|$8D
+|$8H
+|$8H)
+|$8H9
+|$8Hc
+|$8I
+|$8L
+|$8M
+|$8f
+|$<1
+|$<D
+|$<H
+|$<I
+|$<L
+|$<fE
+|$?H
+|$@1
+|$@A
+|$@D
+|$@H
+|$@H	
+|$@H)
+|$@H9
+|$@I
+|$@L
+|$@M
+|$@f
+|$BD
+|$BH9
+|$BL
+|$CH
+|$CI
+|$DD
+|$DH
+|$DI
+|$EH
+|$EI
+|$FH
+|$FL
+|$FM
+|$G1
+|$GD
+|$GH
+|$GI
+|$GL
+|$GM
+|$Gf
+|$H1
+|$H@
+|$HA
+|$HD
+|$HE
+|$HE1
+|$HH
+|$HH)
+|$HH9
+|$HH9w@}
+|$HH9{
+|$HHc
+|$HI
+|$HL
+|$HM
+|$Hf
+|$Hu
+|$IH
+|$L@
+|$LD
+|$LH
+|$LL
+|$P1
+|$P@
+|$PA
+|$PD
+|$PH
+|$PH9
+|$PI
+|$PL
+|$PM
+|$Pf
+|$PfD
+|$Pt
+|$TH
+|$TI
+|$TL
+|$X1
+|$X@
+|$XA
+|$XB
+|$XD
+|$XE1
+|$XH
+|$XH)
+|$XH9
+|$XH9H
+|$XI
+|$XL
+|$XM
+|$Xf
+|$XfH
+|$Xs
+|$ZH
+|$\D
+|$_D
+|$`1
+|$`D
+|$`E
+|$`E1
+|$`H
+|$`H9
+|$`H9=v
+|$`Hi
+|$`I
+|$`L
+|$`L)
+|$`M
+|$`f
+|$`t
+|$aH
+|$bH
+|$fH
+|$h1
+|$hA
+|$hD
+|$hH
+|$hH9
+|$hHi
+|$hI
+|$hJ
+|$hL
+|$hM
+|$hf
+|$ht
+|$iA8
+|$iL
+|$mH
+|$mL
+|$p1
+|$p@~
+|$pA
+|$pD
+|$pH
+|$pH)
+|$pH9
+|$pH9\$
+|$pI
+|$pJ
+|$pL
+|$pM
+|$tH
+|$x1
+|$x2u 
+|$x@
+|$xD
+|$xE1
+|$xH
+|$xH9
+|$xHc7
+|$xI
+|$xL
+|$xLc
+|$xM
+|&XL
+|'H9
+|*L9
+|4Hc
+|4I9
+|<8;
+|>Hc
+|JH9
+|KL9
+|M{)h
+|UH9
+|XH9
+|iH9s
+|iI9
+|jPZ
+|jd	
+|mH9
+|nH9
+} I9
+} ~ 
+}/H9
+}1sEH
+}4~29
+}=sYL
+}KM	
+}N~cC
+}VI9
+}[n	
+}a@8
+}sH=
+}u-H
+~!vJH
+~#L9
+~%vFH
+~''`
+~(H9
+~)p$w
+~-vUE
+~0f9
+~5H9
+~6H9
+~9Hc
+~<Hc
+~<rIH
+~?H9
+~BrUH)
+~D$H
+~L$P
+~QM9
+~T$X
+~ZL9
+~\$`
+~`M9
+~cU4
+~d$h
+~jvvF
+~l$p
+~t$x

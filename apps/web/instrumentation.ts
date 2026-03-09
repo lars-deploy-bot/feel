@@ -43,6 +43,45 @@ export async function register() {
       }
     }
 
+    // Verify database schema and server identity at startup
+    try {
+      const Sentry = await import("@sentry/nextjs")
+      const db = await import("@webalive/database")
+      const { getSupabaseCredentials } = await import("@/lib/env/server")
+      const { getServerId } = await import("@webalive/shared")
+
+      const { url, key } = getSupabaseCredentials("service")
+
+      // 1. Schema: tables exist and are readable
+      const schemaResult = await db.checkSchema(url, key)
+      if (!schemaResult.ok) {
+        const msg = db.formatSchemaFailure(schemaResult)
+        console.error(`[Instrumentation] FATAL: ${msg}`)
+        Sentry.captureMessage(msg, "fatal")
+        await Sentry.flush(2000)
+        process.exit(1)
+      }
+
+      // 2. Server identity: this server's row exists in app.servers
+      const serverId = getServerId()
+      if (serverId) {
+        const serverResult = await db.checkServerRow(url, key, serverId)
+        if (!serverResult.ok) {
+          const msg = db.formatServerCheckFailure(serverResult)
+          console.error(`[Instrumentation] FATAL: ${msg}`)
+          Sentry.captureMessage(msg, "fatal")
+          await Sentry.flush(2000)
+          process.exit(1)
+        }
+      }
+    } catch (error) {
+      console.error("[Instrumentation] FATAL: Startup verification failed:", error)
+      const Sentry = await import("@sentry/nextjs")
+      Sentry.captureException(error)
+      await Sentry.flush(2000)
+      process.exit(1)
+    }
+
     console.log("[Instrumentation] Server-side services initialized")
   }
 }

@@ -10,4 +10,4 @@
  * - Consistent validation across the codebase
  */
 
-export { env, getAnthropicApiKey, getRedisUrl, getSuperadminEmails } from "@webalive/env/server"
+export { env, getAnthropicApiKey, getE2bDomain, getRedisUrl, getSuperadminEmails } from "@webalive/env/server"

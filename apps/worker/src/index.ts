@@ -13,6 +13,7 @@
 
 import { timingSafeEqual } from "node:crypto"
 import { serve } from "@hono/node-server"
+import { checkSchema, checkServerRow, formatSchemaFailure, formatServerCheckFailure } from "@webalive/database"
 import { getServerId } from "@webalive/shared"
 import { Hono } from "hono"
 import { getCronServiceStatus, pokeCronService, startCronService, stopCronService, triggerJob } from "./cron-service"
@@ -107,11 +108,40 @@ app.get("/status", c => {
 // Startup
 // =============================================================================
 
+async function verifyDatabase() {
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) {
+    console.error("[Worker] FATAL: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set")
+    process.exit(1)
+  }
+
+  // 1. Schema: tables exist and are readable
+  const schemaResult = await checkSchema(url, key)
+  if (!schemaResult.ok) {
+    const msg = formatSchemaFailure(schemaResult)
+    Sentry.captureMessage(msg, "fatal")
+    console.error(`[Worker] FATAL: ${msg}`)
+    process.exit(1)
+  }
+
+  // 2. Server identity: this server's row exists in app.servers
+  const serverResult = await checkServerRow(url, key, serverId)
+  if (!serverResult.ok) {
+    const msg = formatServerCheckFailure(serverResult)
+    Sentry.captureMessage(msg, "fatal")
+    console.error(`[Worker] FATAL: ${msg}`)
+    process.exit(1)
+  }
+}
+
 async function main() {
   console.log(`[Worker] Starting automation worker (server: ${serverId}, port: ${PORT})...`)
   console.log(
     `[Worker] Automation execution gate: ${executionGate.allowed ? "enabled" : "disabled"} (${executionGate.reason})`,
   )
+
+  await verifyDatabase()
 
   // Start CronService only where automation execution is explicitly allowed.
   if (executionGate.allowed) {
