@@ -43,8 +43,6 @@ interface TemplateRow {
 // Helpers
 // =============================================================================
 
-const SERVER_CONFIG_PATH = requireEnv("SERVER_CONFIG_PATH")
-
 function must<T>(v: T | undefined | null, msg: string): T {
   if (v === undefined || v === null) throw new Error(msg)
   return v
@@ -60,7 +58,8 @@ function filterReservedDomains(domains: DomainRow[], environments: EnvironmentCo
 }
 
 async function loadServerConfig(): Promise<ServerConfig> {
-  const raw = await readFile(SERVER_CONFIG_PATH, "utf8")
+  const configPath = requireEnv("SERVER_CONFIG_PATH")
+  const raw = await readFile(configPath, "utf8")
   return parseServerConfig(raw)
 }
 
