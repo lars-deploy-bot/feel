@@ -134,18 +134,30 @@ fi
 # ─── Health check (waits for port to be ready) ──────────────────────────────
 log_step "Health check on port $PREVIEW_PORT..."
 HEALTHY=false
-for i in $(seq 1 10); do
-    if curl -sf --max-time 2 "http://localhost:$PREVIEW_PORT/health" >/dev/null 2>&1; then
+HEALTH_URL="http://127.0.0.1:$PREVIEW_PORT/health"
+LAST_STATUS=""
+LAST_BODY=""
+for i in $(seq 1 20); do
+    RESPONSE=$(curl -sS --connect-timeout 1 --max-time 2 -w $'\n%{http_code}' "$HEALTH_URL" 2>/dev/null || true)
+    STATUS=$(printf '%s\n' "$RESPONSE" | tail -n 1)
+    BODY=$(printf '%s\n' "$RESPONSE" | sed '$d')
+
+    if [ "$STATUS" = "200" ]; then
         HEALTHY=true
         break
     fi
+
+    LAST_STATUS="$STATUS"
+    LAST_BODY="$BODY"
     sleep 1
 done
 
 if $HEALTHY; then
     log_success "Health check passed"
 else
-    log_error "Health check failed after 10 attempts"
+    log_error "Health check failed after 20 attempts"
+    [ -n "$LAST_STATUS" ] && log_error "Last HTTP status: $LAST_STATUS"
+    [ -n "$LAST_BODY" ] && log_error "Last response body: $LAST_BODY"
     systemctl is-active --quiet "$SERVICE_NAME" || log_error "Service is not running"
     log_step "Check logs: journalctl -u $SERVICE_NAME -n 50"
     exit 1
