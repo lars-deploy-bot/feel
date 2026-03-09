@@ -65,5 +65,5 @@ export {
   ensureServerRow,
   formatSchemaFailure,
   formatServerCheckFailure,
+  type ServerIdentity,
 } from "./seed-check"
-export type { ServerIdentity } from "./seed-check"
