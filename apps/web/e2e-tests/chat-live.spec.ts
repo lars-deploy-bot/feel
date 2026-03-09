@@ -22,11 +22,6 @@ import { parseValidatedBody } from "./lib/api-helpers"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
 import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
 
-interface LLMJudgeResult {
-  verdict: "PASS" | "FAIL"
-  rationale: string
-}
-
 async function sendMessage(page: Page, message: string): Promise<void> {
   const messageInput = page.locator(TEST_SELECTORS.messageInput)
   const sendButton = page.locator(TEST_SELECTORS.sendButton)
@@ -44,7 +39,7 @@ function getJudgeApiKey(): string {
   return key
 }
 
-async function judgeContextRetention(firstAssistant: string, secondAssistant: string): Promise<LLMJudgeResult> {
+async function judgeContextRetention(firstAssistant: string, secondAssistant: string) {
   const client = new Anthropic({ apiKey: getJudgeApiKey() })
 
   const evaluationPrompt = `

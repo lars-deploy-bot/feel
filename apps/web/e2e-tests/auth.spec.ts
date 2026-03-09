@@ -1,4 +1,4 @@
-import { WORKSPACE_STORAGE, type WorkspaceStorageValue } from "@webalive/shared"
+import { parseWorkspaceStorageValue, WORKSPACE_STORAGE } from "@webalive/shared"
 import { expect, test } from "./fixtures"
 import { gotoChatFast } from "./helpers/assertions"
 
@@ -15,6 +15,6 @@ test("can access chat with worker tenant auth", async ({ authenticatedPage, work
   // Verify workspace is set correctly
   const storageValue = await authenticatedPage.evaluate(key => localStorage.getItem(key), WORKSPACE_STORAGE.KEY)
   expect(storageValue).not.toBeNull()
-  const parsed = JSON.parse(storageValue!) as WorkspaceStorageValue
+  const parsed = parseWorkspaceStorageValue(storageValue)
   expect(parsed.state.currentWorkspace).toBe(workerTenant.workspace)
 })

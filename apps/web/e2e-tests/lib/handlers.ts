@@ -2,13 +2,10 @@ import type { Route } from "@playwright/test"
 import { ErrorCodes } from "@/lib/error-codes"
 import { StreamBuilder } from "./stream-builder"
 
-interface HandlerOptions {
-  delay?: number
-  fail?: boolean
-  errorMessage?: string
-}
-
-function createStreamHandler(builder: StreamBuilder, options: HandlerOptions = {}) {
+function createStreamHandler(
+  builder: StreamBuilder,
+  options: { delay?: number; fail?: boolean; errorMessage?: string } = {},
+) {
   return async (route: Route) => {
     const { delay = 0, fail = false, errorMessage } = options
 
@@ -44,25 +41,44 @@ function createStreamHandler(builder: StreamBuilder, options: HandlerOptions = {
 }
 
 export const handlers = {
-  text: (message: string, options?: HandlerOptions) =>
+  text: (message: string, options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
     createStreamHandler(new StreamBuilder().start().text(message).complete(), options),
 
-  withThinking: (thinking: string, response: string, options?: HandlerOptions) =>
-    createStreamHandler(new StreamBuilder().start().thinking(thinking).text(response).complete(), options),
+  withThinking: (
+    thinking: string,
+    response: string,
+    options?: { delay?: number; fail?: boolean; errorMessage?: string },
+  ) => createStreamHandler(new StreamBuilder().start().thinking(thinking).text(response).complete(), options),
 
-  fileRead: (path: string, content: string, response: string, options?: HandlerOptions) =>
+  fileRead: (
+    path: string,
+    content: string,
+    response: string,
+    options?: { delay?: number; fail?: boolean; errorMessage?: string },
+  ) =>
     createStreamHandler(
       new StreamBuilder().start().tool("Read", { file_path: path }, content).text(response).complete(),
       options,
     ),
 
-  fileWrite: (path: string, content: string, response: string, options?: HandlerOptions) =>
+  fileWrite: (
+    path: string,
+    content: string,
+    response: string,
+    options?: { delay?: number; fail?: boolean; errorMessage?: string },
+  ) =>
     createStreamHandler(
       new StreamBuilder().start().tool("Write", { file_path: path, content }, "File written").text(response).complete(),
       options,
     ),
 
-  fileEdit: (path: string, oldString: string, newString: string, response: string, options?: HandlerOptions) =>
+  fileEdit: (
+    path: string,
+    oldString: string,
+    newString: string,
+    response: string,
+    options?: { delay?: number; fail?: boolean; errorMessage?: string },
+  ) =>
     createStreamHandler(
       new StreamBuilder()
         .start()
@@ -72,7 +88,7 @@ export const handlers = {
       options,
     ),
 
-  conversation: (messages: string[], options?: HandlerOptions) => {
+  conversation: (messages: string[], options?: { delay?: number; fail?: boolean; errorMessage?: string }) => {
     const builder = new StreamBuilder().start()
     for (const msg of messages) {
       builder.text(msg)
@@ -80,16 +96,17 @@ export const handlers = {
     return createStreamHandler(builder.complete({ totalTurns: messages.length }), options)
   },
 
-  custom: (builder: StreamBuilder, options?: HandlerOptions) => createStreamHandler(builder, options),
+  custom: (builder: StreamBuilder, options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
+    createStreamHandler(builder, options),
 
-  error: (message: string, options?: HandlerOptions) =>
+  error: (message: string, options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
     createStreamHandler(new StreamBuilder().start().error(message), {
       ...options,
       fail: true,
       errorMessage: message,
     }),
 
-  maxTurns: (options?: HandlerOptions) =>
+  maxTurns: (options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
     createStreamHandler(
       new StreamBuilder()
         .start()
@@ -97,7 +114,7 @@ export const handlers = {
       { ...options, fail: true },
     ),
 
-  timeout: (options?: HandlerOptions) =>
+  timeout: (options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
     createStreamHandler(new StreamBuilder().start().error("Request timeout", ErrorCodes.QUERY_FAILED), {
       ...options,
       fail: true,

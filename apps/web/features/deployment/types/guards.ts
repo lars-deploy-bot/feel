@@ -46,6 +46,25 @@ export const RESERVED_SLUGS = [
   "callback",
 ] as const
 
+export const DeploySlugSchema = z
+  .string()
+  .min(3, "Slug must be at least 3 characters")
+  .max(16, "Slug must be no more than 16 characters")
+  .regex(/^[a-z0-9]([a-z0-9-]{1,14}[a-z0-9])?$/, "Slug must be lowercase letters, numbers, and hyphens only")
+  .refine(slug => !RESERVED_SLUGS.some(r => r === slug), {
+    message: "This slug is reserved and cannot be used. Please choose a different name.",
+  })
+
+export const DeployTemplateIdSchema = z.string().refine(val => val.startsWith(DEFAULTS.TEMPLATE_ID_PREFIX), {
+  message: `Template ID must start with '${DEFAULTS.TEMPLATE_ID_PREFIX}'`,
+})
+
+export const DeploySiteIdeasSchema = z
+  .string()
+  .max(5000, "Site ideas must be less than 5000 characters")
+  .optional()
+  .default("")
+
 /**
  * Deploy Subdomain Request Schema
  *
@@ -53,27 +72,10 @@ export const RESERVED_SLUGS = [
  */
 export const DeploySubdomainSchema = z
   .object({
-    slug: z
-      .string()
-      .min(3, "Slug must be at least 3 characters")
-      .max(16, "Slug must be no more than 16 characters")
-      .regex(/^[a-z0-9]([a-z0-9-]{1,14}[a-z0-9])?$/, "Slug must be lowercase letters, numbers, and hyphens only")
-      .refine(slug => !RESERVED_SLUGS.some(r => r === slug), {
-        message: "This slug is reserved and cannot be used. Please choose a different name.",
-      }),
+    slug: DeploySlugSchema,
     orgId: z.string().min(1, "Organization ID cannot be empty").optional(), // Optional: If not provided, user's default org is created/used
-    siteIdeas: z
-      .string()
-      .max(5000, "Site ideas must be less than 5000 characters")
-      .transform(val => val || "")
-      .optional()
-      .default(""),
-    templateId: z
-      .string()
-      .refine(val => val.startsWith(DEFAULTS.TEMPLATE_ID_PREFIX), {
-        message: `Template ID must start with '${DEFAULTS.TEMPLATE_ID_PREFIX}'`,
-      })
-      .optional(),
+    siteIdeas: DeploySiteIdeasSchema,
+    templateId: DeployTemplateIdSchema.optional(),
   })
   .strict()
 

@@ -200,9 +200,13 @@ function validateCredentials(credentials: WorkspaceCredentials): void {
   } else {
     const resolvedCwd = path.resolve(credentials.cwd)
     const isWithinSitesRoot = isPathWithinWorkspace(resolvedCwd, PATHS.SITES_ROOT)
+    const isWithinE2bScratchRoot =
+      PATHS.E2B_SCRATCH_ROOT.length > 0 && isPathWithinWorkspace(resolvedCwd, PATHS.E2B_SCRATCH_ROOT)
     const isSuperadminWorkspace = resolvedCwd === SUPERADMIN.WORKSPACE_PATH
-    if (!isWithinSitesRoot && !isSuperadminWorkspace) {
-      errors.push(`cwd must be within ${PATHS.SITES_ROOT} or be superadmin workspace, got: ${credentials.cwd}`)
+    if (!isWithinSitesRoot && !isWithinE2bScratchRoot && !isSuperadminWorkspace) {
+      errors.push(
+        `cwd must be within ${PATHS.SITES_ROOT} or ${PATHS.E2B_SCRATCH_ROOT} or be superadmin workspace, got: ${credentials.cwd}`,
+      )
     }
   }
 

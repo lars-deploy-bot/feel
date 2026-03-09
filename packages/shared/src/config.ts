@@ -218,6 +218,7 @@ const ALIVE_ROOT = pathValue(serverConfig.paths?.aliveRoot)
 const SITES_ROOT = pathValue(serverConfig.paths?.sitesRoot)
 const TEMPLATES_ROOT = serverConfig.paths?.templatesRoot ?? "/srv/webalive/templates"
 const IMAGES_STORAGE = pathValue(serverConfig.paths?.imagesStorage)
+const E2B_SCRATCH_ROOT = pathValue(serverConfig.paths?.e2bScratchRoot)
 
 // Domain config from environment (REQUIRED - fails fast if missing)
 // NOTE: These are SERVER-ONLY. For client-side code, use apps/web/lib/config.client.ts
@@ -253,6 +254,9 @@ export const PATHS = {
 
   /** Site directory (systemd-managed) */
   SITES_ROOT,
+
+  /** Local scratch mirror for E2B-born workspaces (never served directly) */
+  E2B_SCRATCH_ROOT,
 
   /** Template sites root directory (e.g., /srv/webalive/templates) */
   TEMPLATES_ROOT,
@@ -570,7 +574,7 @@ const buildCorsOrigins = (): readonly string[] => {
 
 export const SECURITY = {
   /** Allowed workspace base directories */
-  ALLOWED_WORKSPACE_BASES: [SITES_ROOT].filter(Boolean) as readonly string[],
+  ALLOWED_WORKSPACE_BASES: [SITES_ROOT, E2B_SCRATCH_ROOT].filter(Boolean) as readonly string[],
 
   /** CORS allowed origins */
   CORS_ORIGINS: buildCorsOrigins(),

@@ -16,7 +16,9 @@ This repo is deployed on two servers. Check which one you're on:
 
 Both servers run the same codebase. Server 1 is primary production, Server 2 is the replica. PostHog and Sentry are only on Server 2 but serve both.
 
-Supabase is split by environment: production uses Supabase Cloud, staging uses the self-hosted instance on Server 2. Keep those credentials separate.
+**Supabase instances are SEPARATE per environment — never mix credentials:**
+- **Production** → Supabase Cloud (`qnvprftdorualkdyogka.supabase.co`)
+- **Staging** → Self-hosted Supabase on Server 2 (`supabase-api.sonno.tech`)
 
 **PostHog Analytics**: Queryable from any server via API. Use the `/analytics` skill to check app performance. API key is in `apps/web/.env.production` as `POSTHOG_PERSONAL_API_KEY`, project ID is `2`.
 
@@ -804,3 +806,4 @@ curl http://localhost:5070/health
 External codebases cloned for reference when stuck on frontend issues.
 
 Check these repos for working examples before reinventing.
+

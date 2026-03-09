@@ -6,9 +6,12 @@
  * deterministic hydration and eliminate race conditions.
  */
 
+import { randomUUID } from "node:crypto"
 import { test as base, type Page, type Response } from "@playwright/test"
 import { COOKIE_NAMES, createTestStorageState, DOMAINS, TEST_CONFIG } from "@webalive/shared"
-import { fetchSessionCookie } from "./helpers"
+import jwt from "jsonwebtoken"
+import { BootstrapTenantResponseSchema, type TestTenant } from "@/app/api/test/test-route-schemas"
+import { DEFAULT_USER_SCOPES } from "@/features/auth/lib/jwt"
 import { requireProjectBaseUrl } from "./lib/base-url"
 import {
   buildJsonMockResponse,
@@ -16,23 +19,7 @@ import {
   getStrictApiGuardEnabled,
   isGuardedApiPath,
 } from "./lib/strict-api-guard"
-import type { TestUser } from "./lib/tenant-types"
-import { BootstrapTenantApiResponseSchema } from "./lib/tenant-types"
-
-export type { TestUser } from "./lib/tenant-types"
-
-type TestFixtures = {
-  /** Full tenant info from bootstrap - use this in new tests */
-  workerTenant: TestUser
-  /** Alias for workerTenant - backwards compatibility */
-  tenant: TestUser
-  /** Pre-authenticated page with JWT cookie and localStorage set */
-  authenticatedPage: Page
-}
-
-type WorkerFixtures = {
-  workerStorageState: TestUser
-}
+import { buildE2ETestHeaders } from "./lib/test-headers"
 
 /**
  * Mock HTML for preview iframe - loads instantly instead of real sites
@@ -48,7 +35,16 @@ const MOCK_PREVIEW_HTML = `<!DOCTYPE html>
 </body>
 </html>`
 
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<
+  {
+    workerTenant: TestTenant
+    tenant: TestTenant
+    authenticatedPage: Page
+  },
+  {
+    workerStorageState: TestTenant
+  }
+>({
   // Override page fixture to mock preview iframe requests
   page: async ({ page }, use) => {
     // Mock preview subdomain requests — these load real sites and are slow/unnecessary for tests.
@@ -84,20 +80,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
       const baseUrl = requireProjectBaseUrl(workerInfo.project.use.baseURL)
 
-      // Get test secret for staging/production E2E tests
-      const testSecret = process.env.E2E_TEST_SECRET
-      const headers: Record<string, string> = { "Content-Type": "application/json" }
-      if (testSecret) {
-        headers["x-test-secret"] = testSecret
-      }
-
       // Fetch tenant for this worker
       const email = `${TEST_CONFIG.WORKER_EMAIL_PREFIX}${workerIndex}@${TEST_CONFIG.EMAIL_DOMAIN}`
       const workspace = `${TEST_CONFIG.WORKSPACE_PREFIX}${workerIndex}.${TEST_CONFIG.EMAIL_DOMAIN}`
 
       const res = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
         method: "POST",
-        headers,
+        headers: buildE2ETestHeaders(true),
         body: JSON.stringify({
           runId,
           workerIndex,
@@ -112,10 +101,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         )
       }
 
-      const data = BootstrapTenantApiResponseSchema.parse(await res.json())
+      const data = BootstrapTenantResponseSchema.parse(await res.json())
 
       if (!data.ok) {
-        throw new Error(`Failed to get tenant for worker ${workerIndex}: ${data.error}`)
+        throw new Error(`Failed to get tenant for worker ${workerIndex}: ok=false`)
       }
 
       await use(data.tenant)
@@ -163,17 +152,40 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     // Determine if we're running against a remote environment
     const isRemote = resolvedBaseUrl.startsWith("https://")
 
-    const token = await fetchSessionCookie(resolvedBaseUrl, workerStorageState)
+    const jwtSecret = process.env.JWT_SECRET
+    if (!jwtSecret) {
+      throw new Error("JWT_SECRET not set — add it to .env.e2e.local or export it before running tests")
+    }
+
+    const token = jwt.sign(
+      {
+        role: "authenticated" as const,
+        sub: workerStorageState.userId,
+        userId: workerStorageState.userId,
+        email: workerStorageState.email,
+        name: workerStorageState.orgName,
+        sid: randomUUID(),
+        scopes: DEFAULT_USER_SCOPES,
+        orgIds: [workerStorageState.orgId],
+        orgRoles: { [workerStorageState.orgId]: "owner" as const },
+      },
+      jwtSecret,
+      { expiresIn: "30d" },
+    )
+
+    // Extract domain from baseURL for cookie
+    const cookieDomain = new URL(resolvedBaseUrl).hostname
 
     // Set auth cookie
     await context.addCookies([
       {
         name: COOKIE_NAMES.SESSION,
         value: token,
+        domain: cookieDomain,
+        path: "/",
         httpOnly: true,
         secure: isRemote,
         sameSite: "Lax",
-        url: resolvedBaseUrl,
       },
     ])
 

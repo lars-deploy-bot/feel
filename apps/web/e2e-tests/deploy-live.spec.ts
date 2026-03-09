@@ -14,12 +14,7 @@ import type { Req, Res } from "@/lib/api/schemas"
 import { apiSchemas, validateRequest } from "@/lib/api/schemas"
 import { CleanupDeployedSiteRequestSchema, CleanupDeployedSiteResponseSchema } from "@/lib/testing/e2e-site-deployment"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
-
-interface LiveProbeResult {
-  status: number
-  textSample: string
-  attempts: number
-}
+import { buildE2ETestHeaders } from "./lib/test-headers"
 
 const LIVE_DEPLOY_TIMEOUT_MS = 540_000
 const LIVE_PROBE_INTERVAL_MS = 5_000
@@ -92,7 +87,7 @@ async function prepareReusableDomain(request: APIRequestContext, domain: string)
   const body = CleanupDeployedSiteRequestSchema.parse({ domain })
   const response = await request.delete("/api/test/delete-site", {
     data: body,
-    headers: buildTestHeaders(),
+    headers: buildE2ETestHeaders(),
   })
 
   if (response.status() === 404) {
@@ -147,15 +142,7 @@ async function resolveDeploySlug(
   )
 }
 
-function buildTestHeaders(): Record<string, string> {
-  const testSecret = process.env.E2E_TEST_SECRET
-  if (!testSecret) {
-    return {}
-  }
-  return { "x-test-secret": testSecret }
-}
-
-async function waitForSiteToBeLive(domain: string): Promise<LiveProbeResult> {
+async function waitForSiteToBeLive(domain: string) {
   const targetUrl = `https://${domain}`
   let attempts = 0
   const startedAt = Date.now()
@@ -221,7 +208,7 @@ async function cleanupDeployedSite(request: APIRequestContext, domain: string): 
   const body = CleanupDeployedSiteRequestSchema.parse({ domain })
   const response = await request.delete("/api/test/delete-site", {
     data: body,
-    headers: buildTestHeaders(),
+    headers: buildE2ETestHeaders(),
   })
 
   if (response.status() === 404) {
@@ -256,7 +243,7 @@ async function hasDeleteSiteEndpoint(request: APIRequestContext): Promise<boolea
   const probeBody = CleanupDeployedSiteRequestSchema.parse({ domain: "probe-delete-endpoint.sonno.tech" })
   const response = await request.delete("/api/test/delete-site", {
     data: probeBody,
-    headers: buildTestHeaders(),
+    headers: buildE2ETestHeaders(),
   })
 
   const payload: unknown = await response.json().catch(() => null)
@@ -270,7 +257,7 @@ async function hasDeleteSiteEndpoint(request: APIRequestContext): Promise<boolea
 
 async function ensureQuotaHeadroom(request: APIRequestContext, email: string): Promise<void> {
   const response = await request.post("/api/test/set-quota", {
-    headers: buildTestHeaders(),
+    headers: buildE2ETestHeaders(),
     data: { email, maxSites: 20 },
   })
 

@@ -6,11 +6,28 @@
  */
 
 import { existsSync } from "node:fs"
-import { DOMAINS } from "@webalive/shared"
-import { describe, expect, it, vi } from "vitest"
+import { mkdir, mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
+import { DOMAINS, PATHS } from "@webalive/shared"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import * as worktrees from "@/features/worktrees/lib/worktrees"
+import type { DomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
+
+const resolveDomainRuntimeMock = vi.fn<(hostname: string) => Promise<DomainRuntime | null>>(async () => null)
+
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  resolveDomainRuntime: (hostname: string) => resolveDomainRuntimeMock(hostname),
+}))
+
+const getE2bScratchUserDirMock = vi.fn((domain: string) => `${PATHS.E2B_SCRATCH_ROOT}/${domain}/user`)
+
+vi.mock("@/lib/sandbox/e2b-workspace", () => ({
+  getE2bScratchUserDir: (domain: string) => getE2bScratchUserDirMock(domain),
+}))
+
 import { getWorkspace } from "./workspaceRetriever"
 
 // Check if we're in an environment with actual workspace directories
@@ -283,6 +300,120 @@ describe("Workspace Resolution", () => {
 
       resolveSpy.mockRestore()
       vi.unstubAllEnvs()
+    })
+  })
+
+  describe("E2B Sandbox Resolution", () => {
+    const scratchRootsToCleanup: string[] = []
+
+    afterEach(async () => {
+      resolveDomainRuntimeMock.mockReset()
+      resolveDomainRuntimeMock.mockResolvedValue(null)
+      getE2bScratchUserDirMock.mockClear()
+      await Promise.all(scratchRootsToCleanup.map(root => rm(root, { recursive: true, force: true })))
+      scratchRootsToCleanup.length = 0
+    })
+
+    it("returns 404 when E2B scratch dir does not exist (confirms E2B path is taken)", async () => {
+      const domain = "e2b-exists.alive.best"
+
+      resolveDomainRuntimeMock.mockResolvedValue({
+        execution_mode: "e2b",
+        domain_id: "dom_test123",
+        hostname: domain,
+        port: 3333,
+        is_test_env: true,
+        sandbox_id: null,
+        sandbox_status: null,
+      })
+
+      // E2B scratch dir won't exist on disk — proves the E2B branch is taken
+      const result = await getWorkspace({
+        host: DOMAINS.STREAM_DEV_HOST,
+        body: { workspace: domain },
+        requestId: "test-e2b-001",
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        const body = await result.response.json()
+        expect(result.response.status).toBe(404)
+        expect(body.message).toContain("E2B workspace")
+      }
+      expect(getE2bScratchUserDirMock).toHaveBeenCalledWith(domain)
+    })
+
+    it("resolves E2B scratch workspace when scratch dir exists", async () => {
+      const domain = "e2b-happy.alive.best"
+      const scratchRoot = await mkdtemp(path.join(tmpdir(), "workspace-retriever-"))
+      const existingScratchDir = path.join(scratchRoot, "user")
+      await mkdir(existingScratchDir, { recursive: true })
+      scratchRootsToCleanup.push(scratchRoot)
+
+      resolveDomainRuntimeMock.mockResolvedValue({
+        execution_mode: "e2b",
+        domain_id: "dom_happy",
+        hostname: domain,
+        port: 3334,
+        is_test_env: true,
+        sandbox_id: "sandbox_happy",
+        sandbox_status: "running",
+      })
+
+      getE2bScratchUserDirMock.mockReturnValue(existingScratchDir)
+
+      const result = await getWorkspace({
+        host: DOMAINS.STREAM_DEV_HOST,
+        body: { workspace: domain },
+        requestId: "test-e2b-002",
+      })
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.workspace).toBe(existingScratchDir)
+        expect(result.workspace).toMatch(/\/user$/)
+      }
+      expect(getE2bScratchUserDirMock).toHaveBeenCalledWith(domain)
+    })
+
+    it("falls through to filesystem resolution when domain runtime lookup fails", async () => {
+      resolveDomainRuntimeMock.mockRejectedValue(new Error("Supabase unavailable"))
+
+      const result = await getWorkspace({
+        host: DOMAINS.STREAM_DEV_HOST,
+        body: { workspace: "some-site.alive.best" },
+        requestId: "test-e2b-003",
+      })
+
+      // Should not throw — falls through to filesystem candidate resolution
+      // Will return 404 since the site doesn't exist on disk, but shouldn't crash
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.response.status).toBe(404)
+      }
+    })
+
+    it("does not resolve E2B workspace for systemd domains", async () => {
+      resolveDomainRuntimeMock.mockResolvedValue({
+        execution_mode: "systemd",
+        domain_id: "dom_systemd",
+        hostname: "systemd-site.alive.best",
+        port: 3335,
+        is_test_env: true,
+        sandbox_id: null,
+        sandbox_status: null,
+      })
+
+      await getWorkspace({
+        host: DOMAINS.STREAM_DEV_HOST,
+        body: { workspace: "systemd-site.alive.best" },
+        requestId: "test-e2b-004",
+      })
+
+      // Should fall through to normal filesystem resolution (not E2B path)
+      // Will be 404 since the site doesn't exist, but the important thing
+      // is that it didn't try the E2B scratch path
+      expect(getE2bScratchUserDirMock).not.toHaveBeenCalled()
     })
   })
 

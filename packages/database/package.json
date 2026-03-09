@@ -31,7 +31,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:pull": "drizzle-kit introspect",
-    "db:setup": "bun run scripts/setup-database.ts"
+    "db:setup": "bun run scripts/setup-database.ts",
+    "db:seed": "bash scripts/seed.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.46.2",

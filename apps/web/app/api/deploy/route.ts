@@ -1,173 +1,178 @@
 import * as Sentry from "@sentry/nextjs"
-import { DEFAULTS, DOMAINS } from "@webalive/shared"
+import { COOKIE_NAMES, DEFAULTS, DOMAINS } from "@webalive/shared"
 import { DeploymentError } from "@webalive/site-controller"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
-import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
+import { domainToSlug, normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { handleBody, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
+import { assertCanCreateSite, NewSiteRequestError } from "@/lib/deployment/create-new-site"
 import { runStrictDeployment } from "@/lib/deployment/deploy-pipeline"
 import { DomainRegistrationError } from "@/lib/deployment/domain-registry"
+import {
+  buildNewSiteSuccessPayload,
+  persistNewSiteMetadata,
+  refreshSessionJwtForOrg,
+  scheduleSiteSslValidation,
+} from "@/lib/deployment/new-site-lifecycle"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
-import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
 import { validateTemplateFromDb } from "@/lib/deployment/template-validation"
-import { getUserQuota } from "@/lib/deployment/user-quotas"
 import { ErrorCodes } from "@/lib/error-codes"
 
 export async function POST(request: NextRequest) {
-  const startTime = Date.now()
-  console.log("🚀 [DEPLOY API] Request received")
-
-  let domain = "unknown domain" // Initialize domain outside try block for error handling
-
   try {
-    // AUTHENTICATION REQUIRED - No anonymous deployments allowed
-    const user = await requireSessionUser()
-    console.log(`🔐 [DEPLOY API] Authenticated user: ${user.email} (${user.id})`)
+    const sessionUser = await requireSessionUser()
 
-    // Parse and validate request body
     const parsed = await handleBody("deploy", request)
     if (isHandleBodyError(parsed)) return parsed
 
-    // Normalize and validate domain
-    const domainResult = normalizeAndValidateDomain(parsed.domain)
-    if (!domainResult.isValid) {
-      console.error(`❌ [DEPLOY API] Domain validation failed: ${domainResult.error}`)
-      Sentry.captureException(new Error(`Deploy: domain validation failed: ${domainResult.error}`))
-      return structuredErrorResponse(ErrorCodes.INVALID_DOMAIN, { status: 400, details: { error: domainResult.error } })
+    const normalized = normalizeAndValidateDomain(parsed.domain)
+    if (!normalized.isValid) {
+      return structuredErrorResponse(ErrorCodes.INVALID_DOMAIN, {
+        status: 400,
+        details: { message: normalized.error || "Invalid domain format" },
+      })
     }
 
-    domain = domainResult.domain // Use normalized domain
-
-    const orgId = parsed.orgId
-
-    // Validate user has access to the specified organization
-    console.log(`🏢 [DEPLOY API] Validating access to organization: ${orgId}`)
-    const hasAccess = await validateUserOrgAccess(user.id, orgId)
-
-    if (!hasAccess) {
-      console.error(`❌ [DEPLOY API] User ${user.email} does not have access to org ${orgId}`)
-      return structuredErrorResponse(ErrorCodes.FORBIDDEN, { status: 403 })
-    }
-
-    console.log(`✅ [DEPLOY API] User has access to organization ${orgId}`)
-
-    // Check site creation limit (superadmins bypass)
-    if (!user.isSuperadmin) {
-      const quota = await getUserQuota(user.id)
-      if (!quota.canCreateSite) {
-        console.error(
-          `❌ [DEPLOY API] User ${user.email} has reached site limit (${quota.currentSites}/${quota.maxSites})`,
-        )
-        return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
-          status: 403,
-          details: {
-            limit: quota.maxSites,
-            currentCount: quota.currentSites,
-          },
-        })
+    if (parsed.orgId) {
+      const hasAccess = await validateUserOrgAccess(sessionUser.id, parsed.orgId)
+      if (!hasAccess) {
+        return structuredErrorResponse(ErrorCodes.FORBIDDEN, { status: 403 })
       }
     }
 
-    // Validate and get selected template from database
+    await assertCanCreateSite(sessionUser)
+
     const templateValidation = await validateTemplateFromDb(parsed.templateId)
     if (!templateValidation.valid || !templateValidation.template) {
-      const error = templateValidation.error!
-      console.error(`❌ [DEPLOY API] Template validation failed: ${error.code}`, error)
-      Sentry.captureException(error)
+      const error = templateValidation.error
       return structuredErrorResponse(
-        error.code === "INVALID_TEMPLATE" ? ErrorCodes.INVALID_TEMPLATE : ErrorCodes.TEMPLATE_NOT_FOUND,
+        error?.code === "INVALID_TEMPLATE" ? ErrorCodes.INVALID_TEMPLATE : ErrorCodes.TEMPLATE_NOT_FOUND,
         {
           status: 400,
           details: {
-            templateId: error.templateId,
-            message: error.message,
+            templateId: error?.templateId,
+            message: error?.message || "Template validation failed",
           },
         },
       )
     }
-    const template = templateValidation.template
-    console.log(
-      `📋 [DEPLOY API] Request: domain=${parsed.domain} → normalized: ${domain}, template: ${template.template_id}`,
+
+    const deployment = await runStrictDeployment({
+      domain: normalized.domain,
+      email: sessionUser.email,
+      orgId: parsed.orgId,
+      templatePath: templateValidation.template.source_path,
+    })
+
+    const slug = domainToSlug(normalized.domain)
+    try {
+      await persistNewSiteMetadata({
+        slug,
+        metadata: {
+          slug,
+          domain: normalized.domain,
+          workspace: normalized.domain,
+          email: sessionUser.email,
+          siteIdeas: "",
+          templateId: templateValidation.template.template_id,
+          createdAt: Date.now(),
+        },
+        executionMode: deployment.executionMode,
+      })
+    } catch (metadataError) {
+      console.error("[Deploy] Metadata persistence failed (non-fatal):", metadataError)
+      Sentry.captureException(metadataError)
+    }
+
+    scheduleSiteSslValidation(normalized.domain, deployment.executionMode)
+
+    const message =
+      deployment.executionMode === "systemd"
+        ? `Site ${normalized.domain} deployed successfully (SSL provisioning in progress)`
+        : `Site ${normalized.domain} deployed successfully!`
+
+    const res = alrighty(
+      "deploy",
+      buildNewSiteSuccessPayload({
+        message,
+        domain: normalized.domain,
+        orgId: parsed.orgId,
+        executionMode: deployment.executionMode,
+      }),
     )
 
-    // Execute strict deployment pipeline (deploy -> register -> caddy -> verify)
-    await runStrictDeployment({
-      domain,
-      email: user.email, // User email (authenticated)
-      orgId, // Organization to deploy to
-      templatePath: template.source_path, // Template to copy from
+    await refreshSessionJwtForOrg({
+      orgId: parsed.orgId,
+      sessionUser,
+      logPrefix: "[Deploy]",
+      setSessionCookie: token => {
+        res.cookies.set(COOKIE_NAMES.SESSION, token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          path: "/",
+        })
+      },
     })
 
-    // Wait for SSL certificate to be provisioned and validate deployment
-    console.log(`🔒 [DEPLOY API] Validating SSL certificate for ${domain}...`)
-
-    const sslValidation = await validateSSLCertificate(domain)
-
-    const duration = Date.now() - startTime
-
-    if (sslValidation.success) {
-      console.log(`✅ [DEPLOY API] Deployment completed successfully in ${duration}ms`)
-      return NextResponse.json({
-        ok: true,
-        message: `Site ${domain} deployed successfully with SSL certificate`,
-        domain,
-        orgId,
-      })
-    }
-    console.warn(`⚠️  [DEPLOY API] Deployment completed but SSL validation failed: ${sslValidation.error}`)
-    return NextResponse.json({
-      ok: true, // Deployment itself succeeded
-      message: `Site ${domain} deployed but SSL certificate is still being provisioned. Try again in 30-60 seconds.`,
-      domain,
-      orgId,
-      errors: [sslValidation.error],
-    })
+    return res
   } catch (error: unknown) {
-    const duration = Date.now() - startTime
     if (error instanceof AuthenticationError) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    console.error(`💥 [DEPLOY API] Error after ${duration}ms:`, error)
+    if (error instanceof NewSiteRequestError) {
+      return structuredErrorResponse(error.errorCode, {
+        status: error.status,
+        details: error.details,
+      })
+    }
 
-    Sentry.captureException(error)
+    if (error instanceof DomainRegistrationError) {
+      const status =
+        error.errorCode === ErrorCodes.DOMAIN_ALREADY_EXISTS || error.errorCode === ErrorCodes.DEPLOYMENT_IN_PROGRESS
+          ? 409
+          : 400
+      return structuredErrorResponse(error.errorCode, {
+        status,
+        details: error.details,
+      })
+    }
 
-    let errorMessage = "Deployment failed"
-    let statusCode = 500
-
-    // Handle typed DeploymentError from site-controller (no string matching!)
     if (error instanceof DeploymentError) {
-      statusCode = error.statusCode
+      let message = error.message
       switch (error.code) {
         case "DNS_VALIDATION_FAILED":
-          errorMessage = `${error.message}. Please ensure your domain points to ${DEFAULTS.SERVER_IP}. See DNS setup guide: ${DOMAINS.STREAM_PROD}/docs/dns-setup`
+          message = `${error.message}. Please ensure your domain points to ${DEFAULTS.SERVER_IP}. See DNS setup guide: ${DOMAINS.STREAM_PROD}/docs/dns-setup`
           break
         case "INVALID_DOMAIN":
         case "PATH_TRAVERSAL":
         case "SITE_EXISTS":
-          errorMessage = error.message
+          message = error.message
           break
-        default:
-          errorMessage = `Deployment failed: ${error.message}`
       }
-    } else if (error instanceof DomainRegistrationError) {
-      errorMessage = error.message
-      // Map common error codes to HTTP status codes
-      statusCode = error.errorCode === "DOMAIN_ALREADY_EXISTS" ? 409 : 400
-    } else if (error && typeof error === "object" && "code" in error && error.code === "ETIMEDOUT") {
-      errorMessage = "Deployment timed out (5 minutes)"
-      statusCode = 408
-    } else if (error instanceof Error) {
-      errorMessage = `Deployment failed: ${error.message}`
+
+      return structuredErrorResponse(ErrorCodes.DEPLOYMENT_FAILED, {
+        status: error.statusCode,
+        details: { message, code: error.code },
+      })
+    }
+
+    console.error("[Deploy] Unexpected error:", error)
+    Sentry.captureException(error)
+
+    let status = 500
+    if (error && typeof error === "object" && "code" in error && error.code === "ETIMEDOUT") {
+      status = 408
     }
 
     return structuredErrorResponse(ErrorCodes.DEPLOYMENT_FAILED, {
-      status: statusCode,
-      details: {
-        deploymentError: errorMessage,
-        errors: process.env.NODE_ENV === "development" ? [String(error)] : undefined,
-      },
+      status,
+      details:
+        process.env.NODE_ENV === "development"
+          ? { error: error instanceof Error ? error.toString() : String(error) }
+          : undefined,
     })
   }
 }

@@ -26,18 +26,6 @@ import { TEST_TIMEOUTS } from "./fixtures/test-data"
  * - Error handling for failed requests
  */
 
-interface FetchTestResult {
-  ok: boolean
-  status: number
-  error: string | null
-}
-
-interface PollingTestResult {
-  success: boolean
-  attempts: number
-  error: string | null
-}
-
 test.describe("Browser Polling Mechanism", () => {
   test.skip("browser fetch API works in page context", async ({ page }) => {
     // Navigate to deploy page to establish page context
@@ -47,7 +35,7 @@ test.describe("Browser Polling Mechanism", () => {
 
     // Test that browser fetch works at all
     // Using same-origin to avoid CORS (we're testing the mechanism, not cross-origin)
-    const result = await page.evaluate(async (): Promise<FetchTestResult> => {
+    const result = await page.evaluate(async () => {
       try {
         const response = await fetch("/", {
           method: "GET",
@@ -84,7 +72,7 @@ test.describe("Browser Polling Mechanism", () => {
     //
     // Pattern: await each fetch before starting the next one.
     // This prevents race conditions when fetches take longer than the interval.
-    const result = await page.evaluate(async (): Promise<PollingTestResult> => {
+    const result = await page.evaluate(async () => {
       const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
       const maxAttempts = 10
       let attempts = 0
@@ -130,7 +118,7 @@ test.describe("Browser Polling Mechanism", () => {
     await expect(page.getByTestId("deploy-heading")).toBeAttached({ timeout: TEST_TIMEOUTS.slow })
 
     // Test error handling: non-existent domain should throw, not hang
-    const result = await page.evaluate(async (): Promise<FetchTestResult> => {
+    const result = await page.evaluate(async () => {
       try {
         // This will fail with network error (CORS or DNS failure)
         const response = await fetch("https://definitely-does-not-exist-12345.test.local", {

@@ -1,46 +1,20 @@
 import * as fs from "node:fs/promises"
 import * as path from "node:path"
 import * as Sentry from "@sentry/nextjs"
-import { AppConstants } from "@webalive/database"
 import { env } from "@webalive/env/server"
 import { getWorkspacePath } from "@webalive/shared"
 import { getWorkerPool } from "@webalive/worker-pool"
 import { Sandbox } from "e2b"
-import { z } from "zod"
+import type { z } from "zod"
+import {
+  TestE2BDomainResponseSchema,
+  TestE2BDomainSchema,
+  TestE2BDomainUpdateBodySchema,
+} from "@/app/api/test/test-route-schemas"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
+import { resetE2bScratchUserWorkspace } from "@/lib/sandbox/e2b-workspace"
 import { createAppClient } from "@/lib/supabase/app"
-
-const RuntimeResponseSchema = z.object({
-  domain_id: z.string(),
-  hostname: z.string(),
-  org_id: z.string().nullable(),
-  is_test_env: z.boolean(),
-  execution_mode: z.enum(AppConstants.app.Enums.execution_mode),
-  sandbox_id: z.string().nullable(),
-  sandbox_status: z.enum(AppConstants.app.Enums.sandbox_status).nullable(),
-})
-
-const SeedFileSchema = z.object({
-  /** Relative path within workspace user dir (e.g. "vite.config.ts") */
-  path: z.string().min(1),
-  /** File content (text) */
-  content: z.string(),
-})
-
-const UpdateBodySchema = z.object({
-  workspace: z.string().min(1),
-  executionMode: z.enum(AppConstants.app.Enums.execution_mode),
-  sandboxStatus: z.enum(AppConstants.app.Enums.sandbox_status).nullable().optional(),
-  sandboxId: z.string().nullable().optional(),
-  killSandbox: z.boolean().optional().default(false),
-  resetSandboxFields: z.boolean().optional().default(false),
-  restartWorkspaceWorkers: z.boolean().optional().default(false),
-  /** Write test files to the host workspace (for testing sync behavior). */
-  seedHostFiles: z.array(SeedFileSchema).optional(),
-  /** Remove files from the host workspace (cleanup after seeding). */
-  cleanHostFiles: z.array(z.string().min(1)).optional(),
-})
 
 function hasTestAccess(req: Request): boolean {
   const isTestEnv = env.NODE_ENV === "test" || env.STREAM_ENV === "local"
@@ -63,11 +37,11 @@ async function getDomainRuntime(workspace: string) {
     throw new Error(`Failed to fetch runtime for ${workspace}: ${error.message}`)
   }
 
-  return RuntimeResponseSchema.parse(data)
+  return TestE2BDomainSchema.parse(data)
 }
 
 async function killSandboxIfRequested(
-  domain: z.infer<typeof RuntimeResponseSchema>,
+  domain: z.infer<typeof TestE2BDomainSchema>,
   shouldKill: boolean,
 ): Promise<{ killed: boolean }> {
   if (!shouldKill || !domain.sandbox_id) return { killed: false }
@@ -163,6 +137,18 @@ async function cleanHostFilesIfRequested(workspace: string, files?: string[]): P
   return cleaned
 }
 
+async function prepareScratchWorkspaceOnTransition(
+  workspace: string,
+  currentMode: string,
+  nextMode: z.infer<typeof TestE2BDomainUpdateBodySchema>["executionMode"],
+) {
+  if (currentMode === "e2b" || nextMode !== "e2b") {
+    return null
+  }
+
+  return resetE2bScratchUserWorkspace(workspace, getWorkspacePath(workspace))
+}
+
 export async function GET(req: Request) {
   if (!hasTestAccess(req)) {
     return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 404 })
@@ -202,9 +188,9 @@ export async function POST(req: Request) {
     return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 404 })
   }
 
-  let body: z.infer<typeof UpdateBodySchema>
+  let body: z.infer<typeof TestE2BDomainUpdateBodySchema>
   try {
-    body = UpdateBodySchema.parse(await req.json())
+    body = TestE2BDomainUpdateBodySchema.parse(await req.json())
   } catch (_err) {
     return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {
       status: 400,
@@ -232,6 +218,11 @@ export async function POST(req: Request) {
     const workerRestartResult = await restartWorkspaceWorkersIfRequested(body.workspace, body.restartWorkspaceWorkers)
     const seededFiles = await seedHostFilesIfRequested(body.workspace, body.seedHostFiles)
     const cleanedFiles = await cleanHostFilesIfRequested(body.workspace, body.cleanHostFiles)
+    const scratchWorkspace = await prepareScratchWorkspaceOnTransition(
+      body.workspace,
+      current.execution_mode,
+      body.executionMode,
+    )
 
     const nextSandboxId = body.resetSandboxFields ? null : (body.sandboxId ?? current.sandbox_id)
     const nextSandboxStatus = body.resetSandboxFields ? null : (body.sandboxStatus ?? current.sandbox_status)
@@ -254,12 +245,13 @@ export async function POST(req: Request) {
 
     return Response.json({
       ok: true,
-      domain: RuntimeResponseSchema.parse(data),
+      domain: TestE2BDomainSchema.parse(data),
       kill: killResult,
       workerRestart: workerRestartResult,
       seededFiles,
       cleanedFiles,
-    })
+      scratchWorkspace,
+    } satisfies z.infer<typeof TestE2BDomainResponseSchema>)
   } catch (error) {
     console.error("[Test E2B Domain] POST failed:", error)
     Sentry.captureException(error)

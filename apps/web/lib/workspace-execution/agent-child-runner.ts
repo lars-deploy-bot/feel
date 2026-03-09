@@ -11,7 +11,8 @@ import { spawn } from "node:child_process"
 import { statSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import type { StreamMode } from "@webalive/shared"
+import { PATHS, type StreamMode } from "@webalive/shared"
+import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { createSandboxEnv } from "./sandbox-env"
 
 interface WorkspaceCredentials {
@@ -38,8 +39,23 @@ interface AgentRequest {
   extraTools?: string[]
 }
 
+function isRootOwnedE2bScratchWorkspace(workspaceRoot: string): boolean {
+  if (PATHS.E2B_SCRATCH_ROOT.length === 0) {
+    return false
+  }
+
+  return isPathWithinWorkspace(resolve(workspaceRoot), PATHS.E2B_SCRATCH_ROOT)
+}
+
 function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
   const st = statSync(workspaceRoot)
+
+  // ACCEPTED RISK: E2B scratch workspaces are root-owned because they're transient
+  // copies prepared by the server process (not per-user systemd services). Isolation
+  // comes from E2B's sandbox boundary, not OS-level user separation.
+  if (st.uid === 0 && st.gid === 0 && isRootOwnedE2bScratchWorkspace(workspaceRoot)) {
+    return { uid: 0, gid: 0 }
+  }
 
   if (!st.uid || !st.gid || st.uid === 0 || st.gid === 0) {
     throw new Error(`Invalid workspace owner for ${workspaceRoot}: uid=${st.uid} gid=${st.gid}`)
@@ -51,7 +67,7 @@ function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
 export function shouldUseChildProcess(workspaceRoot: string): boolean {
   try {
     const st = statSync(workspaceRoot)
-    return st.uid !== 0 && st.gid !== 0
+    return (st.uid !== 0 && st.gid !== 0) || isRootOwnedE2bScratchWorkspace(workspaceRoot)
   } catch {
     return false
   }

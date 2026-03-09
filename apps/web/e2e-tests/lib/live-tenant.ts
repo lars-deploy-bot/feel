@@ -1,25 +1,16 @@
 import { expect, type Page, type TestInfo } from "@playwright/test"
-import { TEST_CONFIG, WORKSPACE_STORAGE, type WorkspaceStorageValue } from "@webalive/shared"
+import { parseWorkspaceStorageValue, TEST_CONFIG, WORKSPACE_STORAGE } from "@webalive/shared"
+import {
+  BootstrapTenantResponseSchema,
+  TestE2BDomainResponseSchema,
+  type TestE2BDomainUpdateBody,
+  type TestTenant,
+  VerifyTenantResponseSchema,
+} from "@/app/api/test/test-route-schemas"
 import { TEST_TIMEOUTS } from "../fixtures/test-data"
 import { login } from "../helpers"
 import { requireProjectBaseUrl } from "./base-url"
-import { BootstrapTenantApiResponseSchema } from "./tenant-types"
-
-export interface LiveStagingUser {
-  email: string
-  password: string
-  workspace: string
-  orgId: string
-}
-
-interface VerifyTenantResponse {
-  ready: boolean
-  sandbox?: {
-    executionMode: "systemd" | "e2b"
-    sandboxId: string | null
-    sandboxStatus: "creating" | "running" | "dead" | null
-  }
-}
+import { buildE2ETestHeaders } from "./test-headers"
 
 function getRunId(): string {
   const runId = process.env.E2E_RUN_ID
@@ -27,18 +18,6 @@ function getRunId(): string {
     throw new Error("E2E_RUN_ID is required for live staging tests")
   }
   return runId
-}
-
-function buildTestHeaders(includeJsonContentType: boolean): Record<string, string> {
-  const headers: Record<string, string> = {}
-  if (includeJsonContentType) {
-    headers["Content-Type"] = "application/json"
-  }
-  const testSecret = process.env.E2E_TEST_SECRET
-  if (testSecret) {
-    headers["x-test-secret"] = testSecret
-  }
-  return headers
 }
 
 function getWorkerTenantAddress(workerIndex: number): {
@@ -58,13 +37,16 @@ export function getProjectBaseUrl(testInfo: TestInfo): string {
   return requireProjectBaseUrl(testInfo.project.use.baseURL)
 }
 
-export async function getLiveStagingUser(workerIndex: number, baseUrl: string): Promise<LiveStagingUser> {
+export async function getLiveStagingUser(
+  workerIndex: number,
+  baseUrl: string,
+): Promise<Pick<TestTenant, "email" | "workspace" | "orgId"> & { password: string }> {
   const runId = getRunId()
   const { email, workspace, normalizedWorkerIndex } = getWorkerTenantAddress(workerIndex)
 
   const response = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
     method: "POST",
-    headers: buildTestHeaders(true),
+    headers: buildE2ETestHeaders(true),
     body: JSON.stringify({
       runId,
       workerIndex: normalizedWorkerIndex,
@@ -82,7 +64,7 @@ export async function getLiveStagingUser(workerIndex: number, baseUrl: string): 
     throw new Error(`bootstrap-tenant returned non-JSON response: ${contentType || "unknown"}`)
   }
 
-  const payload = BootstrapTenantApiResponseSchema.parse(await response.json())
+  const payload = BootstrapTenantResponseSchema.parse(await response.json())
   if (!payload.ok) {
     throw new Error("bootstrap-tenant returned ok=false")
   }
@@ -95,7 +77,10 @@ export async function getLiveStagingUser(workerIndex: number, baseUrl: string): 
   }
 }
 
-export async function loginLiveStaging(page: Page, user: LiveStagingUser): Promise<void> {
+export async function loginLiveStaging(
+  page: Page,
+  user: Pick<TestTenant, "email" | "workspace" | "orgId"> & { password: string },
+): Promise<void> {
   await login(page, user)
 
   await page.waitForURL("**/chat", { timeout: TEST_TIMEOUTS.max })
@@ -108,7 +93,7 @@ export async function loginLiveStaging(page: Page, user: LiveStagingUser): Promi
   if (!storageValue) {
     throw new Error("Workspace storage missing after login")
   }
-  const parsed = JSON.parse(storageValue) as WorkspaceStorageValue
+  const parsed = parseWorkspaceStorageValue(storageValue)
   expect(parsed.state.currentWorkspace).toBe(user.workspace)
   expect(parsed.state.selectedOrgId).toBe(user.orgId)
 
@@ -117,17 +102,34 @@ export async function loginLiveStaging(page: Page, user: LiveStagingUser): Promi
   })
 }
 
-export async function getTenantSandboxState(baseUrl: string, email: string): Promise<VerifyTenantResponse["sandbox"]> {
+export async function updateTestDomainRuntime(baseUrl: string, payload: TestE2BDomainUpdateBody): Promise<void> {
+  const response = await fetch(`${baseUrl}/api/test/e2b-domain`, {
+    method: "POST",
+    headers: buildE2ETestHeaders(true),
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    throw new Error(`e2b-domain POST failed (${response.status})`)
+  }
+
+  const data = TestE2BDomainResponseSchema.parse(await response.json())
+  if (!data.ok) {
+    throw new Error("e2b-domain POST returned ok=false")
+  }
+}
+
+export async function getTenantSandboxState(baseUrl: string, email: string) {
   const response = await fetch(
     `${baseUrl}/api/test/verify-tenant?email=${encodeURIComponent(email)}&includeSandbox=1`,
-    { headers: buildTestHeaders(false) },
+    { headers: buildE2ETestHeaders() },
   )
 
   if (!response.ok) {
     throw new Error(`verify-tenant failed (${response.status})`)
   }
 
-  const payload = (await response.json()) as VerifyTenantResponse
+  const payload = VerifyTenantResponseSchema.parse(await response.json())
   if (!payload.ready) {
     throw new Error("verify-tenant returned ready=false while checking sandbox state")
   }

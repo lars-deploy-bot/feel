@@ -21,6 +21,25 @@ import {
 /** Maximum length for HTML snippet */
 const MAX_HTML_LENGTH = 500
 
+/**
+ * Derive the parent frame's origin from document.referrer.
+ * Returns null if we can't determine a safe origin (e.g. direct navigation).
+ * This prevents postMessage("*") which leaks data to any embedder.
+ */
+function getParentOrigin(): string | null {
+  try {
+    if (document.referrer) {
+      return new URL(document.referrer).origin
+    }
+  } catch {
+    // Invalid referrer URL
+  }
+  return null
+}
+
+/** Cached parent origin — computed once on init */
+let cachedParentOrigin: string | null = null
+
 /** Brand colors - purple/pink gradient like React Grab */
 const COLORS = {
   primary: "#d239c0", // Vibrant pink/purple
@@ -219,16 +238,22 @@ function buildContext(element: Element, source: SourceInfo): ElementSelectedCont
 }
 
 /**
- * Send element context to parent frame
+ * Send element context to parent frame.
+ * Uses the cached parent origin — never sends to "*".
  */
 function sendToParent(context: ElementSelectedContext): void {
+  if (!cachedParentOrigin) {
+    console.warn("[alive-tagger] No parent origin — cannot send message safely")
+    return
+  }
+
   const message: ElementSelectedMessage = {
     type: ELEMENT_SELECTED_MESSAGE_TYPE,
     context,
   }
 
   try {
-    window.parent.postMessage(message, "*")
+    window.parent.postMessage(message, cachedParentOrigin)
     console.log("[alive-tagger] Selected:", context.displayName, "at", `${context.fileName}:${context.lineNumber}`)
   } catch (error) {
     console.error("[alive-tagger] Failed to send message:", error)
@@ -378,6 +403,12 @@ export function initAliveTagger(): () => void {
   }
   ;(window as unknown as Record<string, boolean>).__aliveTaggerInitialized = true
 
+  // Derive parent origin for secure postMessage
+  cachedParentOrigin = getParentOrigin()
+  if (!cachedParentOrigin) {
+    console.warn("[alive-tagger] Could not determine parent origin from referrer — postMessage disabled")
+  }
+
   console.log("[alive-tagger] Initializing element selector")
 
   // Inject styles
@@ -469,7 +500,10 @@ export function initAliveTagger(): () => void {
   }
 
   // Listen for activation/deactivation message from parent (button click)
+  // Only accept messages from the verified parent origin.
   function handleMessage(e: MessageEvent): void {
+    if (!cachedParentOrigin || e.origin !== cachedParentOrigin) return
+
     if (e.data?.type === "alive-tagger-activate") {
       isActive = true
       document.body.classList.add("alive-tagger-active")

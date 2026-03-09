@@ -1,3 +1,4 @@
+import type { ExecutionMode } from "@webalive/database"
 import { create, type StateCreator } from "zustand"
 import { persist } from "zustand/middleware"
 import { useShallow } from "zustand/react/shallow"
@@ -28,11 +29,13 @@ interface StatusSlice {
   isDeploying: boolean
   deploymentStatus: DeploymentStatus
   deploymentDomain: string | null
+  deploymentExecutionMode: ExecutionMode | null
   deploymentErrors: string[]
   statusActions: {
     setIsDeploying: (isDeploying: boolean) => void
     setDeploymentStatus: (status: DeploymentStatus) => void
     setDeploymentDomain: (domain: string | null) => void
+    setDeploymentExecutionMode: (executionMode: ExecutionMode | null) => void
     setDeploymentErrors: (errors: string[]) => void
   }
 }
@@ -66,12 +69,14 @@ const createStatusSlice: StateCreator<DeployStore, [], [], StatusSlice> = (set, 
     setIsDeploying: (isDeploying: boolean) => set({ isDeploying }),
     setDeploymentStatus: (status: DeploymentStatus) => set({ deploymentStatus: status }),
     setDeploymentDomain: (domain: string | null) => set({ deploymentDomain: domain }),
+    setDeploymentExecutionMode: (deploymentExecutionMode: ExecutionMode | null) => set({ deploymentExecutionMode }),
     setDeploymentErrors: (errors: string[]) => set({ deploymentErrors: errors }),
   }
   return {
     isDeploying: false,
     deploymentStatus: "idle",
     deploymentDomain: null,
+    deploymentExecutionMode: null,
     deploymentErrors: [],
     statusActions,
   }
@@ -133,6 +138,7 @@ export const useDeployPassword = () => useDeployStore(state => state.password)
 export const useDeployIsDeploying = () => useDeployStore(state => state.isDeploying)
 export const useDeploymentStatus = () => useDeployStore(state => state.deploymentStatus)
 export const useDeploymentDomain = () => useDeployStore(state => state.deploymentDomain)
+export const useDeploymentExecutionMode = () => useDeployStore(state => state.deploymentExecutionMode)
 export const useDeploymentErrors = () => useDeployStore(state => state.deploymentErrors)
 export const useDeploymentHistory = () => useDeployStore(state => state.history)
 
@@ -158,6 +164,7 @@ export const useDeploymentStatusWithActions = () =>
       isDeploying: state.isDeploying,
       status: state.deploymentStatus,
       domain: state.deploymentDomain,
+      executionMode: state.deploymentExecutionMode,
       errors: state.deploymentErrors,
       ...state.statusActions,
     })),
