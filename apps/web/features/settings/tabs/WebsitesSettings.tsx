@@ -365,7 +365,9 @@ export function WebsitesSettings() {
           <GithubImportModal
             onClose={() => setShowImportModal(false)}
             onImported={domain => {
-              window.location.href = `/chat?wk=${encodeURIComponent(domain)}`
+              setShowImportModal(false)
+              refetch()
+              switchWorkspace(domain, selectedOrg?.org_id ?? organizations[0]?.org_id ?? "")
             }}
           />
         )}

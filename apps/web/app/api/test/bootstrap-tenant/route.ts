@@ -73,6 +73,7 @@ interface BootstrapTenant {
   orgId: string
   orgName: string
   workspace: string
+  siteId: string
   workerIndex: number
 }
 
@@ -187,7 +188,10 @@ async function ensureWorkspaceFilesystem(workspace: string): Promise<void> {
   })
 }
 
-async function buildTenantResponse(tenant: BootstrapTenant): Promise<Response> {
+async function buildTenantResponse(
+  app: Awaited<ReturnType<typeof createAppClient>>,
+  tenant: Omit<BootstrapTenant, "siteId">,
+): Promise<Response> {
   invalidateUserAuthzCache(tenant.userId)
   invalidateWorkspaceAuthzCache(tenant.workspace)
   invalidateSessionDomainCache(tenant.workspace)
@@ -203,7 +207,27 @@ async function buildTenantResponse(tenant: BootstrapTenant): Promise<Response> {
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
 
-  return Response.json({ ok: true, tenant })
+  const { data: domain, error: domainError } = await app
+    .from("domains")
+    .select("domain_id")
+    .eq("hostname", tenant.workspace)
+    .single()
+
+  if (domainError || !domain?.domain_id) {
+    console.error("[Bootstrap] Failed to resolve site id for tenant:", {
+      workspace: tenant.workspace,
+      error: domainError,
+    })
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
+  }
+
+  return Response.json({
+    ok: true,
+    tenant: {
+      ...tenant,
+      siteId: domain.domain_id,
+    },
+  })
 }
 
 export async function POST(req: Request) {
@@ -349,7 +373,7 @@ export async function POST(req: Request) {
         return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
       }
 
-      return buildTenantResponse({
+      return buildTenantResponse(app, {
         userId: existingUser.user_id,
         email,
         orgId: isolatedOrgId,
@@ -465,7 +489,7 @@ export async function POST(req: Request) {
         return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
       }
 
-      return buildTenantResponse({
+      return buildTenantResponse(app, {
         userId: existingUser.user_id,
         email,
         orgId: newOrgId,
@@ -590,7 +614,7 @@ export async function POST(req: Request) {
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
 
-    return buildTenantResponse({
+    return buildTenantResponse(app, {
       userId: existingUser.user_id,
       email,
       orgId: membership.org_id,
@@ -738,7 +762,7 @@ export async function POST(req: Request) {
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
 
-  return buildTenantResponse({
+  return buildTenantResponse(app, {
     userId,
     email,
     orgId,

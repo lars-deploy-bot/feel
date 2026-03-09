@@ -110,6 +110,10 @@ fi
 # Done
 # =============================================================================
 banner_success "Services deployed"
-[ "$DEPLOY_API" = true ] && echo -e "  API:     ${GREEN}alive-api${NC} (port 5080)"
-[ "$DEPLOY_MANAGER" = true ] && echo -e "  Manager: ${GREEN}alive-manager${NC} (port 5090)"
+if [ "$DEPLOY_API" = true ]; then
+    echo -e "  API:     ${GREEN}alive-api${NC} (port 5080)"
+fi
+if [ "$DEPLOY_MANAGER" = true ]; then
+    echo -e "  Manager: ${GREEN}alive-manager${NC} (port 5090)"
+fi
 echo ""

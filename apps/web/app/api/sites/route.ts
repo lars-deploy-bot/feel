@@ -21,7 +21,16 @@ export const GET = protectedRoute(async ({ user, req }) => {
 
   // Get user's org memberships
   const iam = await createRLSIamClient()
-  const { data: memberships } = await iam.from("org_memberships").select("org_id").eq("user_id", user.id)
+  const { data: memberships, error: membershipsError } = await iam
+    .from("org_memberships")
+    .select("org_id")
+    .eq("user_id", user.id)
+
+  if (membershipsError) {
+    console.error("[Sites API] Membership query error:", membershipsError)
+    Sentry.captureException(membershipsError)
+    return structuredErrorResponse(ErrorCodes.QUERY_FAILED, { status: 500 })
+  }
 
   if (!memberships || memberships.length === 0) {
     return alrighty("sites", { sites: [] })
@@ -39,11 +48,17 @@ export const GET = protectedRoute(async ({ user, req }) => {
 
   // Get all domains for these orgs
   const app = await createRLSAppClient()
-  const { data: domains } = await app
+  const { data: domains, error: domainsError } = await app
     .from("domains")
     .select("domain_id, hostname, org_id")
     .in("org_id", orgIds)
     .order("hostname")
+
+  if (domainsError) {
+    console.error("[Sites API] Domain query error:", domainsError)
+    Sentry.captureException(domainsError)
+    return structuredErrorResponse(ErrorCodes.QUERY_FAILED, { status: 500 })
+  }
 
   const sites =
     domains

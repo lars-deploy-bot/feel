@@ -31,56 +31,80 @@ export interface Template {
 }
 
 /**
- * All available website templates
+ * Deployment template definition with its hosted preview domain.
  */
-export const TEMPLATES: readonly Template[] = [
+export interface DeploymentTemplate extends Template {
+  /** Canonical hosted preview domain for this template */
+  hostname: string
+}
+
+/**
+ * All available deployment templates.
+ * This is the canonical source for both UI metadata and hosted template routing.
+ */
+export const DEPLOYMENT_TEMPLATES = [
   {
     id: "tmpl_blank",
     name: "Blank Canvas",
     description: "Minimal starter - build from scratch",
     icon: "blank",
+    hostname: "blank.alive.best",
   },
   {
     id: "tmpl_gallery",
     name: "Photo Gallery",
     description: "Showcase images and portfolios",
     icon: "gallery",
+    hostname: "template1.alive.best",
   },
   {
     id: "tmpl_event",
     name: "Event Page",
     description: "Perfect for launches, parties, or announcements",
     icon: "event",
+    hostname: "event.alive.best",
   },
   {
     id: "tmpl_saas",
     name: "SaaS Landing",
     description: "Modern product landing page",
     icon: "saas",
+    hostname: "saas.alive.best",
   },
   {
     id: "tmpl_business",
     name: "Business",
     description: "Professional company website",
     icon: "business",
+    hostname: "loodgieter.alive.best",
   },
-] as const
+] as const satisfies readonly DeploymentTemplate[]
+
+/**
+ * All available website templates for UI selection.
+ */
+export const TEMPLATES: readonly Template[] = DEPLOYMENT_TEMPLATES.map(({ id, name, description, icon }) => ({
+  id,
+  name,
+  description,
+  icon,
+}))
 
 /**
  * Template IDs as a union type
  */
-export type TemplateId = (typeof TEMPLATES)[number]["id"]
+export type TemplateId = (typeof DEPLOYMENT_TEMPLATES)[number]["id"]
 
 /**
  * Array of valid template IDs for validation
  */
-export const TEMPLATE_IDS = TEMPLATES.map(t => t.id)
+export const TEMPLATE_IDS = DEPLOYMENT_TEMPLATES.map(t => t.id)
 
 /**
  * Check if a string is a valid template ID
  */
 export function isValidTemplateId(id: string): id is TemplateId {
-  return TEMPLATE_IDS.includes(id)
+  return TEMPLATE_IDS.some(templateId => templateId === id)
 }
 
 /**
@@ -91,11 +115,18 @@ export function getTemplateById(id: string): Template | undefined {
 }
 
 /**
+ * Get deployment template by ID.
+ */
+export function getDeploymentTemplateById(id: string): DeploymentTemplate | undefined {
+  return DEPLOYMENT_TEMPLATES.find(t => t.id === id)
+}
+
+/**
  * Generate template list for documentation/descriptions
  * Format: "- tmpl_blank: Minimal starter (default)\n- tmpl_gallery: ..."
  */
 export function getTemplateListForDocs(defaultId?: string): string {
-  return TEMPLATES.map(t => {
+  return DEPLOYMENT_TEMPLATES.map(t => {
     const isDefault = t.id === defaultId
     return `- ${t.id}: ${t.name}${isDefault ? " (default)" : ""}`
   }).join("\n")

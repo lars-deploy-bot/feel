@@ -10,8 +10,8 @@ import * as Sentry from "@sentry/nextjs"
 import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty } from "@/lib/api/server"
+import { listDeploymentTemplates } from "@/lib/deployment/template-catalog"
 import { ErrorCodes } from "@/lib/error-codes"
-import { createAppClient } from "@/lib/supabase/app"
 
 /**
  * GET - Get all active templates
@@ -21,20 +21,10 @@ export async function GET() {
   try {
     await requireSessionUser()
 
-    const supabase = await createAppClient("service")
-
-    const { data: templates, error } = await supabase
-      .from("templates")
-      .select("template_id, name, description, ai_description, preview_url, image_url, is_active, deploy_count")
-      .eq("is_active", true)
-      .order("deploy_count", { ascending: false, nullsFirst: false })
-
-    if (error) {
-      throw new Error(`[GET /api/templates] app.templates query failed: ${error.message} (code: ${error.code})`)
-    }
+    const templates = await listDeploymentTemplates()
 
     if (!templates || templates.length === 0) {
-      throw new Error("No active templates in database — every server must have templates")
+      throw new Error("No active deployment templates available — database and filesystem catalog are both empty")
     }
 
     // Every template must have a preview_url

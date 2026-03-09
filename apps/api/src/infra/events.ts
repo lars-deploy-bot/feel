@@ -1,4 +1,6 @@
+import { reassignOrDisableAutomations } from "../db/repos/automations.repo"
 import { logger } from "./logger"
+import { Sentry } from "./sentry"
 
 type EventMap = {
   "org.created": { orgId: string; name: string }
@@ -30,6 +32,7 @@ function emit<T extends EventName>(event: T, payload: EventMap[T]): void {
         event,
         error: err instanceof Error ? err.message : String(err),
       })
+      Sentry.captureException(err instanceof Error ? err : new Error(String(err)))
     }
   }
 }
@@ -55,4 +58,31 @@ eventBus.on("member.added", payload => {
 
 eventBus.on("member.removed", payload => {
   logger.info("audit: member removed", payload)
+
+  // Transfer or disable automations owned by the departing user
+  reassignOrDisableAutomations(payload.orgId, payload.userId)
+    .then(result => {
+      if (result.transferred > 0 || result.disabled > 0) {
+        logger.info("automations reassigned on member removal", {
+          orgId: payload.orgId,
+          userId: payload.userId,
+          transferred: result.transferred,
+          disabled: result.disabled,
+          details: result.jobDetails,
+        })
+      }
+    })
+    .catch(err => {
+      logger.error("failed to reassign automations on member removal", {
+        orgId: payload.orgId,
+        userId: payload.userId,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      Sentry.withScope(scope => {
+        scope.setTag("orgId", payload.orgId)
+        scope.setTag("userId", payload.userId)
+        scope.setFingerprint(["automation-reassign-failure"])
+        Sentry.captureException(err instanceof Error ? err : new Error(String(err)))
+      })
+    })
 })

@@ -8,6 +8,7 @@ import { chromium, type FullConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
 import { VerifyTenantResponseSchema } from "@/app/api/test/test-route-schemas"
 import { requireProjectBaseUrl } from "./lib/base-url"
+import { seedTemplatesForE2E } from "./lib/seed-templates"
 import { TEST_ENV } from "./lib/test-env"
 import { buildE2ETestHeaders } from "./lib/test-headers"
 
@@ -266,6 +267,8 @@ export default async function globalSetup(config: FullConfig) {
   const verifyHeaders = buildE2ETestHeaders()
 
   try {
+    seedTemplatesForE2E(TEST_ENV)
+
     await Promise.all(
       Array.from({ length: workers }).map(async (_, i) => {
         const email = buildWorkerEmail(i)

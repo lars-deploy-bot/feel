@@ -10,7 +10,7 @@
  * These tests hit REAL infrastructure (Go proxy, Caddy, running sites).
  * They only run on staging/production — skipped on local (no Go proxy).
  *
- * Run: ENV_FILE=.env.staging bun run test:e2e:live
+ * Run: ENV_FILE=.env.staging bun run test:e2e:gate
  */
 
 import jwt from "jsonwebtoken"
@@ -32,7 +32,7 @@ function toPreviewLabel(domain: string): string {
 
 /**
  * Build the preview proxy URL for a given domain.
- * e.g. "blank.alive.best" → "https://preview--blank-alive-best.alive.best"
+ * e.g. "blank.alive.best" → "https://preview--blank-alive-best.sonno.tech"
  */
 function previewUrl(domain: string, path = "/"): string {
   const label = toPreviewLabel(domain)
@@ -41,6 +41,9 @@ function previewUrl(domain: string, path = "/"): string {
 
 // Skip all preview proxy tests on local — no Go proxy running
 const describeProxy = isLocalTestServer ? test.describe.skip : test.describe
+
+// The blank template runs on every server (template@blank.alive.best.service)
+const TEST_DOMAIN = "blank.alive.best"
 
 describeProxy("Preview Proxy Health", () => {
   // Use JWT_SECRET to create preview tokens directly (no app auth needed)
@@ -57,37 +60,32 @@ describeProxy("Preview Proxy Health", () => {
     })
   }
 
-  /**
-   * The test domain for HTML serving tests.
-   * Uses blank.${PREVIEW_BASE} — the blank template is deployed on every server.
-   * We don't rely on preview_url hostnames from the API since templates are
-   * shared across servers and their preview_url may point to a different server.
-   */
-  const testDomain = `blank.${PREVIEW_BASE}`
+  // Any domain works for 401 rejection tests (proxy rejects before routing)
+  const anyDomain = `test.${PREVIEW_BASE}`
 
   test.describe("Authentication", () => {
     test("rejects request without preview_token", async () => {
-      const url = previewUrl(`blank.${PREVIEW_BASE}`)
+      const url = previewUrl(anyDomain)
       const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(10000) })
       expect(res.status).toBe(401)
     })
 
     test("rejects request with expired token", async () => {
       const expiredToken = createPreviewToken("-1h")
-      const url = previewUrl(`blank.${PREVIEW_BASE}`, `/?preview_token=${expiredToken}`)
+      const url = previewUrl(anyDomain, `/?preview_token=${expiredToken}`)
       const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(10000) })
       expect(res.status).toBe(401)
     })
 
     test("rejects request with invalid token", async () => {
-      const url = previewUrl(`blank.${PREVIEW_BASE}`, "/?preview_token=not-a-valid-jwt")
+      const url = previewUrl(anyDomain, "/?preview_token=not-a-valid-jwt")
       const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(10000) })
       expect(res.status).toBe(401)
     })
 
     test("accepts request with valid token and sets session cookie", async () => {
       const token = createPreviewToken()
-      const url = previewUrl(`blank.${PREVIEW_BASE}`, `/?preview_token=${token}`)
+      const url = previewUrl(TEST_DOMAIN, `/?preview_token=${token}`)
       const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(15000) })
 
       // Should succeed (200 or redirect, not 401)
@@ -105,7 +103,7 @@ describeProxy("Preview Proxy Health", () => {
   test.describe("HTML Serving", () => {
     test("returns HTML for template site preview", async () => {
       const token = createPreviewToken()
-      const url = previewUrl(testDomain, `/?preview_token=${token}`)
+      const url = previewUrl(TEST_DOMAIN, `/?preview_token=${token}`)
 
       const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(15000) })
 
@@ -121,12 +119,12 @@ describeProxy("Preview Proxy Health", () => {
       // Should NOT have X-Frame-Options (proxy strips it for iframe embedding)
       expect(res.headers.get("x-frame-options")).toBeNull()
 
-      console.log(`  ✓ ${testDomain}: ${body.length} bytes HTML`)
+      console.log(`  ✓ ${TEST_DOMAIN}: ${body.length} bytes HTML`)
     })
 
     test("injects navigation sync script into HTML", async () => {
       const token = createPreviewToken()
-      const url = previewUrl(testDomain, `/?preview_token=${token}`)
+      const url = previewUrl(TEST_DOMAIN, `/?preview_token=${token}`)
 
       const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(15000) })
       expect(res.status).toBe(200)
@@ -136,12 +134,12 @@ describeProxy("Preview Proxy Health", () => {
       // Must contain the preview-navigation message type (from @webalive/shared PREVIEW_MESSAGES)
       expect(body).toContain("preview-navigation")
 
-      console.log(`  ✓ ${testDomain}: nav script injected`)
+      console.log(`  ✓ ${TEST_DOMAIN}: nav script injected`)
     })
 
     test("sets frame-ancestors CSP header", async () => {
       const token = createPreviewToken()
-      const url = previewUrl(testDomain, `/?preview_token=${token}`)
+      const url = previewUrl(TEST_DOMAIN, `/?preview_token=${token}`)
 
       const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(15000) })
       expect(res.status).toBe(200)
@@ -159,7 +157,7 @@ describeProxy("Preview Proxy Health", () => {
       const token = createPreviewToken()
 
       // Step 1: Initial request with token → get session cookie
-      const initialUrl = previewUrl(testDomain, `/?preview_token=${token}`)
+      const initialUrl = previewUrl(TEST_DOMAIN, `/?preview_token=${token}`)
       const initialRes = await fetch(initialUrl, { redirect: "manual", signal: AbortSignal.timeout(15000) })
       expect(initialRes.status).not.toBe(401)
 
@@ -172,7 +170,7 @@ describeProxy("Preview Proxy Health", () => {
       const cookieValue = cookieMatch![1]
 
       // Step 2: Sub-resource request with cookie only (no token)
-      const subResourceUrl = previewUrl(testDomain, "/favicon.ico")
+      const subResourceUrl = previewUrl(TEST_DOMAIN, "/favicon.ico")
       const subRes = await fetch(subResourceUrl, {
         headers: { cookie: `__alive_preview=${cookieValue}` },
         redirect: "follow",
@@ -198,7 +196,7 @@ describeProxy("Preview Proxy Health", () => {
       const token = createPreviewToken()
 
       // First get the session cookie
-      const initialUrl = previewUrl(testDomain, `/?preview_token=${token}`)
+      const initialUrl = previewUrl(TEST_DOMAIN, `/?preview_token=${token}`)
       const initialRes = await fetch(initialUrl, { redirect: "manual", signal: AbortSignal.timeout(15000) })
       const setCookieHeader = initialRes.headers.get("set-cookie")
       const cookieMatch = setCookieHeader?.match(/__alive_preview=([^;]+)/)
@@ -209,7 +207,7 @@ describeProxy("Preview Proxy Health", () => {
 
       // Try to fetch an image through the preview proxy
       // The image path includes the domain: /_images/t/{domain}/o/{hash}/v/orig.webp
-      const imageCheckUrl = previewUrl(testDomain, `/_images/t/${testDomain}/`)
+      const imageCheckUrl = previewUrl(TEST_DOMAIN, `/_images/t/${TEST_DOMAIN}/`)
       const imageRes = await fetch(imageCheckUrl, {
         headers: { cookie: `__alive_preview=${cookieValue}` },
         redirect: "follow",
