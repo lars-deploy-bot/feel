@@ -1,18 +1,17 @@
 import { randomUUID } from "node:crypto"
 import * as Sentry from "@sentry/nextjs"
 import { buildSessionOrgClaims, isOrgAdminRole, SECURITY } from "@webalive/shared"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
-import { COOKIE_NAMES, getClearCookieOptions } from "@/lib/auth/cookies"
-import { addCorsHeaders } from "@/lib/cors-utils"
+import { clearSessionCookie } from "@/lib/auth/cookies"
+import { corsOptionsHandler } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 import { createRLSAppClient, createRLSIamClient } from "@/lib/supabase/server-rls"
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
-  const host = req.headers.get("host") || undefined
   const requestId = randomUUID()
 
   try {
@@ -23,7 +22,7 @@ export async function GET(req: NextRequest) {
       const res = createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
 
       // Clear invalid session cookie (auto-cleanup for stuck mobile sessions)
-      res.cookies.set(COOKIE_NAMES.SESSION, "", getClearCookieOptions(host))
+      clearSessionCookie(res, req)
 
       return res
     }
@@ -206,8 +205,5 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function OPTIONS(req: NextRequest) {
-  const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
-  const res = new NextResponse(null, { status: 200 })
-  addCorsHeaders(res, origin ?? null)
-  return res
+  return corsOptionsHandler(req)
 }

@@ -1,12 +1,12 @@
 import * as Sentry from "@sentry/nextjs"
 import { CONTACT_EMAIL } from "@webalive/shared"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { createSessionToken } from "@/features/auth/lib/jwt"
 import { trackAuthSession } from "@/features/auth/sessions/session-service"
 import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { handleBody, isHandleBodyError } from "@/lib/api/server"
-import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
-import { addCorsHeaders } from "@/lib/cors-utils"
+import { setSessionCookie } from "@/lib/auth/cookies"
+import { addCorsHeaders, corsOptionsHandler } from "@/lib/cors-utils"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
 import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -22,7 +22,6 @@ import { hashPassword } from "@/types/guards/api"
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req)
   const origin = req.headers.get("origin")
-  const host = req.headers.get("host") || undefined
 
   const parsed = await handleBody("signup", req)
   if (isHandleBodyError(parsed)) {
@@ -136,7 +135,7 @@ export async function POST(req: NextRequest) {
       email: normalizedEmail,
       message: "Account created successfully",
     })
-    res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions(host))
+    setSessionCookie(res, sessionToken, req)
     return res
   } catch (error) {
     console.error("[Signup] Unexpected error:", error)
@@ -155,8 +154,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function OPTIONS(req: NextRequest) {
-  const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
-  const res = new NextResponse(null, { status: 200 })
-  addCorsHeaders(res, origin ?? null)
-  return res
+  return corsOptionsHandler(req)
 }

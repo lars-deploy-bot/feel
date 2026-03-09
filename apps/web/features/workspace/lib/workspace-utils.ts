@@ -19,12 +19,11 @@ export interface WorkspaceError {
 }
 
 export async function resolveWorkspace(
-  host: string,
   body: WorkspaceRequest,
   requestId: string,
   origin: string | null = null,
 ): Promise<WorkspaceResult> {
-  const workspaceResult = await getWorkspace({ host, body, requestId })
+  const workspaceResult = await getWorkspace({ body, requestId })
 
   if (!workspaceResult.success) {
     // Pass through the original error response from workspaceRetriever

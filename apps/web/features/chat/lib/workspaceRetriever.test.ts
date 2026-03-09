@@ -9,7 +9,7 @@ import { existsSync } from "node:fs"
 import { mkdir, mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { DOMAINS, PATHS } from "@webalive/shared"
+import { PATHS } from "@webalive/shared"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import * as worktrees from "@/features/worktrees/lib/worktrees"
@@ -75,7 +75,6 @@ describe("Workspace Resolution", () => {
   describe("Integration with existing workspace", () => {
     it.skipIf(!hasWorkspaces)("resolves demo-goalive-nl workspace correctly (legacy hyphenated format)", async () => {
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "demo.test.local" }, // User sends with dots
         requestId: "test-int-001",
       })
@@ -89,7 +88,6 @@ describe("Workspace Resolution", () => {
 
     it.skipIf(!hasWorkspaces)("path always ends with /user", async () => {
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "demo.test.local" },
         requestId: "test-int-002",
       })
@@ -102,7 +100,6 @@ describe("Workspace Resolution", () => {
 
     it.skipIf(!hasWorkspaces)("path always contains /webalive/sites/", async () => {
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "demo.test.local" },
         requestId: "test-int-003",
       })
@@ -128,7 +125,6 @@ describe("Workspace Resolution", () => {
     it.skipIf(!hasWorkspaces)("finds workspace with dots in directory name (new convention)", async () => {
       // Test case: New sites like evermore.test.local use dots in filesystem
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "evermore.test.local" },
         requestId: "test-naming-001",
       })
@@ -143,7 +139,6 @@ describe("Workspace Resolution", () => {
     it.skipIf(!hasWorkspaces)("falls back to hyphens when dots directory doesn't exist (legacy)", async () => {
       // Test case: Legacy sites like demo.test.local use hyphens in filesystem
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "demo.test.local" },
         requestId: "test-naming-002",
       })
@@ -159,7 +154,6 @@ describe("Workspace Resolution", () => {
       // Test case: Non-existent workspace should show what paths were tried
       // Skipped in CI because PATHS.SITES_ROOT is empty without server-config.json
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "nonexistent.site.com" },
         requestId: "test-naming-003",
       })
@@ -179,7 +173,6 @@ describe("Workspace Resolution", () => {
       // Edge case: If somehow both naming conventions exist, prefer new (dots)
       // This test documents the preference order
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "evermore.test.local" },
         requestId: "test-naming-004",
       })
@@ -196,7 +189,6 @@ describe("Workspace Resolution", () => {
   describe("Error Handling", () => {
     it("returns error when workspace parameter is missing", async () => {
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: {},
         requestId: "test-err-001",
       })
@@ -209,7 +201,6 @@ describe("Workspace Resolution", () => {
 
     it("returns error when workspace directory doesn't exist", async () => {
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "nonexistent.example.com" },
         requestId: "test-err-002",
       })
@@ -222,7 +213,6 @@ describe("Workspace Resolution", () => {
 
     it("prevents path traversal attacks", async () => {
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "../../../etc/passwd" },
         requestId: "test-err-003",
       })
@@ -245,7 +235,6 @@ describe("Workspace Resolution", () => {
         .mockResolvedValue("/tmp/test-workspace/worktrees/feature")
 
       const result = await getWorkspace({
-        host: "localhost",
         body: { workspace: "test", worktree: "feature" },
         requestId: "test-wt-001",
       })
@@ -263,7 +252,6 @@ describe("Workspace Resolution", () => {
       vi.stubEnv("STREAM_ENV", "local")
 
       const result = await getWorkspace({
-        host: "localhost",
         body: { workspace: "test", worktree: "" },
         requestId: "test-wt-002",
       })
@@ -286,7 +274,6 @@ describe("Workspace Resolution", () => {
         .mockRejectedValue(new worktrees.WorktreeError("WORKTREE_NOT_FOUND", "missing"))
 
       const result = await getWorkspace({
-        host: "localhost",
         body: { workspace: "test", worktree: "missing" },
         requestId: "test-wt-003",
       })
@@ -329,7 +316,6 @@ describe("Workspace Resolution", () => {
 
       // E2B scratch dir won't exist on disk — proves the E2B branch is taken
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: domain },
         requestId: "test-e2b-001",
       })
@@ -363,7 +349,6 @@ describe("Workspace Resolution", () => {
       getE2bScratchUserDirMock.mockReturnValue(existingScratchDir)
 
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: domain },
         requestId: "test-e2b-002",
       })
@@ -380,7 +365,6 @@ describe("Workspace Resolution", () => {
       resolveDomainRuntimeMock.mockRejectedValue(new Error("Supabase unavailable"))
 
       const result = await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "some-site.alive.best" },
         requestId: "test-e2b-003",
       })
@@ -405,7 +389,6 @@ describe("Workspace Resolution", () => {
       })
 
       await getWorkspace({
-        host: DOMAINS.STREAM_DEV_HOST,
         body: { workspace: "systemd-site.alive.best" },
         requestId: "test-e2b-004",
       })
@@ -422,7 +405,6 @@ describe("Workspace Resolution", () => {
       vi.stubEnv("STREAM_ENV", "local")
 
       const result = await getWorkspace({
-        host: "localhost",
         body: { workspace: "test" },
         requestId: "test-local-001",
       })

@@ -5,7 +5,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { ensureDirectoryAsWorkspaceOwner, writeAsWorkspaceOwner } from "@/features/workspace/lib/workspace-secure"
-import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
+import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -82,8 +82,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const host = request.headers.get("host") || "localhost"
-    const workspaceResult = await getWorkspace({ host, body, requestId })
+    const workspaceResult = await getWorkspace({ body, requestId })
     if (!workspaceResult.success) {
       return workspaceResult.response
     }
@@ -96,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     const resolvedPath = path.resolve(path.join(resolvedWorkspace, targetPath))
-    if (resolvedPath === resolvedWorkspace || !isPathWithinWorkspace(resolvedPath, resolvedWorkspace, path.sep)) {
+    if (resolvedPath === resolvedWorkspace || !isPathWithinWorkspace(resolvedPath, resolvedWorkspace)) {
       console.warn(`[Files/Write ${requestId}] Path traversal blocked: ${targetPath} -> ${resolvedPath}`)
       return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
         status: 403,

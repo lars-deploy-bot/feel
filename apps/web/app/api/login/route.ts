@@ -1,14 +1,14 @@
 import { env } from "@webalive/env/server"
 import { buildSessionOrgClaims, SECURITY, STANDALONE } from "@webalive/shared"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { createSessionToken } from "@/features/auth/lib/jwt"
 import { trackAuthSession } from "@/features/auth/sessions/session-service"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { handleBody, isHandleBodyError } from "@/lib/api/server"
 import { getClientIdentifier } from "@/lib/auth/client-identifier"
-import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
+import { setSessionCookie } from "@/lib/auth/cookies"
 import { loginRateLimiter } from "@/lib/auth/rate-limiter"
-import { addCorsHeaders } from "@/lib/cors-utils"
+import { addCorsHeaders, corsOptionsHandler } from "@/lib/cors-utils"
 import { filterLocalDomains } from "@/lib/domains"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
@@ -19,7 +19,6 @@ import { verifyPassword } from "@/types/guards/api"
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req)
   const origin = req.headers.get("origin")
-  const host = req.headers.get("host") || undefined
 
   const parsed = await handleBody("login", req)
   if (isHandleBodyError(parsed)) {
@@ -53,7 +52,7 @@ export async function POST(req: NextRequest) {
       userId: STANDALONE.TEST_USER.ID,
       workspaces,
     })
-    res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions(host))
+    setSessionCookie(res, sessionToken, req)
     console.log(`[Login] Standalone mode: auto-login for ${email} with ${workspaces.length} local workspaces`)
     return res
   }
@@ -70,7 +69,7 @@ export async function POST(req: NextRequest) {
     })
 
     const res = createCorsSuccessResponse(origin, {})
-    res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions(host))
+    setSessionCookie(res, sessionToken, req)
     return res
   }
 
@@ -146,7 +145,7 @@ export async function POST(req: NextRequest) {
   const sid = crypto.randomUUID()
   const sessionToken = await createSessionToken({
     userId: user.user_id,
-    email: user.email || "",
+    email,
     name: user.display_name,
     sid,
     orgIds,
@@ -168,13 +167,10 @@ export async function POST(req: NextRequest) {
   const res = createCorsSuccessResponse(origin, { userId: user.user_id, workspaces })
 
   // Set session cookie (cookie name is versioned to avoid conflicts with old cookies)
-  res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions(host))
+  setSessionCookie(res, sessionToken, req)
   return res
 }
 
 export async function OPTIONS(req: NextRequest) {
-  const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
-  const res = new NextResponse(null, { status: 200 })
-  addCorsHeaders(res, origin ?? null)
-  return res
+  return corsOptionsHandler(req)
 }

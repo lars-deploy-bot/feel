@@ -4,7 +4,7 @@ import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
-import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
+import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -102,7 +102,6 @@ export async function POST(request: NextRequest) {
       return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, { status: 403, details: { requestId } })
     }
 
-    const host = request.headers.get("host") || "localhost"
     const workspaceName = body.workspace as string | undefined
 
     const filePath = body.path
@@ -131,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Systemd path: existing getWorkspace() + node:fs logic
-    const workspaceResult = await getWorkspace({ host, body, requestId })
+    const workspaceResult = await getWorkspace({ body, requestId })
     if (!workspaceResult.success) {
       return workspaceResult.response
     }
@@ -141,7 +140,7 @@ export async function POST(request: NextRequest) {
     // Security check: ensure path is within workspace
     const resolvedPath = path.resolve(fullPath)
     const resolvedWorkspace = path.resolve(workspaceResult.workspace)
-    if (!isPathWithinWorkspace(resolvedPath, resolvedWorkspace, path.sep)) {
+    if (!isPathWithinWorkspace(resolvedPath, resolvedWorkspace)) {
       return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
         status: 403,
         details: { requestId, attemptedPath: resolvedPath, workspacePath: resolvedWorkspace },

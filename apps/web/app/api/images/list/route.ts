@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Build workspace body from query params
-    const host = request.headers.get("host") || ""
     const query = await handleQuery("images/list", request)
     if (isHandleBodyError(query)) return query
     const { workspace: workspaceParam, worktree: worktreeParam } = query
@@ -66,7 +65,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Resolve workspace (same logic as upload/delete)
-    const workspaceResult = await resolveWorkspace(host, body, requestId)
+    const workspaceResult = await resolveWorkspace(body, requestId)
     if (!workspaceResult.success) {
       const errorBody = await workspaceResult.response.json()
       return Response.json({ ...errorBody, requestId }, { status: workspaceResult.response.status })

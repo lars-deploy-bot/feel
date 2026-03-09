@@ -166,6 +166,7 @@ function createMockRequest(url: string, options?: RequestInit) {
   const originalGet = req.headers.get.bind(req.headers)
   req.headers.get = (name: string) => {
     if (name === "origin") return DOMAINS.STREAM_PROD
+    if (name === "host") return "localhost"
     return originalGet(name)
   }
   return req
@@ -538,7 +539,7 @@ describe("OPTIONS /api/login-manager", () => {
 
     const res = await loginManagerOPTIONS(req)
 
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(204)
     expect(res.headers.has("Access-Control-Allow-Origin")).toBe(true)
   })
 })

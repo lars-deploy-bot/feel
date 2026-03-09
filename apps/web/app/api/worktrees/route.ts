@@ -137,8 +137,7 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const host = req.headers.get("host") || "localhost"
-    const workspaceResult = await getWorkspace({ host, body: { workspace }, requestId })
+    const workspaceResult = await getWorkspace({ body: { workspace }, requestId })
     if (!workspaceResult.success) {
       return workspaceResult.response
     }
@@ -205,8 +204,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const host = req.headers.get("host") || "localhost"
-    const workspaceResult = await getWorkspace({ host, body, requestId })
+    const workspaceResult = await getWorkspace({ body, requestId })
     if (!workspaceResult.success) {
       return workspaceResult.response
     }
@@ -300,8 +298,7 @@ export async function DELETE(req: NextRequest) {
       })
     }
 
-    const host = req.headers.get("host") || "localhost"
-    const workspaceResult = await getWorkspace({ host, body: { workspace }, requestId })
+    const workspaceResult = await getWorkspace({ body: { workspace }, requestId })
     if (!workspaceResult.success) {
       return workspaceResult.response
     }
