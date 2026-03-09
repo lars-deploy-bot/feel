@@ -493,8 +493,9 @@ describe("POST /api/login-manager", () => {
   /**
    * CORS HEADERS TEST
    * Should include CORS headers in response
+   * Requires DOMAINS.STREAM_PROD — skipped in CI (no server-config.json)
    */
-  it("should include CORS headers", async () => {
+  it.skipIf(!DOMAINS.STREAM_PROD)("should include CORS headers", async () => {
     const req = createMockRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -503,8 +504,7 @@ describe("POST /api/login-manager", () => {
 
     const res = await loginManagerPOST(req)
 
-    // Check for CORS headers (added by addCorsHeaders)
-    expect(res.headers.has("Access-Control-Allow-Origin")).toBe(true)
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe(DOMAINS.STREAM_PROD)
   })
 
   /**
@@ -530,8 +530,9 @@ describe("OPTIONS /api/login-manager", () => {
   /**
    * CORS PREFLIGHT TEST
    * OPTIONS should return 200 with CORS headers
+   * Requires DOMAINS.STREAM_PROD — skipped in CI (no server-config.json)
    */
-  it("should handle CORS preflight requests", async () => {
+  it.skipIf(!DOMAINS.STREAM_PROD)("should handle CORS preflight requests", async () => {
     const req = createMockRequest("http://localhost/api/login-manager", {
       method: "OPTIONS",
     })
@@ -539,6 +540,6 @@ describe("OPTIONS /api/login-manager", () => {
     const res = await loginManagerOPTIONS(req)
 
     expect(res.status).toBe(200)
-    expect(res.headers.has("Access-Control-Allow-Origin")).toBe(true)
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe(DOMAINS.STREAM_PROD)
   })
 })
