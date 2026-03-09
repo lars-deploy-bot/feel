@@ -9,6 +9,7 @@ const validateTemplateFromDbMock = vi.fn()
 const runStrictDeploymentMock = vi.fn()
 const handleBodyMock = vi.fn()
 const isHandleBodyErrorMock = vi.fn()
+const inspectSiteOccupancyMock = vi.fn()
 const siteMetadataExistsMock = vi.fn()
 const siteMetadataSetSiteMock = vi.fn()
 
@@ -28,6 +29,7 @@ vi.mock("@/features/auth/lib/auth", () => {
 
 vi.mock("@/features/auth/lib/jwt", () => ({
   createSessionToken: vi.fn(() => "new-session-token"),
+  refreshSessionTokenWithOrg: vi.fn(() => Promise.resolve("new-session-token")),
   verifySessionToken: vi.fn(() => ({
     orgIds: ["org-123"],
     scopes: [],
@@ -64,6 +66,10 @@ vi.mock("@/lib/config", () => ({
 
 vi.mock("@/lib/deployment/org-resolver", () => ({
   validateUserOrgAccess: (...args: unknown[]) => validateUserOrgAccessMock(...args),
+}))
+
+vi.mock("@/lib/deployment/site-occupancy", () => ({
+  inspectSiteOccupancy: (...args: unknown[]) => inspectSiteOccupancyMock(...args),
 }))
 
 vi.mock("@/lib/deployment/user-quotas", () => ({
@@ -154,6 +160,7 @@ describe("POST /api/deploy-subdomain", () => {
       maxSites: 10,
       currentSites: 1,
     })
+    inspectSiteOccupancyMock.mockReturnValue({ occupied: false })
     siteMetadataExistsMock.mockReturnValue(false)
     siteMetadataSetSiteMock.mockResolvedValue(undefined)
     validateTemplateFromDbMock.mockResolvedValue({
@@ -234,6 +241,24 @@ describe("POST /api/deploy-subdomain", () => {
     const payload = (await response.json()) as { error: string }
     expect(payload.error).toBe(ErrorCodes.SLUG_TAKEN)
     expect(getUserQuotaMock).not.toHaveBeenCalled()
+    expect(runStrictDeploymentMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 409 when host-level site resources still exist for the slug", async () => {
+    inspectSiteOccupancyMock.mockReturnValueOnce({
+      occupied: true,
+      reason: "systemd service is still active",
+    })
+
+    const response = await POST(
+      createRequest({ slug: "testsite", siteIdeas: "Test", templateId: "tmpl_blank", orgId: "org-1" }),
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      error: ErrorCodes.SLUG_TAKEN,
+      message: expect.stringContaining("systemd service is still active"),
+    })
     expect(runStrictDeploymentMock).not.toHaveBeenCalled()
   })
 })

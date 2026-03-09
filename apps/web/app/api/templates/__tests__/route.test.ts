@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
 
 const requireSessionUserMock = vi.fn()
+const listDeploymentTemplatesMock = vi.fn()
 
 const mockTemplates = [
   {
@@ -25,9 +26,8 @@ interface MockTemplate {
   image_url: string | null
   is_active: boolean
   deploy_count: number
+  source_path?: string
 }
-
-let queryResult: { data: MockTemplate[] | null; error: { message: string; code: string } | null }
 
 vi.mock("@/features/auth/lib/auth", () => {
   class AuthenticationError extends Error {
@@ -53,16 +53,8 @@ vi.mock("@/lib/api/server", () => ({
     new Response(JSON.stringify({ ok: true, ...payload }), { status: 200, ...init }),
 }))
 
-vi.mock("@/lib/supabase/app", () => ({
-  createAppClient: vi.fn(() => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          order: () => queryResult,
-        }),
-      }),
-    }),
-  })),
+vi.mock("@/lib/deployment/template-catalog", () => ({
+  listDeploymentTemplates: (...args: unknown[]) => listDeploymentTemplatesMock(...args),
 }))
 
 const { GET } = await import("../route")
@@ -71,7 +63,7 @@ describe("GET /api/templates", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     requireSessionUserMock.mockResolvedValue({ id: "user-1", email: "test@example.com" })
-    queryResult = { data: mockTemplates, error: null }
+    listDeploymentTemplatesMock.mockResolvedValue(mockTemplates)
   })
 
   it("returns 401 when authentication is missing", async () => {
@@ -97,7 +89,7 @@ describe("GET /api/templates", () => {
   })
 
   it("returns 500 on supabase query error", async () => {
-    queryResult = { data: null, error: { message: "connection failed", code: "PGRST000" } }
+    listDeploymentTemplatesMock.mockRejectedValueOnce(new Error("connection failed"))
 
     const response = await GET()
 
@@ -107,31 +99,28 @@ describe("GET /api/templates", () => {
   })
 
   it("does not leak template IDs in error responses", async () => {
-    queryResult = {
-      data: [
-        {
-          template_id: "tmpl_blank",
-          name: "Blank",
-          description: null,
-          ai_description: null,
-          preview_url: null,
-          image_url: null,
-          is_active: true,
-          deploy_count: 5,
-        },
-        {
-          template_id: "tmpl_secret",
-          name: "Secret",
-          description: null,
-          ai_description: null,
-          preview_url: null,
-          image_url: null,
-          is_active: true,
-          deploy_count: 3,
-        },
-      ],
-      error: null,
-    }
+    listDeploymentTemplatesMock.mockResolvedValueOnce([
+      {
+        template_id: "tmpl_blank",
+        name: "Blank",
+        description: null,
+        ai_description: null,
+        preview_url: null,
+        image_url: null,
+        is_active: true,
+        deploy_count: 5,
+      },
+      {
+        template_id: "tmpl_secret",
+        name: "Secret",
+        description: null,
+        ai_description: null,
+        preview_url: null,
+        image_url: null,
+        is_active: true,
+        deploy_count: 3,
+      },
+    ])
 
     const response = await GET()
     const body = await response.text()
@@ -143,5 +132,29 @@ describe("GET /api/templates", () => {
     const json = JSON.parse(body) as { ok: boolean; error: string }
     expect(json.ok).toBe(false)
     expect(json.error).toBe(ErrorCodes.INTERNAL_ERROR)
+  })
+
+  it("returns filesystem fallback templates when the catalog resolves them", async () => {
+    listDeploymentTemplatesMock.mockResolvedValueOnce([
+      {
+        template_id: "tmpl_blank",
+        name: "Blank Canvas",
+        description: "Minimal starter - build from scratch",
+        ai_description: null,
+        preview_url: "https://blank.alive.best",
+        image_url: null,
+        is_active: true,
+        deploy_count: 0,
+        source_path: "/srv/webalive/templates/blank.alive.best",
+      },
+    ])
+
+    const response = await GET()
+    const payload = (await response.json()) as { ok: boolean; templates: MockTemplate[] }
+
+    expect(response.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.templates[0]?.template_id).toBe("tmpl_blank")
+    expect(payload.templates[0]?.preview_url).toBe("https://blank.alive.best")
   })
 })

@@ -1,0 +1,84 @@
+# Alive application-level run contract.
+# This file describes what to run for setup, build, development,
+# staging, and production. It does not replace server-config.json.
+
+schema = 1
+
+[project]
+kind = "turbo"
+root = "user"
+workspace = "apps/web"
+
+[setup]
+command = "bun install --frozen-lockfile"
+
+[build]
+command = "bun x turbo run build --filter=apps/web"
+outputs = [
+  "apps/web/.next/standalone",
+  "apps/web/.next/static",
+  "apps/web/public",
+]
+cache = [
+  ".turbo",
+  "node_modules/.cache",
+]
+environment = "build"
+
+[release]
+root = "apps/web/.next/standalone"
+
+[run.development]
+command = "bun x turbo run dev --filter=apps/web"
+environment = "development"
+
+[run.staging]
+cwd = "apps/web"
+command = "node server.js"
+environment = "staging"
+
+[run.production]
+cwd = "apps/web"
+command = "node server.js"
+environment = "production"
+
+[environments.build]
+groups = ["build"]
+
+[environments.development]
+groups = ["runtime", "development"]
+
+[environments.staging]
+groups = ["runtime", "staging"]
+
+[environments.production]
+groups = ["runtime", "production"]
+
+[env.groups.build]
+required = [
+  "NEXT_PUBLIC_APP_URL",
+  "NEXT_PUBLIC_PREVIEW_BASE",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "SERVER_CONFIG_PATH",
+]
+
+[env.groups.runtime]
+required = [
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "JWT_SECRET",
+]
+
+[env.groups.development.expect]
+ALIVE_ENV = "development"
+
+[env.groups.staging.expect]
+ALIVE_ENV = "staging"
+
+[env.groups.production.expect]
+ALIVE_ENV = "production"
+
+[turbo]
+validate_build_env = true
+task = "build"

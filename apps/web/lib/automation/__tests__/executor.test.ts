@@ -316,7 +316,7 @@ describe("runAutomationJob", () => {
     )
   })
 
-  it("continues execution without session cookie when membership lookup fails", async () => {
+  it("fails when membership lookup cannot be validated", async () => {
     mockMembershipsQueryResult = {
       data: null,
       error: { message: "db down" },
@@ -331,13 +331,11 @@ describe("runAutomationJob", () => {
       prompt: "test prompt",
     })
 
-    expect(result.success).toBe(true)
+    expect(result.success).toBe(false)
+    expect(result.error).toContain("Failed to validate automation user membership")
+    expect(result.error).toContain("db down")
     expect(mockCreateSessionToken).not.toHaveBeenCalled()
-    expect(mockTryWorkerPool).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sessionCookie: undefined,
-      }),
-    )
+    expect(mockTryWorkerPool).not.toHaveBeenCalled()
   })
 
   it("skips credit check for alive workspace", async () => {

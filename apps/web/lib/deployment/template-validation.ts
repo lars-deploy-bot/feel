@@ -8,7 +8,7 @@
 
 import { existsSync } from "node:fs"
 import { resolveTemplatePath } from "@webalive/shared"
-import { createAppClient } from "@/lib/supabase/app"
+import { findDeploymentTemplateById } from "@/lib/deployment/template-catalog"
 
 export interface ValidatedTemplate {
   template_id: string
@@ -41,15 +41,9 @@ export async function validateTemplateFromDb(templateId: string | undefined): Pr
     }
   }
 
-  const supabase = await createAppClient("service")
+  const template = await findDeploymentTemplateById(templateId)
 
-  const { data: template, error } = await supabase
-    .from("templates")
-    .select("template_id, name, source_path, is_active")
-    .eq("template_id", templateId)
-    .single()
-
-  if (error || !template) {
+  if (!template) {
     return {
       valid: false,
       error: {
