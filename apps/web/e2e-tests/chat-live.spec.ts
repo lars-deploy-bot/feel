@@ -9,12 +9,10 @@
  * Prerequisites:
  * - Live staging base URL in .env.staging (NEXT_PUBLIC_APP_URL)
  * - Tenant bootstrap via e2e-tests/global-setup.ts
- * - ASK_LARS_KEY exported in environment
  */
 
-import Anthropic from "@anthropic-ai/sdk"
 import { expect, type Page, test } from "@playwright/test"
-import { CLAUDE_MODELS, DEFAULT_CLAUDE_MODEL } from "@webalive/shared"
+import { DEFAULT_CLAUDE_MODEL } from "@webalive/shared"
 import type { StructuredError } from "@/lib/error-codes"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
 import { PATTERNS, TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
@@ -31,59 +29,10 @@ async function sendMessage(page: Page, message: string): Promise<void> {
   await sendButton.click()
 }
 
-function getJudgeApiKey(): string {
-  const key = process.env.ASK_LARS_KEY
-  if (!key) {
-    throw new Error("ASK_LARS_KEY is required for live staging E2E LLM judge")
-  }
-  return key
-}
-
-async function judgeContextRetention(firstAssistant: string, secondAssistant: string) {
-  const client = new Anthropic({ apiKey: getJudgeApiKey() })
-
-  const evaluationPrompt = `
-Evaluate whether the second assistant response preserves the core meaning of the first assistant response.
-
-Rules:
-- PASS if the second response accurately recalls the first response's main idea.
-- FAIL if it contradicts, misses, or invents a different idea.
-- Ignore style differences.
-
-Return format (strict):
-First line must be exactly PASS or FAIL.
-Second line must be a short rationale (max 25 words).
-
-First assistant response:
-"""${firstAssistant}"""
-
-Second assistant response:
-"""${secondAssistant}"""
-`.trim()
-
-  const result = await client.messages.create({
-    model: CLAUDE_MODELS.HAIKU_4_5,
-    max_tokens: 120,
-    temperature: 0,
-    messages: [{ role: "user", content: evaluationPrompt }],
-  })
-
-  const output = result.content
-    .filter(block => block.type === "text")
-    .map(block => block.text)
-    .join("\n")
-    .trim()
-
-  const [rawVerdict = "", ...rest] = output.split("\n")
-  const normalizedVerdict = rawVerdict.trim().toUpperCase()
-  if (normalizedVerdict !== "PASS" && normalizedVerdict !== "FAIL") {
-    throw new Error(`LLM judge returned unexpected verdict: ${output}`)
-  }
-
-  return {
-    verdict: normalizedVerdict,
-    rationale: rest.join(" ").trim() || "No rationale provided",
-  }
+/** Random code for deterministic context retention verification (no LLM judge needed). */
+function generateMemoryCode(): string {
+  const id = Math.random().toString(36).slice(2, 8).toUpperCase()
+  return `ALIVE-${id}`
 }
 
 test.describe("Chat API - Request Validation", () => {
@@ -182,7 +131,7 @@ test.describe("Chat API - Request Validation", () => {
     }
   })
 
-  test("real two-turn context retention (LLM-verified)", async ({ page }) => {
+  test("real two-turn context retention", async ({ page }) => {
     test.setTimeout(120000)
     const user = await getLiveStagingUser(test.info().workerIndex, getProjectBaseUrl(test.info()))
     await loginLiveStaging(page, user)
@@ -191,10 +140,11 @@ test.describe("Chat API - Request Validation", () => {
       timeout: TEST_TIMEOUTS.max,
     })
 
-    const firstPrompt =
-      "In 2 short sentences, explain one practical reason E2E tests prevent regressions. Be concrete and concise."
-    const secondPrompt =
-      "What did you just explain in your previous answer? Restate the same core idea in one sentence."
+    // Use a unique random code so context retention can be verified deterministically
+    // without an LLM judge (which was the source of flakiness).
+    const memoryCode = generateMemoryCode()
+    const firstPrompt = `Remember this exact code: ${memoryCode}. Reply with only "Stored." and nothing else.`
+    const secondPrompt = "What was the exact code I asked you to remember? Reply with only the code."
 
     const firstRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
     const firstResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
@@ -220,8 +170,8 @@ test.describe("Chat API - Request Validation", () => {
 
     const firstNDJSON = await firstResponse.text()
     const firstAssistantText = extractAssistantTextFromNDJSON(firstNDJSON)
-    expect(firstAssistantText.length).toBeGreaterThan(20)
-    console.log(`[Turn 1] Assistant: ${firstAssistantText.slice(0, 100)}...`)
+    expect(firstAssistantText.length).toBeGreaterThan(0)
+    console.log(`[Turn 1] Assistant: ${firstAssistantText}`)
 
     const secondRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
     const secondResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
@@ -246,11 +196,11 @@ test.describe("Chat API - Request Validation", () => {
 
     const secondNDJSON = await secondResponse.text()
     const secondAssistantText = extractAssistantTextFromNDJSON(secondNDJSON)
-    expect(secondAssistantText.length).toBeGreaterThan(10)
-    console.log(`[Turn 2] Assistant: ${secondAssistantText.slice(0, 100)}...`)
+    console.log(`[Turn 2] Assistant: ${secondAssistantText}`)
 
-    const judgeResult = await judgeContextRetention(firstAssistantText, secondAssistantText)
-    console.log(`[LLM Judge] verdict=${judgeResult.verdict}; rationale=${judgeResult.rationale}`)
-    expect(judgeResult.verdict).toBe("PASS")
+    // Deterministic verification: the second response must contain the memory code.
+    // This proves context retention without needing an LLM judge.
+    expect(secondAssistantText).toContain(memoryCode)
+    console.log(`[Context] Verified: response contains ${memoryCode}`)
   })
 })
