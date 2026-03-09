@@ -97,23 +97,29 @@ if [ ! -f "$PORT_MAP" ]; then
     fi
 fi
 
-# ─── Install systemd service if changed ──────────────────────────────────────
+# ─── Generate systemd service file ───────────────────────────────────────────
 GENERATED_SERVICE="$GENERATED_DIR/$SERVICE_NAME.service"
 INSTALLED_SERVICE="/etc/systemd/system/$SERVICE_NAME.service"
 
-if [ -f "$GENERATED_SERVICE" ]; then
-    if [ ! -f "$INSTALLED_SERVICE" ] || ! diff -q "$GENERATED_SERVICE" "$INSTALLED_SERVICE" >/dev/null 2>&1; then
-        log_step "Installing updated systemd service..."
-        cp "$GENERATED_SERVICE" "$INSTALLED_SERVICE"
-        systemctl daemon-reload
-        log_success "Service file installed"
-    else
-        log_step "Service file unchanged"
-    fi
-else
-    log_warn "No generated service file found at $GENERATED_SERVICE"
-    log_warn "Run: bun run gen:systemd"
+log_step "Generating systemd service files..."
+if ! SERVER_CONFIG_PATH="$CONFIG_PATH" bun run --cwd "$PROJECT_ROOT" gen:systemd 2>&1; then
+    log_error "gen:systemd failed"
     exit 1
+fi
+
+if [ ! -f "$GENERATED_SERVICE" ]; then
+    log_error "gen:systemd succeeded but $GENERATED_SERVICE was not produced"
+    exit 1
+fi
+
+# ─── Install systemd service if changed ──────────────────────────────────────
+if [ ! -f "$INSTALLED_SERVICE" ] || ! diff -q "$GENERATED_SERVICE" "$INSTALLED_SERVICE" >/dev/null 2>&1; then
+    log_step "Installing updated systemd service..."
+    cp "$GENERATED_SERVICE" "$INSTALLED_SERVICE"
+    systemctl daemon-reload
+    log_success "Service file installed"
+else
+    log_step "Service file unchanged"
 fi
 
 # ─── Restart service ─────────────────────────────────────────────────────────
@@ -125,22 +131,24 @@ else
     systemctl start "$SERVICE_NAME"
 fi
 
-sleep 2
-
-if systemctl is-active --quiet "$SERVICE_NAME"; then
-    log_success "$SERVICE_NAME running"
-else
-    log_error "$SERVICE_NAME failed to start"
-    log_step "Check logs: journalctl -u $SERVICE_NAME -n 50"
-    exit 1
-fi
-
-# ─── Health check ────────────────────────────────────────────────────────────
+# ─── Health check (waits for port to be ready) ──────────────────────────────
 log_step "Health check on port $PREVIEW_PORT..."
-if curl -sf "http://localhost:$PREVIEW_PORT/health" >/dev/null 2>&1; then
+HEALTHY=false
+for i in $(seq 1 10); do
+    if curl -sf --max-time 2 "http://localhost:$PREVIEW_PORT/health" >/dev/null 2>&1; then
+        HEALTHY=true
+        break
+    fi
+    sleep 1
+done
+
+if $HEALTHY; then
     log_success "Health check passed"
 else
-    log_warn "Health check failed (service may still be starting)"
+    log_error "Health check failed after 10 attempts"
+    systemctl is-active --quiet "$SERVICE_NAME" || log_error "Service is not running"
+    log_step "Check logs: journalctl -u $SERVICE_NAME -n 50"
+    exit 1
 fi
 
 echo ""

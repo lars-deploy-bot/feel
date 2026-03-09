@@ -6,27 +6,19 @@
  * deterministic hydration and eliminate race conditions.
  */
 
-import { randomUUID } from "node:crypto"
 import { test as base, type Page, type Response } from "@playwright/test"
 import { COOKIE_NAMES, createTestStorageState, DOMAINS, TEST_CONFIG } from "@webalive/shared"
-import jwt from "jsonwebtoken"
-import { DEFAULT_USER_SCOPES } from "@/features/auth/lib/jwt"
+import { fetchSessionCookie } from "./helpers"
 import { requireProjectBaseUrl } from "./lib/base-url"
+import { BootstrapTenantApiResponseSchema } from "./lib/tenant-types"
+import type { TestUser } from "./lib/tenant-types"
 import {
   buildJsonMockResponse,
   E2E_MOCK_HEADER,
   getStrictApiGuardEnabled,
   isGuardedApiPath,
 } from "./lib/strict-api-guard"
-
-export interface TestUser {
-  userId: string
-  email: string
-  orgId: string
-  orgName: string
-  workspace: string
-  workerIndex: number
-}
+export type { TestUser } from "./lib/tenant-types"
 
 type TestFixtures = {
   /** Full tenant info from bootstrap - use this in new tests */
@@ -119,7 +111,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         )
       }
 
-      const data = await res.json()
+      const data = BootstrapTenantApiResponseSchema.parse(await res.json())
 
       if (!data.ok) {
         throw new Error(`Failed to get tenant for worker ${workerIndex}: ${data.error}`)
@@ -170,40 +162,17 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     // Determine if we're running against a remote environment
     const isRemote = resolvedBaseUrl.startsWith("https://")
 
-    const jwtSecret = process.env.JWT_SECRET
-    if (!jwtSecret) {
-      throw new Error("JWT_SECRET not set — add it to .env.e2e.local or export it before running tests")
-    }
-
-    const token = jwt.sign(
-      {
-        role: "authenticated" as const,
-        sub: workerStorageState.userId,
-        userId: workerStorageState.userId,
-        email: workerStorageState.email,
-        name: workerStorageState.orgName,
-        sid: randomUUID(),
-        scopes: DEFAULT_USER_SCOPES,
-        orgIds: [workerStorageState.orgId],
-        orgRoles: { [workerStorageState.orgId]: "owner" as const },
-      },
-      jwtSecret,
-      { expiresIn: "30d" },
-    )
-
-    // Extract domain from baseURL for cookie
-    const cookieDomain = new URL(resolvedBaseUrl).hostname
+    const token = await fetchSessionCookie(resolvedBaseUrl, workerStorageState)
 
     // Set auth cookie
     await context.addCookies([
       {
         name: COOKIE_NAMES.SESSION,
         value: token,
-        domain: cookieDomain,
-        path: "/",
         httpOnly: true,
         secure: isRemote,
         sameSite: "Lax",
+        url: resolvedBaseUrl,
       },
     ])
 
