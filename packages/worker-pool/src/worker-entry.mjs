@@ -41,7 +41,7 @@ import {
   SandboxManager,
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
+import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, OAUTH_MCP_PROVIDERS, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
 import {
   emailInternalMcp,
   sandboxedFsInternalMcp,
@@ -819,6 +819,17 @@ async function handleQuery(ipc, requestId, payload) {
     connectedProviders = Object.keys(oauthTokens).filter(key => !!oauthTokens[key])
     if (connectedProviders.length > 0) {
       console.error(`[worker] Connected OAuth providers: ${connectedProviders.join(", ")}`)
+      // Add OAuth MCP tool names to allowedTools for each connected provider.
+      // The route builds allowedTools without connectedProviders (it doesn't have them yet),
+      // so OAuth tools are missing. The worker is the first place we know which providers
+      // are connected, so we patch allowedTools here.
+      for (const providerKey of connectedProviders) {
+        const config = OAUTH_MCP_PROVIDERS[providerKey]
+        if (config?.knownTools) {
+          allowedTools.push(...config.knownTools)
+          console.error(`[worker] Added ${config.knownTools.length} tools for OAuth provider: ${providerKey}`)
+        }
+      }
     }
 
     console.error(`[worker] Allowed tools count: ${allowedTools.length}`)
