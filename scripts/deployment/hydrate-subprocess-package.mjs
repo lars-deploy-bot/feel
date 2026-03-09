@@ -14,7 +14,6 @@ if (!sourcePackageDirArg || !standalonePackageDirArg) {
 const sourcePackageDir = path.resolve(sourcePackageDirArg)
 const standalonePackageDir = path.resolve(standalonePackageDirArg)
 const standaloneNodeModulesDir = path.join(standalonePackageDir, "node_modules")
-const sourceRequire = createRequire(path.join(sourcePackageDir, "package.json"))
 
 /**
  * Resolve the installed package dir for a dependency from the context of a parent package.

@@ -38,7 +38,7 @@ command = "node server.js"
 environment = "staging"
 
 [run.production]
-cwd = "apps/web"
+cwd = "apps/web/.next/standalone"
 command = "node server.js"
 environment = "production"
 

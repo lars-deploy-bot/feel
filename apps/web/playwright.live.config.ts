@@ -20,7 +20,7 @@ assertLiveE2ETarget(TEST_ENV, APP_BASE_URL)
 export default defineConfig({
   testDir: "./e2e-tests",
   testMatch: "**/*-live.spec.ts", // Only run live deployed-environment tests
-  timeout: 120000, // Live tests include real API calls and LLM judge pass
+  timeout: 120000, // Live tests include real API calls against deployed environments
   workers: 1, // Sequential execution
 
   // Use shared tenant bootstrap/cleanup against staging
