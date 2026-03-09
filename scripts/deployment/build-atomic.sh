@@ -365,6 +365,16 @@ for pkg in "${STANDALONE_PACKAGES[@]}"; do
     )
 done
 
+log_step "Hydrating subprocess package dependencies..."
+for pkg in "${SUBPROCESS_PACKAGES[@]}"; do
+    SOURCE_PKG_DIR="$PROJECT_ROOT/packages/$pkg"
+    TARGET_PKG_DIR="$STANDALONE_PACKAGES_DIR/$pkg"
+    [ ! -d "$SOURCE_PKG_DIR" ] && { log_error "Subprocess source package missing: $pkg"; exit 1; }
+    [ ! -d "$TARGET_PKG_DIR" ] && { log_error "Subprocess standalone package missing: $pkg"; exit 1; }
+
+    node "$SCRIPT_DIR/hydrate-subprocess-package.mjs" "$SOURCE_PKG_DIR" "$TARGET_PKG_DIR"
+done
+
 # Copy zod dependency from the .bun cache (it's in the root standalone node_modules)
 BUN_ZOD="$TEMP_BUILD_DIR/standalone/node_modules/.bun/node_modules/zod"
 if [ -d "$BUN_ZOD" ]; then
@@ -373,6 +383,19 @@ fi
 
 log_step "Verifying hermetic workspace import resolution..."
 bun "$SCRIPT_DIR/verify-hermetic-imports.mjs" "$TEMP_BUILD_DIR/standalone"
+
+log_step "Verifying subprocess package entry imports..."
+for pkg in "${SUBPROCESS_PACKAGES[@]}"; do
+    if [ "$pkg" = "worker-pool" ]; then
+        VERIFY_PATH="$STANDALONE_PACKAGES_DIR/$pkg/node_modules/@sentry/node/build/esm/integrations/http.js"
+    else
+        log_error "Missing subprocess verification target for package: $pkg"
+        exit 1
+    fi
+
+    [ ! -f "$VERIFY_PATH" ] && { log_error "Subprocess verification target missing: $VERIFY_PATH"; exit 1; }
+    node "$SCRIPT_DIR/verify-subprocess-package.mjs" "$VERIFY_PATH" >/dev/null
+done
 
 # =============================================================================
 # Phase 10: Atomic Swap

@@ -1,6 +1,7 @@
 // Entry point for the Alive API service
 // Validates env, registers shutdown hooks, starts the server
 
+import "./infra/sentry"
 import { env } from "./config/env"
 import { logger } from "./infra/logger"
 import { registerShutdownHooks } from "./server/hooks"

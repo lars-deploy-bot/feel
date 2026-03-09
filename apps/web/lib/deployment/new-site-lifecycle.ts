@@ -4,6 +4,7 @@ import { COOKIE_NAMES } from "@webalive/shared"
 import { cookies } from "next/headers"
 import type { SessionUser } from "@/features/auth/lib/auth"
 import { refreshSessionTokenWithOrg } from "@/features/auth/lib/jwt"
+import { inspectSiteOccupancy } from "@/lib/deployment/site-occupancy"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
 import { errorLogger } from "@/lib/error-logger"
 import { getSiteWorkspaceRoot, siteWorkspaceExists } from "@/lib/site-workspace-registry"
@@ -31,8 +32,13 @@ export async function getNewSiteCollisionMessage(slug: string, domain: string): 
     return `Subdomain "${slug}" is already taken. Choose a different name.`
   }
 
+  const occupancy = inspectSiteOccupancy(slug)
+  if (occupancy.occupied) {
+    return `Slug "${slug}" is not reusable yet: ${occupancy.reason}. Choose a different slug.`
+  }
+
   if (siteWorkspaceExists(domain)) {
-    return "Site directory already exists. Choose a different slug."
+    return "Site workspace already exists. Choose a different slug."
   }
 
   return null

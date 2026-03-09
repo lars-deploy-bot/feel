@@ -609,6 +609,15 @@ export class WorkerPoolManager extends EventEmitter {
     return currentLoad > threshold
   }
 
+  private hasLiveWorkerForWorkspace(workspaceKey: string): boolean {
+    for (const [key, worker] of this.workers) {
+      if (!key.startsWith(`${workspaceKey}:`)) continue
+      if (worker.state === "dead") continue
+      return true
+    }
+    return false
+  }
+
   private async resolveCgroupPidsPaths(): Promise<CgroupPidsPaths | null> {
     if (this.cgroupPidsPaths !== undefined) {
       return this.cgroupPidsPaths
@@ -1108,7 +1117,8 @@ export class WorkerPoolManager extends EventEmitter {
       return { worker: null, reason: "load_shed" }
     }
 
-    if (this.shouldLoadShed()) {
+    const hasLiveWorkerForWorkspace = this.hasLiveWorkerForWorkspace(workspaceKey)
+    if (this.shouldLoadShed() && hasLiveWorkerForWorkspace) {
       this.telemetry.loadShedEvents += 1
       return { worker: null, reason: "load_shed" }
     }

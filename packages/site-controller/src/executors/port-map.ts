@@ -9,7 +9,7 @@
  */
 
 import { execSync } from "node:child_process"
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { createClient } from "@supabase/supabase-js"
 import { retryAsync } from "@webalive/shared"
@@ -18,6 +18,7 @@ import { PATHS } from "../constants.js"
 const PORT_MAP_FILENAME = "port-map.json"
 const SANDBOX_MAP_FILENAME = "sandbox-map.json"
 const PREVIEW_PROXY_SERVICE = "preview-proxy.service"
+const TEMPLATE_ENV_DIR = "/etc/templates"
 
 function getOutputPath(): string {
   const generatedDir = PATHS.GENERATED_DIR
@@ -84,6 +85,44 @@ function getSandboxMapPath(): string {
   return `/var/lib/alive/generated/${SANDBOX_MAP_FILENAME}`
 }
 
+export function readTemplatePortMap(templateEnvDir = TEMPLATE_ENV_DIR): Record<string, number> {
+  const ports: Record<string, number> = {}
+
+  let entries: string[]
+  try {
+    entries = readdirSync(templateEnvDir)
+  } catch {
+    return ports
+  }
+
+  for (const entry of entries) {
+    if (!entry.endsWith(".env")) continue
+
+    const hostname = entry.slice(0, -".env".length)
+    if (hostname.length === 0) continue
+
+    let raw: string
+    try {
+      raw = readFileSync(join(templateEnvDir, entry), "utf-8")
+    } catch {
+      continue
+    }
+
+    for (const line of raw.split("\n")) {
+      const trimmed = line.trim()
+      if (!trimmed.startsWith("PORT=")) continue
+
+      const value = Number.parseInt(trimmed.slice("PORT=".length), 10)
+      if (Number.isInteger(value) && value > 0) {
+        ports[hostname] = value
+      }
+      break
+    }
+  }
+
+  return ports
+}
+
 /**
  * Regenerate port-map.json and sandbox-map.json from Supabase,
  * verify them, and signal the Go preview-proxy.
@@ -128,6 +167,12 @@ export async function regeneratePortMap(requiredHostname?: string): Promise<numb
           }
         } else if (row.port) {
           ports[row.hostname] = row.port
+        }
+      }
+
+      for (const [hostname, port] of Object.entries(readTemplatePortMap())) {
+        if (!(hostname in ports)) {
+          ports[hostname] = port
         }
       }
 

@@ -1,15 +1,14 @@
-import { existsSync } from "node:fs"
-import path from "node:path"
 import { type NextRequest, NextResponse } from "next/server"
 import { validateSlug } from "@/features/deployment/lib/slug-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { handleQuery, isHandleBodyError } from "@/lib/api/server"
-import { buildSubdomain, WORKSPACE_BASE } from "@/lib/config"
+import { inspectSiteOccupancy } from "@/lib/deployment/site-occupancy"
 import { ErrorCodes } from "@/lib/error-codes"
 
 interface AvailabilityResponse {
   available: boolean
   slug?: string
+  reason?: string
   error?: string
 }
 
@@ -23,14 +22,14 @@ export async function GET(req: NextRequest) {
     return structuredErrorResponse(ErrorCodes.INVALID_SLUG, { status: 400, details: { error: validation.error } })
   }
 
-  // Check if domain directory exists
-  const fullDomain = buildSubdomain(slug)
-  const sitePath = path.join(WORKSPACE_BASE, fullDomain)
-  const exists = existsSync(sitePath)
+  const occupancy = inspectSiteOccupancy(slug)
 
   console.log(
-    `[Availability] Checking slug "${slug}" -> domain "${fullDomain}" -> path "${sitePath}" -> exists: ${exists}`,
+    `[Availability] Checking slug "${slug}" -> occupied: ${occupancy.occupied} (${occupancy.reason ?? "free"})`,
   )
 
-  return NextResponse.json({ available: !exists, slug } as AvailabilityResponse, { status: 200 })
+  return NextResponse.json(
+    { available: !occupancy.occupied, slug, reason: occupancy.reason } satisfies AvailabilityResponse,
+    { status: 200 },
+  )
 }

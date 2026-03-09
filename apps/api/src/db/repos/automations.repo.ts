@@ -1,6 +1,6 @@
 import type { JobStatus, RunStatus, TriggerType } from "@webalive/database"
 import { InternalError, NotFoundError } from "../../infra/errors"
-import { app } from "../clients"
+import { app, iam } from "../clients"
 
 export interface AutomationJobRow {
   id: string
@@ -111,4 +111,105 @@ export async function deleteJob(jobId: string): Promise<void> {
     }
     throw new InternalError(`Failed to delete automation job: ${error.message}`)
   }
+}
+
+// =============================================================================
+// Automation Ownership Transfer
+// =============================================================================
+
+export interface TransferResult {
+  transferred: number
+  disabled: number
+  jobDetails: Array<{ id: string; name: string; action: "transferred" | "disabled"; newOwnerId?: string }>
+}
+
+/**
+ * When a user leaves an org, transfer their automations to another org member.
+ * If no other members exist, disable the automations.
+ *
+ * Finds all automation_jobs owned by `userId` on domains belonging to `orgId`,
+ * then reassigns to the best available member (prefer owner > admin > member).
+ */
+export async function reassignOrDisableAutomations(orgId: string, departingUserId: string): Promise<TransferResult> {
+  const result: TransferResult = { transferred: 0, disabled: 0, jobDetails: [] }
+
+  // 1. Find all domains belonging to this org
+  const { data: domains, error: domainsError } = await app.from("domains").select("domain_id").eq("org_id", orgId)
+
+  if (domainsError) {
+    throw new InternalError(`Failed to fetch domains for org ${orgId}: ${domainsError.message}`)
+  }
+
+  if (!domains?.length) return result
+
+  const domainIds = domains.map(d => d.domain_id)
+
+  // 2. Find automation jobs owned by the departing user on these domains
+  const { data: jobs, error: jobsError } = await app
+    .from("automation_jobs")
+    .select("id, name")
+    .eq("user_id", departingUserId)
+    .in("site_id", domainIds)
+
+  if (jobsError) {
+    throw new InternalError(`Failed to fetch automations for departing user: ${jobsError.message}`)
+  }
+
+  if (!jobs?.length) return result
+
+  // 3. Find remaining org members (excluding departing user), prefer owner > admin > member
+  const { data: remainingMembers, error: membersError } = await iam
+    .from("org_memberships")
+    .select("user_id, role")
+    .eq("org_id", orgId)
+    .neq("user_id", departingUserId)
+
+  if (membersError) {
+    throw new InternalError(`Failed to fetch remaining org members: ${membersError.message}`)
+  }
+
+  const newOwner = pickBestMember(remainingMembers ?? [])
+
+  // 4. Transfer or disable
+  const jobIds = jobs.map(j => j.id)
+
+  if (newOwner) {
+    const { error: updateError } = await app
+      .from("automation_jobs")
+      .update({ user_id: newOwner.user_id })
+      .in("id", jobIds)
+
+    if (updateError) {
+      throw new InternalError(`Failed to transfer automations: ${updateError.message}`)
+    }
+
+    result.transferred = jobs.length
+    for (const job of jobs) {
+      result.jobDetails.push({ id: job.id, name: job.name, action: "transferred", newOwnerId: newOwner.user_id })
+    }
+  } else {
+    // No remaining members — disable all automations
+    const { error: disableError } = await app
+      .from("automation_jobs")
+      .update({ is_active: false, status: "disabled" as JobStatus })
+      .in("id", jobIds)
+
+    if (disableError) {
+      throw new InternalError(`Failed to disable automations: ${disableError.message}`)
+    }
+
+    result.disabled = jobs.length
+    for (const job of jobs) {
+      result.jobDetails.push({ id: job.id, name: job.name, action: "disabled" })
+    }
+  }
+
+  return result
+}
+
+const ROLE_PRIORITY: Record<string, number> = { owner: 0, admin: 1, member: 2 }
+
+function pickBestMember(members: Array<{ user_id: string; role: string }>): { user_id: string; role: string } | null {
+  if (members.length === 0) return null
+  return members.sort((a, b) => (ROLE_PRIORITY[a.role] ?? 99) - (ROLE_PRIORITY[b.role] ?? 99))[0]
 }

@@ -215,7 +215,9 @@ sync_ops_systemd_units
 # Rollback Support
 # =============================================================================
 PREVIOUS_BUILD=""
-[ -L "$BUILDS_DIR/current" ] && PREVIOUS_BUILD=$(readlink "$BUILDS_DIR/current")
+if [ -L "$BUILDS_DIR/current" ]; then
+    PREVIOUS_BUILD=$(readlink "$BUILDS_DIR/current")
+fi
 
 rollback() {
     local reason="$1"
