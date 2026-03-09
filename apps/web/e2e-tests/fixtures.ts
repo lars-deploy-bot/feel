@@ -10,14 +10,15 @@ import { test as base, type Page, type Response } from "@playwright/test"
 import { COOKIE_NAMES, createTestStorageState, DOMAINS, TEST_CONFIG } from "@webalive/shared"
 import { fetchSessionCookie } from "./helpers"
 import { requireProjectBaseUrl } from "./lib/base-url"
-import { BootstrapTenantApiResponseSchema } from "./lib/tenant-types"
-import type { TestUser } from "./lib/tenant-types"
 import {
   buildJsonMockResponse,
   E2E_MOCK_HEADER,
   getStrictApiGuardEnabled,
   isGuardedApiPath,
 } from "./lib/strict-api-guard"
+import type { TestUser } from "./lib/tenant-types"
+import { BootstrapTenantApiResponseSchema } from "./lib/tenant-types"
+
 export type { TestUser } from "./lib/tenant-types"
 
 type TestFixtures = {

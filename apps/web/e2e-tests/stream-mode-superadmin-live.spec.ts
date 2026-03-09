@@ -4,8 +4,8 @@ import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/str
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { login } from "./helpers"
 import { getProjectBaseUrl } from "./lib/live-tenant"
-import { BootstrapTenantApiResponseSchema } from "./lib/tenant-types"
 import { parseNDJSONEvents } from "./lib/ndjson"
+import { BootstrapTenantApiResponseSchema } from "./lib/tenant-types"
 
 interface LiveSuperadminUser {
   email: string
