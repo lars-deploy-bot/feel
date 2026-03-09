@@ -164,7 +164,7 @@ export async function ensureServerRow(
     }
   }
 
-  throw lastError
+  return { ok: false, error: lastError instanceof Error ? lastError.message : String(lastError) }
 }
 
 async function ensureServerRowOnce(
@@ -183,7 +183,7 @@ async function ensureServerRowOnce(
     .maybeSingle()
 
   if (selectError) {
-    return { ok: false, error: `Failed to query app.servers: ${selectError.code}: ${selectError.message}` }
+    throw new Error(`Failed to query app.servers: ${selectError.code}: ${selectError.message}`)
   }
 
   if (data) {
@@ -203,26 +203,11 @@ async function ensureServerRowOnce(
   )
 
   if (insertError) {
-    return { ok: false, error: `Failed to insert server row: ${insertError.code}: ${insertError.message}` }
+    throw new Error(`Failed to insert server row: ${insertError.code}: ${insertError.message}`)
   }
 
   console.log(`[server-check] Inserted server "${server.serverId}" into app.servers`)
   return { ok: true }
-}
-
-/** @deprecated Use ensureServerRow instead — it self-heals rather than just checking. */
-export async function checkServerRow(
-  supabaseUrl: string,
-  supabaseKey: string,
-  serverId: string,
-): Promise<ServerCheckResult> {
-  // Extract hostname/ip from serverId for backwards compat
-  // Format: srv_<domain_underscored>_<ip_underscored>
-  return ensureServerRow(supabaseUrl, supabaseKey, {
-    serverId,
-    serverIp: "",
-    hostname: "",
-  })
 }
 
 /**

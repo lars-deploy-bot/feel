@@ -13,6 +13,7 @@
  * Run: ENV_FILE=.env.staging bun run test:e2e:gate
  */
 
+import { getDeploymentTemplateById } from "@webalive/shared"
 import jwt from "jsonwebtoken"
 import { expect, test } from "./fixtures"
 import { isLocalTestServer } from "./lib/test-env"
@@ -42,8 +43,14 @@ function previewUrl(domain: string, path = "/"): string {
 // Skip all preview proxy tests on local — no Go proxy running
 const describeProxy = isLocalTestServer ? test.describe.skip : test.describe
 
-// The blank template runs on every server (template@blank.alive.best.service)
-const TEST_DOMAIN = "blank.alive.best"
+const blankTemplate = getDeploymentTemplateById("tmpl_blank")
+if (!blankTemplate) {
+  throw new Error("tmpl_blank template is required for preview proxy health tests")
+}
+
+// The blank template runs on every server. Use its stable internal hostname here;
+// the public preview base is still derived from server config via NEXT_PUBLIC_PREVIEW_BASE.
+const TEST_DOMAIN = blankTemplate.internalHostname
 
 describeProxy("Preview Proxy Health", () => {
   // Use JWT_SECRET to create preview tokens directly (no app auth needed)
