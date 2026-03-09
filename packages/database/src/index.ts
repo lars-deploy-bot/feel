@@ -61,7 +61,6 @@ export * from "./client"
 // Export startup verification (schema + server identity)
 export {
   checkSchema,
-  checkServerRow,
   ensureServerRow,
   formatSchemaFailure,
   formatServerCheckFailure,

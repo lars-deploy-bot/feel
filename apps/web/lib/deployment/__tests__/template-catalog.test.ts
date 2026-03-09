@@ -1,3 +1,4 @@
+import { DOMAINS } from "@webalive/shared"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const createAppClientMock = vi.fn()
@@ -82,6 +83,7 @@ describe("template-catalog", () => {
 
     expect(templates).toHaveLength(1)
     expect(templates[0]?.template_id).toBe("tmpl_blank")
+    expect(templates[0]?.preview_url).toBe(`https://blank.${DOMAINS.WILDCARD}`)
     expect(existsSyncMock).not.toHaveBeenCalled()
   })
 
@@ -93,7 +95,7 @@ describe("template-catalog", () => {
 
     expect(templates).toHaveLength(1)
     expect(templates[0]?.template_id).toBe("tmpl_blank")
-    expect(templates[0]?.preview_url).toBe("https://blank.alive.best")
+    expect(templates[0]?.preview_url).toBe(`https://blank.${DOMAINS.WILDCARD}`)
   })
 
   it("finds a filesystem template by id when the database row is missing", async () => {
