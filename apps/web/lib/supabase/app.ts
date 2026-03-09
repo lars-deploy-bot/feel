@@ -34,8 +34,9 @@ export async function createAppClient(keyType: KeyType = "service") {
 
   const { url, key } = getSupabaseCredentials(keyType)
 
-  // In test environment, use direct client without cookies
-  if (isTestEnv) {
+  // Service-role admin operations must never inherit end-user cookies.
+  // Use a direct client so staging/prod admin routes actually run with service_role privileges.
+  if (isTestEnv || keyType === "service") {
     return createClient<Database>(url, key, {
       db: {
         schema: "app",

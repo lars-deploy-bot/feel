@@ -338,6 +338,54 @@ describe("Worker Pool Hardening Integration", () => {
     expect(completionOrder).toEqual(["p0", "p1", "p3", "p2"])
   })
 
+  it("still spawns the first worker for a workspace when load shedding is active", async () => {
+    const loadShedManager = new WorkerPoolManager({
+      workerEntryPath: ctx.workerScriptPath,
+      socketDir: join(ctx.testDir, "load-shed-sockets"),
+      maxWorkers: 2,
+      inactivityTimeoutMs: 30_000,
+      maxAgeMs: 60_000,
+      readyTimeoutMs: 2_000,
+      shutdownTimeoutMs: 400,
+      cancelTimeoutMs: 50,
+      killGraceMs: 100,
+      orphanSweepIntervalMs: 30_000,
+      orphanMaxAgeMs: 60_000,
+      maxWorkersPerUser: 1,
+      maxWorkersPerWorkspace: 1,
+      maxQueuedPerUser: 4,
+      maxQueuedPerWorkspace: 8,
+      maxQueuedGlobal: 16,
+      workersPerCore: 4,
+      loadShedThreshold: 0.000001,
+    })
+
+    try {
+      const spawned: string[] = []
+      loadShedManager.on("worker:spawned", event => {
+        spawned.push(event.workspaceKey)
+      })
+
+      const resultPromise = loadShedManager.query(buildCredentials("baseline.example"), {
+        requestId: "baseline-load-shed",
+        ownerKey: "owner-a",
+        payload: createPayload("delay:10"),
+        onMessage: () => {},
+      })
+
+      await waitFor(() => spawned.length === 1, {
+        label: "baseline worker spawned under load shed",
+      })
+
+      const result = await resultPromise
+      expect(result.success).toBe(true)
+      expect(result.cancelled).not.toBe(true)
+      expect(spawned).toEqual(["baseline.example:0"])
+    } finally {
+      await loadShedManager.shutdownAll()
+    }
+  })
+
   it("removes aborted queued requests and does not execute them later", async () => {
     const credentials = buildCredentials("wk-queue-abort")
     const queuedAbort = new AbortController()

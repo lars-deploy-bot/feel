@@ -5,6 +5,7 @@
   "paths": {
     "aliveRoot": "/path/to/alive",
     "sitesRoot": "/srv/webalive/sites",
+    "e2bScratchRoot": "/srv/webalive/e2b-scratch",
     "templatesRoot": "/srv/webalive/templates",
     "imagesStorage": "/srv/webalive/storage"
   },

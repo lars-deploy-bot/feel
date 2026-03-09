@@ -102,11 +102,6 @@ export const test = base.extend<
       }
 
       const data = BootstrapTenantResponseSchema.parse(await res.json())
-
-      if (!data.ok) {
-        throw new Error(`Failed to get tenant for worker ${workerIndex}: ok=false`)
-      }
-
       await use(data.tenant)
     },
     { scope: "worker" },
