@@ -50,18 +50,6 @@ async function readJsonOrThrow<T>(
   return parser.parse(payload)
 }
 
-async function findWorkspaceSiteId(request: APIRequestContext, workspace: string): Promise<string> {
-  const sitesRes = await request.get("/api/sites")
-  const sitesData = await readJsonOrThrow(sitesRes, "sites", apiSchemas.sites.res)
-  const site = sitesData.sites.find(candidate => candidate.hostname === workspace)
-
-  if (!site) {
-    throw new Error(`[sites] Workspace site not found for ${workspace}`)
-  }
-
-  return site.id
-}
-
 async function createAutomationJob(
   request: APIRequestContext,
   siteId: string,
@@ -154,8 +142,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
     authenticatedPage,
     workerTenant,
   }) => {
-    const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
-    const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
+    const automationJob = await createAutomationJob(authenticatedPage.request, workerTenant.siteId)
     const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)
     if (!seed) {
       await authenticatedPage.request.delete(`/api/automations/${automationJob.id}`)
@@ -210,8 +197,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
   }, testInfo) => {
     // Keep timeout strict; the selector flow is deterministic via ensureConversationSidebarOpen().
     testInfo.setTimeout(120_000)
-    const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
-    const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
+    const automationJob = await createAutomationJob(authenticatedPage.request, workerTenant.siteId)
     const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)
     if (!seed) {
       await authenticatedPage.request.delete(`/api/automations/${automationJob.id}`)
@@ -269,8 +255,7 @@ test.describe("Automation Transcript Polling", () => {
     authenticatedPage,
     workerTenant,
   }) => {
-    const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
-    const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
+    const automationJob = await createAutomationJob(authenticatedPage.request, workerTenant.siteId)
     const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)
     if (!seed) {
       await authenticatedPage.request.delete(`/api/automations/${automationJob.id}`)

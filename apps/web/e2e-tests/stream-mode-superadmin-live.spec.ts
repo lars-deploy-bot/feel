@@ -4,19 +4,8 @@ import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/str
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { login } from "./helpers"
 import { getProjectBaseUrl } from "./lib/live-tenant"
+import { BootstrapTenantApiResponseSchema } from "./lib/tenant-types"
 import { parseNDJSONEvents } from "./lib/ndjson"
-
-interface BootstrapTenantResponse {
-  ok: boolean
-  tenant: {
-    userId: string
-    email: string
-    orgId: string
-    orgName: string
-    workspace: string
-    workerIndex: number
-  }
-}
 
 interface LiveSuperadminUser {
   email: string
@@ -67,7 +56,7 @@ async function bootstrapLiveSuperadminUser(workerIndex: number, baseUrl: string)
     throw new Error(`bootstrap-tenant failed (${response.status})`)
   }
 
-  const payload = (await response.json()) as BootstrapTenantResponse
+  const payload = BootstrapTenantApiResponseSchema.parse(await response.json())
   if (!payload.ok) {
     throw new Error("bootstrap-tenant returned ok=false")
   }

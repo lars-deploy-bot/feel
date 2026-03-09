@@ -3,24 +3,13 @@ import { TEST_CONFIG, WORKSPACE_STORAGE, type WorkspaceStorageValue } from "@web
 import { TEST_TIMEOUTS } from "../fixtures/test-data"
 import { login } from "../helpers"
 import { requireProjectBaseUrl } from "./base-url"
+import { BootstrapTenantApiResponseSchema } from "./tenant-types"
 
 export interface LiveStagingUser {
   email: string
   password: string
   workspace: string
   orgId: string
-}
-
-interface BootstrapTenantResponse {
-  ok: boolean
-  tenant: {
-    userId: string
-    email: string
-    orgId: string
-    orgName: string
-    workspace: string
-    workerIndex: number
-  }
 }
 
 interface VerifyTenantResponse {
@@ -93,7 +82,7 @@ export async function getLiveStagingUser(workerIndex: number, baseUrl: string): 
     throw new Error(`bootstrap-tenant returned non-JSON response: ${contentType || "unknown"}`)
   }
 
-  const payload = (await response.json()) as BootstrapTenantResponse
+  const payload = BootstrapTenantApiResponseSchema.parse(await response.json())
   if (!payload.ok) {
     throw new Error("bootstrap-tenant returned ok=false")
   }

@@ -20,7 +20,9 @@ const mockUser: SessionUser = {
 }
 
 let membershipsData: Array<{ org_id: string }> | null = []
+let membershipsError: { message: string } | null = null
 let domainsData: Array<{ domain_id: string; hostname: string; org_id: string | null }> | null = []
+let domainsError: { message: string } | null = null
 let aliveDomainData: { domain_id: string; hostname: string; org_id: string | null } | null = null
 let aliveDomainError: { message: string } | null = null
 
@@ -41,6 +43,7 @@ vi.mock("@/lib/error-codes", () => ({
   ErrorCodes: {
     ORG_ACCESS_DENIED: "ORG_ACCESS_DENIED",
     INTERNAL_ERROR: "INTERNAL_ERROR",
+    QUERY_FAILED: "QUERY_FAILED",
     SITE_NOT_FOUND: "SITE_NOT_FOUND",
   },
 }))
@@ -80,7 +83,7 @@ vi.mock("@/lib/supabase/server-rls", () => ({
         if (table !== "org_memberships") throw new Error(`Unexpected iam table: ${table}`)
         return {
           select: () => ({
-            eq: () => Promise.resolve({ data: membershipsData, error: null }),
+            eq: () => Promise.resolve({ data: membershipsData, error: membershipsError }),
           }),
         }
       },
@@ -93,7 +96,7 @@ vi.mock("@/lib/supabase/server-rls", () => ({
         return {
           select: () => ({
             in: () => ({
-              order: () => Promise.resolve({ data: domainsData, error: null }),
+              order: () => Promise.resolve({ data: domainsData, error: domainsError }),
             }),
           }),
         }
@@ -124,7 +127,9 @@ describe("GET /api/sites", () => {
     mockUser.enabledModels = []
 
     membershipsData = [{ org_id: "org-1" }]
+    membershipsError = null
     domainsData = [{ domain_id: "d1", hostname: "site-1.com", org_id: "org-1" }]
+    domainsError = null
     aliveDomainData = { domain_id: "alive-id", hostname: SUPERADMIN.WORKSPACE_NAME, org_id: "org-alive" }
     aliveDomainError = null
   })
@@ -146,6 +151,28 @@ describe("GET /api/sites", () => {
     expect(res.status).toBe(200)
     expect(data.sites).toEqual([{ id: "d1", hostname: "site-1.com", org_id: "org-1" }])
     expect(mockCreateServiceAppClient).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when membership lookup fails", async () => {
+    membershipsError = { message: "jwt rejected" }
+
+    const res = await GET(request("http://localhost/api/sites"))
+    const data = await res.json()
+
+    expect(res.status).toBe(500)
+    expect(data.error).toBe("QUERY_FAILED")
+    expect(Sentry.captureException).toHaveBeenCalledWith(membershipsError)
+  })
+
+  it("returns 500 when domain lookup fails", async () => {
+    domainsError = { message: "rls denied" }
+
+    const res = await GET(request("http://localhost/api/sites"))
+    const data = await res.json()
+
+    expect(res.status).toBe(500)
+    expect(data.error).toBe("QUERY_FAILED")
+    expect(Sentry.captureException).toHaveBeenCalledWith(domainsError)
   })
 
   it("includes alive workspace for superadmin when missing", async () => {
