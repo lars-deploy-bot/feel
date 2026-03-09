@@ -17,7 +17,7 @@ import { getSessionPayloadFromCookie, getSessionUser } from "@/features/auth/lib
 import { createSessionToken } from "@/features/auth/lib/jwt"
 import { checkRevocation } from "@/features/auth/sessions/session-service"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
+import { setSessionCookie } from "@/lib/auth/cookies"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 
@@ -61,9 +61,8 @@ export async function POST(req: Request) {
     orgRoles,
   })
 
-  const host = req.headers.get("host") || undefined
   const res = NextResponse.json({ ok: true })
-  res.cookies.set(COOKIE_NAMES.SESSION, newToken, getSessionCookieOptions(host))
+  setSessionCookie(res, newToken, req)
 
   return res
 }

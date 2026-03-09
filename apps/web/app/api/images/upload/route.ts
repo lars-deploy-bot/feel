@@ -22,8 +22,7 @@ export async function POST(request: NextRequest) {
     // 2. Parse form data
     console.log(`[Image Upload ${requestId}] Step 2: Parsing form data`)
     const formData = await request.formData()
-    const host = request.headers.get("host") || "localhost"
-    console.log(`[Image Upload ${requestId}] ✓ Form data parsed, host: ${host}`)
+    console.log(`[Image Upload ${requestId}] ✓ Form data parsed, host: ${request.headers.get("host")}`)
 
     // 3. Security: Verify workspace authorization BEFORE any operations
     console.log(`[Image Upload ${requestId}] Step 3: Verifying workspace access`)
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     // 4. Resolve workspace path (after authorization)
     console.log(`[Image Upload ${requestId}] Step 4: Resolving workspace path`)
-    const workspaceResult = await resolveWorkspace(host, body, requestId)
+    const workspaceResult = await resolveWorkspace(body, requestId)
     if (!workspaceResult.success) {
       console.log(`[Image Upload ${requestId}] ✗ Workspace resolution failed`)
       return workspaceResult.response

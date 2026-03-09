@@ -5,7 +5,7 @@ import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
-import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
+import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -91,7 +91,7 @@ async function validateSymlinkTarget(
     const resolvedTarget = path.resolve(path.dirname(symlinkPath), target)
 
     // Check if symlink target is within workspace
-    if (!isPathWithinWorkspace(resolvedTarget, workspaceRoot, path.sep)) {
+    if (!isPathWithinWorkspace(resolvedTarget, workspaceRoot)) {
       console.warn(
         `[Delete ${requestId}] Symlink escape blocked: ${symlinkPath} -> ${target} (resolved: ${resolvedTarget})`,
       )
@@ -188,8 +188,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Systemd path: resolve workspace
-    const host = request.headers.get("host") || "localhost"
-    const workspaceResult = await getWorkspace({ host, body, requestId })
+    const workspaceResult = await getWorkspace({ body, requestId })
 
     if (!workspaceResult.success) {
       return workspaceResult.response
@@ -208,7 +207,7 @@ export async function POST(request: NextRequest) {
     const fullPath = path.join(resolvedWorkspace, targetPath)
     const resolvedPath = path.resolve(fullPath)
 
-    if (resolvedPath === resolvedWorkspace || !isPathWithinWorkspace(resolvedPath, resolvedWorkspace, path.sep)) {
+    if (resolvedPath === resolvedWorkspace || !isPathWithinWorkspace(resolvedPath, resolvedWorkspace)) {
       console.warn(`[Delete ${requestId}] Path traversal blocked: ${targetPath} -> ${resolvedPath}`)
       return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
         status: 403,
