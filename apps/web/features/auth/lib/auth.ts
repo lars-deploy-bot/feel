@@ -719,7 +719,7 @@ export async function validateRequest(
  * const { user, workspace, workspacePath } = result.data
  */
 export async function requireWorkspaceAuth(
-  req: { headers: { get: (name: string) => string | null } },
+  _req: { headers: { get: (name: string) => string | null } },
   body: { workspace?: string },
   requestId?: string,
 ): Promise<

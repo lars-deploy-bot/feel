@@ -4,9 +4,9 @@
  * These tests verify security-critical functions work correctly.
  * AI agents love to "simplify" these - don't let them.
  */
+import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { describe, expect, it } from "vitest"
 import { hasSessionCookie, hasValidUser, isValidSessionCookie } from "@/features/auth/types/guards"
-import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { containsPathTraversal, isValidWorkspaceString } from "@/features/workspace/types/workspace"
 
 describe("Path Security Guards", () => {

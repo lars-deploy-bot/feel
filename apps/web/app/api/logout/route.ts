@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { verifySessionToken } from "@/features/auth/lib/jwt"
 import { revokeSession } from "@/features/auth/sessions/session-service"
 import { createCorsSuccessResponse } from "@/lib/api/responses"
-import { clearManagerSessionCookie, clearSessionCookie, COOKIE_NAMES } from "@/lib/auth/cookies"
+import { COOKIE_NAMES, clearManagerSessionCookie, clearSessionCookie } from "@/lib/auth/cookies"
 import { corsOptionsHandler } from "@/lib/cors-utils"
 
 export async function POST(req: NextRequest) {
