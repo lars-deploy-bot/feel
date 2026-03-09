@@ -1,17 +1,18 @@
 "use client"
 
+import type { ExecutionMode } from "@webalive/database"
 import { motion } from "framer-motion"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
+import type { SiteLimitDetails } from "@/features/deployment/types/deploy-subdomain"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 
 type StatusType = "success" | "error" | "loading"
 
-import type { SiteLimitDetails } from "@/features/deployment/types/deploy-subdomain"
-
 interface DeploymentStatusProps {
   status: StatusType | null
   domain?: string | null
+  executionMode?: ExecutionMode | null
   error?: string | null
   errorCode?: string | null
   errorDetails?: string[] | null
@@ -23,7 +24,16 @@ function isSiteLimitDetails(details: SiteLimitDetails | string | null | undefine
   return typeof details === "object" && details !== null
 }
 
-export function DeploymentStatus({ status, domain, error, errorCode, errorDetails, details }: DeploymentStatusProps) {
+export function DeploymentStatus({
+  status,
+  domain,
+  executionMode,
+  error,
+  errorCode,
+  errorDetails,
+  details,
+  chatUrl,
+}: DeploymentStatusProps) {
   const [countdown, setCountdown] = useState(30)
   const [_copied, setCopied] = useState(false)
 
@@ -48,8 +58,12 @@ export function DeploymentStatus({ status, domain, error, errorCode, errorDetail
   if (!status) return null
 
   if (status === "success") {
+    const isSandboxOnly = executionMode === "e2b"
+    const copyValue = isSandboxOnly ? (domain ?? "") : `https://${domain}`
+    const startBuildingHref = chatUrl || `/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(domain || "")}`
+
     const copyLink = () => {
-      navigator.clipboard.writeText(`https://${domain}`)
+      navigator.clipboard.writeText(copyValue)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
@@ -79,8 +93,14 @@ export function DeploymentStatus({ status, domain, error, errorCode, errorDetail
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-3xl font-medium text-black dark:text-white mb-2">Your website is ready!</h1>
-          <p className="text-base text-black/60 dark:text-white/60">Let's get you started in two simple steps</p>
+          <h1 className="text-3xl font-medium text-black dark:text-white mb-2">
+            {isSandboxOnly ? "Your workspace is ready!" : "Your website is ready!"}
+          </h1>
+          <p className="text-base text-black/60 dark:text-white/60">
+            {isSandboxOnly
+              ? "Start building in chat, then launch the preview from the sandbox."
+              : "Let's get you started in two simple steps"}
+          </p>
         </motion.div>
 
         {/* Step 1: Website is Live */}
@@ -95,9 +115,13 @@ export function DeploymentStatus({ status, domain, error, errorCode, errorDetail
               1
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-medium text-black dark:text-white mb-2">Your website is live</h2>
+              <h2 className="text-xl font-medium text-black dark:text-white mb-2">
+                {isSandboxOnly ? "Your sandbox workspace exists" : "Your website is live"}
+              </h2>
               <p className="text-base text-black/60 dark:text-white/60 mb-4">
-                Your website is already online and accessible to anyone on the internet
+                {isSandboxOnly
+                  ? "Your new site was created directly in a sandbox workspace. It is not published on the public internet yet."
+                  : "Your website is already online and accessible to anyone on the internet"}
               </p>
 
               {/* Domain Display */}
@@ -129,23 +153,24 @@ export function DeploymentStatus({ status, domain, error, errorCode, errorDetail
                 </div>
               </div>
 
-              {/* View Website Button */}
-              <a
-                href={`https://${domain}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 h-11 px-6 bg-white dark:bg-zinc-800 text-black dark:text-white text-sm font-medium border border-black/20 dark:border-white/20 rounded-lg hover:bg-black/[0.02] dark:hover:bg-zinc-700 transition-all duration-200 active:scale-[0.98]"
-              >
-                <span>View Your Live Website</span>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                  />
-                </svg>
-              </a>
+              {!isSandboxOnly && (
+                <a
+                  href={`https://${domain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 h-11 px-6 bg-white dark:bg-zinc-800 text-black dark:text-white text-sm font-medium border border-black/20 dark:border-white/20 rounded-lg hover:bg-black/[0.02] dark:hover:bg-zinc-700 transition-all duration-200 active:scale-[0.98]"
+                >
+                  <span>View Your Live Website</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    />
+                  </svg>
+                </a>
+              )}
             </div>
           </div>
         </motion.div>
@@ -177,10 +202,13 @@ export function DeploymentStatus({ status, domain, error, errorCode, errorDetail
               2
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-medium text-black dark:text-white mb-2">Build your website with AI</h2>
+              <h2 className="text-xl font-medium text-black dark:text-white mb-2">
+                {isSandboxOnly ? "Build inside the sandbox" : "Build your website with AI"}
+              </h2>
               <p className="text-base text-black/60 dark:text-white/60 mb-6">
-                Use our chat interface, just like ChatGPT, to customize your website. Tell the AI what you want to
-                change, add, or remove—changes happen in real-time.
+                {isSandboxOnly
+                  ? "Open chat for this workspace and tell the agent what to change. The sandbox now owns the files from the first minute."
+                  : "Use our chat interface, just like ChatGPT, to customize your website. Tell the AI what you want to change, add, or remove—changes happen in real-time."}
               </p>
 
               {/* Example Prompts */}
@@ -227,10 +255,10 @@ export function DeploymentStatus({ status, domain, error, errorCode, errorDetail
           className="flex flex-col items-center gap-4"
         >
           <a
-            href={`/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(domain || "")}`}
+            href={startBuildingHref}
             className="inline-flex items-center justify-center gap-2 h-12 px-8 bg-black dark:bg-white text-white dark:text-black text-[15px] font-medium rounded-full hover:bg-black/90 dark:hover:bg-white/90 transition-all duration-200 ease-out active:scale-[0.98] shadow-sm"
           >
-            <span>Start Building</span>
+            <span>{isSandboxOnly ? "Open Workspace" : "Start Building"}</span>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>

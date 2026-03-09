@@ -193,6 +193,8 @@ describe("config values in test environment", () => {
     if (hasServerConfig) {
       expect(SECURITY.ALLOWED_WORKSPACE_BASES.length).toBeGreaterThan(0)
     } else {
+      // Without server-config, both SITES_ROOT and E2B_SCRATCH_ROOT are empty.
+      // No fallbacks — if paths aren't configured, no workspace bases are allowed.
       expect(SECURITY.ALLOWED_WORKSPACE_BASES).toEqual([])
     }
   })

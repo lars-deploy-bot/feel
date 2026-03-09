@@ -76,6 +76,17 @@ const CLIENT_SCRIPT = `
   var isActive = false;
   var hoveredElement = null;
 
+  // Derive parent origin for secure postMessage — never use "*"
+  var parentOrigin = null;
+  try {
+    if (document.referrer) {
+      parentOrigin = new URL(document.referrer).origin;
+    }
+  } catch(e) {}
+  if (!parentOrigin) {
+    console.warn("[alive-tagger] Could not determine parent origin — postMessage disabled");
+  }
+
   function getSourceInfo(element) {
     var current = element;
     var depth = 0;
@@ -151,6 +162,7 @@ const CLIENT_SCRIPT = `
   }
 
   function sendToParent(element, source) {
+    if (!parentOrigin) return;
     var context = {
       fileName: source.fileName,
       lineNumber: source.lineNumber,
@@ -162,7 +174,7 @@ const CLIENT_SCRIPT = `
       id: element.id || "",
       parentComponents: getParentComponents(element)
     };
-    window.parent.postMessage({ type: "alive-element-selected", context: context }, "*");
+    window.parent.postMessage({ type: "alive-element-selected", context: context }, parentOrigin);
     console.log("[alive-tagger] Selected:", context.displayName, "at", context.fileName + ":" + context.lineNumber);
   }
 
@@ -223,11 +235,19 @@ const CLIENT_SCRIPT = `
   });
 
   // Listen for activation message from parent (button click)
+  // Only accept messages from the verified parent origin.
   window.addEventListener("message", function(e) {
+    if (!parentOrigin || e.origin !== parentOrigin) return;
     if (e.data?.type === "alive-tagger-activate") {
       isActive = true;
       document.body.classList.add("alive-tagger-active");
       console.log("[alive-tagger] Activated via button");
+    } else if (e.data?.type === "alive-tagger-deactivate") {
+      isActive = false;
+      document.body.classList.remove("alive-tagger-active");
+      hideUI();
+      hoveredElement = null;
+      console.log("[alive-tagger] Deactivated via button");
     }
   });
 

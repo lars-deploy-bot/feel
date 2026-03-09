@@ -107,6 +107,7 @@ export const ErrorCodes = {
   SLUG_TAKEN: "SLUG_TAKEN",
   SITE_NOT_FOUND: "SITE_NOT_FOUND",
   DEPLOYMENT_FAILED: "DEPLOYMENT_FAILED",
+  DEPLOYMENT_IN_PROGRESS: "DEPLOYMENT_IN_PROGRESS",
   EMAIL_ALREADY_REGISTERED: "EMAIL_ALREADY_REGISTERED",
   INVALID_ACCESS_CODE: "INVALID_ACCESS_CODE",
   ORG_NOT_FOUND: "ORG_NOT_FOUND",
@@ -475,6 +476,11 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.DEPLOYMENT_FAILED:
       return "I couldn't deploy your site. Please check the deployment logs to see what went wrong."
+
+    case ErrorCodes.DEPLOYMENT_IN_PROGRESS:
+      return details?.domain
+        ? `A deployment for '${details.domain}' is already in progress. Please wait for it to finish.`
+        : "A deployment is already in progress for this domain. Please wait for it to finish."
 
     case ErrorCodes.EMAIL_ALREADY_REGISTERED:
       return details?.email

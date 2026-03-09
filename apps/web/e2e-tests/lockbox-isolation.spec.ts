@@ -15,22 +15,17 @@
 import { randomUUID } from "node:crypto"
 import { COOKIE_NAMES, TEST_CONFIG } from "@webalive/shared"
 import jwt from "jsonwebtoken"
+import { BootstrapTenantResponseSchema, type TestTenant } from "@/app/api/test/test-route-schemas"
 import { DEFAULT_USER_SCOPES } from "@/features/auth/lib/jwt"
 import { expect, test } from "./fixtures"
 import { requireProjectBaseUrl } from "./lib/base-url"
-
-interface TenantInfo {
-  userId: string
-  email: string
-  orgId: string
-  orgName: string
-}
+import { buildE2ETestHeaders } from "./lib/test-headers"
 
 /**
  * Build a JWT for a given test user.
  * Mirrors the logic in fixtures.ts authenticatedPage setup.
  */
-function signJwt(user: TenantInfo, secret: string): string {
+function signJwt(user: Pick<TestTenant, "userId" | "email" | "orgId" | "orgName">, secret: string): string {
   return jwt.sign(
     {
       role: "authenticated" as const,
@@ -65,13 +60,7 @@ async function authedFetch(baseUrl: string, path: string, token: string, init?: 
  * Bootstrap a second tenant via the test API.
  * Uses the same endpoint that global-setup uses for worker tenants.
  */
-async function bootstrapSecondTenant(baseUrl: string, suffix: string): Promise<TenantInfo> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" }
-  const testSecret = process.env.E2E_TEST_SECRET
-  if (testSecret) {
-    headers["x-test-secret"] = testSecret
-  }
-
+async function bootstrapSecondTenant(baseUrl: string, suffix: string): Promise<TestTenant> {
   const runId = process.env.E2E_RUN_ID
   if (!runId) {
     throw new Error("E2E_RUN_ID not set — global setup not run?")
@@ -85,7 +74,7 @@ async function bootstrapSecondTenant(baseUrl: string, suffix: string): Promise<T
 
   const res = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
     method: "POST",
-    headers,
+    headers: buildE2ETestHeaders(true),
     body: JSON.stringify({
       runId,
       workerIndex,
@@ -100,17 +89,12 @@ async function bootstrapSecondTenant(baseUrl: string, suffix: string): Promise<T
     throw new Error(`Failed to bootstrap second tenant: ${res.status} ${text}`)
   }
 
-  const data = await res.json()
+  const data = BootstrapTenantResponseSchema.parse(await res.json())
   if (!data.ok) {
-    throw new Error(`Bootstrap tenant failed: ${data.error}`)
+    throw new Error("Bootstrap tenant failed: ok=false")
   }
 
-  return {
-    userId: data.tenant.userId,
-    email: data.tenant.email,
-    orgId: data.tenant.orgId,
-    orgName: data.tenant.orgName,
-  }
+  return data.tenant
 }
 
 test.describe("Lockbox Cross-Account Isolation", () => {
@@ -132,7 +116,7 @@ test.describe("Lockbox Cross-Account Isolation", () => {
 
     // --- Set up two real users ---
     // Alice = the current worker tenant (already bootstrapped by global-setup)
-    const alice: TenantInfo = {
+    const alice = {
       userId: workerTenant.userId,
       email: workerTenant.email,
       orgId: workerTenant.orgId,
@@ -229,7 +213,7 @@ test.describe("Lockbox Cross-Account Isolation", () => {
     }
 
     // Alice stores a key
-    const alice: TenantInfo = {
+    const alice = {
       userId: workerTenant.userId,
       email: workerTenant.email,
       orgId: workerTenant.orgId,
@@ -249,7 +233,7 @@ test.describe("Lockbox Cross-Account Isolation", () => {
 
     // Eve has a valid JWT signed with the correct secret, but for a userId
     // that doesn't exist in iam.users
-    const eve: TenantInfo = {
+    const eve = {
       userId: `usr_eve_${randomUUID().slice(0, 8)}`,
       email: "eve@evil.local",
       orgId: `org_eve_${randomUUID().slice(0, 8)}`,

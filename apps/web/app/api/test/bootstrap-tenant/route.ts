@@ -11,6 +11,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { promisify } from "node:util"
 import * as Sentry from "@sentry/nextjs"
+import { AppConstants, type ExecutionMode } from "@webalive/database"
 import { env } from "@webalive/env/server"
 import { PATHS, TEST_CONFIG } from "@webalive/shared"
 import { hash } from "bcrypt"
@@ -25,6 +26,16 @@ import { invalidateDomainOrgCache } from "@/lib/tokens"
 
 const execFileAsync = promisify(execFile)
 const MAX_LINUX_USERNAME_LENGTH = 32
+
+function requireExecutionMode(mode: ExecutionMode): ExecutionMode {
+  const matchedMode = AppConstants.app.Enums.execution_mode.find(value => value === mode)
+  if (!matchedMode) {
+    throw new Error(`Missing execution mode constant: ${mode}`)
+  }
+  return matchedMode
+}
+
+const DEFAULT_TEST_DOMAIN_EXECUTION_MODE = requireExecutionMode("systemd")
 
 /**
  * Guard: refuse to upsert a domain if it already exists as a production (non-test) domain.
@@ -433,7 +444,7 @@ export async function POST(req: Request) {
             hostname: workspace,
             org_id: newOrgId,
             port,
-            execution_mode: "e2b",
+            execution_mode: DEFAULT_TEST_DOMAIN_EXECUTION_MODE,
             is_test_env: true,
             test_run_id: runId,
           },
@@ -537,7 +548,7 @@ export async function POST(req: Request) {
             hostname: workspace,
             org_id: membership.org_id,
             port,
-            execution_mode: "e2b",
+            execution_mode: DEFAULT_TEST_DOMAIN_EXECUTION_MODE,
             is_test_env: true,
             test_run_id: runId,
           },
@@ -687,7 +698,7 @@ export async function POST(req: Request) {
       hostname: workspace,
       org_id: orgId,
       port, // Virtual port (validated above)
-      execution_mode: "e2b",
+      execution_mode: DEFAULT_TEST_DOMAIN_EXECUTION_MODE,
       is_test_env: true,
       test_run_id: runId,
     },

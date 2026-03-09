@@ -18,6 +18,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 MIGRATIONS_DIR="$REPO_ROOT/packages/database/migrations"
+PREREQS_DIR="$REPO_ROOT/packages/database/prerequisites"
+SEEDS_DIR="$REPO_ROOT/packages/database/seeds"
 
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/e2e-supabase-target.sh"
@@ -110,16 +112,43 @@ run_remote_sql() {
     "docker exec -i $REMOTE_DB_CONTAINER psql -U postgres -d postgres -v ON_ERROR_STOP=1"
 }
 
+apply_dir_remote() {
+  local ssh_target="$1"
+  local dir="$2"
+  local label="$3"
+  if [[ -d "$dir" ]]; then
+    while IFS= read -r f; do
+      echo "[E2E DB] $label $(basename "$f") on remote Supabase"
+      run_remote_sql "$ssh_target" < "$f" >/dev/null
+    done < <(find "$dir" -maxdepth 1 -type f -name '*.sql' | sort -V)
+  fi
+}
+
+apply_dir_local() {
+  local database_url="$1"
+  local dir="$2"
+  local label="$3"
+  if [[ -d "$dir" ]]; then
+    while IFS= read -r f; do
+      echo "[E2E DB] $label $(basename "$f") via DATABASE_URL"
+      psql "$database_url" -v ON_ERROR_STOP=1 -f "$f" >/dev/null
+    done < <(find "$dir" -maxdepth 1 -type f -name '*.sql' | sort -V)
+  fi
+}
+
 apply_all_migrations_remote() {
   local ssh_target="$1"
   echo "[E2E DB] Resetting remote Supabase schemas on $ssh_target:$REMOTE_DB_CONTAINER"
   reset_sql_schemas | run_remote_sql "$ssh_target" >/dev/null
+
+  apply_dir_remote "$ssh_target" "$PREREQS_DIR" "Prerequisite:"
 
   while IFS= read -r migration; do
     echo "[E2E DB] Applying $(basename "$migration") on remote Supabase"
     run_remote_sql "$ssh_target" < "$migration" >/dev/null
   done < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' | sort -V)
 
+  apply_dir_remote "$ssh_target" "$SEEDS_DIR" "Seeding:"
   reload_postgrest_sql | run_remote_sql "$ssh_target" >/dev/null
 }
 
@@ -128,11 +157,14 @@ apply_all_migrations_local() {
   echo "[E2E DB] Resetting local schemas via DATABASE_URL"
   reset_sql_schemas | psql "$database_url" -v ON_ERROR_STOP=1 >/dev/null
 
+  apply_dir_local "$database_url" "$PREREQS_DIR" "Prerequisite:"
+
   while IFS= read -r migration; do
     echo "[E2E DB] Applying $(basename "$migration") via DATABASE_URL"
     psql "$database_url" -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
   done < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' | sort -V)
 
+  apply_dir_local "$database_url" "$SEEDS_DIR" "Seeding:"
   reload_postgrest_sql | psql "$database_url" -v ON_ERROR_STOP=1 >/dev/null
 }
 

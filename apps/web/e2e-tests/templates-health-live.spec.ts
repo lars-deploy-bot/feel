@@ -5,23 +5,9 @@
  * Fetches templates dynamically from the API (not hardcoded).
  */
 
+import { apiSchemas } from "@/lib/api/schemas"
 import { expect, test } from "./fixtures"
 import { apiGet } from "./lib/api-helpers"
-
-interface Template {
-  template_id: string
-  name: string
-  description: string | null
-  preview_url: string
-  image_url: string | null
-  deploy_count: number
-  is_active: boolean
-  ai_description: string | null
-}
-
-interface TemplatesResponse {
-  templates: Template[]
-}
 
 const BROWSER_HEADERS = {
   "User-Agent":
@@ -47,20 +33,30 @@ async function tryFetch(url: string, headers?: Record<string, string>) {
 test.describe("Template Sites Health", () => {
   test("all active templates are accessible", async ({ baseURL, page, authenticatedPage }) => {
     const apiUrl = baseURL || "http://localhost:8997"
-    const { ok, data } = await apiGet<TemplatesResponse>(authenticatedPage.request, `${apiUrl}/api/templates`)
+    const { ok, data } = await apiGet(authenticatedPage.request, `${apiUrl}/api/templates`)
+    const templatesData = apiSchemas.templates.res.parse(data)
 
     expect(ok).toBe(true)
-    expect(data.templates).toBeDefined()
-    expect(Array.isArray(data.templates)).toBe(true)
-    expect(data.templates.length).toBeGreaterThan(0)
+    expect(templatesData.templates).toBeDefined()
+    expect(Array.isArray(templatesData.templates)).toBe(true)
+    expect(templatesData.templates.length).toBeGreaterThan(0)
 
-    console.log(`Found ${data.templates.length} active templates to check`)
+    console.log(`Found ${templatesData.templates.length} active templates to check`)
 
     // Check each template site is accessible
     const results: { name: string; url: string; status: number | string; ok: boolean }[] = []
 
-    for (const template of data.templates) {
+    for (const template of templatesData.templates) {
       const templateUrl = template.preview_url
+      if (!templateUrl) {
+        results.push({
+          name: template.name,
+          url: "<missing-preview-url>",
+          status: "Missing preview_url",
+          ok: false,
+        })
+        continue
+      }
 
       try {
         // First try direct fetch (fast path)
@@ -119,17 +115,21 @@ test.describe("Template Sites Health", () => {
 
   test("templates API returns expected fields", async ({ baseURL, authenticatedPage }) => {
     const apiUrl = baseURL || "http://localhost:8997"
-    const { ok, data } = await apiGet<TemplatesResponse>(authenticatedPage.request, `${apiUrl}/api/templates`)
+    const { ok, data } = await apiGet(authenticatedPage.request, `${apiUrl}/api/templates`)
+    const templatesData = apiSchemas.templates.res.parse(data)
 
     expect(ok).toBe(true)
 
     // Verify each template has required fields
-    for (const template of data.templates) {
+    for (const template of templatesData.templates) {
       expect(template.template_id).toBeDefined()
       expect(typeof template.template_id).toBe("string")
 
       expect(template.preview_url).toBeDefined()
-      expect(typeof template.preview_url).toBe("string")
+      expect(template.preview_url).not.toBeNull()
+      if (!template.preview_url) {
+        throw new Error(`Template ${template.template_id} is missing preview_url`)
+      }
       expect(template.preview_url).toMatch(/^https?:\/\//) // Valid URL
 
       expect(template.name).toBeDefined()

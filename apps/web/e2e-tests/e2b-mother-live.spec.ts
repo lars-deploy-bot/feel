@@ -1,55 +1,17 @@
 import { expect, type Page, test } from "@playwright/test"
+import {
+  type TestE2BDomain,
+  TestE2BDomainResponseSchema,
+  type TestE2BDomainUpdateBody,
+} from "@/app/api/test/test-route-schemas"
+import { apiSchemas, FilesListResponseSchema, FilesUploadResponseSchema } from "@/lib/api/schemas"
 import { ErrorCodes } from "@/lib/error-codes"
 import { CANCEL_ENDPOINT_STATUS } from "@/lib/stream/cancel-status"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
 import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
-
-interface E2bRuntime {
-  domain_id: string
-  hostname: string
-  org_id: string
-  is_test_env: boolean
-  execution_mode: "systemd" | "e2b"
-  sandbox_id: string | null
-  sandbox_status: "creating" | "running" | "dead" | null
-}
-
-interface E2bRuntimeResponse {
-  ok: boolean
-  domain: E2bRuntime
-}
-
-interface E2bRuntimeUpdatePayload {
-  workspace: string
-  executionMode: "systemd" | "e2b"
-  killSandbox?: boolean
-  resetSandboxFields?: boolean
-  restartWorkspaceWorkers?: boolean
-  sandboxId?: string | null
-  sandboxStatus?: "creating" | "running" | "dead" | null
-  seedHostFiles?: Array<{ path: string; content: string }>
-  cleanHostFiles?: string[]
-}
-
-interface ErrorResponse {
-  ok?: false
-  error: string
-  message?: string
-}
-
-interface CancelResponse {
-  ok: boolean
-  status: string
-  requestId?: string
-  tabId?: string
-}
-
-interface BrowserUploadResult {
-  status: number
-  body: unknown
-}
+import { buildE2ETestHeaders } from "./lib/test-headers"
 
 const EXPECTED_CANCEL_STATUSES = new Set<string>([
   CANCEL_ENDPOINT_STATUS.CANCELLED,
@@ -58,32 +20,20 @@ const EXPECTED_CANCEL_STATUSES = new Set<string>([
   CANCEL_ENDPOINT_STATUS.ALREADY_COMPLETE,
 ])
 
-function buildTestHeaders(withJsonContentType: boolean): Record<string, string> {
-  const headers: Record<string, string> = {}
-  if (withJsonContentType) {
-    headers["Content-Type"] = "application/json"
-  }
-  const testSecret = process.env.E2E_TEST_SECRET
-  if (testSecret) {
-    headers["x-test-secret"] = testSecret
-  }
-  return headers
-}
-
-function getDomainRuntime(baseUrl: string, workspace: string): Promise<E2bRuntime>
+function getDomainRuntime(baseUrl: string, workspace: string): Promise<TestE2BDomain>
 function getDomainRuntime(
   baseUrl: string,
   workspace: string,
   options: { allow404AsNull: true },
-): Promise<E2bRuntime | null>
+): Promise<TestE2BDomain | null>
 async function getDomainRuntime(
   baseUrl: string,
   workspace: string,
   options?: { allow404AsNull?: boolean },
-): Promise<E2bRuntime | null> {
+): Promise<TestE2BDomain | null> {
   const response = await fetch(`${baseUrl}/api/test/e2b-domain?workspace=${encodeURIComponent(workspace)}`, {
     method: "GET",
-    headers: buildTestHeaders(false),
+    headers: buildE2ETestHeaders(),
   })
 
   if (response.status === 404 && options?.allow404AsNull) {
@@ -94,7 +44,7 @@ async function getDomainRuntime(
     throw new Error(`e2b-domain GET failed (${response.status})`)
   }
 
-  const payload = (await response.json()) as E2bRuntimeResponse
+  const payload = TestE2BDomainResponseSchema.parse(await response.json())
   if (!payload.ok) {
     throw new Error("e2b-domain GET returned ok=false")
   }
@@ -102,19 +52,20 @@ async function getDomainRuntime(
   return payload.domain
 }
 
-async function updateDomainRuntime(baseUrl: string, payload: E2bRuntimeUpdatePayload): Promise<E2bRuntime> {
+async function updateDomainRuntime(baseUrl: string, payload: TestE2BDomainUpdateBody): Promise<TestE2BDomain> {
   const response = await fetch(`${baseUrl}/api/test/e2b-domain`, {
     method: "POST",
-    headers: buildTestHeaders(true),
+    headers: buildE2ETestHeaders(true),
     body: JSON.stringify(payload),
   })
 
   if (!response.ok) {
-    const error = (await response.json().catch(() => ({}))) as ErrorResponse
-    throw new Error(`e2b-domain POST failed (${response.status}): ${error.error ?? "unknown_error"}`)
+    const error = await response.json().catch(() => ({}))
+    const errorCode = typeof error.error === "string" ? error.error : "unknown_error"
+    throw new Error(`e2b-domain POST failed (${response.status}): ${errorCode}`)
   }
 
-  const data = (await response.json()) as E2bRuntimeResponse
+  const data = TestE2BDomainResponseSchema.parse(await response.json())
   return data.domain
 }
 
@@ -173,7 +124,7 @@ async function cancelLatestStreamViaTab(page: Page, workspace: string, message: 
   })
 
   expect(cancelRes.status()).toBe(200)
-  const cancelJson = (await cancelRes.json()) as CancelResponse
+  const cancelJson = apiSchemas["claude/stream/cancel"].res.parse(await cancelRes.json())
   expect(cancelJson.ok).toBe(true)
   if (!EXPECTED_CANCEL_STATUSES.has(cancelJson.status)) {
     throw new Error(`Unexpected cancel status: ${cancelJson.status}`)
@@ -311,12 +262,14 @@ export default defineConfig({
         },
         { workspace: user.workspace, filename, pngBase64: tinyPngBase64 },
       )
-      const typedUploadResult = uploadResult as BrowserUploadResult
-      if (typedUploadResult.status !== 200) {
-        throw new Error(`Upload failed (${typedUploadResult.status}): ${JSON.stringify(typedUploadResult.body)}`)
+      if (typeof uploadResult.status !== "number") {
+        throw new Error("Upload result missing numeric status")
       }
-      const uploadJson = typedUploadResult.body as { path: string }
-      const uploadedPath = uploadJson.path as string
+      if (uploadResult.status !== 200) {
+        throw new Error(`Upload failed (${uploadResult.status}): ${JSON.stringify(uploadResult.body)}`)
+      }
+      const uploadJson = FilesUploadResponseSchema.parse(uploadResult.body)
+      const uploadedPath = uploadJson.path
       expect(uploadedPath.startsWith(".uploads/e2b-proof-")).toBe(true)
       expect(uploadedPath.endsWith(".png")).toBe(true)
 
@@ -324,11 +277,9 @@ export default defineConfig({
         data: { workspace: user.workspace, path: ".uploads" },
       })
       expect(listRes.status()).toBe(200)
-      const listJson = (await listRes.json()) as {
-        files?: Array<{ path: string }>
-      }
+      const listJson = FilesListResponseSchema.parse(await listRes.json())
       expect(Array.isArray(listJson.files)).toBe(true)
-      expect(listJson.files?.some(file => file.path === uploadedPath)).toBe(true)
+      expect(listJson.files.some(file => file.path === uploadedPath)).toBe(true)
 
       const readRes = await page.request.post("/api/files/read", {
         data: { workspace: user.workspace, path: "README.md" },
@@ -343,8 +294,10 @@ export default defineConfig({
         data: { workspace: user.workspace, path: "../../etc/passwd" },
       })
       expect(traversalRes.status()).toBe(403)
-      const traversalError = (await traversalRes.json()) as ErrorResponse
-      expect(traversalError.error).toBe(ErrorCodes.PATH_OUTSIDE_WORKSPACE)
+      const traversalError = await traversalRes.json()
+      expect(typeof traversalError.error === "string" ? traversalError.error : null).toBe(
+        ErrorCodes.PATH_OUTSIDE_WORKSPACE,
+      )
 
       // Negative: authenticated user must not access another workspace
       const secondaryUser = await getLiveStagingUser(test.info().workerIndex + 1, baseUrl)
@@ -352,16 +305,18 @@ export default defineConfig({
         data: { workspace: secondaryUser.workspace, path: "README.md" },
       })
       expect(crossWorkspaceRes.status()).toBe(403)
-      const crossWorkspaceError = (await crossWorkspaceRes.json()) as ErrorResponse
-      expect(crossWorkspaceError.error).toBe(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED)
+      const crossWorkspaceError = await crossWorkspaceRes.json()
+      expect(typeof crossWorkspaceError.error === "string" ? crossWorkspaceError.error : null).toBe(
+        ErrorCodes.WORKSPACE_NOT_AUTHENTICATED,
+      )
 
       // Phase 4: watch + terminal route behavior for E2B
       const watchRes = await page.request.post("/api/watch/lease", {
         data: { workspace: user.workspace },
       })
       expect(watchRes.status()).toBe(501)
-      const watchErr = (await watchRes.json()) as ErrorResponse
-      expect(watchErr.error).toBe(ErrorCodes.WATCH_UNSUPPORTED)
+      const watchErr = await watchRes.json()
+      expect(typeof watchErr.error === "string" ? watchErr.error : null).toBe(ErrorCodes.WATCH_UNSUPPORTED)
 
       const terminalRes = await page.request.post("/api/terminal/lease", {
         data: { workspace: user.workspace },
@@ -386,8 +341,10 @@ export default defineConfig({
         data: { workspace: user.workspace },
       })
       expect(terminalNotReadyRes.status()).toBe(503)
-      const terminalNotReadyErr = (await terminalNotReadyRes.json()) as ErrorResponse
-      expect(terminalNotReadyErr.error).toBe(ErrorCodes.SANDBOX_NOT_READY)
+      const terminalNotReadyErr = await terminalNotReadyRes.json()
+      expect(typeof terminalNotReadyErr.error === "string" ? terminalNotReadyErr.error : null).toBe(
+        ErrorCodes.SANDBOX_NOT_READY,
+      )
 
       // Recreate a running sandbox for the next phases
       await sendMessage(page, "Reply with exactly READY-AGAIN.")

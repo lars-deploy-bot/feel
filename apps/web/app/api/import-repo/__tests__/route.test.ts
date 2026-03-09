@@ -5,13 +5,19 @@ import { ErrorCodes } from "@/lib/error-codes"
 const getSessionUserMock = vi.fn()
 const validateUserOrgAccessMock = vi.fn()
 const getUserQuotaMock = vi.fn()
-const parseGithubRepoMock = vi.fn((_url: string) => ({ owner: "example", repo: "repo" }))
+const parseGithubRepoWithUrlsMock = vi.fn((_url: string) => ({
+  owner: "example",
+  repo: "repo",
+  canonicalUrl: "https://github.com/example/repo",
+  remoteUrl: "https://github.com/example/repo.git",
+}))
 const importGithubRepoMock = vi.fn()
 const cleanupImportDirMock = vi.fn()
 const getAccessTokenMock = vi.fn()
 const runStrictDeploymentMock = vi.fn()
 const siteMetadataExistsMock = vi.fn((_slug: string) => false)
-const siteMetadataSetSiteMock = vi.fn<(slug: string, metadata: unknown) => Promise<void>>()
+const siteMetadataSetSiteMock =
+  vi.fn<(slug: string, metadata: unknown, options?: { workspaceRoot?: string }) => Promise<void>>()
 const handleBodyMock = vi.fn()
 
 vi.mock("@/features/auth/lib/auth", () => ({
@@ -20,6 +26,7 @@ vi.mock("@/features/auth/lib/auth", () => ({
 
 vi.mock("@/features/auth/lib/jwt", () => ({
   createSessionToken: vi.fn(() => "new-session-token"),
+  refreshSessionTokenWithOrg: vi.fn(() => Promise.resolve("new-session-token")),
   verifySessionToken: vi.fn(() => ({
     orgIds: ["org-123"],
     scopes: [],
@@ -50,8 +57,11 @@ vi.mock("@/lib/api/responses", () => ({
   ),
 }))
 
+const MOCK_WORKSPACE_BASE = "/srv/webalive/sites"
+
 vi.mock("@/lib/config", () => ({
   buildSubdomain: vi.fn((slug: string) => `${slug}.alive.best`),
+  WORKSPACE_BASE: MOCK_WORKSPACE_BASE,
 }))
 
 vi.mock("@/lib/deployment/org-resolver", () => ({
@@ -63,9 +73,12 @@ vi.mock("@/lib/deployment/user-quotas", () => ({
 }))
 
 vi.mock("@/lib/deployment/github-import", () => ({
-  parseGithubRepo: (url: string) => parseGithubRepoMock(url),
   importGithubRepo: (...args: unknown[]) => importGithubRepoMock(...args),
   cleanupImportDir: (...args: unknown[]) => cleanupImportDirMock(...args),
+}))
+
+vi.mock("@/lib/git/github-repo-url", () => ({
+  parseGithubRepoWithUrls: (repoRef: string) => parseGithubRepoWithUrlsMock(repoRef),
 }))
 
 vi.mock("@/lib/deployment/deploy-pipeline", () => ({
@@ -89,8 +102,22 @@ vi.mock("@/lib/error-logger", () => ({
 vi.mock("@/lib/siteMetadataStore", () => ({
   siteMetadataStore: {
     exists: (slug: string) => siteMetadataExistsMock(slug),
-    setSite: (slug: string, metadata: unknown) => siteMetadataSetSiteMock(slug, metadata),
+    setSite: (slug: string, metadata: unknown, options?: { workspaceRoot?: string }) =>
+      siteMetadataSetSiteMock(slug, metadata, options),
   },
+}))
+
+const MOCK_E2B_SCRATCH = "/mock/e2b-scratch"
+
+vi.mock("@/lib/sandbox/e2b-workspace", () => ({
+  getE2bScratchSiteRoot: vi.fn((domain: string) => `${MOCK_E2B_SCRATCH}/${domain}`),
+}))
+
+vi.mock("@/lib/site-workspace-registry", () => ({
+  siteWorkspaceExists: vi.fn(() => false),
+  getSiteWorkspaceRoot: vi.fn((domain: string, mode: string) =>
+    mode === "e2b" ? `${MOCK_E2B_SCRATCH}/${domain}` : `${MOCK_WORKSPACE_BASE}/${domain}`,
+  ),
 }))
 
 vi.mock("@webalive/shared", async importOriginal => {
@@ -121,6 +148,18 @@ describe("/api/import-repo", () => {
 describe("POST /api/import-repo", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    getSessionUserMock.mockReset()
+    validateUserOrgAccessMock.mockReset()
+    getUserQuotaMock.mockReset()
+    getAccessTokenMock.mockReset()
+    handleBodyMock.mockReset()
+    siteMetadataExistsMock.mockReset()
+    parseGithubRepoWithUrlsMock.mockReset()
+    importGithubRepoMock.mockReset()
+    cleanupImportDirMock.mockReset()
+    runStrictDeploymentMock.mockReset()
+    siteMetadataSetSiteMock.mockReset()
+
     getSessionUserMock.mockResolvedValue({
       id: "user-1",
       email: "owner@example.com",
@@ -140,7 +179,12 @@ describe("POST /api/import-repo", () => {
       siteIdeas: "imported site",
     })
     siteMetadataExistsMock.mockReturnValue(false)
-    parseGithubRepoMock.mockReturnValue({ owner: "example", repo: "repo" })
+    parseGithubRepoWithUrlsMock.mockReturnValue({
+      owner: "example",
+      repo: "repo",
+      canonicalUrl: "https://github.com/example/repo",
+      remoteUrl: "https://github.com/example/repo.git",
+    })
     importGithubRepoMock.mockResolvedValue({
       templatePath: "/tmp/import/template",
       cleanupDir: "/tmp/import",
@@ -149,6 +193,7 @@ describe("POST /api/import-repo", () => {
       domain: "testsite.alive.best",
       port: 3700,
       serviceName: "site@testsite-alive-best.service",
+      executionMode: "systemd",
     })
     siteMetadataSetSiteMock.mockResolvedValue(undefined)
   })
@@ -182,6 +227,35 @@ describe("POST /api/import-repo", () => {
       templatePath: "/tmp/import/template",
     })
     expect(cleanupImportDirMock).toHaveBeenCalledWith("/tmp/import")
+  })
+
+  it("stores imported metadata in the e2b scratch root when sandbox mode is enabled", async () => {
+    runStrictDeploymentMock.mockResolvedValueOnce({
+      domain: "testsite.alive.best",
+      port: 3701,
+      serviceName: "e2b-site@testsite.alive.best",
+      executionMode: "e2b",
+    })
+
+    const response = await POST(
+      createRequest({
+        slug: "testsite",
+        repoUrl: "https://github.com/example/repo",
+        orgId: "org-1",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(siteMetadataSetSiteMock).toHaveBeenCalledWith(
+      "testsite",
+      expect.objectContaining({
+        domain: "testsite.alive.best",
+      }),
+      { workspaceRoot: `${MOCK_E2B_SCRATCH}/testsite.alive.best` },
+    )
+
+    const payload = (await response.json()) as { executionMode: string }
+    expect(payload.executionMode).toBe("e2b")
   })
 
   it("returns 403 when site quota is exceeded", async () => {
@@ -220,8 +294,30 @@ describe("POST /api/import-repo", () => {
     expect(runStrictDeploymentMock).not.toHaveBeenCalled()
   })
 
+  it("returns 409 when slug already exists even if quota is exceeded", async () => {
+    siteMetadataExistsMock.mockReturnValueOnce(true)
+    getUserQuotaMock.mockResolvedValueOnce({
+      canCreateSite: false,
+      maxSites: 1,
+      currentSites: 1,
+    })
+
+    const response = await POST(
+      createRequest({
+        slug: "testsite",
+        repoUrl: "https://github.com/example/repo",
+      }),
+    )
+
+    expect(response.status).toBe(409)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toBe(ErrorCodes.SLUG_TAKEN)
+    expect(getUserQuotaMock).not.toHaveBeenCalled()
+    expect(runStrictDeploymentMock).not.toHaveBeenCalled()
+  })
+
   it("returns 400 when repository format is invalid", async () => {
-    parseGithubRepoMock.mockImplementationOnce(() => {
+    parseGithubRepoWithUrlsMock.mockImplementationOnce(() => {
       throw new Error("Invalid GitHub repo format")
     })
 
@@ -299,7 +395,12 @@ describe("POST /api/import-repo", () => {
   })
 
   it("stores canonical sourceRepo and sourceBranch metadata", async () => {
-    parseGithubRepoMock.mockReturnValueOnce({ owner: "Acme", repo: "Toolkit" })
+    parseGithubRepoWithUrlsMock.mockReturnValueOnce({
+      owner: "Acme",
+      repo: "Toolkit",
+      canonicalUrl: "https://github.com/Acme/Toolkit",
+      remoteUrl: "https://github.com/Acme/Toolkit.git",
+    })
     handleBodyMock.mockResolvedValueOnce({
       slug: "testsite",
       repoUrl: "Acme/Toolkit.git",
@@ -325,6 +426,50 @@ describe("POST /api/import-repo", () => {
         sourceRepo: "https://github.com/Acme/Toolkit",
         sourceBranch: "release/v2",
       }),
+      { workspaceRoot: `${MOCK_WORKSPACE_BASE}/testsite.alive.best` },
     )
+  })
+
+  it("allows superadmins to bypass site quota checks", async () => {
+    getSessionUserMock.mockResolvedValueOnce({
+      id: "user-1",
+      email: "owner@example.com",
+      name: "Owner",
+      isSuperadmin: true,
+    })
+    getUserQuotaMock.mockResolvedValueOnce({
+      canCreateSite: false,
+      maxSites: 1,
+      currentSites: 1,
+    })
+
+    const response = await POST(
+      createRequest({
+        slug: "testsite",
+        repoUrl: "https://github.com/example/repo",
+        orgId: "org-1",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(getUserQuotaMock).not.toHaveBeenCalled()
+    expect(runStrictDeploymentMock).toHaveBeenCalledOnce()
+  })
+
+  it("succeeds even when metadata persistence fails (non-fatal)", async () => {
+    siteMetadataSetSiteMock.mockRejectedValueOnce(new Error("disk full"))
+
+    const response = await POST(
+      createRequest({
+        slug: "testsite",
+        repoUrl: "https://github.com/example/repo",
+        orgId: "org-1",
+      }),
+    )
+
+    // Metadata persistence is non-fatal — the site is deployed, only metadata write failed
+    expect(response.status).toBe(200)
+    expect(runStrictDeploymentMock).toHaveBeenCalledOnce()
+    expect(cleanupImportDirMock).toHaveBeenCalledWith("/tmp/import")
   })
 })

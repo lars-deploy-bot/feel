@@ -28,6 +28,8 @@ function makeDomain(overrides: Record<string, unknown> = {}) {
   return {
     domain_id: "dom_123",
     hostname: "example.com",
+    port: 3701,
+    is_test_env: false,
     execution_mode: "e2b" as const,
     sandbox_id: "sbx_abc",
     sandbox_status: "running" as const,

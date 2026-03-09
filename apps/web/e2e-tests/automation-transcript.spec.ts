@@ -3,6 +3,7 @@ import type { APIRequestContext, APIResponse, Response as PageResponse, Request 
 import type { Req, Res } from "@/lib/api/schemas"
 import { apiSchemas, validateRequest } from "@/lib/api/schemas"
 import {
+  type CleanupAutomationTranscriptRequest,
   CleanupAutomationTranscriptRequestSchema,
   CleanupAutomationTranscriptResponseSchema,
   SeedAutomationTranscriptRequestSchema,
@@ -12,13 +13,7 @@ import {
 import { expect, test } from "./fixtures"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { gotoChatFast, waitForChatReady } from "./helpers/assertions"
-
-interface AutomationTestHandles {
-  jobId: string
-  runId: string
-  conversationId: string
-  tabId: string
-}
+import { buildE2ETestHeaders } from "./lib/test-headers"
 
 async function ensureConversationSidebarOpen(authenticatedPage: import("@playwright/test").Page): Promise<void> {
   const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
@@ -30,12 +25,6 @@ async function ensureConversationSidebarOpen(authenticatedPage: import("@playwri
   await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await openSidebarButton.click()
   await expect(sidebar).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
-}
-
-function buildTestEndpointHeaders(): Record<string, string> | undefined {
-  const secret = process.env.E2E_TEST_SECRET
-  if (!secret) return undefined
-  return { "x-test-secret": secret }
 }
 
 async function readJsonOrThrow<T>(
@@ -91,7 +80,7 @@ async function seedAutomationTranscript(
   })
 
   const response = await request.post("/api/test/seed-automation-transcript", {
-    headers: buildTestEndpointHeaders(),
+    headers: buildE2ETestHeaders(),
     data: body,
   })
 
@@ -103,7 +92,10 @@ async function seedAutomationTranscript(
   return payload.seed
 }
 
-async function cleanupAutomationTranscript(request: APIRequestContext, handles: AutomationTestHandles): Promise<void> {
+async function cleanupAutomationTranscript(
+  request: APIRequestContext,
+  handles: CleanupAutomationTranscriptRequest,
+): Promise<void> {
   const cleanupBody = CleanupAutomationTranscriptRequestSchema.parse({
     jobId: handles.jobId,
     runId: handles.runId,
@@ -112,7 +104,7 @@ async function cleanupAutomationTranscript(request: APIRequestContext, handles: 
   })
 
   const cleanupResponse = await request.delete("/api/test/seed-automation-transcript", {
-    headers: buildTestEndpointHeaders(),
+    headers: buildE2ETestHeaders(),
     data: cleanupBody,
     timeout: 20_000,
   })
@@ -163,7 +155,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
       return
     }
 
-    const handles: AutomationTestHandles = {
+    const handles = {
       jobId: automationJob.id,
       runId: seed.runId,
       conversationId: seed.conversationId,
@@ -219,7 +211,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
       return
     }
 
-    const handles: AutomationTestHandles = {
+    const handles: CleanupAutomationTranscriptRequest = {
       jobId: automationJob.id,
       runId: seed.runId,
       conversationId: seed.conversationId,
@@ -278,7 +270,7 @@ test.describe("Automation Transcript Polling", () => {
       return
     }
 
-    const handles: AutomationTestHandles = {
+    const handles: CleanupAutomationTranscriptRequest = {
       jobId: automationJob.id,
       runId: seed.runId,
       conversationId: seed.conversationId,

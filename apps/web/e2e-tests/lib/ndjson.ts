@@ -1,28 +1,10 @@
 import { BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
-
-interface NDJSONEvent {
-  type: string
-  data?: unknown
-}
-
-interface AssistantTextBlock {
-  type?: unknown
-  text?: unknown
-}
-
-interface AssistantEventData {
-  messageType?: unknown
-  content?: {
-    message?: {
-      content?: unknown
-    }
-  }
-}
+import { isBridgeMessageEvent } from "@/features/chat/types/guards"
 
 /**
  * Parse NDJSON response body into stream events.
  */
-export function parseNDJSONEvents(body: string): NDJSONEvent[] {
+export function parseNDJSONEvents(body: string) {
   return body
     .split("\n")
     .filter(line => line.trim().length > 0)
@@ -31,7 +13,10 @@ export function parseNDJSONEvents(body: string): NDJSONEvent[] {
       if (typeof parsed !== "object" || parsed === null || !("type" in parsed) || typeof parsed.type !== "string") {
         throw new Error(`Unexpected NDJSON event format: ${line}`)
       }
-      return parsed as NDJSONEvent
+      return {
+        type: parsed.type,
+        data: "data" in parsed ? parsed.data : undefined,
+      }
     })
 }
 
@@ -50,16 +35,29 @@ export function extractAssistantTextFromNDJSON(body: string): string {
   const textBlocks: string[] = []
 
   for (const event of events) {
-    if (event.type !== BridgeStreamType.MESSAGE) continue
+    if (!isBridgeMessageEvent(event) || event.data.messageType !== "assistant") continue
 
-    const data = event.data as AssistantEventData | undefined
-    if (data?.messageType !== "assistant") continue
-
-    const blocks = data.content?.message?.content
+    const blocks =
+      typeof event.data.content === "object" &&
+      event.data.content !== null &&
+      "message" in event.data.content &&
+      typeof event.data.content.message === "object" &&
+      event.data.content.message !== null &&
+      "content" in event.data.content.message
+        ? event.data.content.message.content
+        : undefined
     if (!Array.isArray(blocks)) continue
 
-    for (const block of blocks as AssistantTextBlock[]) {
-      if (block.type === "text" && typeof block.text === "string" && block.text.trim().length > 0) {
+    for (const block of blocks) {
+      if (
+        typeof block === "object" &&
+        block !== null &&
+        "type" in block &&
+        block.type === "text" &&
+        "text" in block &&
+        typeof block.text === "string" &&
+        block.text.trim().length > 0
+      ) {
         textBlocks.push(block.text.trim())
       }
     }

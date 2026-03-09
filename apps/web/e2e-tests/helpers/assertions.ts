@@ -17,53 +17,14 @@
  */
 import { expect, type Page } from "@playwright/test"
 import { createWorkspaceStorageValue, WORKSPACE_STORAGE } from "@webalive/shared"
+import type { E2EReadiness } from "@/lib/stores/hydration-registry"
 import { TEST_SELECTORS, TEST_TIMEOUTS } from "../fixtures/test-data"
-
-/**
- * E2E readiness interface (matches hydration-registry.ts)
- *
- * The registry exposes:
- * - appReady: Promise that resolves when all stores are hydrated
- * - chatReady: Promise that resolves when chat-specific invariants are satisfied
- * - marks: Timing marks for debugging
- * - stores: Per-store timing metrics
- */
-interface E2EReadiness {
-  appReady: Promise<void>
-  chatReady: Promise<void>
-  marks: {
-    hydrationStart?: number
-    hydrationEnd?: number
-    appReady?: number
-    chatReady?: number
-  }
-  stores: Record<
-    string,
-    {
-      hydrationStart?: number
-      hydrationEnd?: number
-      durationMs?: number
-      error?: string
-    }
-  >
-  totalDurationMs?: number
-}
-
-interface WorkspaceStorageSnapshot {
-  workspace: string | null
-  orgId: string | null
-}
-
-interface WorkspaceNavigationContext {
-  workspace?: string
-  orgId?: string
-}
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
 
-function isWorkspaceStorageSnapshot(value: unknown): value is WorkspaceStorageSnapshot {
+function isWorkspaceStorageSnapshot(value: unknown): boolean {
   if (!isObjectRecord(value)) return false
   const workspace = Reflect.get(value, "workspace")
   const orgId = Reflect.get(value, "orgId")
@@ -143,7 +104,7 @@ export async function getE2EReadiness(page: Page): Promise<E2EReadiness | null> 
  * Navigate to chat page and wait for hydration
  * Uses domcontentloaded for fast navigation, then waits for __E2E_APP_READY__
  */
-export async function gotoChat(page: Page, context: WorkspaceNavigationContext = {}) {
+export async function gotoChat(page: Page, context: { workspace?: string; orgId?: string } = {}) {
   await page.goto("/chat", { waitUntil: "domcontentloaded" })
   await waitForAppReadySafe(page)
   await ensureWorkspaceReady(page, context)
@@ -204,7 +165,7 @@ async function ensureWorkspaceStorage(page: Page, workspace: string, orgId: stri
   return true
 }
 
-async function readWorkspaceStorage(page: Page): Promise<WorkspaceStorageSnapshot> {
+async function readWorkspaceStorage(page: Page) {
   const result = await page.evaluate(key => {
     const raw = localStorage.getItem(key)
     if (!raw) return { workspace: null, orgId: null }
@@ -235,7 +196,7 @@ async function readWorkspaceStorage(page: Page): Promise<WorkspaceStorageSnapsho
   return result
 }
 
-async function ensureWorkspaceReady(page: Page, context: WorkspaceNavigationContext): Promise<void> {
+async function ensureWorkspaceReady(page: Page, context: { workspace?: string; orgId?: string }): Promise<void> {
   try {
     await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({ timeout: TEST_TIMEOUTS.medium })
     return

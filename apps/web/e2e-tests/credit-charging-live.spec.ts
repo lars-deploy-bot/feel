@@ -17,17 +17,11 @@
  */
 
 import { expect, type Page, test } from "@playwright/test"
+import { TokensResponseSchema } from "@/lib/api/types"
 import { isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
 import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
-
-interface TokensAPIResponse {
-  ok: boolean
-  credits: number
-  tokens: number
-  workspace: string
-}
 
 async function sendMessage(page: Page, message: string): Promise<void> {
   const messageInput = page.locator('[data-testid="message-input"]')
@@ -56,7 +50,7 @@ async function getCreditsViaApi(page: Page, workspace: string): Promise<number> 
     throw new Error(`/api/tokens failed (${result.status}): ${JSON.stringify(result.data)}`)
   }
 
-  const data = result.data as TokensAPIResponse
+  const data = TokensResponseSchema.parse(result.data)
   return data.credits
 }
 
