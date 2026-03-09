@@ -60,13 +60,13 @@ environment = "production"
 groups = ["build"]
 
 [environments.development]
-groups = ["runtime", "development"]
+groups = ["runtime"]
 
 [environments.staging]
-groups = ["runtime", "staging"]
+groups = ["runtime"]
 
 [environments.production]
-groups = ["runtime", "production"]
+groups = ["runtime"]
 
 [env.groups.build]
 required = ["NEXT_PUBLIC_APP_URL", "SERVER_CONFIG_PATH"]
