@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
+use tokio::task::spawn_blocking;
 use url::Url;
 
 use crate::types::{
@@ -218,6 +219,28 @@ pub(crate) fn write_sanitized_env_file(
     Ok(())
 }
 
+pub(crate) async fn write_sanitized_env_file_async(
+    source_env_file: &Path,
+    output_env_file: &Path,
+    policy: EnvironmentPolicy,
+    environment_allow_email: bool,
+    runtime_port: u16,
+) -> Result<()> {
+    let source_env_file = source_env_file.to_path_buf();
+    let output_env_file = output_env_file.to_path_buf();
+    spawn_blocking(move || {
+        write_sanitized_env_file(
+            &source_env_file,
+            &output_env_file,
+            &policy,
+            environment_allow_email,
+            runtime_port,
+        )
+    })
+    .await
+    .context("write sanitized env file join failed")?
+}
+
 pub(crate) fn normalize_env_value(raw_value: &str) -> String {
     let trimmed = raw_value.trim();
     if trimmed.len() >= 2 {
@@ -263,6 +286,16 @@ pub(crate) fn resolve_runtime_env_file(
     }
 
     Ok(resolved)
+}
+
+pub(crate) async fn resolve_runtime_env_file_async(
+    config: AliveConfig,
+    environment: EnvironmentRow,
+    context: ServiceContext,
+) -> Result<PathBuf> {
+    spawn_blocking(move || resolve_runtime_env_file(&config, &environment, &context))
+        .await
+        .context("resolve runtime env file join failed")?
 }
 
 pub(crate) fn runtime_network_mode(

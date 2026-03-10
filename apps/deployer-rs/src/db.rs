@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
+use thiserror::Error;
 use tokio_postgres::Client;
 use uuid::Uuid;
 
@@ -10,6 +11,24 @@ use crate::types::{
     ApplicationRow, ClaimedBuild, ClaimedDeployment, EnvironmentRow, EnvironmentRuntimeOverrides,
     LeaseTarget, ReleaseRow,
 };
+
+#[derive(Debug, Error)]
+enum TaskTransitionError {
+    #[error("build {build_id} could not transition to succeeded because it was not running")]
+    BuildSuccess { build_id: String },
+    #[error("build {build_id} could not transition to failed because it was not running")]
+    BuildFailure { build_id: String },
+    #[error(
+        "deployment {deployment_id} could not transition to succeeded because it was not running"
+    )]
+    DeploymentSuccess { deployment_id: String },
+    #[error(
+        "deployment {deployment_id} could not transition to failed because it was not running"
+    )]
+    DeploymentFailure { deployment_id: String },
+    #[error("lease renewal skipped because task {task_id} is no longer running")]
+    LeaseRenewal { task_id: String },
+}
 
 pub(crate) async fn expire_stale_tasks(client: &Client) -> Result<()> {
     let expired_builds = client
@@ -88,7 +107,7 @@ pub(crate) async fn claim_next_build(
                 attempt_count = builds.attempt_count + 1,
                 builder_hostname = $1,
                 lease_token = $2,
-                lease_expires_at = now() + make_interval(secs => $3),
+                lease_expires_at = now() + make_interval(secs => $3::integer),
                 updated_at = now()
             FROM candidate
             WHERE builds.build_id = candidate.build_id
@@ -130,7 +149,7 @@ pub(crate) async fn claim_next_deployment(
                 started_at = now(),
                 attempt_count = deployments.attempt_count + 1,
                 lease_token = $2,
-                lease_expires_at = now() + make_interval(secs => $3),
+                lease_expires_at = now() + make_interval(secs => $3::integer),
                 updated_at = now()
             FROM candidate
             WHERE deployments.deployment_id = candidate.deployment_id
@@ -210,7 +229,7 @@ pub(crate) async fn fetch_release(client: &Client, release_id: &str) -> Result<R
     let row = client
         .query_one(
             "
-            SELECT release_id, application_id, artifact_ref, artifact_digest, alive_toml_snapshot
+            SELECT release_id, application_id, git_sha, COALESCE(commit_message, ''), artifact_ref, artifact_digest, alive_toml_snapshot, metadata->>'build_fingerprint'
             FROM deploy.releases
             WHERE release_id = $1
             ",
@@ -222,10 +241,50 @@ pub(crate) async fn fetch_release(client: &Client, release_id: &str) -> Result<R
     Ok(ReleaseRow {
         release_id: row.get(0),
         application_id: row.get(1),
-        artifact_ref: row.get(2),
-        artifact_digest: row.get(3),
-        alive_toml_snapshot: row.get(4),
+        git_sha: row.get(2),
+        commit_message: row.get(3),
+        artifact_ref: row.get(4),
+        artifact_digest: row.get(5),
+        alive_toml_snapshot: row.get(6),
+        build_fingerprint: row.get(7),
     })
+}
+
+pub(crate) async fn find_reusable_release(
+    client: &Client,
+    application_id: &str,
+    build_fingerprint: &str,
+) -> Result<Option<ReleaseRow>> {
+    let row = client
+        .query_opt(
+            "
+            SELECT release_id, application_id, git_sha, COALESCE(commit_message, ''), artifact_ref, artifact_digest, alive_toml_snapshot, metadata->>'build_fingerprint'
+            FROM deploy.releases
+            WHERE application_id = $1
+              AND metadata->>'build_fingerprint' = $2
+            ORDER BY created_at DESC
+            LIMIT 1
+            ",
+            &[&application_id, &build_fingerprint],
+        )
+        .await
+        .with_context(|| {
+            format!(
+                "failed to look up reusable release for application {} using build fingerprint {}",
+                application_id, build_fingerprint
+            )
+        })?;
+
+    Ok(row.map(|row| ReleaseRow {
+        release_id: row.get(0),
+        application_id: row.get(1),
+        git_sha: row.get(2),
+        commit_message: row.get(3),
+        artifact_ref: row.get(4),
+        artifact_digest: row.get(5),
+        alive_toml_snapshot: row.get(6),
+        build_fingerprint: row.get(7),
+    }))
 }
 
 pub(crate) async fn mark_build_succeeded(
@@ -268,10 +327,10 @@ pub(crate) async fn mark_build_succeeded(
         .await
         .with_context(|| format!("failed to mark build {} as succeeded", build_id))?;
     if updated_rows == 0 {
-        return Err(anyhow!(
-            "build {} could not transition to succeeded because it was not running",
-            build_id
-        ));
+        return Err(TaskTransitionError::BuildSuccess {
+            build_id: build_id.to_string(),
+        }
+        .into());
     }
 
     Ok(())
@@ -300,10 +359,10 @@ pub(crate) async fn mark_build_failed(
         .await
         .with_context(|| format!("failed to mark build {} as failed", build_id))?;
     if updated_rows == 0 {
-        return Err(anyhow!(
-            "build {} could not transition to failed because it was not running",
-            build_id
-        ));
+        return Err(TaskTransitionError::BuildFailure {
+            build_id: build_id.to_string(),
+        }
+        .into());
     }
 
     Ok(())
@@ -338,10 +397,10 @@ pub(crate) async fn mark_deployment_succeeded(
         .await
         .with_context(|| format!("failed to mark deployment {} as succeeded", deployment_id))?;
     if updated_rows == 0 {
-        return Err(anyhow!(
-            "deployment {} could not transition to succeeded because it was not running",
-            deployment_id
-        ));
+        return Err(TaskTransitionError::DeploymentSuccess {
+            deployment_id: deployment_id.to_string(),
+        }
+        .into());
     }
 
     Ok(())
@@ -381,10 +440,10 @@ pub(crate) async fn mark_deployment_failed(
         .await
         .with_context(|| format!("failed to mark deployment {} as failed", deployment_id))?;
     if updated_rows == 0 {
-        return Err(anyhow!(
-            "deployment {} could not transition to failed because it was not running",
-            deployment_id
-        ));
+        return Err(TaskTransitionError::DeploymentFailure {
+            deployment_id: deployment_id.to_string(),
+        }
+        .into());
     }
 
     Ok(())
@@ -399,6 +458,7 @@ pub(crate) async fn record_release(
     artifact_ref: &str,
     artifact_digest: &str,
     alive_toml_snapshot: &str,
+    build_fingerprint: &str,
 ) -> Result<String> {
     let row = client
         .query_one(
@@ -411,11 +471,24 @@ pub(crate) async fn record_release(
               artifact_kind,
               artifact_ref,
               artifact_digest,
-              alive_toml_snapshot
+              alive_toml_snapshot,
+              metadata
             )
-            VALUES ($1, $2, $3, $4, 'docker_image'::deploy.artifact_kind, $5, $6, $7)
+            VALUES (
+              $1,
+              $2,
+              $3,
+              $4,
+              'docker_image'::deploy.artifact_kind,
+              $5,
+              $6,
+              $7,
+              jsonb_build_object('build_fingerprint', $8::text)
+            )
             ON CONFLICT (application_id, artifact_digest)
-            DO UPDATE SET artifact_ref = EXCLUDED.artifact_ref
+            DO UPDATE SET
+              artifact_ref = EXCLUDED.artifact_ref,
+              metadata = deploy.releases.metadata || EXCLUDED.metadata
             RETURNING release_id
             ",
             &[
@@ -426,6 +499,7 @@ pub(crate) async fn record_release(
                 &artifact_ref,
                 &artifact_digest,
                 &alive_toml_snapshot,
+                &build_fingerprint,
             ],
         )
         .await
@@ -439,7 +513,7 @@ pub(crate) async fn renew_lease(client: &Client, target: LeaseTarget, task_id: &
         LeaseTarget::Build => {
             "
             UPDATE deploy.builds
-            SET lease_expires_at = now() + make_interval(secs => $2),
+            SET lease_expires_at = now() + make_interval(secs => $2::integer),
                 updated_at = now()
             WHERE build_id = $1
               AND status = 'running'::deploy.task_status
@@ -448,7 +522,7 @@ pub(crate) async fn renew_lease(client: &Client, target: LeaseTarget, task_id: &
         LeaseTarget::Deployment => {
             "
             UPDATE deploy.deployments
-            SET lease_expires_at = now() + make_interval(secs => $2),
+            SET lease_expires_at = now() + make_interval(secs => $2::integer),
                 updated_at = now()
             WHERE deployment_id = $1
               AND status = 'running'::deploy.task_status
@@ -460,10 +534,10 @@ pub(crate) async fn renew_lease(client: &Client, target: LeaseTarget, task_id: &
         .await
         .with_context(|| format!("failed to renew lease for {}", task_id))?;
     if renewed_rows == 0 {
-        return Err(anyhow!(
-            "lease renewal skipped because task {} is no longer running",
-            task_id
-        ));
+        return Err(TaskTransitionError::LeaseRenewal {
+            task_id: task_id.to_string(),
+        }
+        .into());
     }
     Ok(())
 }
