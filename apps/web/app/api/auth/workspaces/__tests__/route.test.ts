@@ -59,6 +59,8 @@ const REGULAR_USER = {
   id: "user-123",
   email: "test@example.com",
   name: "Test User",
+  firstName: null,
+  lastName: null,
   canSelectAnyModel: false,
   isAdmin: false,
   isSuperadmin: false,

@@ -22,6 +22,8 @@ function makeUser(isSuperadmin: boolean) {
     id: "user-1",
     email: "user@example.com",
     name: "User",
+    firstName: null,
+    lastName: null,
     canSelectAnyModel: false,
     isAdmin: isSuperadmin,
     isSuperadmin,

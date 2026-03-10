@@ -65,6 +65,8 @@ const MOCK_USER = {
   id: "user-123",
   email: "sender@example.com",
   name: "Test Sender",
+  firstName: null,
+  lastName: null,
   canSelectAnyModel: false,
   isAdmin: false,
   isSuperadmin: false,

@@ -18,6 +18,8 @@ const mockUser: SessionUser = {
   id: "u1",
   email: "user@example.com",
   name: "User",
+  firstName: null,
+  lastName: null,
   canSelectAnyModel: false,
   isAdmin: false,
   isSuperadmin: false,

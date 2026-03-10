@@ -21,6 +21,8 @@ function createUser(id: string): SessionUser {
     id,
     email: `${id}@example.com`,
     name: "Test User",
+    firstName: null,
+    lastName: null,
     canSelectAnyModel: false,
     isAdmin: false,
     isSuperadmin: false,

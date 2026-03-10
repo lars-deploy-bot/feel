@@ -194,6 +194,8 @@ function makeContext(overrides?: Partial<{ provider: string; userId: string; bas
       id: overrides?.userId ?? "user-123",
       email: "test@test.com",
       name: null,
+      firstName: null,
+      lastName: null,
       canSelectAnyModel: false,
       isAdmin: false,
       isSuperadmin: false,
