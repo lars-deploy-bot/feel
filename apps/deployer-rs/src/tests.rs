@@ -7,6 +7,8 @@ use std::{
 };
 
 use tokio::process::Command;
+use tokio::time::{sleep, Duration};
+use tokio_postgres::NoTls;
 use uuid::Uuid;
 
 use crate::config::{
@@ -15,14 +17,21 @@ use crate::config::{
     resolve_runtime_env_file, runtime_network_mode, validate_application_matches_config,
     write_sanitized_env_file,
 };
+use crate::db::{
+    claim_next_build, claim_next_deployment, mark_build_succeeded, mark_deployment_succeeded,
+    record_release, renew_lease,
+};
 use crate::docker::{
     docker_reference_repository, remove_container_if_exists, wait_for_container_stability,
     wait_for_health,
 };
-use crate::logging::{build_log_path, prepare_log, run_logged_command, TaskPipeline};
+use crate::logging::{
+    build_log_path, prepare_log, read_task_snapshot, run_logged_command, TaskPipeline,
+};
 use crate::types::{
     AliveConfig, ApplicationRow, EnvironmentPolicy, EnvironmentRow, EnvironmentRuntimeOverrides,
-    RuntimeNetworkMode, ServiceContext, ServiceEnv,
+    FailureKind, LeaseTarget, RuntimeNetworkMode, ServiceContext, ServiceEnv, TaskKind, TaskStage,
+    TaskStatus,
 };
 
 fn temp_file_path(name: &str) -> PathBuf {
@@ -56,6 +65,137 @@ fn docker_available() -> bool {
         .status()
         .map(|status| status.success())
         .unwrap_or(false)
+}
+
+struct PostgresTestContainer {
+    container_name: String,
+}
+
+impl Drop for PostgresTestContainer {
+    fn drop(&mut self) {
+        let _ = StdCommand::new("docker")
+            .args(["rm", "-f", &self.container_name])
+            .status();
+    }
+}
+
+async fn connect_test_postgres(port: u16) -> tokio_postgres::Client {
+    let database_url = format!("postgresql://postgres:postgres@127.0.0.1:{}/postgres", port);
+    for _ in 0..40 {
+        match tokio_postgres::connect(&database_url, NoTls).await {
+            Ok((client, connection)) => {
+                tokio::spawn(async move {
+                    let _ = connection.await;
+                });
+                return client;
+            }
+            Err(_) => sleep(Duration::from_millis(500)).await,
+        }
+    }
+
+    panic!(
+        "failed to connect to postgres test container on port {}",
+        port
+    );
+}
+
+async fn setup_test_postgres_schema(client: &tokio_postgres::Client) {
+    client
+        .batch_execute(
+            r#"
+            CREATE SCHEMA deploy;
+
+            CREATE TYPE deploy.environment_name AS ENUM ('staging', 'production');
+            CREATE TYPE deploy.task_status AS ENUM ('pending', 'running', 'succeeded', 'failed', 'cancelled');
+            CREATE TYPE deploy.artifact_kind AS ENUM ('docker_image');
+            CREATE TYPE deploy.deployment_action AS ENUM ('deploy', 'promote', 'rollback');
+
+            CREATE TABLE deploy.applications (
+              application_id text PRIMARY KEY,
+              slug text NOT NULL,
+              display_name text NOT NULL,
+              repo_owner text NOT NULL,
+              repo_name text NOT NULL,
+              default_branch text NOT NULL,
+              config_path text NOT NULL
+            );
+
+            CREATE TABLE deploy.builds (
+              build_id text PRIMARY KEY,
+              application_id text NOT NULL REFERENCES deploy.applications(application_id),
+              status deploy.task_status NOT NULL DEFAULT 'pending',
+              git_ref text NOT NULL,
+              git_sha text,
+              commit_message text,
+              alive_toml_snapshot text,
+              artifact_kind deploy.artifact_kind NOT NULL DEFAULT 'docker_image',
+              artifact_ref text,
+              artifact_digest text,
+              build_log_path text,
+              builder_hostname text,
+              error_message text,
+              lease_token text,
+              lease_expires_at timestamptz,
+              attempt_count integer NOT NULL DEFAULT 0,
+              metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+              started_at timestamptz,
+              finished_at timestamptz,
+              created_at timestamptz NOT NULL DEFAULT now(),
+              updated_at timestamptz NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE deploy.releases (
+              release_id text PRIMARY KEY DEFAULT ('dep_rel_' || substr(md5(random()::text || clock_timestamp()::text), 1, 24)),
+              application_id text NOT NULL REFERENCES deploy.applications(application_id),
+              build_id text NOT NULL UNIQUE REFERENCES deploy.builds(build_id),
+              git_sha text NOT NULL,
+              commit_message text,
+              artifact_kind deploy.artifact_kind NOT NULL DEFAULT 'docker_image',
+              artifact_ref text NOT NULL,
+              artifact_digest text NOT NULL,
+              alive_toml_snapshot text NOT NULL,
+              metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+              created_at timestamptz NOT NULL DEFAULT now(),
+              UNIQUE (application_id, artifact_digest)
+            );
+
+            CREATE TABLE deploy.environments (
+              environment_id text PRIMARY KEY,
+              application_id text NOT NULL REFERENCES deploy.applications(application_id),
+              server_id text NOT NULL,
+              name deploy.environment_name NOT NULL,
+              hostname text NOT NULL,
+              port integer,
+              healthcheck_path text NOT NULL DEFAULT '/',
+              allow_email boolean NOT NULL DEFAULT false,
+              runtime_overrides jsonb NOT NULL DEFAULT '{}'::jsonb,
+              created_at timestamptz NOT NULL DEFAULT now(),
+              updated_at timestamptz NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE deploy.deployments (
+              deployment_id text PRIMARY KEY,
+              environment_id text NOT NULL REFERENCES deploy.environments(environment_id),
+              release_id text NOT NULL REFERENCES deploy.releases(release_id),
+              status deploy.task_status NOT NULL DEFAULT 'pending',
+              action deploy.deployment_action NOT NULL DEFAULT 'deploy',
+              deployment_log_path text,
+              healthcheck_status integer,
+              healthcheck_checked_at timestamptz,
+              error_message text,
+              lease_token text,
+              lease_expires_at timestamptz,
+              attempt_count integer NOT NULL DEFAULT 0,
+              metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+              started_at timestamptz,
+              finished_at timestamptz,
+              created_at timestamptz NOT NULL DEFAULT now(),
+              updated_at timestamptz NOT NULL DEFAULT now()
+            );
+            "#,
+        )
+        .await
+        .expect("failed to create deploy test schema");
 }
 
 #[test]
@@ -128,52 +268,61 @@ fn write_sanitized_env_file_normalizes_quoted_values_and_forces_port() {
     let _ = fs::remove_file(output_env);
 }
 
-#[test]
-fn task_pipeline_promotes_failing_stage_debug_tail_into_summary_log() {
+#[tokio::test]
+async fn task_pipeline_promotes_failing_stage_debug_tail_into_summary_log() {
     let data_dir = temp_dir_path("pipeline-log");
     let pipeline = TaskPipeline::for_build(&data_dir, "build_test_123");
     pipeline
         .prepare("build build_test_123 started")
+        .await
         .expect("failed to prepare pipeline");
 
     let stage = pipeline
-        .start_stage(1, "docker_build", "building image")
+        .start_stage(1, TaskStage::BuildImage, "building image")
+        .await
         .expect("failed to start stage");
     stage
         .append_debug("first debug line\nsecond debug line\n")
+        .await
         .expect("failed to write debug log");
     stage
         .finish_error("docker build failed")
+        .await
         .expect("failed to finish stage");
 
     let summary =
         fs::read_to_string(pipeline.summary_path()).expect("failed to read pipeline summary log");
-    assert!(summary.contains("docker_build failed"));
+    assert!(summary.contains("build_image failed"));
     assert!(summary.contains("recent debug tail"));
     assert!(summary.contains("second debug line"));
 
     let _ = fs::remove_dir_all(data_dir);
 }
 
-#[test]
-fn task_pipeline_writes_agent_readable_state_file() {
+#[tokio::test]
+async fn task_pipeline_writes_agent_readable_state_file() {
     let data_dir = temp_dir_path("pipeline-state");
     let pipeline = TaskPipeline::for_build(&data_dir, "build_state_123");
     pipeline
         .prepare("build build_state_123 started")
+        .await
         .expect("failed to prepare pipeline");
 
     let stage = pipeline
-        .start_stage(2, "publish_artifact", "pushing artifact")
+        .start_stage(2, TaskStage::PublishArtifact, "pushing artifact")
+        .await
         .expect("failed to start stage");
     stage
         .append_debug("push failed: registry unavailable\n")
+        .await
         .expect("failed to append debug");
     stage
         .finish_error("artifact push failed")
+        .await
         .expect("failed to finish stage");
     pipeline
         .finish_failure("artifact push failed")
+        .await
         .expect("failed to finish pipeline");
 
     let state_path = pipeline
@@ -184,10 +333,287 @@ fn task_pipeline_writes_agent_readable_state_file() {
     let raw = fs::read_to_string(state_path).expect("failed to read pipeline state file");
     assert!(raw.contains("\"status\": \"failed\""));
     assert!(raw.contains("\"failed_stage\": \"publish_artifact\""));
+    assert!(raw.contains("\"failure_kind\": \"artifact_publish_failed\""));
     assert!(raw.contains("\"debug_log_path\""));
     assert!(raw.contains("\"result_message\": \"artifact push failed\""));
 
     let _ = fs::remove_dir_all(data_dir);
+}
+
+#[tokio::test]
+async fn task_snapshot_aggregates_state_logs_and_events() {
+    let data_dir = temp_dir_path("pipeline-snapshot");
+    let pipeline = TaskPipeline::for_deployment(&data_dir, "dep_snapshot_123");
+    pipeline
+        .prepare("deployment dep_snapshot_123 started")
+        .await
+        .expect("failed to prepare pipeline");
+
+    let stage = pipeline
+        .start_stage(5, TaskStage::LocalHealth, "waiting for localhost health")
+        .await
+        .expect("failed to start stage");
+    stage
+        .append_debug("first health probe failed\nsecond health probe failed\n")
+        .await
+        .expect("failed to append debug");
+    stage
+        .finish_error("health check timed out")
+        .await
+        .expect("failed to finish stage");
+    pipeline
+        .finish_failure("health check timed out")
+        .await
+        .expect("failed to finish pipeline");
+
+    let snapshot = read_task_snapshot(&data_dir, TaskKind::Deployment, "dep_snapshot_123")
+        .await
+        .expect("failed to read snapshot");
+
+    assert_eq!(snapshot.status, TaskStatus::Failed);
+    assert_eq!(snapshot.failed_stage, Some(TaskStage::LocalHealth));
+    assert_eq!(snapshot.failure_kind, Some(FailureKind::LocalHealthFailed));
+    assert!(snapshot
+        .recent_summary_lines
+        .iter()
+        .any(|line| line.contains("task failed: health check timed out")));
+    assert!(snapshot
+        .recent_events
+        .iter()
+        .any(|event| event["event_type"] == "stage_failed"));
+    assert_eq!(snapshot.debug_tails.len(), 1);
+    assert_eq!(snapshot.debug_tails[0].stage_name, TaskStage::LocalHealth);
+    assert!(snapshot.debug_tails[0]
+        .lines
+        .iter()
+        .any(|line| line.contains("second health probe failed")));
+
+    let _ = fs::remove_dir_all(data_dir);
+}
+
+#[tokio::test]
+async fn task_snapshot_falls_back_to_legacy_logs() {
+    let data_dir = temp_dir_path("legacy-snapshot");
+    let legacy_log = data_dir.join("logs/builds/dep_build_legacy.log");
+    fs::create_dir_all(
+        legacy_log
+            .parent()
+            .expect("legacy log should have parent directory"),
+    )
+    .expect("failed to create legacy log dir");
+    fs::write(
+        &legacy_log,
+        "legacy build started\nlegacy step complete\nlegacy build done\n",
+    )
+    .expect("failed to write legacy log");
+
+    let snapshot = read_task_snapshot(&data_dir, TaskKind::Build, "dep_build_legacy")
+        .await
+        .expect("failed to read legacy snapshot");
+
+    assert_eq!(snapshot.status, TaskStatus::Legacy);
+    assert_eq!(snapshot.task_kind, TaskKind::Build);
+    assert!(snapshot
+        .recent_summary_lines
+        .iter()
+        .any(|line| line.contains("legacy build done")));
+    assert!(snapshot.recent_events.is_empty());
+    assert!(snapshot.debug_tails.is_empty());
+
+    let _ = fs::remove_dir_all(data_dir);
+}
+
+#[tokio::test]
+async fn db_transitions_work_against_live_postgres() {
+    if !docker_available() {
+        eprintln!("skipping postgres-backed db transition test because docker is unavailable");
+        return;
+    }
+
+    let port = pick_free_port();
+    let container_name = format!("alive-deployer-pg-{}", Uuid::new_v4().simple());
+    assert_std_command_success(
+        StdCommand::new("docker").args([
+            "run",
+            "--detach",
+            "--rm",
+            "--name",
+            &container_name,
+            "-e",
+            "POSTGRES_PASSWORD=postgres",
+            "-e",
+            "POSTGRES_USER=postgres",
+            "-e",
+            "POSTGRES_DB=postgres",
+            "-p",
+            &format!("127.0.0.1:{}:5432", port),
+            "postgres:16-alpine",
+        ]),
+        "docker run postgres",
+    );
+    let _cleanup = PostgresTestContainer { container_name };
+
+    let client = connect_test_postgres(port).await;
+    setup_test_postgres_schema(&client).await;
+
+    client
+        .execute(
+            "
+            INSERT INTO deploy.applications (
+              application_id, slug, display_name, repo_owner, repo_name, default_branch, config_path
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ",
+            &[
+                &"dep_app_test",
+                &"test-app",
+                &"Test App",
+                &"alive",
+                &"test-app",
+                &"main",
+                &"alive.toml",
+            ],
+        )
+        .await
+        .expect("failed to insert application");
+    client
+        .execute(
+            "
+            INSERT INTO deploy.builds (build_id, application_id, status, git_ref)
+            VALUES ($1, $2, 'pending'::deploy.task_status, $3)
+            ",
+            &[&"dep_build_test", &"dep_app_test", &"main"],
+        )
+        .await
+        .expect("failed to insert build");
+
+    let claimed_build = claim_next_build(&client, "builder-host")
+        .await
+        .expect("failed to claim build")
+        .expect("expected build to be claimable");
+    assert_eq!(claimed_build.build_id, "dep_build_test");
+    renew_lease(&client, LeaseTarget::Build, &claimed_build.build_id)
+        .await
+        .expect("failed to renew build lease");
+
+    let build_log = temp_file_path("build-log");
+    let release_id = record_release(
+        &client,
+        &claimed_build.build_id,
+        &claimed_build.application_id,
+        "abc123",
+        "test commit",
+        "registry.example.com/test-app:abc123",
+        "registry.example.com/test-app@sha256:123",
+        "schema = 1",
+        "fingerprint-123",
+    )
+    .await
+    .expect("failed to record release");
+    mark_build_succeeded(
+        &client,
+        &claimed_build.build_id,
+        "abc123",
+        "test commit",
+        "schema = 1",
+        "registry.example.com/test-app:abc123",
+        "registry.example.com/test-app@sha256:123",
+        &build_log,
+    )
+    .await
+    .expect("failed to mark build success");
+
+    let build_row = client
+        .query_one(
+            "
+            SELECT
+              deploy.builds.status::text,
+              deploy.builds.attempt_count,
+              deploy.builds.git_sha,
+              deploy.builds.artifact_digest,
+              deploy.releases.metadata->>'build_fingerprint',
+              deploy.builds.lease_expires_at IS NOT NULL
+            FROM deploy.builds
+            LEFT JOIN deploy.releases ON deploy.releases.build_id = deploy.builds.build_id
+            WHERE deploy.builds.build_id = $1
+            ",
+            &[&claimed_build.build_id],
+        )
+        .await
+        .expect("failed to query build row");
+    assert_eq!(build_row.get::<_, String>(0), "succeeded");
+    assert_eq!(build_row.get::<_, i32>(1), 1);
+    assert_eq!(build_row.get::<_, String>(2), "abc123");
+    assert_eq!(
+        build_row.get::<_, String>(3),
+        "registry.example.com/test-app@sha256:123"
+    );
+    assert_eq!(
+        build_row.get::<_, Option<String>>(4).as_deref(),
+        Some("fingerprint-123")
+    );
+    assert!(build_row.get::<_, bool>(5));
+
+    client
+        .execute(
+            "
+            INSERT INTO deploy.environments (
+              environment_id, application_id, server_id, name, hostname, port, healthcheck_path, allow_email
+            )
+            VALUES ($1, $2, $3, 'staging'::deploy.environment_name, $4, $5, $6, false)
+            ",
+            &[&"dep_env_test", &"dep_app_test", &"srv-test", &"test.example.com", &3000_i32, &"/health"],
+        )
+        .await
+        .expect("failed to insert environment");
+    client
+        .execute(
+            "
+            INSERT INTO deploy.deployments (deployment_id, environment_id, release_id, status)
+            VALUES ($1, $2, $3, 'pending'::deploy.task_status)
+            ",
+            &[&"dep_deploy_test", &"dep_env_test", &release_id],
+        )
+        .await
+        .expect("failed to insert deployment");
+
+    let claimed_deployment = claim_next_deployment(&client, "srv-test")
+        .await
+        .expect("failed to claim deployment")
+        .expect("expected deployment to be claimable");
+    assert_eq!(claimed_deployment.deployment_id, "dep_deploy_test");
+    renew_lease(
+        &client,
+        LeaseTarget::Deployment,
+        &claimed_deployment.deployment_id,
+    )
+    .await
+    .expect("failed to renew deployment lease");
+
+    let deploy_log = temp_file_path("deploy-log");
+    mark_deployment_succeeded(&client, &claimed_deployment.deployment_id, 200, &deploy_log)
+        .await
+        .expect("failed to mark deployment success");
+
+    let deployment_row = client
+        .query_one(
+            "
+            SELECT status::text, attempt_count, healthcheck_status, deployment_log_path, lease_expires_at IS NOT NULL
+            FROM deploy.deployments
+            WHERE deployment_id = $1
+            ",
+            &[&claimed_deployment.deployment_id],
+        )
+        .await
+        .expect("failed to query deployment row");
+    assert_eq!(deployment_row.get::<_, String>(0), "succeeded");
+    assert_eq!(deployment_row.get::<_, i32>(1), 1);
+    assert_eq!(deployment_row.get::<_, Option<i32>>(2), Some(200));
+    assert_eq!(
+        deployment_row.get::<_, Option<String>>(3).as_deref(),
+        Some(deploy_log.to_string_lossy().as_ref())
+    );
+    assert!(deployment_row.get::<_, bool>(4));
 }
 
 #[tokio::test]
@@ -446,7 +872,9 @@ CMD ["sh","-c","test \"$PUBLIC_MARKER\" = \"ready\" && test -z \"$MAILER_API_KEY
         parse_alive_toml(&alive_toml_snapshot).expect("failed to parse alive.toml");
     validate_application_matches_config(&application, &alive_config)
         .expect("application metadata should match alive.toml");
-    prepare_log(&log_path, "e2e smoke test build").expect("failed to prepare log");
+    prepare_log(&log_path, "e2e smoke test build")
+        .await
+        .expect("failed to prepare log");
 
     let dockerfile_path = source_dir.join(&alive_config.docker.dockerfile);
     let build_context = source_dir.join(&alive_config.docker.context);

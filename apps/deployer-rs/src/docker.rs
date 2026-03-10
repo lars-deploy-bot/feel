@@ -50,7 +50,7 @@ pub(crate) async fn push_image_and_resolve_artifact_digest(
         .await
         .context("failed to inspect pushed docker image")?;
 
-    append_log(log_path, &String::from_utf8_lossy(&inspect_output.stderr))?;
+    append_log(log_path, &String::from_utf8_lossy(&inspect_output.stderr)).await?;
     if !inspect_output.status.success() {
         return Err(anyhow!(
             "docker image inspect {} failed with status {}",
@@ -70,7 +70,8 @@ pub(crate) async fn push_image_and_resolve_artifact_digest(
     append_log(
         log_path,
         &format!("resolved artifact digest {}\n", repo_digest),
-    )?;
+    )
+    .await?;
     Ok(repo_digest)
 }
 
@@ -109,17 +110,17 @@ pub(crate) async fn append_container_logs(container_name: &str, log_path: &Path)
         .await
         .context("failed to read docker container logs")?;
 
-    append_log(log_path, &format!("container logs ({})\n", container_name))?;
+    append_log(log_path, &format!("container logs ({})\n", container_name)).await?;
     if !output.stdout.is_empty() {
-        append_log(log_path, &String::from_utf8_lossy(&output.stdout))?;
+        append_log(log_path, &String::from_utf8_lossy(&output.stdout)).await?;
         if !String::from_utf8_lossy(&output.stdout).ends_with('\n') {
-            append_log(log_path, "\n")?;
+            append_log(log_path, "\n").await?;
         }
     }
     if !output.stderr.is_empty() {
-        append_log(log_path, &String::from_utf8_lossy(&output.stderr))?;
+        append_log(log_path, &String::from_utf8_lossy(&output.stderr)).await?;
         if !String::from_utf8_lossy(&output.stderr).ends_with('\n') {
-            append_log(log_path, "\n")?;
+            append_log(log_path, "\n").await?;
         }
     }
 
@@ -280,20 +281,20 @@ pub(crate) async fn wait_for_health(port: u16, path: &str, log_path: &Path) -> R
     let started = Instant::now();
     let mut last_status: Option<StatusCode> = None;
 
-    append_log(log_path, &format!("health check: {}\n", url))?;
+    append_log(log_path, &format!("health check: {}\n", url)).await?;
 
     while started.elapsed() < HEALTH_TIMEOUT {
         match client.get(&url).send().await {
             Ok(response) => {
                 let status = response.status();
-                append_log(log_path, &format!("health response: {}\n", status))?;
+                append_log(log_path, &format!("health response: {}\n", status)).await?;
                 last_status = Some(status);
                 if status.is_success() {
                     return Ok(status);
                 }
             }
             Err(error) => {
-                append_log(log_path, &format!("health error: {}\n", error))?;
+                append_log(log_path, &format!("health error: {}\n", error)).await?;
             }
         }
 
@@ -336,7 +337,8 @@ pub(crate) async fn wait_for_container_stability(
             "stabilization window: {:?} for container {} via {}\n",
             STABILIZATION_WINDOW, container_name, url
         ),
-    )?;
+    )
+    .await?;
 
     while started.elapsed() < STABILIZATION_WINDOW {
         if !container_is_running(container_name).await? {
@@ -352,7 +354,8 @@ pub(crate) async fn wait_for_container_stability(
                 append_log(
                     log_path,
                     &format!("stability health response: {}\n", status),
-                )?;
+                )
+                .await?;
                 if !status.is_success() {
                     return Err(anyhow!(
                         "stability health check returned {} for {}",
@@ -363,7 +366,7 @@ pub(crate) async fn wait_for_container_stability(
                 last_status = Some(status);
             }
             Err(error) => {
-                append_log(log_path, &format!("stability health error: {}\n", error))?;
+                append_log(log_path, &format!("stability health error: {}\n", error)).await?;
                 return Err(anyhow!(
                     "stability health check failed for {}: {}",
                     container_name,
@@ -396,20 +399,20 @@ pub(crate) async fn wait_for_public_health(
     let started = Instant::now();
     let mut last_status: Option<StatusCode> = None;
 
-    append_log(log_path, &format!("public health check: {}\n", url))?;
+    append_log(log_path, &format!("public health check: {}\n", url)).await?;
 
     while started.elapsed() < PUBLIC_HEALTH_TIMEOUT {
         match client.get(&url).send().await {
             Ok(response) => {
                 let status = response.status();
-                append_log(log_path, &format!("public health response: {}\n", status))?;
+                append_log(log_path, &format!("public health response: {}\n", status)).await?;
                 last_status = Some(status);
                 if status.is_success() {
                     return Ok(status);
                 }
             }
             Err(error) => {
-                append_log(log_path, &format!("public health error: {}\n", error))?;
+                append_log(log_path, &format!("public health error: {}\n", error)).await?;
             }
         }
 

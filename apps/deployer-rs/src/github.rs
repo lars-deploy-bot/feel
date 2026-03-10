@@ -1,8 +1,8 @@
-use std::fs::{self, File, OpenOptions};
 use std::path::Path;
 use std::process::Stdio;
 
 use anyhow::{anyhow, Context, Result};
+use tokio::fs as tokio_fs;
 use tokio::process::Command;
 
 use crate::constants::GITHUB_API_PREFIX;
@@ -30,7 +30,8 @@ pub(crate) async fn resolve_github_commit(
     append_log(
         log_path,
         &format!("resolved git ref {} to {}\n", resolved_ref, commit.sha),
-    )?;
+    )
+    .await?;
 
     Ok(commit)
 }
@@ -42,15 +43,24 @@ pub(crate) async fn export_github_snapshot(
     git_sha: &str,
     log_path: &Path,
 ) -> Result<()> {
-    if source_dir.exists() {
-        fs::remove_dir_all(source_dir)
+    if tokio_fs::try_exists(source_dir)
+        .await
+        .with_context(|| format!("failed to stat {}", source_dir.display()))?
+    {
+        tokio_fs::remove_dir_all(source_dir)
+            .await
             .with_context(|| format!("failed to remove {}", source_dir.display()))?;
     }
-    if archive_path.exists() {
-        fs::remove_file(archive_path)
+    if tokio_fs::try_exists(archive_path)
+        .await
+        .with_context(|| format!("failed to stat {}", archive_path.display()))?
+    {
+        tokio_fs::remove_file(archive_path)
+            .await
             .with_context(|| format!("failed to remove {}", archive_path.display()))?;
     }
-    fs::create_dir_all(source_dir)
+    tokio_fs::create_dir_all(source_dir)
+        .await
         .with_context(|| format!("failed to create {}", source_dir.display()))?;
 
     download_github_tarball(application, git_sha, archive_path, log_path).await?;
@@ -74,8 +84,12 @@ pub(crate) async fn export_github_snapshot(
     )
     .await?;
 
-    if archive_path.exists() {
-        fs::remove_file(archive_path)
+    if tokio_fs::try_exists(archive_path)
+        .await
+        .with_context(|| format!("failed to stat {}", archive_path.display()))?
+    {
+        tokio_fs::remove_file(archive_path)
+            .await
             .with_context(|| format!("failed to remove {}", archive_path.display()))?;
     }
 
@@ -87,24 +101,32 @@ pub(crate) async fn cleanup_source_snapshot(
     archive_path: &Path,
     log_path: &Path,
 ) -> Result<()> {
-    if archive_path.exists() {
-        fs::remove_file(archive_path)
+    if tokio_fs::try_exists(archive_path)
+        .await
+        .with_context(|| format!("failed to stat {}", archive_path.display()))?
+    {
+        tokio_fs::remove_file(archive_path)
+            .await
             .with_context(|| format!("failed to remove {}", archive_path.display()))?;
     }
 
-    if !source_dir.exists() {
+    if !tokio_fs::try_exists(source_dir)
+        .await
+        .with_context(|| format!("failed to stat {}", source_dir.display()))?
+    {
         return Ok(());
     }
 
-    crate::logging::append_log(log_path, &format!("removing {}\n", source_dir.display()))?;
-    fs::remove_dir_all(source_dir)
+    append_log(log_path, &format!("removing {}\n", source_dir.display())).await?;
+    tokio_fs::remove_dir_all(source_dir)
+        .await
         .with_context(|| format!("failed to remove {}", source_dir.display()))?;
 
     Ok(())
 }
 
 pub(crate) async fn run_gh_api_capture(endpoint: &str, log_path: &Path) -> Result<String> {
-    append_log(log_path, &format!("$ gh api {}\n", endpoint))?;
+    append_log(log_path, &format!("$ gh api {}\n", endpoint)).await?;
 
     let output = Command::new("gh")
         .arg("api")
@@ -113,7 +135,7 @@ pub(crate) async fn run_gh_api_capture(endpoint: &str, log_path: &Path) -> Resul
         .await
         .context("failed to execute gh api command")?;
 
-    append_log(log_path, &String::from_utf8_lossy(&output.stderr))?;
+    append_log(log_path, &String::from_utf8_lossy(&output.stderr)).await?;
 
     if !output.status.success() {
         return Err(anyhow!(
@@ -140,14 +162,17 @@ pub(crate) async fn download_github_tarball(
             git_sha,
             archive_path.display()
         ),
-    )?;
+    )
+    .await?;
 
-    let archive_file = File::create(archive_path)
+    let archive_file = tokio_fs::File::create(archive_path)
+        .await
         .with_context(|| format!("failed to create {}", archive_path.display()))?;
-    let log_file = OpenOptions::new()
+    let log_file = tokio_fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(log_path)
+        .await
         .with_context(|| format!("failed to open {}", log_path.display()))?;
     let status = Command::new("gh")
         .arg("api")
@@ -155,8 +180,8 @@ pub(crate) async fn download_github_tarball(
             "{}/{}/{}/tarball/{}",
             GITHUB_API_PREFIX, application.repo_owner, application.repo_name, git_sha
         ))
-        .stdout(Stdio::from(archive_file))
-        .stderr(Stdio::from(log_file))
+        .stdout(Stdio::from(archive_file.into_std().await))
+        .stderr(Stdio::from(log_file.into_std().await))
         .status()
         .await
         .context("failed to execute gh api tarball download")?;
