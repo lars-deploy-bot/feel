@@ -177,6 +177,7 @@ export async function reassignOrDisableAutomations(orgId: string, departingUserI
     const { error: updateError } = await app
       .from("automation_jobs")
       .update({ user_id: newOwner.user_id })
+      .eq("user_id", departingUserId)
       .in("id", jobIds)
 
     if (updateError) {
@@ -191,7 +192,8 @@ export async function reassignOrDisableAutomations(orgId: string, departingUserI
     // No remaining members — disable all automations
     const { error: disableError } = await app
       .from("automation_jobs")
-      .update({ is_active: false, status: "disabled" as JobStatus })
+      .update({ is_active: false, status: "disabled" })
+      .eq("user_id", departingUserId)
       .in("id", jobIds)
 
     if (disableError) {

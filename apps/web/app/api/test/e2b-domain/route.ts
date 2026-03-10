@@ -7,7 +7,7 @@ import { getWorkerPool } from "@webalive/worker-pool"
 import { Sandbox } from "e2b"
 import type { z } from "zod"
 import {
-  type TestE2BDomainResponseSchema,
+  TestE2BDomainResponseSchema,
   TestE2BDomainSchema,
   TestE2BDomainUpdateBodySchema,
 } from "@/app/api/test/test-route-schemas"

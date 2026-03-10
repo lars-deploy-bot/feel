@@ -1,11 +1,11 @@
 import { readFile, stat } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import type { NextRequest } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { ensureDriveDir } from "@/features/chat/lib/drivePath"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
-import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -105,19 +105,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const host = request.headers.get("host")
-    if (!host) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-        status: 400,
-        details: {
-          requestId,
-          message: "Missing host header",
-        },
-      })
-    }
-
     const body = { workspace: parsed.workspace, worktree: parsed.worktree }
-    const workspaceResult = await getWorkspace({ host, body, requestId })
+    const workspaceResult = await getWorkspace({ body, requestId })
     if (!workspaceResult.success) {
       return workspaceResult.response
     }
@@ -127,7 +116,7 @@ export async function POST(request: NextRequest) {
     const fullPath = path.join(resolvedDrive, parsed.path)
     const resolvedPath = path.resolve(fullPath)
 
-    if (!isPathWithinWorkspace(resolvedPath, resolvedDrive, path.sep)) {
+    if (!isPathWithinWorkspace(resolvedPath, resolvedDrive)) {
       return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
         status: 403,
         details: {

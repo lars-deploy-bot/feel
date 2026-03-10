@@ -261,7 +261,7 @@ export async function POST(req: NextRequest) {
       logger.log("Workspace authentication verified for:", resolvedWorkspaceName)
 
       // Only after authorization, resolve workspace path
-      const workspaceResult = await resolveWorkspace(host, { ...body, workspace: requestWorkspace }, requestId, origin)
+      const workspaceResult = await resolveWorkspace({ ...body, workspace: requestWorkspace }, requestId, origin)
       if (!workspaceResult.success) {
         return workspaceResult.response
       }

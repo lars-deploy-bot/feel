@@ -1,3 +1,4 @@
+import { DOMAINS } from "@webalive/shared"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
 
@@ -10,7 +11,7 @@ const mockTemplates = [
     name: "Blank",
     description: "A blank template",
     ai_description: null,
-    preview_url: "https://blank.alive.best",
+    preview_url: `https://blank.${DOMAINS.WILDCARD}`,
     image_url: null,
     is_active: true,
     deploy_count: 10,
@@ -141,7 +142,7 @@ describe("GET /api/templates", () => {
         name: "Blank Canvas",
         description: "Minimal starter - build from scratch",
         ai_description: null,
-        preview_url: "https://blank.alive.best",
+        preview_url: `https://blank.${DOMAINS.WILDCARD}`,
         image_url: null,
         is_active: true,
         deploy_count: 0,
@@ -155,6 +156,6 @@ describe("GET /api/templates", () => {
     expect(response.status).toBe(200)
     expect(payload.ok).toBe(true)
     expect(payload.templates[0]?.template_id).toBe("tmpl_blank")
-    expect(payload.templates[0]?.preview_url).toBe("https://blank.alive.best")
+    expect(payload.templates[0]?.preview_url).toBe(`https://blank.${DOMAINS.WILDCARD}`)
   })
 })

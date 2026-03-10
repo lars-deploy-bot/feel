@@ -4,13 +4,10 @@
  * These tests verify security-critical functions work correctly.
  * AI agents love to "simplify" these - don't let them.
  */
+import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { describe, expect, it } from "vitest"
 import { hasSessionCookie, hasValidUser, isValidSessionCookie } from "@/features/auth/types/guards"
-import {
-  containsPathTraversal,
-  isPathWithinWorkspace,
-  isValidWorkspaceString,
-} from "@/features/workspace/types/workspace"
+import { containsPathTraversal, isValidWorkspaceString } from "@/features/workspace/types/workspace"
 
 describe("Path Security Guards", () => {
   describe("containsPathTraversal", () => {
@@ -31,16 +28,16 @@ describe("Path Security Guards", () => {
     const workspace = "/srv/webalive/sites/example.com"
 
     it("allows paths inside workspace", () => {
-      expect(isPathWithinWorkspace(`${workspace}/index.ts`, workspace, "/")).toBe(true)
-      expect(isPathWithinWorkspace(`${workspace}/src/app.ts`, workspace, "/")).toBe(true)
-      expect(isPathWithinWorkspace(workspace, workspace, "/")).toBe(true)
+      expect(isPathWithinWorkspace(`${workspace}/index.ts`, workspace)).toBe(true)
+      expect(isPathWithinWorkspace(`${workspace}/src/app.ts`, workspace)).toBe(true)
+      expect(isPathWithinWorkspace(workspace, workspace)).toBe(true)
     })
 
     it("blocks paths outside workspace", () => {
-      expect(isPathWithinWorkspace("/etc/passwd", workspace, "/")).toBe(false)
-      expect(isPathWithinWorkspace("/srv/webalive/sites/other.com/file", workspace, "/")).toBe(false)
+      expect(isPathWithinWorkspace("/etc/passwd", workspace)).toBe(false)
+      expect(isPathWithinWorkspace("/srv/webalive/sites/other.com/file", workspace)).toBe(false)
       // Tricky case: prefix match without separator
-      expect(isPathWithinWorkspace("/srv/webalive/sites/example.com.evil/file", workspace, "/")).toBe(false)
+      expect(isPathWithinWorkspace("/srv/webalive/sites/example.com.evil/file", workspace)).toBe(false)
     })
   })
 

@@ -1,10 +1,11 @@
 import * as Sentry from "@sentry/nextjs"
-import { COOKIE_NAMES, getOAuthKeyForProvider } from "@webalive/shared"
+import { getOAuthKeyForProvider } from "@webalive/shared"
 import { DeploymentError } from "@webalive/site-controller"
 import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
+import { setSessionCookie } from "@/lib/auth/cookies"
 import { buildSubdomain } from "@/lib/config"
 import { assertCanCreateSite, NewSiteRequestError } from "@/lib/deployment/create-new-site"
 import { runStrictDeployment } from "@/lib/deployment/deploy-pipeline"
@@ -161,14 +162,7 @@ export async function POST(request: NextRequest) {
       orgId,
       sessionUser,
       logPrefix: "[Import-Repo]",
-      setSessionCookie: token => {
-        res.cookies.set(COOKIE_NAMES.SESSION, token, {
-          httpOnly: true,
-          secure: true,
-          sameSite: "none",
-          path: "/",
-        })
-      },
+      setSessionCookie: token => setSessionCookie(res, token, request),
     })
 
     return res
