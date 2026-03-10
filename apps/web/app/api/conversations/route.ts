@@ -52,16 +52,7 @@ export async function GET(request: NextRequest) {
         archived_at,
         source,
         source_metadata,
-        conversation_tabs (
-          tab_id,
-          conversation_id,
-          name,
-          position,
-          message_count,
-          last_message_at,
-          created_at,
-          closed_at
-        )
+        conversation_tabs (*)
       `)
       .eq("workspace", workspace)
       .is("deleted_at", null)
@@ -94,27 +85,17 @@ export async function GET(request: NextRequest) {
         archivedAt: c.archived_at ? new Date(c.archived_at).getTime() : null,
         source: normalizedSource.source,
         sourceMetadata: normalizedSource.sourceMetadata,
-        tabs: (c.conversation_tabs || []).map(
-          (t: {
-            tab_id: string
-            conversation_id: string
-            name: string
-            position: number
-            message_count: number
-            last_message_at: string | null
-            created_at: string
-            closed_at: string | null
-          }) => ({
-            id: t.tab_id,
-            conversationId: t.conversation_id,
-            name: t.name,
-            position: t.position,
-            messageCount: t.message_count,
-            lastMessageAt: t.last_message_at ? new Date(t.last_message_at).getTime() : null,
-            createdAt: new Date(t.created_at).getTime(),
-            closedAt: t.closed_at ? new Date(t.closed_at).getTime() : null,
-          }),
-        ),
+        tabs: (c.conversation_tabs || []).map(t => ({
+          id: t.tab_id,
+          conversationId: t.conversation_id,
+          name: t.name,
+          position: t.position,
+          messageCount: t.message_count,
+          lastMessageAt: t.last_message_at ? new Date(t.last_message_at).getTime() : null,
+          createdAt: new Date(t.created_at).getTime(),
+          closedAt: t.closed_at ? new Date(t.closed_at).getTime() : null,
+          draft: t.draft ?? null,
+        })),
       }
     }
 

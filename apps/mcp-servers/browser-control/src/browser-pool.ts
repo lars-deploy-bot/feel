@@ -16,6 +16,7 @@ import type { ConsoleEntry, PageError, WorkspaceSession } from "./types.js"
 
 const MAX_SESSIONS = 5
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+const BROWSER_IDLE_SHUTDOWN_MS = 2 * 60 * 1000 // kill Chrome after 2min with no sessions
 const CLEANUP_INTERVAL_MS = 30 * 1000 // check every 30s
 const MAX_CONSOLE_MESSAGES = 200
 const MAX_PAGE_ERRORS = 100
@@ -41,6 +42,7 @@ class BrowserPool {
   private sessions = new Map<string, WorkspaceSession>()
   private cleanupTimer: ReturnType<typeof setInterval> | null = null
   private connecting: Promise<Browser> | null = null
+  private emptyPoolSince: number | null = null
 
   /** Build the map key that isolates sessions per domain+caller. */
   private sessionKey(domain: string, sessionId: string): string {
@@ -162,6 +164,7 @@ class BrowserPool {
     })
 
     this.sessions.set(key, session)
+    this.emptyPoolSince = null
     console.log(`[browser-pool] Created session ${key} (${this.sessions.size}/${MAX_SESSIONS})`)
     return session
   }
@@ -206,6 +209,25 @@ class BrowserPool {
 
     for (const key of toRemove) {
       await this.destroySession(key)
+    }
+
+    // Shut down Chrome entirely when no sessions remain
+    if (this.sessions.size === 0 && this.browser) {
+      if (this.emptyPoolSince === null) {
+        this.emptyPoolSince = now
+      } else if (now - this.emptyPoolSince >= BROWSER_IDLE_SHUTDOWN_MS) {
+        console.log("[browser-pool] No sessions for 2min, shutting down Chromium to free memory")
+        const browser = this.browser
+        this.browser = null
+        this.emptyPoolSince = null
+        try {
+          await browser.close()
+        } catch {
+          // ignore — disconnected event may already have fired
+        }
+      }
+    } else {
+      this.emptyPoolSince = null
     }
   }
 

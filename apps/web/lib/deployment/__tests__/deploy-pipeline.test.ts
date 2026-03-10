@@ -42,6 +42,7 @@ const resolveDomainRuntimeMock = vi.fn<
     hostname: string
     port: number
     is_test_env: boolean
+    test_run_id: string | null
     execution_mode: "e2b"
     sandbox_id: string | null
     sandbox_status: null
@@ -51,6 +52,7 @@ const resolveDomainRuntimeMock = vi.fn<
   hostname,
   port: 3701,
   is_test_env: false,
+  test_run_id: null,
   execution_mode: "e2b",
   sandbox_id: null,
   sandbox_status: null,
@@ -185,6 +187,7 @@ describe("runStrictDeployment", () => {
       hostname,
       port: 3701,
       is_test_env: false,
+      test_run_id: null,
       execution_mode: "e2b",
       sandbox_id: null,
       sandbox_status: null,

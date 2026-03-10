@@ -5,6 +5,7 @@
  */
 
 import { TEST_CONFIG } from "@webalive/shared"
+import { Sandbox } from "e2b"
 import { createServiceAppClient, createServiceIamClient, createServicePublicClient } from "@/lib/supabase/service"
 
 function formatError(error: unknown): string {
@@ -19,6 +20,82 @@ function formatError(error: unknown): string {
 function isMissingLegacyWorkflowTableError(error: unknown): boolean {
   const message = formatError(error)
   return message.includes("schema cache") && message.includes("public.Workflow")
+}
+
+interface E2bCleanupConfig {
+  apiKey: string
+  domain: string
+}
+
+function getE2bCleanupConfig(): E2bCleanupConfig | null {
+  const apiKey = process.env.E2B_API_KEY
+  const domain = process.env.E2B_DOMAIN
+  if (!apiKey || !domain) {
+    return null
+  }
+  return { apiKey, domain }
+}
+
+async function listRunMetadataSandboxIds(runId: string, config: E2bCleanupConfig): Promise<string[]> {
+  const sandboxIds: string[] = []
+  const paginator = Sandbox.list({
+    apiKey: config.apiKey,
+    domain: config.domain,
+    limit: 100,
+    query: {
+      metadata: { test_run_id: runId },
+      state: ["running", "paused"],
+    },
+  })
+
+  while (paginator.hasNext) {
+    const sandboxes = await paginator.nextItems()
+    sandboxIds.push(...sandboxes.map(sandbox => sandbox.sandboxId))
+  }
+
+  return sandboxIds
+}
+
+export async function collectRunSandboxIds(
+  domainSandboxRows: Array<{ sandbox_id: string | null }>,
+  runId: string,
+  config: E2bCleanupConfig | null,
+): Promise<string[]> {
+  const sandboxIds = new Set<string>()
+
+  for (const sandboxId of domainSandboxRows.map(domain => domain.sandbox_id)) {
+    if (typeof sandboxId === "string") {
+      sandboxIds.add(sandboxId)
+    }
+  }
+
+  if (config) {
+    for (const sandboxId of await listRunMetadataSandboxIds(runId, config)) {
+      sandboxIds.add(sandboxId)
+    }
+  }
+
+  return [...sandboxIds]
+}
+
+async function killRunSandboxes(sandboxIds: string[], config: E2bCleanupConfig): Promise<number> {
+  let cleaned = 0
+
+  for (const sandboxId of sandboxIds) {
+    try {
+      const killed = await Sandbox.kill(sandboxId, {
+        apiKey: config.apiKey,
+        domain: config.domain,
+      })
+      if (killed) {
+        cleaned += 1
+      }
+    } catch {
+      // Best-effort — sandbox may already be dead or temporarily unreachable.
+    }
+  }
+
+  return cleaned
 }
 
 export default async function globalTeardown() {
@@ -78,53 +155,31 @@ export default async function globalTeardown() {
     }
   }
 
-  // 4a. Kill E2B sandboxes BEFORE deleting domains (we need sandbox_id from domain rows)
-  if (orgIds.length > 0) {
-    try {
-      const { data: domainsWithSandbox } = await app
-        .from("domains")
-        .select("sandbox_id")
-        .in("org_id", orgIds)
-        .eq("is_test_env", true)
-        .not("sandbox_id", "is", null)
-      const sandboxIds =
-        domainsWithSandbox
-          ?.map((d: { sandbox_id: string | null }) => d.sandbox_id)
-          .filter((id): id is string => id !== null) || []
-      if (sandboxIds.length > 0) {
-        const e2bApiKey = process.env.E2B_API_KEY
-        const e2bDomain = process.env.E2B_DOMAIN
-        if (e2bApiKey && e2bDomain) {
-          let killed = 0
-          for (const sandboxId of sandboxIds) {
-            try {
-              const res = await fetch(`https://${e2bDomain}/sandboxes/${sandboxId}`, {
-                method: "DELETE",
-                headers: { "X-API-Key": e2bApiKey },
-              })
-              if (res.status === 204 || res.status === 404) killed++
-            } catch {
-              // Best-effort — sandbox may already be dead
-            }
-          }
-          console.log(`✓ E2B Sandboxes killed: ${killed}/${sandboxIds.length}`)
-        } else {
-          console.log("⚠️  E2B cleanup skipped (E2B_API_KEY or E2B_DOMAIN not set)")
-        }
+  // 4a. Kill E2B sandboxes BEFORE deleting domains.
+  const e2bCleanupConfig = getE2bCleanupConfig()
+  try {
+    const { data: domainsWithSandbox } =
+      orgIds.length > 0
+        ? await app.from("domains").select("sandbox_id").in("org_id", orgIds).not("sandbox_id", "is", null)
+        : { data: [] }
+
+    const sandboxIds = await collectRunSandboxIds(domainsWithSandbox ?? [], runId, e2bCleanupConfig)
+    if (sandboxIds.length > 0) {
+      if (e2bCleanupConfig) {
+        const cleaned = await killRunSandboxes(sandboxIds, e2bCleanupConfig)
+        console.log(`✓ E2B Sandboxes killed: ${cleaned}/${sandboxIds.length}`)
+      } else {
+        console.log("⚠️  E2B cleanup skipped (E2B_API_KEY or E2B_DOMAIN not set)")
       }
-    } catch (error) {
-      console.error(`⚠️  [Global Teardown] Failed to kill E2B sandboxes: ${formatError(error)}`)
     }
+  } catch (error) {
+    console.error(`⚠️  [Global Teardown] Failed to kill E2B sandboxes: ${formatError(error)}`)
   }
 
-  // 4b. Delete domains — only test domains within test orgs
+  // 4b. Delete domains — any domains within test orgs
   if (orgIds.length > 0) {
     try {
-      const { count, error } = await app
-        .from("domains")
-        .delete({ count: "exact" })
-        .in("org_id", orgIds)
-        .eq("is_test_env", true)
+      const { count, error } = await app.from("domains").delete({ count: "exact" }).in("org_id", orgIds)
       if (error) throw error
       stats.domains = count || 0
     } catch (error) {

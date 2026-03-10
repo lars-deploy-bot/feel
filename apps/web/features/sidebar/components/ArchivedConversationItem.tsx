@@ -2,8 +2,6 @@
 
 import { ArchiveRestore } from "lucide-react"
 import type { DbConversation } from "@/lib/db/messageDb"
-import { styles } from "../sidebar-styles"
-import { formatTimestamp } from "../utils"
 
 export function ArchivedConversationItem({
   conversation,
@@ -15,18 +13,16 @@ export function ArchivedConversationItem({
   onRestore: () => void
 }) {
   return (
-    <div className="border-b border-black/[0.06] dark:border-white/[0.06] last:border-b-0 group">
+    <div className="group">
       <button
         type="button"
         onClick={onOpen}
-        className={`w-full px-4 py-3 flex items-center justify-between gap-3 text-left cursor-pointer ${styles.transition} ${styles.hoverFill}`}
+        className="w-full flex items-center gap-2 px-3 py-1.5 mx-2 rounded-lg cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors duration-100"
+        style={{ width: "calc(100% - 16px)" }}
       >
-        <div className="flex-1 min-w-0 opacity-50 group-hover:opacity-70 transition-opacity">
-          <div className={`text-sm ${styles.textPrimary} truncate`}>{conversation.title}</div>
-          <div className={`text-xs ${styles.textMuted} mt-0.5`}>
-            Archived {formatTimestamp(conversation.archivedAt ?? conversation.updatedAt)}
-          </div>
-        </div>
+        <span className="flex-1 min-w-0 text-[13px] text-black/35 dark:text-white/35 truncate text-left">
+          {conversation.title}
+        </span>
         {/* biome-ignore lint/a11y/useSemanticElements: Nested buttons are invalid HTML, using span with role instead */}
         <span
           role="button"
@@ -42,10 +38,10 @@ export function ArchivedConversationItem({
               onRestore()
             }
           }}
-          className={`opacity-40 md:opacity-0 md:group-hover:opacity-100 size-6 rounded flex items-center justify-center text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] ${styles.transitionAll} active:scale-90 shrink-0`}
-          aria-label="Restore without opening"
+          className="opacity-0 group-hover:opacity-100 size-5 rounded flex items-center justify-center text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 transition-all duration-100 active:scale-90 shrink-0"
+          aria-label="Restore"
         >
-          <ArchiveRestore size={13} strokeWidth={1.75} />
+          <ArchiveRestore size={11} strokeWidth={1.75} />
         </span>
       </button>
     </div>

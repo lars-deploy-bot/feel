@@ -5,11 +5,17 @@
  * instance for website QA. The agent's browser tool calls this server.
  *
  * Auth: X-Internal-Secret header (same pattern as other internal tools).
+ *
+ * All POST routes use the `dispatch` function which enforces:
+ * - JSON body parsing
+ * - AbortSignal from client disconnect (RouteHandler MUST accept it)
+ * - Abort check before sending response
+ * - Error wrapping
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
 import { browserPool } from "./browser-pool.js"
-import { sendError } from "./http.js"
+import { dispatch, sendError } from "./http.js"
 import { handleAct } from "./routes/act.js"
 import { handleConsole } from "./routes/console.js"
 import { handleOpen } from "./routes/open.js"
@@ -46,7 +52,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   const path = url.pathname
 
   try {
-    // Route dispatch
+    // GET routes (no body parsing / abort needed)
     if (method === "GET" && path === "/health") {
       res.writeHead(200, { "Content-Type": "text/plain" })
       res.end("ok")
@@ -58,30 +64,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return
     }
 
-    if (method === "POST" && path === "/open") {
-      await handleOpen(req, res)
-      return
-    }
-
-    if (method === "POST" && path === "/screenshot") {
-      await handleScreenshot(req, res)
-      return
-    }
-
-    if (method === "POST" && path === "/snapshot") {
-      await handleSnapshot(req, res)
-      return
-    }
-
-    if (method === "POST" && path === "/act") {
-      await handleAct(req, res)
-      return
-    }
-
-    if (method === "POST" && path === "/console") {
-      await handleConsole(req, res)
-      return
-    }
+    // POST routes — all go through dispatch (enforces AbortSignal + body parsing)
+    if (method === "POST" && path === "/open") return dispatch(handleOpen, req, res)
+    if (method === "POST" && path === "/screenshot") return dispatch(handleScreenshot, req, res)
+    if (method === "POST" && path === "/snapshot") return dispatch(handleSnapshot, req, res)
+    if (method === "POST" && path === "/act") return dispatch(handleAct, req, res)
+    if (method === "POST" && path === "/console") return dispatch(handleConsole, req, res)
 
     sendError(res, 404, `Not found: ${method} ${path}`)
   } catch (err) {

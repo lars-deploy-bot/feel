@@ -12,7 +12,11 @@ import { readdir } from "node:fs/promises"
 import { type APIRequestContext, expect, test } from "@playwright/test"
 import type { Req, Res } from "@/lib/api/schemas"
 import { apiSchemas, validateRequest } from "@/lib/api/schemas"
-import { CleanupDeployedSiteRequestSchema, CleanupDeployedSiteResponseSchema } from "@/lib/testing/e2e-site-deployment"
+import {
+  CleanupDeployedSiteRequestSchema,
+  CleanupDeployedSiteResponseSchema,
+  isReusableLiveDeploySlug,
+} from "@/lib/testing/e2e-site-deployment"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
 import { buildE2ETestHeaders } from "./lib/test-headers"
 
@@ -20,8 +24,6 @@ const LIVE_DEPLOY_TIMEOUT_MS = 540_000
 const LIVE_PROBE_INTERVAL_MS = 5_000
 const LIVE_PROBE_FAST_FAIL_525_COUNT = 8
 const CADDY_CERT_STORE_ROOT = "/var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory"
-const PREWARMED_DEPLOY_SLUG_PREFIX = "dl"
-
 function resolveWildcardDomain(baseUrl: string): string {
   const hostname = new URL(baseUrl).hostname
   const labels = hostname.split(".")
@@ -29,10 +31,6 @@ function resolveWildcardDomain(baseUrl: string): string {
     throw new Error(`Unable to derive wildcard domain from base URL host: ${hostname}`)
   }
   return labels.slice(1).join(".")
-}
-
-function isReusableDeploySlug(value: string): boolean {
-  return value.startsWith(PREWARMED_DEPLOY_SLUG_PREFIX) && /^[a-z0-9-]+$/.test(value)
 }
 
 async function listPrewarmedDeploySlugs(wildcardDomain: string): Promise<string[]> {
@@ -51,7 +49,7 @@ async function listPrewarmedDeploySlugs(wildcardDomain: string): Promise<string[
     if (!entry.name.endsWith(suffix)) continue
 
     const slug = entry.name.slice(0, -suffix.length)
-    if (!isReusableDeploySlug(slug)) continue
+    if (!isReusableLiveDeploySlug(slug)) continue
     candidateSlugs.add(slug)
   }
 

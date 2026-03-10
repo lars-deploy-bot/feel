@@ -1,5 +1,6 @@
 "use client"
 
+import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import { STREAM_ENV } from "@webalive/shared"
 import Dexie, { type Table } from "dexie"
 import {
@@ -54,6 +55,16 @@ export type DbMessageOrigin = "local" | "remote" | "migration"
 
 /** Allowed conversation sources */
 export type { AutomationSourceMetadata, ConversationSource } from "@/lib/conversations/source"
+
+/**
+ * Tab draft state — persisted to IndexedDB and synced to Supabase.
+ * Generic container for all draft data (text, attachments, future fields).
+ * Auto-saved on change, restored on tab switch or page load.
+ */
+export interface TabDraft {
+  text?: string
+  attachments?: Attachment[]
+}
 
 /**
  * Discriminated union for type-safe content storage.
@@ -135,6 +146,9 @@ export interface DbTab {
   lastMessageAt?: number
   // Soft-delete: timestamp when tab was closed (undefined = open)
   closedAt?: number
+  // Draft state — auto-saved like Gmail drafts, synced to Supabase
+  // Contains text input and serializable attachments (no File objects)
+  draft?: TabDraft
   // Sync metadata
   syncedAt?: number
   pendingSync?: boolean

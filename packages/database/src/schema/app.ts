@@ -179,6 +179,7 @@ export const conversationTabs = appSchema.table(
     messageCount: integer("message_count").default(0).notNull(),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true, mode: "string" }),
     closedAt: timestamp("closed_at", { withTimezone: true, mode: "string" }),
+    draft: jsonb("draft"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
   },
   table => [

@@ -17,7 +17,6 @@ import {
   removeTabGroup as removeTabGroupPure,
   renameTab as renameTabPure,
   reopenTab as reopenTabPure,
-  setTabAttachmentsDraft,
   setTabDraft,
   type Tab,
 } from "@/lib/tabs/tabModel"
@@ -66,8 +65,6 @@ interface TabDataStoreActions {
   renameTab: (workspace: string, tabId: TabId, name: string) => void
   /** Save input draft for a tab */
   setTabInputDraft: (workspace: string, tabId: TabId, draft: string) => void
-  /** Save attachments draft for a tab (JSON-serialized) */
-  setTabAttachmentsDraft: (workspace: string, tabId: TabId, draft: string | undefined) => void
   /** Create a new tab group with its first tab. Always succeeds. */
   createTabGroupWithTab: (workspace: string) => { tabGroupId: TabGroupId; tabId: TabId }
   /** Open a tab group - returns existing open tab or creates new one. Always succeeds. */
@@ -215,11 +212,6 @@ export const useTabDataStore = create<TabDataStore>()(
         setTabInputDraft: (workspace, tabId, draft): void => {
           const tabs = get().tabsByWorkspace[workspace] ?? []
           setTabs(workspace, setTabDraft(tabs, tabId, draft))
-        },
-
-        setTabAttachmentsDraft: (workspace, tabId, draft): void => {
-          const tabs = get().tabsByWorkspace[workspace] ?? []
-          setTabs(workspace, setTabAttachmentsDraft(tabs, tabId, draft))
         },
 
         createTabGroupWithTab: (workspace): { tabGroupId: TabGroupId; tabId: TabId } => {

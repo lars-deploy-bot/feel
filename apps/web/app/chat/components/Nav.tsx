@@ -1,6 +1,6 @@
 "use client"
 
-import { Image, Layers, MessageCircle } from "lucide-react"
+import { Image, Layers, MessageCircle, Settings } from "lucide-react"
 import type { RefObject } from "react"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
@@ -10,6 +10,7 @@ import {
   trackFeedbackClicked,
   trackPhotobookImageSelected,
   trackPhotosClicked,
+  trackSettingsClicked,
 } from "@/lib/analytics/events"
 
 interface NavProps {
@@ -23,6 +24,8 @@ interface NavProps {
   workspace: string | null
   isSidebarOpen: boolean
   onToggleSidebar: () => void
+  settingsMode: boolean
+  onSettingsClick: () => void
 }
 
 export function Nav({
@@ -36,6 +39,8 @@ export function Nav({
   workspace,
   isSidebarOpen,
   onToggleSidebar,
+  settingsMode,
+  onSettingsClick,
 }: NavProps) {
   // Shared base styles
   const buttonBase =
@@ -78,6 +83,25 @@ export function Nav({
 
         {/* Action buttons — desktop only. Mobile versions live in ConversationSidebar.tsx (search: "Mobile action buttons") */}
         <div className="hidden md:flex items-center gap-1">
+          {/* Settings */}
+          <button
+            type="button"
+            onClick={() => {
+              trackSettingsClicked()
+              onSettingsClick()
+            }}
+            className={`${buttonBase} w-8 ${
+              settingsMode
+                ? "text-black dark:text-white bg-black/[0.08] dark:bg-white/[0.08] [&>svg]:rotate-90"
+                : "text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+            } [&>svg]:transition-transform [&>svg]:duration-200 [&>svg]:ease-out`}
+            aria-label={settingsMode ? "Close settings" : "Open settings"}
+            aria-pressed={settingsMode}
+            data-testid="settings-button"
+          >
+            <Settings size={16} strokeWidth={1.5} />
+          </button>
+
           {/* Feedback */}
           <button
             type="button"
