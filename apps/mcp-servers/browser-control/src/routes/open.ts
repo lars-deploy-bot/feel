@@ -1,6 +1,6 @@
 import { browserPool } from "../browser-pool.js"
-import type { RouteHandler } from "../types.js"
 import { resolveUrl } from "../port-resolver.js"
+import type { RouteHandler } from "../types.js"
 
 /**
  * POST /open
