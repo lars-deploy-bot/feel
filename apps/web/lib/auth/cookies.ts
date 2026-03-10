@@ -24,14 +24,23 @@ type CookieOptions = {
   domain?: string
 }
 
+/** Minimal request shape — works with NextRequest, Request, etc. */
+type RequestLike = { headers: { get(name: string): string | null } }
+
+/** Minimal response shape — works with NextResponse, etc. */
+type ResponseLike = { cookies: { set(name: string, value: string, options: CookieOptions): void } }
+
 /**
- * Check if running on a deployed server (dev/staging/production)
- * Local development uses STREAM_ENV=local
+ * Extract the Host header from a request, or throw.
+ * Every cookie-setting code path must call this — a missing Host header
+ * causes domain-less cookies that coexist with domain cookies as duplicates.
  */
-function isDeployedServer(): boolean {
-  // STREAM_ENV=local means local development (localhost)
-  // All other environments (dev, staging, production) are deployed servers
-  return env.STREAM_ENV !== "local"
+export function requireHost(request: RequestLike): string {
+  const host = request.headers.get("host")
+  if (!host) {
+    throw new Error("Missing Host header — cannot set session cookie domain")
+  }
+  return host
 }
 
 /**
@@ -43,8 +52,6 @@ function isDeployedServer(): boolean {
  * - "app.sonno.tech" -> ".sonno.tech"
  * - "dev.app.sonno.tech" -> ".sonno.tech"
  * - "localhost:3000" -> undefined (no domain for localhost)
- *
- * @param host - The request host (e.g., "app.example.com" or "app.example.com:3000")
  */
 function extractRootDomain(host: string): string | undefined {
   // Remove port if present
@@ -71,58 +78,55 @@ function extractRootDomain(host: string): string | undefined {
 }
 
 /**
- * Get cookie domain based on request host.
- * Dynamically extracts root domain to work with ANY domain.
+ * Build base cookie options shared by set and clear.
+ * Uses sameSite: "lax" — Safari ITP clears "none" cookies within 24 hours.
+ * Preview iframes use separate token-based auth via /api/auth/preview-token.
  */
-function getCookieDomain(host?: string): string | undefined {
-  if (!host) {
-    return undefined
-  }
-
-  return extractRootDomain(host)
-}
-
-/**
- * Get standard cookie options for session cookies
- * Automatically handles production vs development secure flag
- *
- * Uses sameSite: "lax" for browser compatibility and session persistence.
- * "none" was causing Safari ITP to clear cookies within 24 hours.
- * "lax" works for same-origin requests and top-level navigations.
- *
- * Note: Preview iframes use separate token-based auth via /api/auth/preview-token
- *
- * @param host - Optional request host to determine cookie domain
- */
-export function getSessionCookieOptions(host?: string): CookieOptions {
-  const isDeployed = isDeployedServer()
+function baseCookieOptions(host: string): CookieOptions {
+  const isDeployed = env.STREAM_ENV !== "local"
   return {
     httpOnly: true,
     secure: isDeployed,
-    // ALWAYS use "lax" - Safari ITP clears "none" cookies within 24 hours
-    // Preview iframes use token-based auth instead of relying on this cookie
     sameSite: "lax",
     path: "/",
-    maxAge: SESSION_MAX_AGE,
-    // Domain set dynamically based on request host
-    ...(isDeployed && { domain: getCookieDomain(host) }),
+    ...(isDeployed && { domain: extractRootDomain(host) }),
   }
 }
 
-/**
- * Get cookie options for clearing a cookie
- * Must match the original cookie's attributes except value/expiry
- *
- * @param host - Optional request host to determine cookie domain
- */
-export function getClearCookieOptions(host?: string): CookieOptions {
-  const isDeployed = isDeployedServer()
-  return {
-    httpOnly: true,
-    secure: isDeployed,
-    sameSite: "lax", // Must match getSessionCookieOptions
-    path: "/",
-    expires: new Date(0), // Expire immediately
-    ...(isDeployed && { domain: getCookieDomain(host) }),
-  }
+/** Cookie options for setting a session cookie. */
+export function getSessionCookieOptions(host: string): CookieOptions {
+  return { ...baseCookieOptions(host), maxAge: SESSION_MAX_AGE }
+}
+
+/** Cookie options for clearing a cookie. Must match set options except value/expiry. */
+export function getClearCookieOptions(host: string): CookieOptions {
+  return { ...baseCookieOptions(host), expires: new Date(0) }
+}
+
+// =============================================================================
+// Route helpers — one-liner cookie operations with guaranteed domain
+// =============================================================================
+
+function setCookie(res: ResponseLike, name: string, token: string, request: RequestLike): void {
+  res.cookies.set(name, token, getSessionCookieOptions(requireHost(request)))
+}
+
+function clearCookie(res: ResponseLike, name: string, request: RequestLike): void {
+  res.cookies.set(name, "", getClearCookieOptions(requireHost(request)))
+}
+
+export function setSessionCookie(res: ResponseLike, token: string, request: RequestLike): void {
+  setCookie(res, COOKIE_NAMES.SESSION, token, request)
+}
+
+export function clearSessionCookie(res: ResponseLike, request: RequestLike): void {
+  clearCookie(res, COOKIE_NAMES.SESSION, request)
+}
+
+export function setManagerSessionCookie(res: ResponseLike, token: string, request: RequestLike): void {
+  setCookie(res, COOKIE_NAMES.MANAGER_SESSION, token, request)
+}
+
+export function clearManagerSessionCookie(res: ResponseLike, request: RequestLike): void {
+  clearCookie(res, COOKIE_NAMES.MANAGER_SESSION, request)
 }

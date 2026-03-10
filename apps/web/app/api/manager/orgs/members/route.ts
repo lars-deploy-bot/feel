@@ -1,5 +1,4 @@
 import * as Sentry from "@sentry/nextjs"
-import type { JobStatus } from "@webalive/database"
 import { isOrgRole } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
@@ -201,6 +200,7 @@ async function reassignOrDisableAutomations(
     const { error: transferError } = await appClient
       .from("automation_jobs")
       .update({ user_id: newOwner.user_id })
+      .eq("user_id", departingUserId)
       .in("id", jobIds)
 
     if (transferError) {
@@ -213,7 +213,8 @@ async function reassignOrDisableAutomations(
   } else {
     const { error: disableError } = await appClient
       .from("automation_jobs")
-      .update({ is_active: false, status: "disabled" as JobStatus })
+      .update({ is_active: false, status: "disabled" })
+      .eq("user_id", departingUserId)
       .in("id", jobIds)
 
     if (disableError) {

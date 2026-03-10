@@ -59,8 +59,14 @@ environment = "production"
 [environments.build]
 groups = ["build"]
 
+[environments.development]
+groups = ["runtime"]
+
 [environments.staging]
-groups = ["runtime", "staging"]
+groups = ["runtime"]
+
+[environments.production]
+groups = ["runtime"]
 
 [env.groups.build]
 required = ["NEXT_PUBLIC_APP_URL", "SERVER_CONFIG_PATH"]
@@ -136,7 +142,8 @@ The important rule is:
 - systemd can call `run.production`
 - Docker can call `run.staging` or `run.production`
 - Firecracker can call `run.production`
-- all of them run relative to `release.root`
+- `cwd` values are resolved relative to the repo root
+- Runners promoting `release.root` must preserve any paths required by the selected `run.*` command
 
 One repo contract, multiple runners.
 

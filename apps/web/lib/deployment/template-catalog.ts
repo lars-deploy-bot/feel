@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import type { AppDatabase } from "@webalive/database"
-import { DEPLOYMENT_TEMPLATES, PATHS } from "@webalive/shared"
+import { DEPLOYMENT_TEMPLATES, DOMAINS, getDeploymentTemplatePublicHostname, PATHS } from "@webalive/shared"
 import { createAppClient } from "@/lib/supabase/app"
 
 type TemplateRow = Pick<
@@ -16,21 +16,48 @@ type TemplateRow = Pick<
   | "deploy_count"
 >
 
+function getSharedTemplateForRow(row: Pick<TemplateRow, "template_id" | "source_path">) {
+  const templateById = DEPLOYMENT_TEMPLATES.find(template => template.id === row.template_id)
+  if (templateById) {
+    return templateById
+  }
+
+  const pathSegments = row.source_path.split("/").filter(segment => segment.length > 0)
+  const directoryName = pathSegments[pathSegments.length - 1]
+  if (!directoryName) {
+    return undefined
+  }
+
+  return DEPLOYMENT_TEMPLATES.find(template => template.internalHostname === directoryName)
+}
+
+function withLocalPreviewUrl(row: TemplateRow): TemplateRow {
+  const sharedTemplate = getSharedTemplateForRow(row)
+  if (!sharedTemplate) {
+    return row
+  }
+
+  return {
+    ...row,
+    preview_url: `https://${getDeploymentTemplatePublicHostname(sharedTemplate, DOMAINS.WILDCARD)}`,
+  }
+}
+
 function buildFilesystemTemplateCatalog(): TemplateRow[] {
-  return DEPLOYMENT_TEMPLATES.flatMap(({ id, hostname, name, description }) => {
-    const sourcePath = `${PATHS.TEMPLATES_ROOT}/${hostname}`
+  return DEPLOYMENT_TEMPLATES.flatMap(template => {
+    const sourcePath = `${PATHS.TEMPLATES_ROOT}/${template.internalHostname}`
     if (!existsSync(sourcePath)) {
       return []
     }
 
     return [
       {
-        template_id: id,
-        name,
-        description,
+        template_id: template.id,
+        name: template.name,
+        description: template.description,
         ai_description: null,
         source_path: sourcePath,
-        preview_url: `https://${hostname}`,
+        preview_url: `https://${getDeploymentTemplatePublicHostname(template, DOMAINS.WILDCARD)}`,
         image_url: null,
         is_active: true,
         deploy_count: 0,
@@ -55,7 +82,7 @@ export async function listDeploymentTemplates(): Promise<TemplateRow[]> {
   }
 
   if (data && data.length > 0) {
-    return data
+    return data.map(withLocalPreviewUrl)
   }
 
   return buildFilesystemTemplateCatalog()
@@ -77,7 +104,7 @@ export async function findDeploymentTemplateById(templateId: string): Promise<Te
   }
 
   if (data) {
-    return data
+    return withLocalPreviewUrl(data)
   }
 
   const fallbackTemplates = buildFilesystemTemplateCatalog()

@@ -1,5 +1,4 @@
 import * as Sentry from "@sentry/nextjs"
-import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { validateRequest } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
@@ -19,11 +18,8 @@ export async function POST(req: Request) {
     const { body } = result.data
     console.log(`[Verify API ${requestId}] Raw body:`, body)
 
-    const host = (await headers()).get("host") || "localhost"
-    console.log(`[Verify API ${requestId}] Host: ${host}`)
-
     // Only after authorization, check if workspace directory exists
-    const workspaceResult = await getWorkspace({ host, body, requestId })
+    const workspaceResult = await getWorkspace({ body, requestId })
 
     if (!workspaceResult.success) {
       console.log(`[Verify API ${requestId}] Workspace verification failed`)

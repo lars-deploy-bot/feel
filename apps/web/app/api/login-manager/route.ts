@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { z } from "zod"
 import { createSessionToken, SESSION_SCOPES } from "@/features/auth/lib/jwt"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { getClientIdentifier } from "@/lib/auth/client-identifier"
-import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
+import { setManagerSessionCookie } from "@/lib/auth/cookies"
 import { managerLoginRateLimiter } from "@/lib/auth/rate-limiter"
 import { timingSafeCompare } from "@/lib/auth/timing-safe"
-import { addCorsHeaders } from "@/lib/cors-utils"
+import { corsOptionsHandler } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
@@ -19,7 +19,6 @@ const ManagerLoginSchema = z.object({
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req)
   const origin = req.headers.get("origin")
-  const host = req.headers.get("host") || undefined
   const clientId = getClientIdentifier(req, "manager-login")
 
   // Rate limiting check
@@ -71,7 +70,7 @@ export async function POST(req: NextRequest) {
     })
 
     const res = createCorsSuccessResponse(origin, { requestId })
-    res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions(host))
+    setManagerSessionCookie(res, sessionToken, req)
     return res
   }
 
@@ -105,13 +104,10 @@ export async function POST(req: NextRequest) {
 
   // Set manager session cookie with JWT token
   const res = createCorsSuccessResponse(origin, { requestId })
-  res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions(host))
+  setManagerSessionCookie(res, sessionToken, req)
   return res
 }
 
 export async function OPTIONS(req: NextRequest) {
-  const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
-  const res = new NextResponse(null, { status: 200 })
-  addCorsHeaders(res, origin ?? null)
-  return res
+  return corsOptionsHandler(req)
 }

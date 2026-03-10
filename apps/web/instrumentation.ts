@@ -62,10 +62,15 @@ export async function register() {
         process.exit(1)
       }
 
-      // 2. Server identity: this server's row exists in app.servers
+      // 2. Server identity: ensure this server's row exists in app.servers (upserts if missing)
       const serverId = getServerId()
       if (serverId) {
-        const serverResult = await db.checkServerRow(url, key, serverId)
+        const { DEFAULTS, DOMAINS } = await import("@webalive/shared")
+        const serverResult = await db.ensureServerRow(url, key, {
+          serverId,
+          serverIp: DEFAULTS.SERVER_IP,
+          hostname: DOMAINS.MAIN,
+        })
         if (!serverResult.ok) {
           const msg = db.formatServerCheckFailure(serverResult)
           console.error(`[Instrumentation] FATAL: ${msg}`)

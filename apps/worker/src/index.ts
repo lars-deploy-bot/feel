@@ -13,8 +13,8 @@
 
 import { timingSafeEqual } from "node:crypto"
 import { serve } from "@hono/node-server"
-import { checkSchema, checkServerRow, formatSchemaFailure, formatServerCheckFailure } from "@webalive/database"
-import { getServerId } from "@webalive/shared"
+import { checkSchema, ensureServerRow, formatSchemaFailure, formatServerCheckFailure } from "@webalive/database"
+import { DEFAULTS, DOMAINS, getServerId } from "@webalive/shared"
 import { Hono } from "hono"
 import { getCronServiceStatus, pokeCronService, startCronService, stopCronService, triggerJob } from "./cron-service"
 import { getAutomationExecutionGate } from "./execution-guard"
@@ -125,8 +125,12 @@ async function verifyDatabase() {
     process.exit(1)
   }
 
-  // 2. Server identity: this server's row exists in app.servers
-  const serverResult = await checkServerRow(url, key, serverId)
+  // 2. Server identity: ensure this server's row exists in app.servers (upserts if missing)
+  const serverResult = await ensureServerRow(url, key, {
+    serverId,
+    serverIp: DEFAULTS.SERVER_IP,
+    hostname: DOMAINS.MAIN,
+  })
   if (!serverResult.ok) {
     const msg = formatServerCheckFailure(serverResult)
     Sentry.captureMessage(msg, "fatal")

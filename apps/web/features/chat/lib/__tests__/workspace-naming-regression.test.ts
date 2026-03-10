@@ -9,7 +9,6 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { DOMAINS } from "@webalive/shared"
 import { resolveAndValidatePath } from "@webalive/shared/path-security"
 import { describe, expect, it, type TestContext } from "vitest"
 import { getWorkspace } from "../workspaceRetriever"
@@ -45,7 +44,6 @@ describe("Workspace Naming Bug - Regression Test", () => {
     expect(validation.valid).toBe(true)
 
     const result = await getWorkspace({
-      host: DOMAINS.STREAM_DEV_HOST,
       body: { workspace: "evermore.test.local" },
       requestId: "regression-test",
     })
@@ -70,7 +68,6 @@ describe("Workspace Naming Bug - Regression Test", () => {
     expect(validation.valid).toBe(true)
 
     const result = await getWorkspace({
-      host: DOMAINS.STREAM_DEV_HOST,
       body: { workspace: "demo.test.local" }, // User provides dots
       requestId: "legacy-test",
     })
@@ -85,7 +82,6 @@ describe("Workspace Naming Bug - Regression Test", () => {
 
   it("CRITICAL: error message shows BOTH paths when workspace not found", async () => {
     const result = await getWorkspace({
-      host: DOMAINS.STREAM_DEV_HOST,
       body: { workspace: "this-site-definitely-does-not-exist.com" },
       requestId: "error-test",
     })

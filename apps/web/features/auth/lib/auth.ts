@@ -719,7 +719,7 @@ export async function validateRequest(
  * const { user, workspace, workspacePath } = result.data
  */
 export async function requireWorkspaceAuth(
-  req: { headers: { get: (name: string) => string | null } },
+  _req: { headers: { get: (name: string) => string | null } },
   body: { workspace?: string },
   requestId?: string,
 ): Promise<
@@ -746,8 +746,7 @@ export async function requireWorkspaceAuth(
 
   // Step 3: Resolve workspace path
   const { resolveWorkspace } = await import("@/features/workspace/lib/workspace-utils")
-  const host = req.headers.get("host") || ""
-  const workspaceResult = await resolveWorkspace(host, body, requestId || "unknown")
+  const workspaceResult = await resolveWorkspace(body, requestId || "unknown")
 
   if (!workspaceResult.success) {
     return {

@@ -14,14 +14,6 @@ export function isValidWorkspaceString(workspace: unknown): workspace is string 
 }
 
 /**
- * Check if a path is within workspace boundaries (prevents path traversal)
- * Both paths should be absolute/resolved
- */
-export function isPathWithinWorkspace(normalizedPath: string, workspacePath: string, pathSeparator: string): boolean {
-  return normalizedPath === workspacePath || normalizedPath.startsWith(workspacePath + pathSeparator)
-}
-
-/**
  * Check if path contains potential traversal attempts (..)
  */
 export function containsPathTraversal(path: string): boolean {

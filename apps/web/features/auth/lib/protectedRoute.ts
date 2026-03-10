@@ -126,8 +126,7 @@ function workspaceRoute(
 
       // Step 4: Resolve workspace path
       const { resolveWorkspace } = await import("@/features/workspace/lib/workspace-utils")
-      const host = req.headers.get("host") || ""
-      const workspaceResult = await resolveWorkspace(host, body, requestId)
+      const workspaceResult = await resolveWorkspace(body, requestId)
 
       if (!workspaceResult.success) {
         return workspaceResult.response
