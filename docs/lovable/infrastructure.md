@@ -10,6 +10,7 @@
 - **Monitoring**: Sentry SDK 0.42.0 + OpenTelemetry tracing (via `opentelemetry-http` crate, reqwest transport). Spotify's Confidence for feature flags (full local resolver — see Feature Flags section).
 - **Modal integration** present (env: `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`, `MODAL_ENVIRONMENT`). Possibly GPU workloads or async jobs.
 - **Kubernetes**: `/dev/termination-log` mounted. No cgroup limits visible in gVisor (resource enforcement at the gVisor/node level, not per-pod cgroups).
+- **Cgroup hierarchy**: Flat — `pids`, `memory`, `job`, `devices`, `cpuset` all under the same container hash. No per-subsystem resource limits configured. Confirms no fine-grained per-pod throttling.
 - **Config profiles**: `dev`, `local`, `sandbox-scheduler-2025-07-18` found in binary strings.
 
 ### HTTP Headers
@@ -24,6 +25,7 @@ Sandbox responses include identity headers:
 - Pods are a **Kubernetes Deployment** (`sandbox-pool-c765944cc-dk7cd`), not StatefulSet. Ephemeral. Recycled.
 - `/_sandbox/claim` accepts JWT-authenticated `ClaimArgs` with feature flags.
 - **Claim JWT**: RS256, `SandboxClaimsV1 { user_id, nonce }` + `ProjectAuthClaims` (8 fields: `project_id`, `iat`, `access_type`, and others). Verified via `PROJECT_AUTH_PUBLIC_KEY`.
+- **Auth upgrade**: Also supports **JWKS** (`"No JWKS JSON configured"`, `"Failed to parse JWKS"`, `"Failed to create decoder"`). This allows key rotation without redeploying the sandbox image.
 - **State machine**: Unclaimed → Claimed. On claim, a bare repo at `/git/pool.git` (with alternates) creates an orphan worktree at `/dev-server` via `git worktree add`.
 - `node_modules` installed fresh per claim (317MB). Uses `https://npm-cache.p.l5e.io` as a dedicated npm cache proxy — not public registry, not a volume mount.
 - Secrets: `.env` written at claim time (root:root, 644). Contains `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL`. Additional secrets via gRPC `SetEnvVarsRequest`.
