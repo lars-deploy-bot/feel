@@ -1,7 +1,7 @@
 import type { ErrorHandler } from "hono"
-import { Sentry } from "../infra/sentry"
 import { AppError, ErrorCodes } from "../infra/errors"
 import { logger } from "../infra/logger"
+import { Sentry } from "../infra/sentry"
 import type { AppBindings } from "../types/hono"
 
 export const errorHandler: ErrorHandler<AppBindings> = (err, c) => {
