@@ -4,6 +4,7 @@
 
 // Import Database types for renaming
 import type { Database as AppDatabase } from "./app.generated"
+import type { Database as DeployDatabase } from "./deploy.generated"
 import type { Database as IamDatabase } from "./iam.generated"
 import type { Database as IntegrationsDatabase } from "./integrations.generated"
 import type { Database as LockboxDatabase } from "./lockbox.generated"
@@ -47,6 +48,7 @@ export {
 
 // Re-export with schema-specific names
 export type { AppDatabase }
+export type { DeployDatabase }
 export type { IamDatabase }
 export type { IntegrationsDatabase }
 export type { LockboxDatabase }
