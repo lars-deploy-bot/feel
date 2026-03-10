@@ -4,6 +4,7 @@ const NAV_ITEMS = [
   { id: "organizations", label: "Organizations" },
   { id: "users", label: "Users" },
   { id: "domains", label: "Domains" },
+  { id: "deploys", label: "Deploys" },
   { id: "automations", label: "Automations" },
   { id: "templates", label: "Templates" },
   { id: "feedback", label: "Feedback" },

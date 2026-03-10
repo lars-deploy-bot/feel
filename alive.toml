@@ -1,0 +1,78 @@
+schema = 1
+
+[project]
+slug = "alive"
+display_name = "Alive"
+kind = "turbo"
+root = "."
+workspace = "apps/web"
+repo_owner = "eenlars"
+repo_name = "alive"
+default_branch = "main"
+
+[setup]
+command = "bun install --frozen-lockfile"
+
+[build]
+command = "bun run build:libs && bun run --filter @webalive/web build"
+outputs = [
+  "apps/web/.next/standalone",
+  "apps/web/.next/static",
+  "apps/web/public",
+]
+environment = "build"
+
+[release]
+root = "apps/web/.next/standalone"
+
+[docker]
+context = "."
+dockerfile = "ops/docker/alive.Dockerfile"
+target = "runtime"
+image_repository = "alive-control/alive"
+
+[runtime]
+env_file = "apps/web/.env.production"
+container_port = 3000
+healthcheck_path = "/api/health"
+network_mode = "host"
+
+[[runtime.bind_mounts]]
+source_env = "SERVER_CONFIG_PATH"
+target = "/var/lib/alive/server-config.json"
+read_only = true
+
+[[runtime.bind_mounts]]
+source = "/srv/webalive/sites"
+target = "/srv/webalive/sites"
+
+[[build_secrets]]
+id = "build_env"
+path = "apps/web/.env.production"
+
+[[build_secrets]]
+id = "server_config"
+env = "SERVER_CONFIG_PATH"
+
+[policies.staging]
+allow_email = false
+blocked_env_keys = [
+  "BREVO_SECRET_KEY",
+  "LOOPS_API_KEY",
+  "RESEND_API_KEY",
+  "SENDGRID_API_KEY",
+  "POSTMARK_SERVER_TOKEN",
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "SMTP_USER",
+  "SMTP_PASS",
+  "SMTP_NOREPLY_PASSWORD",
+  "MAILGUN_API_KEY",
+  "MAILJET_API_KEY",
+]
+forced_env = { NODE_ENV = "staging", HOSTNAME = "0.0.0.0" }
+
+[policies.production]
+allow_email = true
+blocked_env_keys = []
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0" }

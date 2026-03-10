@@ -50,6 +50,7 @@ const validBody = {
 describe("POST /api/outlook/send", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
 
     vi.mocked(getSessionUser).mockResolvedValue({
       id: "user-1",
@@ -75,6 +76,16 @@ describe("POST /api/outlook/send", () => {
       }
       return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve("Not found") })
     })
+  })
+
+  it("returns 403 when email delivery is disabled in staging", async () => {
+    vi.stubEnv("NODE_ENV", "staging")
+    const res = await POST(createRequest(validBody))
+    expect(res.status).toBe(403)
+    const data = await res.json()
+    expect(data.ok).toBe(false)
+    expect(data.error).toBe("INTEGRATION_ERROR")
+    expect(data.reason).toContain("disabled in staging")
   })
 
   // --- Auth ---

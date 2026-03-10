@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof EmailProviderError) {
       Sentry.captureException(error)
-      const status = error.code === "not_connected" ? 403 : 500
+      const status = error.code === "not_connected" || error.code === "delivery_disabled" ? 403 : 500
       return structuredErrorResponse(ErrorCodes.INTEGRATION_ERROR, {
         status,
         details: { reason: error.message },

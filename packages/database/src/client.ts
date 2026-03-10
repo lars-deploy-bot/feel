@@ -6,12 +6,19 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
-import type { AppDatabase, IamDatabase, IntegrationsDatabase, LockboxDatabase, PublicDatabase } from "./index"
+import type {
+  AppDatabase,
+  DeployDatabase,
+  IamDatabase,
+  IntegrationsDatabase,
+  LockboxDatabase,
+  PublicDatabase,
+} from "./index"
 
 interface ClientConfig {
   url: string
   key: string
-  schema?: "public" | "iam" | "app" | "integrations" | "lockbox"
+  schema?: "public" | "iam" | "app" | "deploy" | "integrations" | "lockbox"
 }
 
 /**
@@ -42,6 +49,10 @@ export function createIamClient(url: string, key: string) {
 
 export function createAppClient(url: string, key: string) {
   return createDatabaseClient<AppDatabase>({ url, key, schema: "app" })
+}
+
+export function createDeployClient(url: string, key: string) {
+  return createDatabaseClient<DeployDatabase>({ url, key, schema: "deploy" })
 }
 
 export function createIntegrationsClient(url: string, key: string) {

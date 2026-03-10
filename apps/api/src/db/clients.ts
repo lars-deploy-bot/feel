@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@supabase/supabase-js"
-import type { AppDatabase, IamDatabase } from "@webalive/database"
+import type { AppDatabase, DeployDatabase, IamDatabase } from "@webalive/database"
 import { env } from "../config/env"
 
 interface IamPasswordResetRpcSchema {
@@ -54,6 +54,15 @@ export const app: SupabaseClient<AppDatabase> = createClient<AppDatabase>(
   env.SUPABASE_SERVICE_ROLE_KEY,
   {
     db: { schema: "app" },
+    auth: { persistSession: false },
+  },
+)
+
+export const deploy: SupabaseClient<DeployDatabase> = createClient<DeployDatabase>(
+  env.SUPABASE_URL,
+  env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    db: { schema: "deploy" },
     auth: { persistSession: false },
   },
 )

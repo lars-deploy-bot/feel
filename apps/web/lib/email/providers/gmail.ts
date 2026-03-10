@@ -8,6 +8,7 @@
 import { auth as gauth, gmail_v1 } from "@googleapis/gmail"
 import * as Sentry from "@sentry/nextjs"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import { assertEmailDeliveryAllowed } from "../delivery-policy"
 import { createRawEmail } from "../message"
 import {
   type EmailMessage,
@@ -46,6 +47,8 @@ async function getSenderEmail(gmail: gmail_v1.Gmail): Promise<string> {
 
 export const gmailProvider: EmailProvider = {
   async sendEmail(userId: string, message: EmailMessage): Promise<SendEmailResult> {
+    assertEmailDeliveryAllowed("gmail.send")
+
     const gmail = await getGmailClient(userId)
     const senderEmail = await getSenderEmail(gmail)
 
