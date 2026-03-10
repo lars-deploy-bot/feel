@@ -2,13 +2,14 @@
 # =============================================================================
 # Deploy standalone services (API + Manager)
 # =============================================================================
-# Builds and restarts the API (Hono) and Manager (Vite + Bun) services.
+# Builds and restarts the API (Hono), Manager (Vite + Bun), and the Rust deployer.
 # Fails fast if not on main branch.
 #
 # Usage:
-#   ./deploy-services.sh              # Deploy both
+#   ./deploy-services.sh              # Deploy all
 #   ./deploy-services.sh --api        # API only
 #   ./deploy-services.sh --manager    # Manager only
+#   ./deploy-services.sh --deployer   # Deployer only
 # =============================================================================
 
 set -euo pipefail
@@ -24,17 +25,26 @@ source "$SCRIPT_DIR/lib/common.sh"
 # =============================================================================
 DEPLOY_API=true
 DEPLOY_MANAGER=true
+DEPLOY_DEPLOYER=true
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --api)
             DEPLOY_API=true
             DEPLOY_MANAGER=false
+            DEPLOY_DEPLOYER=false
             shift
             ;;
         --manager)
             DEPLOY_API=false
             DEPLOY_MANAGER=true
+            DEPLOY_DEPLOYER=false
+            shift
+            ;;
+        --deployer)
+            DEPLOY_API=false
+            DEPLOY_MANAGER=false
+            DEPLOY_DEPLOYER=true
             shift
             ;;
         --help|-h)
@@ -107,6 +117,37 @@ if [ "$DEPLOY_MANAGER" = true ]; then
 fi
 
 # =============================================================================
+# Deploy Deployer
+# =============================================================================
+if [ "$DEPLOY_DEPLOYER" = true ]; then
+    banner "Deploying Alive Deployer (Rust + Docker)"
+
+    log_info "Syncing repo-managed systemd units..."
+    "$PROJECT_ROOT/scripts/systemd/sync-ops-units.sh" --alive-root "$PROJECT_ROOT"
+    log_success "Systemd units synced"
+
+    log_info "Building alive-deployer-rs..."
+    if ! cargo build --release --manifest-path "$PROJECT_ROOT/apps/deployer-rs/Cargo.toml" 2>&1; then
+        log_error "Deployer build failed"
+        exit 1
+    fi
+    log_success "Deployer built"
+
+    log_info "Restarting alive-deployer..."
+    systemctl daemon-reload
+    systemctl enable --now alive-deployer
+    sleep 1
+
+    if systemctl is-active --quiet alive-deployer; then
+        log_success "alive-deployer running on localhost:5095"
+    else
+        log_error "alive-deployer failed to start"
+        log_step "Check logs: journalctl -u alive-deployer -n 50"
+        exit 1
+    fi
+fi
+
+# =============================================================================
 # Done
 # =============================================================================
 banner_success "Services deployed"
@@ -115,5 +156,8 @@ if [ "$DEPLOY_API" = true ]; then
 fi
 if [ "$DEPLOY_MANAGER" = true ]; then
     echo -e "  Manager: ${GREEN}alive-manager${NC} (port 5090)"
+fi
+if [ "$DEPLOY_DEPLOYER" = true ]; then
+    echo -e "  Deployer: ${GREEN}alive-deployer${NC} (localhost:5095)"
 fi
 echo ""

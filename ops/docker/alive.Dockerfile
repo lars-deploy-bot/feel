@@ -1,0 +1,46 @@
+# syntax=docker/dockerfile:1.7
+
+FROM oven/bun:1.2.22 AS deps
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . .
+
+RUN bun install --frozen-lockfile --ignore-scripts
+
+RUN cd templates/site-template/user && bun install --frozen-lockfile
+
+RUN bun run build:libs
+
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=deps /app /app
+
+RUN mkdir -p /app/apps/web/public
+
+RUN --mount=type=secret,id=build_env,target=/run/secrets/build_env \
+    --mount=type=secret,id=server_config,target=/run/secrets/server_config \
+    sh -lc 'set -a && . /run/secrets/build_env && set +a && export SERVER_CONFIG_PATH=/run/secrets/server_config && cd apps/web && NODE_OPTIONS="--max-old-space-size=4096" ../../node_modules/.bin/next build'
+
+FROM node:22-bookworm-slim AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /app/apps/web/public ./apps/web/public
+
+EXPOSE 3000
+
+CMD ["node", "apps/web/server.js"]

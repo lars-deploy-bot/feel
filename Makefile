@@ -10,7 +10,7 @@
 #
 # =============================================================================
 
-.PHONY: all clean test help ship ship-fast staging staging-fast production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager
+.PHONY: all clean test help ship ship-fast staging staging-fast production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager deployer
 
 all: help
 
@@ -64,6 +64,7 @@ help:
 	@echo "  make services        Build and deploy API + Manager"
 	@echo "  make api             Build and deploy API only"
 	@echo "  make manager         Build and deploy Manager only"
+	@echo "  make deployer        Build and deploy the Rust deployer only"
 	@echo ""
 	@echo "$(GREEN)Other:$(NC)"
 	@echo "  make rollback        Interactive rollback to previous build"
@@ -193,3 +194,6 @@ api:
 
 manager:
 	@./scripts/deployment/deploy-services.sh --manager
+
+deployer:
+	@./scripts/deployment/deploy-services.sh --deployer

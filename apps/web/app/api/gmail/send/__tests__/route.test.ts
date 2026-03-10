@@ -69,6 +69,7 @@ const validBody = {
 describe("POST /api/gmail/send", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
 
     vi.mocked(getSessionUser).mockResolvedValue({ id: "user-1" } as never)
     vi.mocked(getOAuthInstance).mockReturnValue({ getAccessToken: mockGetAccessToken } as never)
@@ -77,6 +78,16 @@ describe("POST /api/gmail/send", () => {
     mockSend.mockResolvedValue({
       data: { id: "msg_abc", threadId: "thread_xyz" },
     })
+  })
+
+  it("returns 403 when email delivery is disabled in staging", async () => {
+    vi.stubEnv("NODE_ENV", "staging")
+    const res = await POST(createRequest(validBody))
+    expect(res.status).toBe(403)
+    const data = await res.json()
+    expect(data.ok).toBe(false)
+    expect(data.error).toBe("INTEGRATION_ERROR")
+    expect(data.reason).toContain("disabled in staging")
   })
 
   // --- Auth ---
