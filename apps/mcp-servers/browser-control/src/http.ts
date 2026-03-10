@@ -5,6 +5,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http"
+import type { RouteHandler } from "./types.js"
 
 export function sendJson(res: ServerResponse, data: unknown, status = 200): void {
   const body = JSON.stringify(data)
@@ -53,4 +54,45 @@ export async function parseJsonBody(req: IncomingMessage): Promise<Record<string
     })
     req.on("error", reject)
   })
+}
+
+/**
+ * Dispatch a typed RouteHandler. Handles:
+ * 1. JSON body parsing
+ * 2. Abort signal from client disconnect
+ * 3. Abort check before sending response
+ * 4. Error → 500 wrapping
+ *
+ * Route handlers MUST accept AbortSignal (enforced by RouteHandler type).
+ * They can't forget it, and they can't accidentally send to dead connections.
+ */
+export async function dispatch(handler: RouteHandler, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const controller = new AbortController()
+  const onClose = () => controller.abort()
+  req.on("close", onClose)
+
+  let body: Record<string, unknown>
+  try {
+    body = await parseJsonBody(req)
+  } catch (err) {
+    sendError(res, 400, err instanceof Error ? err.message : "Invalid request body")
+    return
+  }
+
+  try {
+    const result = await handler(body, controller.signal)
+
+    // Client disconnected while handler was running — don't send
+    if (controller.signal.aborted) return
+
+    if (result.ok) {
+      sendJson(res, result.data)
+    } else {
+      sendError(res, result.status, result.error)
+    }
+  } catch (err) {
+    if (controller.signal.aborted) return
+    console.error("[dispatch] Unhandled route error:", err)
+    sendError(res, 500, `Internal error: ${String(err instanceof Error ? err.message : err)}`)
+  }
 }

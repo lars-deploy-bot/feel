@@ -85,6 +85,14 @@ vi.mock("@/lib/deployment/deploy-pipeline", () => ({
   runStrictDeployment: (...args: unknown[]) => runStrictDeploymentMock(...args),
 }))
 
+vi.mock("@/lib/deployment/site-occupancy", () => ({
+  inspectSiteOccupancy: vi.fn(() => ({ occupied: false })),
+}))
+
+vi.mock("@/lib/auth/cookies", () => ({
+  setSessionCookie: vi.fn(),
+}))
+
 vi.mock("@/lib/deployment/ssl-validation", () => ({
   validateSSLCertificate: vi.fn(() => Promise.resolve()),
 }))
@@ -118,6 +126,7 @@ vi.mock("@/lib/site-workspace-registry", () => ({
   getSiteWorkspaceRoot: vi.fn((domain: string, mode: string) =>
     mode === "e2b" ? `${MOCK_E2B_SCRATCH}/${domain}` : `${MOCK_WORKSPACE_BASE}/${domain}`,
   ),
+  getSiteWorkspaceCandidates: vi.fn(() => []),
 }))
 
 vi.mock("@webalive/shared", async importOriginal => {

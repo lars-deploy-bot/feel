@@ -4,6 +4,7 @@ import { isRetryableNetworkError, retryAsync } from "@webalive/shared"
 import { useCallback, useRef } from "react"
 import toast from "react-hot-toast"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
+import { useAttachmentStore } from "@/lib/stores/attachmentStore"
 import { ClientError, ClientRequest, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
 import { type AgentManagerContent, parseStreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
@@ -879,7 +880,7 @@ export function useChatMessaging({
       streamingActions.startStream(targetTabId)
 
       try {
-        const attachments = chatInputRef.current?.getAttachments() || []
+        const attachments = useAttachmentStore.getState().get(targetTabId)
 
         trackMessageSent({
           workspace,
@@ -897,7 +898,7 @@ export function useChatMessaging({
         }
         await addMessage(userMessage, targetTabId)
         setMsg("")
-        chatInputRef.current?.clearAllAttachments()
+        useAttachmentStore.getState().clear(targetTabId)
         forceScrollToBottom()
         // Re-focus the textarea after sending so user can keep typing
         requestAnimationFrame(() => chatInputRef.current?.focus())

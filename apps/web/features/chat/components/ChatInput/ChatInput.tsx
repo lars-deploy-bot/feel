@@ -33,6 +33,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     onSubmit,
     onStop,
     config: userConfig = {},
+    tabId,
     onOpenTemplates,
     hideToolbar = false,
   },
@@ -71,9 +72,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     removeAttachment,
     clearAttachments,
     toggleImageMode,
-    getSerializableAttachments,
-    restoreAttachments,
-  } = useAttachments(config)
+  } = useAttachments(config, tabId)
 
   // Detect supertemplate JSON in message and convert to attachments
   useSuperTemplateDetection(message, setMessage, attachments, addSuperTemplateAttachment)
@@ -83,7 +82,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     textareaRef.current = el
   }, [])
 
-  // Expose methods to parent via ref
+  // Expose methods to parent via ref (add methods need config context, focus needs DOM access)
   useImperativeHandle(
     ref,
     () => ({
@@ -93,16 +92,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addUserPrompt,
       addSkill,
       addFileForAnalysis,
-      getAttachments: () => attachments,
-      getSerializableAttachments,
-      restoreAttachments,
       clearLibraryImages: () => {
         const libraryImages = attachments.filter(a => a.kind === "library-image")
         for (const img of libraryImages) {
           removeAttachment(img.id)
         }
       },
-      clearAllAttachments: clearAttachments,
       focus: () => {
         textareaRef.current?.focus()
       },
@@ -116,9 +111,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addFileForAnalysis,
       attachments,
       removeAttachment,
-      clearAttachments,
-      getSerializableAttachments,
-      restoreAttachments,
     ],
   )
 

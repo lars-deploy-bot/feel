@@ -1,4 +1,16 @@
 import { z } from "zod"
+import { extractSlugFromDomain } from "@/lib/config"
+
+export const REUSABLE_LIVE_DEPLOY_SLUG_PREFIX = "dl"
+
+export function isReusableLiveDeploySlug(slug: string): boolean {
+  return slug.startsWith(REUSABLE_LIVE_DEPLOY_SLUG_PREFIX) && /^[a-z0-9-]+$/.test(slug)
+}
+
+export function isReusableLiveDeployDomain(domain: string): boolean {
+  const slug = extractSlugFromDomain(domain)
+  return slug !== null && isReusableLiveDeploySlug(slug)
+}
 
 export const CleanupDeployedSiteRequestSchema = z.object({
   domain: z

@@ -17,7 +17,7 @@
 
 import { logError } from "@/lib/client-error-logger"
 import { normalizeConversationSourcePayload } from "@/lib/conversations/source"
-import { type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
+import { type DbConversation, type DbMessage, type DbTab, type TabDraft, getMessageDb } from "./messageDb"
 import { syncDexieTabsToLocalStorage } from "./tabSync"
 
 // =============================================================================
@@ -43,6 +43,7 @@ interface ServerTab {
   lastMessageAt: number | null
   createdAt: number
   closedAt: number | null
+  draft: TabDraft | null
 }
 
 /** Conversation shape returned by GET /api/conversations */
@@ -228,6 +229,7 @@ async function buildConversationPayload(db: ReturnType<typeof getMessageDb>, con
       lastMessageAt: t.lastMessageAt ?? null,
       createdAt: t.createdAt,
       closedAt: t.closedAt ?? null,
+      draft: t.draft ?? null,
     })),
     messages: pendingMessages.map(m => ({
       id: m.id,
@@ -590,6 +592,7 @@ export async function fetchConversations(workspace: string, userId: string, _org
           messageCount: tab.messageCount,
           lastMessageAt: tab.lastMessageAt ?? undefined,
           closedAt: tab.closedAt ?? undefined,
+          draft: tab.draft ?? undefined,
           syncedAt: Date.now(),
           pendingSync: false,
         }

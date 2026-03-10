@@ -1,71 +1,9 @@
-import { SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
+import { getSandboxConnectErrorMessage, isSandboxDefinitelyGone, SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
 import { Sandbox } from "e2b"
 import type { DomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { createAppClient } from "@/lib/supabase/app"
 
 export { SANDBOX_WORKSPACE_ROOT }
-
-const SANDBOX_GONE_MESSAGE_PATTERNS = [/\bnot found\b/i, /\bdoes not exist\b/i, /\bno such sandbox\b/i]
-
-function parseStatusCode(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value
-  }
-  if (typeof value === "string" && value.trim().length > 0) {
-    const parsed = Number.parseInt(value, 10)
-    if (Number.isFinite(parsed)) return parsed
-  }
-  return null
-}
-
-function getConnectErrorStatusCode(err: unknown): number | null {
-  if (!err || typeof err !== "object") return null
-
-  const directStatus = parseStatusCode(Reflect.get(err, "status"))
-  if (directStatus !== null) return directStatus
-
-  const statusCode = parseStatusCode(Reflect.get(err, "statusCode"))
-  if (statusCode !== null) return statusCode
-
-  const response = Reflect.get(err, "response")
-  if (!response || typeof response !== "object") return null
-
-  return parseStatusCode(Reflect.get(response, "status"))
-}
-
-function getConnectErrorMessage(err: unknown): string {
-  if (err instanceof Error && err.message) {
-    return err.message
-  }
-
-  if (err && typeof err === "object") {
-    const message = Reflect.get(err, "message")
-    if (typeof message === "string" && message.trim().length > 0) {
-      return message
-    }
-
-    const statusCode = getConnectErrorStatusCode(err)
-    if (statusCode !== null) {
-      return `HTTP ${statusCode}`
-    }
-
-    try {
-      return JSON.stringify(err)
-    } catch {
-      return String(err)
-    }
-  }
-
-  return String(err)
-}
-
-function isSandboxDefinitelyGone(err: unknown): boolean {
-  const statusCode = getConnectErrorStatusCode(err)
-  if (statusCode === 404) return true
-
-  const message = getConnectErrorMessage(err)
-  return SANDBOX_GONE_MESSAGE_PATTERNS.some(pattern => pattern.test(message))
-}
 
 async function markSandboxDeadIfCurrent(runtime: DomainRuntime): Promise<void> {
   if (!runtime.sandbox_id) return
@@ -111,7 +49,7 @@ export async function connectSandbox(runtime: DomainRuntime): Promise<Sandbox> {
     // Connect can fail for transient infra/network issues too.
     // Only mark dead when we're confident the sandbox is actually gone.
     console.error(
-      `[connect-sandbox] Connect failed for ${runtime.hostname} (${runtime.sandbox_id}): ${getConnectErrorMessage(err)}`,
+      `[connect-sandbox] Connect failed for ${runtime.hostname} (${runtime.sandbox_id}): ${getSandboxConnectErrorMessage(err)}`,
     )
 
     if (isSandboxDefinitelyGone(err)) {

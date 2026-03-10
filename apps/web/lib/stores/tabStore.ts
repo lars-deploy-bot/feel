@@ -67,8 +67,6 @@ export interface TabStoreActions {
   openTabGroupInTab: (workspace: string, tabGroupId: TabGroupId, name?: string) => Tab
   /** Save input draft for a tab */
   setTabInputDraft: (workspace: string, tabId: TabId, draft: string) => void
-  /** Save attachments draft for a tab */
-  setTabAttachmentsDraft: (workspace: string, tabId: TabId, draft: string | undefined) => void
   /** Create a new tab group with its first tab. Always succeeds. */
   createTabGroupWithTab: (workspace: string) => { tabGroupId: TabGroupId; tabId: TabId }
   /** Remove old closed tabs to free up storage. Returns count of removed tabs. */
@@ -151,10 +149,6 @@ function createTabActions(): TabStoreActions {
 
     setTabInputDraft: (workspace: string, tabId: TabId, draft: string): void => {
       useTabDataStore.getState().setTabInputDraft(workspace, tabId, draft)
-    },
-
-    setTabAttachmentsDraft: (workspace: string, tabId: TabId, draft: string | undefined): void => {
-      useTabDataStore.getState().setTabAttachmentsDraft(workspace, tabId, draft)
     },
 
     createTabGroupWithTab: (workspace: string): { tabGroupId: TabGroupId; tabId: TabId } => {

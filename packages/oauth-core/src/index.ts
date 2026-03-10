@@ -32,6 +32,7 @@ function normalizeScopes(scopeString: string | undefined): Set<string> {
 
 const providerCredentialAliases: Record<string, string> = {
   google_calendar: "google",
+  google_search_console: "google",
 }
 
 function resolveCredentialProvider(provider: string): string {
