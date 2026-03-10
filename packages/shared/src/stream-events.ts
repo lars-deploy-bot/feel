@@ -133,34 +133,3 @@ export function isStreamEvent(e: unknown): e is StreamEvent {
   }
   return STREAM_EVENT_TYPES.includes((e as { type: string }).type as StreamEventType)
 }
-
-/**
- * Standard error codes
- */
-export const ERROR_CODES = {
-  // Auth errors (401)
-  INVALID_TOKEN: "invalid_token",
-  TOKEN_EXPIRED: "token_expired",
-
-  // Quota errors (429)
-  QUOTA_EXCEEDED: "quota_exceeded",
-  RATE_LIMITED: "rate_limited",
-
-  // Not found errors (404/410)
-  STREAM_NOT_FOUND: "stream_not_found",
-  STREAM_EXPIRED: "stream_expired",
-
-  // Client errors (400)
-  INVALID_REQUEST: "invalid_request",
-
-  // Access errors (403)
-  MODEL_NOT_ALLOWED: "model_not_allowed",
-  WORKSPACE_DENIED: "workspace_denied",
-
-  // Server errors (500+)
-  INTERNAL_ERROR: "internal_error",
-  UPSTREAM_ERROR: "upstream_error",
-  TIMEOUT: "timeout",
-} as const
-
-export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES]

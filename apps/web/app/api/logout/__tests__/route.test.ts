@@ -1,5 +1,6 @@
-import { COOKIE_NAMES, DOMAINS } from "@webalive/shared"
+import { COOKIE_NAMES } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockNextRequest, parseCookieHeader } from "@/lib/test-helpers/mock-request"
 
 // Mock env modules before importing route
 // Both @/lib/env (internal) and @webalive/env/server (package) need to be mocked
@@ -37,77 +38,8 @@ const { POST: logoutPOST } = await import("../route")
  * - Result: Logout doesn't clear cookie → stale JWT → 401 on mobile
  */
 
-// Helper to extract cookie configuration from Set-Cookie header
-interface CookieConfig {
-  name: string
-  value: string
-  httpOnly: boolean
-  secure: boolean
-  sameSite: string | null
-  path: string | null
-  maxAge: number | null
-  expires: string | null
-}
-
-function parseCookieHeader(setCookieHeader: string): CookieConfig {
-  const parts = setCookieHeader.split(";").map(p => p.trim())
-  const [nameValue] = parts
-  const [name, value] = nameValue.split("=")
-
-  const config: CookieConfig = {
-    name,
-    value,
-    httpOnly: false,
-    secure: false,
-    sameSite: null,
-    path: null,
-    maxAge: null,
-    expires: null,
-  }
-
-  for (const part of parts.slice(1)) {
-    const lower = part.toLowerCase()
-
-    if (lower === "httponly") {
-      config.httpOnly = true
-    } else if (lower === "secure") {
-      config.secure = true
-    } else if (lower.startsWith("samesite=")) {
-      config.sameSite = part.split("=")[1]
-    } else if (lower.startsWith("path=")) {
-      config.path = part.split("=")[1]
-    } else if (lower.startsWith("max-age=")) {
-      config.maxAge = Number.parseInt(part.split("=")[1], 10)
-    } else if (lower.startsWith("expires=")) {
-      config.expires = part.split("=")[1]
-    }
-  }
-
-  return config
-}
-
-// Helper to create mock NextRequest
-function createMockRequest(url: string, options?: RequestInit) {
-  const urlObj = new URL(url)
-  // NextRequest constructor doesn't accept all options we need, so we build from Request
-  const req = new Request(url, options) as unknown as import("next/server").NextRequest
-  ;(req as unknown as Record<string, unknown>).nextUrl = urlObj
-  // Add cookies property that NextRequest provides
-  ;(req as unknown as Record<string, unknown>).cookies = {
-    get: () => undefined,
-    getAll: () => [],
-    has: () => false,
-    set: () => {},
-    delete: () => {},
-  }
-  const originalGet = req.headers.get.bind(req.headers)
-  req.headers.get = (name: string) => {
-    if (name === "origin") return DOMAINS.STREAM_PROD
-    if (name === "host") return "localhost"
-    return originalGet(name)
-  }
-  return req
-}
+// createMockNextRequest, parseCookieHeader, CookieConfig
+// are imported from @/lib/test-helpers/mock-request
 
 // Mock session-service (logout revokes session server-side)
 vi.mock("@/features/auth/sessions/session-service", () => ({
@@ -165,7 +97,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
     vi.stubEnv("NODE_ENV", "production")
 
     // Get login cookie config
-    const loginReq = createMockRequest("http://localhost/api/login", {
+    const loginReq = createMockNextRequest("http://localhost/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -184,7 +116,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
     const loginCookie = parseCookieHeader(loginSetCookie.split(",")[0])
 
     // Get logout cookie config
-    const logoutReq = createMockRequest("http://localhost/api/logout", {
+    const logoutReq = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })
@@ -226,7 +158,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
     vi.stubEnv("NODE_ENV", "development")
 
     // Get login cookie config
-    const loginReq = createMockRequest("http://localhost/api/login", {
+    const loginReq = createMockNextRequest("http://localhost/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -245,7 +177,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
     const loginCookie = parseCookieHeader(loginSetCookie.split(",")[0])
 
     // Get logout cookie config
-    const logoutReq = createMockRequest("http://localhost/api/logout", {
+    const logoutReq = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })
@@ -274,7 +206,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
   it("should clear manager_session with consistent attributes (THE MANAGER COOKIE BUG)", async () => {
     vi.stubEnv("NODE_ENV", "production")
 
-    const logoutReq = createMockRequest("http://localhost/api/logout", {
+    const logoutReq = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })
@@ -316,7 +248,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
   it("should set secure flag based on STREAM_ENV (THE SECURE FLAG BUG)", async () => {
     // Deployed server (STREAM_ENV !== "local"): secure should be TRUE
     vi.stubEnv("STREAM_ENV", "production")
-    let req = createMockRequest("http://localhost/api/logout", {
+    let req = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })
@@ -326,7 +258,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
 
     // Local development (STREAM_ENV === "local"): secure should be FALSE
     vi.stubEnv("STREAM_ENV", "local")
-    req = createMockRequest("http://localhost/api/logout", {
+    req = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })
@@ -345,7 +277,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
    * "none" would require HTTPS always and break dev
    */
   it("should use sameSite=lax to match login (THE SAMESITE BUG)", async () => {
-    const req = createMockRequest("http://localhost/api/logout", {
+    const req = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })

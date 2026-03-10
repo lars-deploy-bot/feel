@@ -223,8 +223,6 @@ export {
 export {
   // Stream protocol events
   type BaseStreamEvent,
-  ERROR_CODES,
-  type ErrorCode,
   type InterruptSource,
   isStreamEvent,
   type StreamChunkEvent,

@@ -1,3 +1,4 @@
+import { syncSdkMessageToolMetadata, type ToolMetadataStore } from "@webalive/shared/sdk-message-tool-metadata"
 import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import {
   type BridgeCompleteMessage,
@@ -9,7 +10,7 @@ import {
   type InterruptDetails,
   type InterruptStatus,
 } from "@/features/chat/lib/streaming/ndjson"
-import type { SDKAssistantMessage, SDKMessage, SDKUserMessage } from "@/features/chat/types/sdk-types"
+import type { SDKAssistantMessage, SDKMessage } from "@/features/chat/types/sdk-types"
 import {
   isErrorResultMessage,
   isSDKAssistantMessage,
@@ -163,6 +164,27 @@ export function getAssistantErrorResultMessage(
   }
 }
 
+function createStreamingToolMetadataStore(
+  tabId: string,
+  streamingActions: StreamingStoreState["actions"],
+): ToolMetadataStore {
+  return {
+    getToolUse: (toolUseId: string) => {
+      const toolName = streamingActions.getToolName(tabId, toolUseId)
+      if (!toolName) return undefined
+
+      return {
+        toolUseId,
+        toolName,
+        toolInput: streamingActions.getToolInput(tabId, toolUseId),
+      }
+    },
+    setToolUse: entry => {
+      streamingActions.recordToolUse(tabId, entry.toolUseId, entry.toolName, entry.toolInput)
+    },
+  }
+}
+
 // Parse stream event into UI message
 // Now conversation-scoped to avoid tool mapping collisions across conversations
 export function parseStreamEvent(
@@ -264,37 +286,18 @@ export function parseStreamEvent(
       }
     }
 
-    // Track tool uses per conversation (not globally)
-    // Also track tool inputs so we can display them in tool results (e.g., comment body)
-    // Mark tools as pending when they start executing
-    if (conversationId && streamingActions && isSDKAssistantMessage(content)) {
-      const assistantMsg = content as SDKAssistantMessage
-      if (assistantMsg.message?.content && Array.isArray(assistantMsg.message.content)) {
-        assistantMsg.message.content.forEach(item => {
-          if (item.type === "tool_use" && item.id && item.name) {
-            streamingActions.recordToolUse(conversationId, item.id, item.name, item.input)
-            // Mark as pending so UI can show "running" state
-            streamingActions.markToolPending(conversationId, item.id, item.name, item.input)
-          }
-        })
-      }
-    }
+    if (conversationId && streamingActions && (isSDKAssistantMessage(content) || isSDKUserMessage(content))) {
+      const syncResult = syncSdkMessageToolMetadata(
+        content,
+        createStreamingToolMetadataStore(conversationId, streamingActions),
+      )
 
-    // Lookup tool names and inputs from per-conversation store
-    // Mark tools as complete when their result arrives
-    if (conversationId && streamingActions && isSDKUserMessage(content)) {
-      const userMsg = content as SDKUserMessage
-      if (userMsg.message?.content && Array.isArray(userMsg.message.content)) {
-        userMsg.message.content.forEach(item => {
-          if (item.type === "tool_result" && item.tool_use_id) {
-            // Augment SDK ToolResultBlockParam with tool_name and tool_input for UI rendering
-            // SDK doesn't include these in tool_result, so we add them client-side
-            ;(item as any).tool_name = streamingActions.getToolName(conversationId, item.tool_use_id) || "Tool"
-            ;(item as any).tool_input = streamingActions.getToolInput(conversationId, item.tool_use_id)
-            // Mark as complete - removes from pending list
-            streamingActions.markToolComplete(conversationId, item.tool_use_id)
-          }
-        })
+      for (const toolUse of syncResult.toolUses) {
+        streamingActions.markToolPending(conversationId, toolUse.toolUseId, toolUse.toolName, toolUse.toolInput)
+      }
+
+      for (const toolResult of syncResult.toolResults) {
+        streamingActions.markToolComplete(conversationId, toolResult.toolUseId)
       }
     }
 
