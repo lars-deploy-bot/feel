@@ -515,6 +515,7 @@ function ChatPageContent() {
     onInitializeTab: initializeTab,
     currentInput: msg,
     onInputRestore: setMsg,
+    chatInputRef,
   })
 
   // Ensure the session tab is mapped to Dexie (for message persistence)
