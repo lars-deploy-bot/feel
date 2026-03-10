@@ -51,6 +51,8 @@ const TEST_USER = {
   id: "user-test-123",
   email: "test@example.com",
   name: "Test User",
+  firstName: null,
+  lastName: null,
   canSelectAnyModel: false,
   isAdmin: false,
   isSuperadmin: false,
