@@ -1,6 +1,7 @@
-import { COOKIE_NAMES, DOMAINS } from "@webalive/shared"
+import { COOKIE_NAMES } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createMockNextRequest } from "@/lib/test-helpers/mock-request"
 
 // Mock env module
 vi.mock("@/lib/env", () => ({
@@ -19,22 +20,6 @@ vi.mock("@/lib/env", () => ({
 
 const { POST: loginManagerPOST } = await import("../route")
 const { managerLoginRateLimiter } = await import("@/lib/auth/rate-limiter")
-
-function createMockRequest(url: string, options?: RequestInit & { cookies?: Record<string, string> }) {
-  const urlObj = new URL(url)
-  const req = new Request(url, options) as any
-  req.nextUrl = urlObj
-  req.headers.get = (name: string) => {
-    if (name === "origin") return DOMAINS.STREAM_PROD
-    if (name === "cookie" && options?.cookies) {
-      return Object.entries(options.cookies)
-        .map(([k, v]) => `${k}=${v}`)
-        .join("; ")
-    }
-    return null
-  }
-  return req
-}
 
 describe("Manager Login Security Tests", () => {
   beforeEach(() => {
@@ -62,7 +47,7 @@ describe("Manager Login Security Tests", () => {
     for (let i = 0; i < 10; i++) {
       const start = performance.now()
       await loginManagerPOST(
-        createMockRequest("http://localhost/api/login-manager", {
+        createMockNextRequest("http://localhost/api/login-manager", {
           method: "POST",
           body: JSON.stringify({ passcode: "xxxxxxxxxx" }),
         }),
@@ -77,7 +62,7 @@ describe("Manager Login Security Tests", () => {
     for (let i = 0; i < 10; i++) {
       const start = performance.now()
       await loginManagerPOST(
-        createMockRequest("http://localhost/api/login-manager", {
+        createMockNextRequest("http://localhost/api/login-manager", {
           method: "POST",
           body: JSON.stringify({ passcode: "wachtwoora" }), // One char different
         }),
@@ -107,7 +92,7 @@ describe("Manager Login Security Tests", () => {
     // Try 100 rapid login attempts
     for (let i = 0; i < 100; i++) {
       const res = await loginManagerPOST(
-        createMockRequest("http://localhost/api/login-manager", {
+        createMockNextRequest("http://localhost/api/login-manager", {
           method: "POST",
           body: JSON.stringify({ passcode: `wrong${i}` }),
         }),
@@ -135,7 +120,7 @@ describe("Manager Login Security Tests", () => {
   it("should use cryptographically secure tokens (not '1')", async () => {
     // Login successfully
     const res = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: "wachtwoord" }),
       }),
@@ -166,7 +151,7 @@ describe("Manager Login Security Tests", () => {
   it("should handle whitespace in passcode correctly", async () => {
     // Test with leading/trailing spaces
     const res = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: "  wachtwoord  " }),
       }),
@@ -189,7 +174,7 @@ describe("Manager Login Security Tests", () => {
    */
   it("should be case-sensitive for passcode", async () => {
     const res = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: "WACHTWOORD" }),
       }),
@@ -211,7 +196,7 @@ describe("Manager Login Security Tests", () => {
 
     const start = performance.now()
     const res = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: hugePasscode }),
       }),
@@ -240,7 +225,7 @@ describe("Manager Login Security Tests", () => {
     vi.stubEnv("ALIVE_PASSCODE", "")
 
     const res1 = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: "" }),
       }),
@@ -253,7 +238,7 @@ describe("Manager Login Security Tests", () => {
     vi.unstubAllEnvs()
 
     const res2 = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: "anything" }),
       }),
@@ -271,7 +256,7 @@ describe("Manager Login Security Tests", () => {
     vi.stubEnv("ALIVE_PASSCODE", "🔐secure🔑")
 
     const res = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: "🔐secure🔑" }),
       }),
@@ -294,7 +279,7 @@ describe("Manager Login Security Tests", () => {
     const sqlInjection = "' OR '1'='1"
 
     const res = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: sqlInjection }),
       }),
@@ -315,7 +300,7 @@ describe("Manager Login Security Tests", () => {
     const xssAttempt = "<script>alert('xss')</script>"
 
     const res = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: xssAttempt }),
       }),
@@ -337,7 +322,7 @@ describe("Manager Login Security Tests", () => {
     const nullBytePasscode = "wacht\x00woord"
 
     const res = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: nullBytePasscode }),
       }),
@@ -356,7 +341,7 @@ describe("Manager Login Security Tests", () => {
     vi.stubEnv("ALIVE_PASSCODE", "pass\nword")
 
     const res = await loginManagerPOST(
-      createMockRequest("http://localhost/api/login-manager", {
+      createMockNextRequest("http://localhost/api/login-manager", {
         method: "POST",
         body: JSON.stringify({ passcode: "pass\nword" }),
       }),

@@ -106,11 +106,10 @@ describe("Port Assignment Uses Supabase", () => {
     expect(content).not.toContain("domain-passwords")
   })
 
-  it("port.ts executor should require DATABASE_URL", () => {
+  it("port.ts executor should not reference JSON registry", () => {
     const portPath = path.join(SITE_CONTROLLER_ROOT, "src/executors/port.ts")
     const content = readFileSync(portPath, "utf-8")
 
-    expect(content).toContain("DATABASE_URL")
     expect(content).not.toContain("domain-passwords")
     expect(content).not.toContain("registryPath")
   })

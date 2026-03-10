@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process"
 import { resolve } from "node:path"
 import { PATHS } from "@webalive/shared"
+import { loadCanonicalInfraEnv } from "../infra-env.js"
 
 /**
  * Error thrown when a script execution fails
@@ -33,13 +34,14 @@ export async function runScript(scriptName: string, env: Record<string, string>)
   // Use absolute path to scripts directory to avoid path resolution issues with symlinks
   const scriptsDir = PATHS.SCRIPTS_DIR
   const scriptPath = resolve(scriptsDir, scriptName)
+  const canonicalInfraEnv = loadCanonicalInfraEnv()
   console.log(`[runScript] Scripts dir: ${scriptsDir}`)
   console.log(`[runScript] Resolved script path: ${scriptPath}`)
 
   return new Promise((resolve, reject) => {
     const proc = spawn(scriptPath, [], {
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, ...env },
+      env: { ...process.env, ...canonicalInfraEnv, ...env },
       shell: "/bin/bash",
     })
 
