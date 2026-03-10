@@ -53,7 +53,7 @@ export function ConversationSidebar({
   onUnarchiveTabGroup,
   onRenameTabGroup,
   onNewConversation,
-  onNewWorktree,
+  onNewWorktree: _onNewWorktree,
   onSelectWorktree,
   worktreeModalOpen,
   onWorktreeModalOpenChange,
@@ -160,7 +160,7 @@ export function ConversationSidebar({
   const worktreeEnabled = useFeatureFlag("WORKTREES")
 
   // User display: email prefix or name
-  const userDisplay = user?.name || user?.email?.split("@")[0] || null
+  const userDisplay = user?.firstName || user?.name || user?.email?.split("@")[0] || null
 
   // Shared sidebar content
   const renderContent = (isMobile: boolean) => (

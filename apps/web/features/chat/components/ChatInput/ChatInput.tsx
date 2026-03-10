@@ -70,7 +70,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     addSkill,
     addFileForAnalysis,
     removeAttachment,
-    clearAttachments,
     toggleImageMode,
   } = useAttachments(config, tabId)
 
