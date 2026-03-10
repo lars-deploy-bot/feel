@@ -19,8 +19,8 @@ import { Button } from "@/components/ui/Button"
 import { Spinner } from "@/components/ui/Spinner"
 import { cn } from "@/lib/cn"
 import { deploysApi } from "./deploys.api"
-import { useDeploys } from "./hooks/useDeploys"
 import type { DeployApplication, DeployEnvironment, DeployRelease } from "./deploys.types"
+import { useDeploys } from "./hooks/useDeploys"
 
 interface LogModalState {
   kind: "build" | "deployment"
