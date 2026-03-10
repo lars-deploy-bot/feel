@@ -60,10 +60,36 @@ export function loadCanonicalInfraEnvFromFile(envFilePath: string): CanonicalInf
   return env
 }
 
-export function loadCanonicalInfraEnv(): CanonicalInfraEnv {
-  if (!PATHS.ALIVE_ROOT) {
-    return {}
+export function readCanonicalInfraEnvFromProcess(processEnv: NodeJS.ProcessEnv = process.env): CanonicalInfraEnv {
+  const env: CanonicalInfraEnv = {}
+
+  for (const key of CANONICAL_INFRA_ENV_KEYS) {
+    const value = processEnv[key]
+    if (value) {
+      env[key] = value
+    }
   }
 
-  return loadCanonicalInfraEnvFromFile(join(PATHS.ALIVE_ROOT, "apps/web/.env.production"))
+  return env
+}
+
+export function mergeCanonicalInfraEnv(fileEnv: CanonicalInfraEnv, runtimeEnv: CanonicalInfraEnv): CanonicalInfraEnv {
+  return {
+    ...fileEnv,
+    ...runtimeEnv,
+  }
+}
+
+export function loadCanonicalInfraEnv(): CanonicalInfraEnv {
+  const runtimeEnv = readCanonicalInfraEnvFromProcess()
+
+  if (!PATHS.ALIVE_ROOT) {
+    return runtimeEnv
+  }
+
+  const fileEnv = loadCanonicalInfraEnvFromFile(join(PATHS.ALIVE_ROOT, "apps/web/.env.production"))
+
+  // Runtime-loaded env must win so staging/dev services do not get silently
+  // overridden by production credentials from the canonical file.
+  return mergeCanonicalInfraEnv(fileEnv, runtimeEnv)
 }
