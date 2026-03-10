@@ -24,7 +24,7 @@ import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useBuilding, useGoal, useTargetUsers } from "@/lib/stores/goalStore"
 import { useModel } from "@/lib/stores/llmStore"
 import { clearAbortController, setAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
-import { getPlanModeState, getStreamModeState, usePlanMode } from "@/lib/stores/streamModeStore"
+import { getPlanModeState, getStreamModeState } from "@/lib/stores/streamModeStore"
 
 /**
  * Human-readable fallback messages for HTTP status codes.
@@ -135,7 +135,6 @@ export function useChatMessaging({
   // Store hooks
   const streamingActions = useStreamingActions()
   const userModel = useModel()
-  const planMode = usePlanMode()
   const { addEvent: addDevEvent } = useDevTerminal()
 
   // Agent supervisor state
@@ -177,7 +176,7 @@ export function useChatMessaging({
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [tabId, tabGroupId, userModel, planMode, isTerminal, workspace, requestWorktree],
+    [tabId, tabGroupId, userModel, isTerminal, workspace, requestWorktree],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {

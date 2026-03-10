@@ -37,6 +37,8 @@ export interface Tab {
   createdAt: number
   /** Persisted draft message for this tab */
   inputDraft?: string
+  /** Serialized attachment drafts for this tab (excludes in-progress file-upload) */
+  attachmentsDraft?: string
   /** Timestamp when tab was soft-deleted. Undefined = open tab. */
   closedAt?: number
 }
@@ -143,6 +145,10 @@ export const renameTab = (tabs: Tab[], tabId: TabId, name: string): Tab[] => {
 /** Update a tab's input draft */
 export const setTabDraft = (tabs: Tab[], tabId: TabId, draft: string): Tab[] =>
   tabs.map(t => (t.id === tabId ? { ...t, inputDraft: draft } : t))
+
+/** Update a tab's attachments draft (JSON-serialized) */
+export const setTabAttachmentsDraft = (tabs: Tab[], tabId: TabId, draft: string | undefined): Tab[] =>
+  tabs.map(t => (t.id === tabId ? { ...t, attachmentsDraft: draft } : t))
 
 /** Remove all tabs in a group (hard delete) */
 export const removeTabGroup = (tabs: Tab[], tabGroupId: TabGroupId): Tab[] =>

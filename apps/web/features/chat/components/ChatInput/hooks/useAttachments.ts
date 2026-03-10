@@ -479,6 +479,20 @@ export function useAttachments(config: ChatInputConfig) {
     )
   }, [])
 
+  /**
+   * Get serializable attachments (excludes file-upload which has non-serializable File objects)
+   */
+  const getSerializableAttachments = useCallback((): Attachment[] => {
+    return attachments.filter(a => a.kind !== "file-upload")
+  }, [attachments])
+
+  /**
+   * Restore attachments from serialized state (used on tab switch)
+   */
+  const restoreAttachments = useCallback((restored: Attachment[]) => {
+    setAttachments(restored)
+  }, [])
+
   return {
     attachments,
     addAttachment,
@@ -490,5 +504,7 @@ export function useAttachments(config: ChatInputConfig) {
     removeAttachment,
     clearAttachments,
     toggleImageMode,
+    getSerializableAttachments,
+    restoreAttachments,
   }
 }

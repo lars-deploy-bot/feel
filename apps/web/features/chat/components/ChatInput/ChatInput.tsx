@@ -71,6 +71,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     removeAttachment,
     clearAttachments,
     toggleImageMode,
+    getSerializableAttachments,
+    restoreAttachments,
   } = useAttachments(config)
 
   // Detect supertemplate JSON in message and convert to attachments
@@ -92,6 +94,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addSkill,
       addFileForAnalysis,
       getAttachments: () => attachments,
+      getSerializableAttachments,
+      restoreAttachments,
       clearLibraryImages: () => {
         const libraryImages = attachments.filter(a => a.kind === "library-image")
         for (const img of libraryImages) {
@@ -113,6 +117,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       attachments,
       removeAttachment,
       clearAttachments,
+      getSerializableAttachments,
+      restoreAttachments,
     ],
   )
 

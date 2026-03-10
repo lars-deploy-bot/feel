@@ -206,6 +206,10 @@ export interface ChatInputHandle {
   addSkill: AddSkillFn
   addFileForAnalysis: (file: File, workspace?: string, worktree?: string | null) => Promise<void>
   getAttachments: () => Attachment[]
+  /** Get only serializable attachments (excludes in-progress file-upload) */
+  getSerializableAttachments: () => Attachment[]
+  /** Restore attachments from serialized state (tab switch) */
+  restoreAttachments: (attachments: Attachment[]) => void
   clearLibraryImages: () => void
   clearAllAttachments: () => void
   focus: () => void
