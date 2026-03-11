@@ -12,6 +12,30 @@ export function isReusableLiveDeployDomain(domain: string): boolean {
   return slug !== null && isReusableLiveDeploySlug(slug)
 }
 
+export function extractReusableLiveDeploySlugsFromCaddy(rawCaddyfile: string, wildcardDomain: string): string[] {
+  const suffix = `.${wildcardDomain}`
+  const slugs = new Set<string>()
+
+  for (const line of rawCaddyfile.split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed.endsWith(" {")) {
+      continue
+    }
+
+    const hostname = trimmed.slice(0, -2).trim().toLowerCase()
+    if (!hostname.endsWith(suffix)) {
+      continue
+    }
+
+    const slug = hostname.slice(0, -suffix.length)
+    if (isReusableLiveDeploySlug(slug)) {
+      slugs.add(slug)
+    }
+  }
+
+  return [...slugs].sort()
+}
+
 export const CleanupDeployedSiteRequestSchema = z.object({
   domain: z
     .string()

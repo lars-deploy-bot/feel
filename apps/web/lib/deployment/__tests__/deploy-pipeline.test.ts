@@ -268,8 +268,7 @@ describe("runStrictDeployment", () => {
     })
   })
 
-  it("verifies routing against generated Caddyfile.sites in production", async () => {
-    process.env.STREAM_ENV = "production"
+  it("verifies routing against the injected Caddyfile even when generated sites exists", async () => {
     pathExists.mockImplementation(filePath => filePath === PATHS.CADDYFILE_PATH || filePath === PATHS.CADDYFILE_SITES)
 
     await runStrictDeployment({
@@ -278,12 +277,12 @@ describe("runStrictDeployment", () => {
       templatePath: "/srv/webalive/templates/blank.alive.best",
     })
 
-    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", PATHS.CADDYFILE_SITES)
+    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", PATHS.CADDYFILE_PATH)
   })
 
-  it("skips routing verification in staging (domains are in staging DB, not production)", async () => {
+  it("verifies routing in staging too when the injected Caddyfile exists", async () => {
     process.env.STREAM_ENV = "staging"
-    pathExists.mockReturnValue(true)
+    pathExists.mockImplementation(filePath => filePath === PATHS.CADDYFILE_PATH)
 
     await runStrictDeployment({
       domain: "testsite.alive.best",
@@ -291,7 +290,7 @@ describe("runStrictDeployment", () => {
       templatePath: "/srv/webalive/templates/blank.alive.best",
     })
 
-    expect(checkDomainInCaddyMock).not.toHaveBeenCalled()
+    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", PATHS.CADDYFILE_PATH)
   })
 
   it("rolls back infrastructure when registerDomain fails for a new deployment", async () => {
@@ -340,8 +339,7 @@ describe("runStrictDeployment", () => {
   })
 
   it("rolls back when routing verification fails after caddy reload", async () => {
-    process.env.STREAM_ENV = "production"
-    pathExists.mockImplementation(filePath => filePath === PATHS.CADDYFILE_SITES)
+    pathExists.mockImplementation(filePath => filePath === PATHS.CADDYFILE_PATH)
     isDomainRegisteredMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     checkDomainInCaddyMock.mockResolvedValueOnce(false)
 

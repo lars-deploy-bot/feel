@@ -117,18 +117,16 @@ function validatePort(domain: string, port: number): number {
   return port
 }
 
-function getRoutingVerificationPath(): string | null {
-  // Generated sites file is where domain blocks live (generator mode).
-  // The main Caddyfile only has `import` directives — domain blocks aren't there.
-  if (PATHS.CADDYFILE_SITES && existsSync(PATHS.CADDYFILE_SITES)) {
-    return PATHS.CADDYFILE_SITES
+function getRoutingVerificationPath(preferredPath: string): string | null {
+  if (existsSync(preferredPath)) {
+    return preferredPath
   }
 
   return null
 }
 
-async function verifyRouting(domain: string): Promise<void> {
-  const verificationPath = getRoutingVerificationPath()
+async function verifyRouting(domain: string, preferredPath: string): Promise<void> {
+  const verificationPath = getRoutingVerificationPath(preferredPath)
   if (!verificationPath) {
     return
   }
@@ -291,8 +289,6 @@ async function runStrictDeploymentLocked(
     })
 
     // Regenerate port-map.json from canonical (production) DB.
-    // Only verify hostname presence when running in production — staging/dev register
-    // domains in their own DB, which the canonical port-map generator doesn't query.
     const isProduction = process.env.STREAM_ENV === "production"
     await regeneratePortMap(isProduction ? validated.domain : undefined)
 
@@ -304,13 +300,7 @@ async function runStrictDeploymentLocked(
       flockTimeout: DEFAULTS.FLOCK_TIMEOUT,
     })
 
-    // Only verify routing in production — staging/dev register domains in their
-    // own Supabase DB, but the routing generator always queries the production DB.
-    // The generated Caddyfile.sites will never contain staging-deployed domains.
-    // Same pattern as regeneratePortMap above (line 298-299).
-    if (isProduction) {
-      await verifyRouting(validated.domain)
-    }
+    await verifyRouting(validated.domain, PATHS.CADDYFILE_PATH)
 
     return {
       domain: validated.domain,
