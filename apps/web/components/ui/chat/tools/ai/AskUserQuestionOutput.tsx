@@ -1,20 +1,17 @@
 /**
  * AskUserQuestion Output
  *
- * Maps the SDK's built-in AskUserQuestion tool to the existing
- * ClarificationQuestions UI. The SDK tool has questions in toolInput
- * (not in the result), so we read from there.
+ * Thin adapter: maps the SDK's built-in AskUserQuestion toolInput
+ * into the format ClarificationQuestionsOutput expects, then delegates.
+ * No duplicated logic — ClarificationQuestionsOutput owns the UI.
  */
 
 "use client"
 
-import { useCallback, useState } from "react"
-import {
-  type ClarificationQuestion,
-  ClarificationQuestions,
-  type QuestionAnswer,
-} from "@/components/ai/ClarificationQuestions"
+import { CLARIFICATION_OPTIONS_PER_QUESTION } from "@webalive/shared"
+import { useMemo } from "react"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
+import { ClarificationQuestionsOutput } from "./ClarificationQuestionsOutput"
 
 /**
  * SDK AskUserQuestion input format
@@ -57,98 +54,27 @@ export function validateAskUserQuestion(): boolean {
   return true
 }
 
-function formatAnswersForSubmission(answers: QuestionAnswer[], questions: SDKQuestion[]): string {
-  const lines: string[] = []
-
-  for (let i = 0; i < answers.length; i++) {
-    const answer = answers[i]
-    const question = questions[i]
-
-    let answerText: string
-    if (answer.selectedOption === null) {
-      answerText = "(skipped)"
-    } else if (answer.selectedOption >= question.options.length) {
-      answerText = answer.customValue || "(empty custom answer)"
-    } else {
-      answerText = question.options[answer.selectedOption].label
-    }
-
-    lines.push(`**${question.question}**`)
-    lines.push(`→ ${answerText}`)
-    lines.push("")
+/**
+ * Adapt SDK AskUserQuestion input → ClarificationQuestionsData format
+ */
+function adaptToClarificationData(input: AskUserQuestionInput) {
+  return {
+    type: "clarification_questions" as const,
+    questions: input.questions.map((q, i) => ({
+      id: q.header || `q${i}`,
+      question: q.question,
+      options: q.options.slice(0, CLARIFICATION_OPTIONS_PER_QUESTION),
+    })),
   }
-
-  return lines.join("\n")
 }
 
-export function AskUserQuestionOutput({ toolInput, onSubmitAnswer }: ToolResultRendererProps) {
-  const [submitted, setSubmitted] = useState(false)
-  const [skipped, setSkipped] = useState(false)
-  const [submittedAnswers, setSubmittedAnswers] = useState<QuestionAnswer[] | null>(null)
+export function AskUserQuestionOutput(props: ToolResultRendererProps) {
+  const input = isAskUserQuestionInput(props.toolInput) ? props.toolInput : null
+  const adaptedData = useMemo(() => (input ? adaptToClarificationData(input) : null), [input])
 
-  const input = toolInput as AskUserQuestionInput | undefined
-  if (!input || !isAskUserQuestionInput(input)) {
+  if (!adaptedData) {
     return null
   }
 
-  const sdkQuestions = input.questions
-
-  // Adapt SDK format → ClarificationQuestion format
-  const questions: ClarificationQuestion[] = sdkQuestions.map((q, i) => ({
-    id: q.header || `q${i}`,
-    question: q.question,
-    options: q.options.slice(0, 3), // Cap at 3 — ClarificationQuestions reserves index 3 for "Other"
-  }))
-
-  const handleComplete = useCallback(
-    (answers: QuestionAnswer[]) => {
-      setSubmittedAnswers(answers)
-      setSubmitted(true)
-      const message = formatAnswersForSubmission(answers, sdkQuestions)
-      onSubmitAnswer?.(message)
-    },
-    [sdkQuestions, onSubmitAnswer],
-  )
-
-  const handleSkipAll = useCallback(() => {
-    setSkipped(true)
-    onSubmitAnswer?.("I'd like to skip these questions and let you decide.")
-  }, [onSubmitAnswer])
-
-  if (submitted || skipped) {
-    return (
-      <div className="mt-2 p-3 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
-        <p className="text-xs text-black/50 dark:text-white/50">
-          {skipped ? "Questions skipped" : "Answers submitted"}
-        </p>
-        {submittedAnswers && !skipped && (
-          <div className="mt-2 space-y-1">
-            {submittedAnswers.map((answer, i) => {
-              const question = sdkQuestions[i]
-              let answerText: string
-              if (answer.selectedOption === null) {
-                answerText = "(skipped)"
-              } else if (answer.selectedOption >= question.options.length) {
-                answerText = answer.customValue || "(empty)"
-              } else {
-                answerText = question.options[answer.selectedOption].label
-              }
-              return (
-                <div key={answer.questionId} className="text-xs">
-                  <span className="text-black/40 dark:text-white/40">{i + 1}. </span>
-                  <span className="text-black/70 dark:text-white/70">{answerText}</span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="mt-2">
-      <ClarificationQuestions questions={questions} onComplete={handleComplete} onSkipAll={handleSkipAll} />
-    </div>
-  )
+  return <ClarificationQuestionsOutput {...props} data={adaptedData} />
 }
