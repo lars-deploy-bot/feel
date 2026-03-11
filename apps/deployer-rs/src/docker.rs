@@ -7,10 +7,10 @@ use tokio::process::Command;
 use tokio::time::sleep;
 
 use crate::constants::{
-    HEALTH_TIMEOUT, LOCAL_BIND_IP, PUBLIC_HEALTH_TIMEOUT, STABILIZATION_POLL_INTERVAL,
-    STABILIZATION_WINDOW,
+    DOCKER_RETRY_ATTEMPTS, DOCKER_RETRY_BASE_DELAY, HEALTH_TIMEOUT, LOCAL_BIND_IP,
+    PUBLIC_HEALTH_TIMEOUT, STABILIZATION_POLL_INTERVAL, STABILIZATION_WINDOW,
 };
-use crate::logging::{append_log, run_logged_command};
+use crate::logging::{append_log, run_logged_command, run_logged_command_with_retry};
 use crate::types::RollbackContainer;
 
 pub(crate) fn docker_reference_repository(reference: &str) -> Result<&str> {
@@ -29,14 +29,16 @@ pub(crate) async fn push_image_and_resolve_artifact_digest(
     image_ref: &str,
     log_path: &Path,
 ) -> Result<String> {
-    run_logged_command(
-        {
+    run_logged_command_with_retry(
+        || {
             let mut command = Command::new("docker");
             command.arg("push").arg(image_ref);
             command
         },
         log_path,
         &format!("docker push {}", image_ref),
+        DOCKER_RETRY_ATTEMPTS,
+        DOCKER_RETRY_BASE_DELAY,
     )
     .await?;
 
@@ -76,14 +78,16 @@ pub(crate) async fn push_image_and_resolve_artifact_digest(
 }
 
 pub(crate) async fn pull_artifact_digest(artifact_digest: &str, log_path: &Path) -> Result<()> {
-    run_logged_command(
-        {
+    run_logged_command_with_retry(
+        || {
             let mut command = Command::new("docker");
             command.arg("pull").arg(artifact_digest);
             command
         },
         log_path,
         &format!("docker pull {}", artifact_digest),
+        DOCKER_RETRY_ATTEMPTS,
+        DOCKER_RETRY_BASE_DELAY,
     )
     .await
 }
