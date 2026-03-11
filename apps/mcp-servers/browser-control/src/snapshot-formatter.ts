@@ -50,7 +50,7 @@ const CONTENT_ROLES = new Set([
   "navigation",
 ])
 
-/** Structural roles that provide important semantic context (tables, lists, nav). Keep these even in compact mode. */
+/** Structural roles that provide semantic context (tables, lists, nav). Keep in compact mode. */
 const SEMANTIC_STRUCTURAL_ROLES = new Set([
   "table",
   "row",
@@ -257,8 +257,8 @@ export function buildRoleSnapshotFromAriaSnapshot(
     const isContent = CONTENT_ROLES.has(role)
     const isStructural = STRUCTURAL_ROLES.has(role)
 
-    // In compact mode, drop generic/group structural nodes but keep semantically
-    // important ones (table, row, list, etc.) so table/list data stays readable.
+    // In compact mode, drop generic/group wrappers but keep semantically
+    // important structural nodes (table, row, list, etc.) so data stays readable.
     if (options.compact && isStructural && !name && !SEMANTIC_STRUCTURAL_ROLES.has(role)) continue
 
     const shouldHaveRef = isInteractive || (isContent && !!name)

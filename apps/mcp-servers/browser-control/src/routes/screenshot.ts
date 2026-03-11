@@ -25,7 +25,7 @@ export const handleScreenshot: RouteHandler = async (body, signal) => {
     return { ok: false, status: 400, error: "No page loaded. Use the 'open' action first to navigate to your site." }
   }
 
-  // Wait for page to stabilize before capturing — SPAs may still be rendering
+  // Ensure page is stable before capturing — SPAs may still be rendering
   await waitForPageStable(session.page, { timeoutMs: 5_000 })
 
   if (signal.aborted) throw new Error("aborted")
