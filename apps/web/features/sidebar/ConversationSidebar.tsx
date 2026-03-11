@@ -281,6 +281,7 @@ export function ConversationSidebar({
               <button
                 type="button"
                 onClick={onSettingsClick}
+                data-testid="settings-button"
                 className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-black/[0.04] dark:border-white/[0.04] hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors duration-100 cursor-pointer"
               >
                 <div className="size-6 rounded-full bg-black/[0.06] dark:bg-white/[0.08] flex items-center justify-center text-[11px] font-medium text-black/40 dark:text-white/40 shrink-0">

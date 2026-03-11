@@ -41,8 +41,8 @@ import {
   type DbConversation,
   type DbMessage,
   type DbTab,
-  type TabDraft,
   getMessageDb,
+  type TabDraft,
 } from "./messageDb"
 import { safeDb } from "./safeDb"
 
