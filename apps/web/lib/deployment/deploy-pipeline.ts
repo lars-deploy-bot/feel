@@ -295,9 +295,11 @@ async function runStrictDeploymentLocked(
       orgId: validated.orgId,
     })
 
-    // Regenerate port-map.json and verify the domain is routable by preview-proxy.
-    // Awaited: a deployment without a working preview is not a deployment.
-    await regeneratePortMap(validated.domain)
+    // Regenerate port-map.json from canonical (production) DB.
+    // Only verify hostname presence when running in production — staging/dev register
+    // domains in their own DB, which the canonical port-map generator doesn't query.
+    const isProduction = process.env.STREAM_ENV === "production"
+    await regeneratePortMap(isProduction ? validated.domain : undefined)
 
     await configureCaddy({
       domain: validated.domain,

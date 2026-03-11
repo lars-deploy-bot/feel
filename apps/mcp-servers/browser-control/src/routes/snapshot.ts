@@ -28,7 +28,7 @@ export const handleSnapshot: RouteHandler = async (body, signal) => {
     return { ok: false, status: 400, error: "No page loaded. Use the 'open' action first to navigate to your site." }
   }
 
-  // Wait for page to stabilize before snapshotting — incomplete DOM = incomplete AX tree
+  // Ensure page is stable before snapshotting — incomplete DOM = incomplete AX tree
   await waitForPageStable(session.page, { timeoutMs: 5_000 })
 
   if (signal.aborted) throw new Error("aborted")

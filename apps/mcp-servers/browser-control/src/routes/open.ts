@@ -27,18 +27,20 @@ export const handleOpen: RouteHandler = async (body, signal) => {
 
   const session = await browserPool.getSession(domain, sessionId)
 
-  // Navigate and wait for DOM to be ready — "domcontentloaded" is the minimum
-  // for React/Vite apps to have their root element in the DOM.
+  // "commit" = first response received, navigation committed to the new URL.
+  // Fast and reliable — we do the real rendering wait in waitForPageStable().
   const response = await session.page.goto(url, {
-    waitUntil: "domcontentloaded",
-    timeout: 30_000,
+    waitUntil: "commit",
+    timeout: 15_000,
   })
 
   if (signal.aborted) throw new Error("aborted")
 
-  // Wait for the page to stabilize (network idle + JS rendering)
-  // This is critical for SPAs that fetch data and render async.
-  await waitForPageStable(session.page, { timeoutMs: 10_000 })
+  // Wait for the page to actually render.
+  // CRITICAL: Do NOT use Playwright's waitForLoadState() here — it hangs
+  // indefinitely on Vite dev mode pages with Chrome 144+ (Playwright 1.58 bug).
+  // Instead, use our own page.evaluate()-based wait which we fully control.
+  await waitForPageStable(session.page, { timeoutMs: 8_000 })
 
   if (signal.aborted) throw new Error("aborted")
 
