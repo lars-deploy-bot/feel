@@ -16,9 +16,10 @@ use crate::db::{
 };
 use crate::docker::{
     append_container_logs, container_is_running, deployment_container_name,
-    discard_rollback_container, prepare_rollback_container, pull_artifact_digest,
-    remove_container_if_exists, restore_rollback_container, wait_for_container_stability,
-    wait_for_health, wait_for_public_health,
+    discard_rollback_container, image_exists_locally, prepare_rollback_container,
+    pull_artifact_digest, remove_container_if_exists, restore_rollback_container,
+    stop_and_disable_systemd_unit, wait_for_container_stability, wait_for_health,
+    wait_for_public_health,
 };
 use crate::logging::{
     append_log, append_task_event, deployment_event_path, deployment_log_path, prepare_log,
@@ -254,9 +255,13 @@ pub(super) async fn process_deployment(
                 .await?;
 
             let pull_artifact_stage = pipeline
-                .start_stage(2, TaskStage::PullArtifact, "pulling immutable artifact")
+                .start_stage(2, TaskStage::PullArtifact, "verifying artifact available locally")
                 .await?;
-            if let Err(error) =
+            if image_exists_locally(&release.artifact_digest).await? {
+                pull_artifact_stage
+                    .append_debug(&format!("image {} found locally, skipping pull\n", release.artifact_digest))
+                    .await?;
+            } else if let Err(error) =
                 pull_artifact_digest(&release.artifact_digest, pull_artifact_stage.debug_path())
                     .await
             {
@@ -276,7 +281,7 @@ pub(super) async fn process_deployment(
                 )
                 .await?;
             pull_artifact_stage
-                .finish_ok(&format!("pulled {}", release.artifact_digest))
+                .finish_ok(&format!("verified {}", release.artifact_digest))
                 .await?;
 
             let reserve_rollback_stage = pipeline
@@ -297,6 +302,13 @@ pub(super) async fn process_deployment(
                     .map_err(TaskExecutionError::rollback_preparation)?;
                 }
             }
+
+            // Stop the systemd service that previously owned this port.
+            // The deployer-rs Docker container is the new owner.
+            let systemd_unit = format!("alive-{}.service", environment.name);
+            stop_and_disable_systemd_unit(&systemd_unit, reserve_rollback_stage.debug_path())
+                .await
+                .map_err(TaskExecutionError::rollback_preparation)?;
 
             rollback_container = match prepare_rollback_container(
                 &container_name,
