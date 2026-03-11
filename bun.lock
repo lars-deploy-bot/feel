@@ -416,6 +416,7 @@
         "@supabase/supabase-js": "^2.46.2",
         "@types/node": "^20.0.0",
         "@webalive/shared": "workspace:*",
+        "smol-toml": "^1.6.0",
         "typescript": "^5.0.0",
       },
       "devDependencies": {

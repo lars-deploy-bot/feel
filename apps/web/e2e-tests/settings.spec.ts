@@ -6,11 +6,11 @@ import { buildJsonMockResponse } from "./lib/strict-api-guard"
 /**
  * Settings E2E tests
  *
- * Settings is inline in the sidebar: clicking the gear icon in the sidebar
- * header toggles settings mode, which shows SettingsNav tabs in the sidebar
- * and SettingsContent (General tab) in the main content area.
+ * Settings is inline in the sidebar: clicking the user account button at the
+ * bottom of the sidebar toggles settings mode, which shows SettingsNav tabs
+ * in the sidebar and SettingsContent (General tab) in the main content area.
  *
- * Flow: open sidebar → click settings gear → verify settings content.
+ * Flow: open sidebar → click user account button → verify settings content.
  *
  * IMPORTANT: The FlowgladProvider in the layout makes API calls to /api/flowglad
  * which can crash for E2E test users (no Flowglad customer record). We mock all
@@ -29,6 +29,8 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
           id: workerTenant.userId,
           email: workerTenant.email,
           name: workerTenant.orgName,
+          firstName: "Test",
+          lastName: "User",
           isAdmin: false,
           isSuperadmin: false,
           canSelectAnyModel: false,
@@ -48,8 +50,8 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
   await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await openSidebarButton.click()
 
-  // Click the settings gear in the desktop sidebar header.
-  // Both desktop and mobile sidebars render a settings button with the same testid,
+  // Click the user account button at the bottom of the sidebar to open settings.
+  // Both desktop and mobile sidebars render this button with the same testid,
   // so we scope to the visible desktop aside to avoid strict mode violations.
   const desktopSidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
   const settingsButton = desktopSidebar.locator('[data-testid="settings-button"]')

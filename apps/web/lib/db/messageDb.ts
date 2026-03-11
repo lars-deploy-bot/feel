@@ -1,8 +1,8 @@
 "use client"
 
-import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import { STREAM_ENV } from "@webalive/shared"
 import Dexie, { type Table } from "dexie"
+import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import {
   type AutomationSourceMetadata,
   type ConversationSource,

@@ -17,7 +17,7 @@
 
 import { logError } from "@/lib/client-error-logger"
 import { normalizeConversationSourcePayload } from "@/lib/conversations/source"
-import { type DbConversation, type DbMessage, type DbTab, type TabDraft, getMessageDb } from "./messageDb"
+import { type DbConversation, type DbMessage, type DbTab, getMessageDb, type TabDraft } from "./messageDb"
 import { syncDexieTabsToLocalStorage } from "./tabSync"
 
 // =============================================================================

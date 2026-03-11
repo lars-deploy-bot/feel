@@ -11,10 +11,7 @@ import type {
   ChatInputConfig,
   FileUploadAttachment,
   LibraryImageAttachment,
-  SkillAttachment,
-  SuperTemplateAttachment,
   UploadedFileAttachment,
-  UserPromptAttachment,
 } from "../types"
 import {
   isFileUpload,
