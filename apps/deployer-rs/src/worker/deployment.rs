@@ -537,7 +537,7 @@ pub(super) async fn process_deployment(
             .await?;
         let _ = append_container_logs(&container_name, rollback_stage.debug_path()).await;
         let _ = remove_container_if_exists(&container_name, rollback_stage.debug_path()).await;
-        let mut failure_message = error.to_string();
+        let mut failure_message = format!("{:#}", error);
         if let Some(previous_container) = rollback_container.as_ref() {
             if let Err(restore_error) =
                 restore_rollback_container(previous_container, rollback_stage.debug_path()).await
