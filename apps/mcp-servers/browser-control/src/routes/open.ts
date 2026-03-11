@@ -26,17 +26,16 @@ export const handleOpen: RouteHandler = async (body, signal) => {
 
   const session = await browserPool.getSession(domain, sessionId)
 
-  // Navigate with "commit" — fast and reliable.
+  // "commit" = first response received, fast and reliable.
   const response = await session.page.goto(url, {
     waitUntil: "commit",
-    timeout: 15_000,
+    timeout: 30_000,
   })
 
   if (signal.aborted) throw new Error("aborted")
 
-  // Give page time to render — use a simple native timeout instead of
-  // Playwright's waitForLoadState() which hangs with Chrome 144+.
-  await new Promise<void>(resolve => setTimeout(resolve, 2_000))
+  // Wait for DOM to be ready before returning. Catches the main HTML parsing.
+  await session.page.waitForLoadState("domcontentloaded", { timeout: 5_000 }).catch(() => {})
 
   if (signal.aborted) throw new Error("aborted")
 
