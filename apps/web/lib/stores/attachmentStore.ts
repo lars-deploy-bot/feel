@@ -68,12 +68,14 @@ export const useAttachmentStore = create<AttachmentStoreState & AttachmentStoreA
     // Lazy import to avoid circular dependency (dexieMessageStore → attachmentStore)
     const { useDexieMessageStore } = await import("@/lib/db/dexieMessageStore")
     const draft = await useDexieMessageStore.getState().loadDraft(tabId)
-    const attachments = draft?.attachments
-    if (attachments && attachments.length > 0) {
-      set(state => ({
+    const attachments = draft?.attachments ?? EMPTY_ATTACHMENTS
+    set(state => {
+      // Don't overwrite if tab already has in-memory state (race: write happened while async read was pending)
+      if (state.byTab[tabId] !== undefined) return state
+      return {
         byTab: { ...state.byTab, [tabId]: attachments },
-      }))
-    }
+      }
+    })
   },
 }))
 
@@ -99,7 +101,13 @@ async function flushDexieSave(tabId: string): Promise<void> {
   try {
     // Lazy import to avoid circular dependency
     const { useDexieMessageStore } = await import("@/lib/db/dexieMessageStore")
-    await useDexieMessageStore.getState().saveDraft(tabId, { attachments: serializable })
+    const dexieStore = useDexieMessageStore.getState()
+    // Merge with existing draft to preserve text — saveDraft replaces the entire draft object
+    const existingDraft = await dexieStore.loadDraft(tabId)
+    await dexieStore.saveDraft(tabId, {
+      ...existingDraft,
+      attachments: serializable,
+    })
   } catch {
     // Silent fail — draft save is best-effort
   }

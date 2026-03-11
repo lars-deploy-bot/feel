@@ -73,6 +73,7 @@ const TEST_CONVERSATION_DB = {
       last_message_at: "2026-02-01T10:00:00Z",
       created_at: "2026-02-01T09:00:00Z",
       closed_at: null,
+      draft: { text: "Saved draft", attachments: [] },
     },
   ],
 }
@@ -224,7 +225,26 @@ describe("GET /api/conversations", () => {
         conversationId: "conv-123",
         name: "Tab 1",
         position: 0,
+        draft: { text: "Saved draft", attachments: [] },
       })
+    })
+
+    it("should map null tab drafts explicitly", async () => {
+      mockOrder.mockReturnValueOnce({
+        data: [
+          {
+            ...TEST_CONVERSATION_DB,
+            conversation_tabs: [{ ...TEST_CONVERSATION_DB.conversation_tabs[0], draft: null }],
+          },
+        ],
+        error: null,
+      })
+
+      const req = createMockRequest({ workspace: TEST_WORKSPACE })
+      const response = await GET(req)
+      const data = await response.json()
+
+      expect(data.own[0].tabs[0].draft).toBeNull()
     })
   })
 

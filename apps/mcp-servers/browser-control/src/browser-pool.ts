@@ -78,9 +78,13 @@ class BrowserPool {
     })
 
     browser.on("disconnected", () => {
+      if (this.browser !== browser) {
+        return
+      }
       console.log("[browser-pool] Chromium disconnected, clearing sessions")
       this.browser = null
       this.sessions.clear()
+      this.emptyPoolSince = null
     })
 
     // Start cleanup timer

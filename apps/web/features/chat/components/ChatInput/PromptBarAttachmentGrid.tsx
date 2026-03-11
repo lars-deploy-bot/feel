@@ -114,9 +114,9 @@ export function PromptBarAttachmentGrid() {
                   Upload failed
                 </span>
               ) : isUploading ? (
-                <span className="text-[11px] text-black/30 dark:text-white/30">Uploading...</span>
+                <span className="text-[11px] text-black/60 dark:text-white/60">Uploading...</span>
               ) : (
-                <span className="text-[11px] text-black/30 dark:text-white/30">
+                <span className="text-[11px] text-black/60 dark:text-white/60">
                   {isSkillAttachment(attachment)
                     ? "Skill"
                     : isUserPromptAttachment(attachment)
@@ -138,10 +138,11 @@ export function PromptBarAttachmentGrid() {
                   e.stopPropagation()
                   toggleImageMode(attachment.id)
                 }}
-                className="text-[11px] text-black/30 dark:text-white/30 hover:text-black/50 dark:hover:text-white/50 transition-colors ml-1 w-[52px] text-right"
+                className="text-[11px] text-black/60 dark:text-white/60 hover:text-black/80 dark:hover:text-white/80 transition-colors ml-1 w-[52px] text-right"
                 title={
                   attachment.mode === "analyze" ? "Click to switch to website mode" : "Click to switch to analyze mode"
                 }
+                aria-label={attachment.mode === "analyze" ? "Switch to website mode" : "Switch to analyze mode"}
               >
                 {attachment.mode === "analyze" ? "analyze" : "website"}
               </button>

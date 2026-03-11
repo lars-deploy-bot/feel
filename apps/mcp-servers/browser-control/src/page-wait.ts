@@ -20,5 +20,9 @@ interface WaitOptions {
  */
 export async function waitForPageStable(page: Page, options?: WaitOptions): Promise<void> {
   const timeout = options?.timeoutMs ?? 5_000
-  await page.waitForLoadState("load", { timeout }).catch(() => {})
+  try {
+    await page.waitForLoadState("load", { timeout })
+  } catch {
+    // Never throws — catches timeout and continues (documented contract).
+  }
 }

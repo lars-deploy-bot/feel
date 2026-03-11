@@ -133,6 +133,9 @@ const { DomainRegistrationError } = await import("../domain-registry")
 
 describe("runStrictDeployment", () => {
   beforeEach(() => {
+    delete process.env.SERVER_CONFIG_PATH
+    delete process.env.STREAM_ENV
+
     callOrder.length = 0
 
     pathExists.mockReset()
@@ -197,6 +200,8 @@ describe("runStrictDeployment", () => {
   })
 
   afterEach(() => {
+    delete process.env.SERVER_CONFIG_PATH
+    delete process.env.STREAM_ENV
     vi.restoreAllMocks()
   })
 
@@ -273,6 +278,26 @@ describe("runStrictDeployment", () => {
     })
 
     expect(checkDomainInCaddyMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("verifies the injected Caddyfile even when generator mode artifacts also exist", async () => {
+    process.env.STREAM_ENV = "staging"
+    process.env.SERVER_CONFIG_PATH = "/var/lib/alive/server-config.json"
+    pathExists.mockImplementation(
+      filePath =>
+        filePath === process.env.SERVER_CONFIG_PATH ||
+        filePath === PATHS.CADDYFILE_PATH ||
+        filePath === PATHS.CADDYFILE_SITES,
+    )
+
+    await runStrictDeployment({
+      domain: "testsite.alive.best",
+      email: "owner@example.com",
+      templatePath: "/srv/webalive/templates/blank.alive.best",
+    })
+
+    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", PATHS.CADDYFILE_PATH)
+    expect(checkDomainInCaddyMock).not.toHaveBeenCalledWith("testsite.alive.best", PATHS.CADDYFILE_SITES)
   })
 
   it("rolls back infrastructure when registerDomain fails for a new deployment", async () => {

@@ -24,16 +24,16 @@ function isMissingLegacyWorkflowTableError(error: unknown): boolean {
 
 interface E2bCleanupConfig {
   apiKey: string
-  domain: string
+  domain?: string
 }
 
 function getE2bCleanupConfig(): E2bCleanupConfig | null {
   const apiKey = process.env.E2B_API_KEY
-  const domain = process.env.E2B_DOMAIN
-  if (!apiKey || !domain) {
+  if (!apiKey) {
     return null
   }
-  return { apiKey, domain }
+  const domain = process.env.E2B_DOMAIN
+  return domain ? { apiKey, domain } : { apiKey }
 }
 
 async function listRunMetadataSandboxIds(runId: string, config: E2bCleanupConfig): Promise<string[]> {
@@ -158,10 +158,14 @@ export default async function globalTeardown() {
   // 4a. Kill E2B sandboxes BEFORE deleting domains.
   const e2bCleanupConfig = getE2bCleanupConfig()
   try {
-    const { data: domainsWithSandbox } =
+    const { data: domainsWithSandbox, error: domainsWithSandboxError } =
       orgIds.length > 0
         ? await app.from("domains").select("sandbox_id").in("org_id", orgIds).not("sandbox_id", "is", null)
-        : { data: [] }
+        : { data: [], error: null }
+
+    if (domainsWithSandboxError) {
+      throw domainsWithSandboxError
+    }
 
     const sandboxIds = await collectRunSandboxIds(domainsWithSandbox ?? [], runId, e2bCleanupConfig)
     if (sandboxIds.length > 0) {

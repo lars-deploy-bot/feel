@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { getRunCommand, readAliveToml, resolveProjectRoot } from "../src/alive-toml"
+import { type AliveToml, getRunCommand, readAliveToml, resolveProjectRoot } from "../src/alive-toml"
 
 describe("alive-toml", () => {
   let dir: string
@@ -135,8 +135,8 @@ command = "bun run dev"
 
   describe("getRunCommand", () => {
     it("returns the requested mode's command", () => {
-      const toml = {
-        schema: 1 as const,
+      const toml: AliveToml = {
+        schema: 1,
         project: { kind: "vite", root: "user" },
         setup: { command: "bun install" },
         build: { command: "bun run build" },
@@ -151,8 +151,8 @@ command = "bun run dev"
     })
 
     it("falls back to development when production not defined", () => {
-      const toml = {
-        schema: 1 as const,
+      const toml: AliveToml = {
+        schema: 1,
         project: { kind: "vite", root: "user" },
         setup: { command: "bun install" },
         build: { command: "bun run build" },

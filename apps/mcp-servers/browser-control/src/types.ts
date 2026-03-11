@@ -70,6 +70,7 @@ export interface SnapshotResult {
   stats: RoleSnapshotStats
   url: string
   title: string
+  [key: string]: unknown
 }
 
 export interface ScreenshotResult {
@@ -89,9 +90,9 @@ export interface BrowserActionResult {
 // ============================================================
 
 /** Successful route result — sends 200 with JSON data. */
-export interface RouteSuccess {
+export interface RouteSuccess<T extends Record<string, unknown> = Record<string, unknown>> {
   ok: true
-  data: Record<string, unknown>
+  data: T
 }
 
 /** Client error — sends the given status code with an error message. */

@@ -57,6 +57,9 @@ async function callBrowserService(
     async () => {
       // Combine timeout + external cancel signal: abort on whichever fires first
       const controller = new AbortController()
+      if (cancelSignal?.aborted) {
+        throw new Error("Browser request cancelled")
+      }
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
       const onCancel = () => controller.abort()

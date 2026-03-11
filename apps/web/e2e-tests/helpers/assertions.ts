@@ -121,6 +121,21 @@ export async function gotoChatFast(page: Page, workspace: string, orgId: string)
 }
 
 /**
+ * Chat readiness does not wait for the background conversation metadata sync.
+ * Use this helper before asserting on sidebar entries that come from the server.
+ */
+export async function gotoChatAndWaitForConversationsSync(page: Page, workspace: string, orgId: string) {
+  const syncPromise = page.waitForResponse(
+    response => response.url().includes("/api/conversations") && !response.url().includes("/messages"),
+    { timeout: TEST_TIMEOUTS.max },
+  )
+
+  await gotoChatFast(page, workspace, orgId)
+  await waitForChatReady(page)
+  await syncPromise
+}
+
+/**
  * Wait for workspace to be fully initialized
  * - First waits for hydration (the clock)
  * - Then asserts DOM marker is present

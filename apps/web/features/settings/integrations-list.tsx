@@ -373,10 +373,14 @@ function IntegrationDetail({ integration, onUpdate }: { integration: Integration
   }
 
   const handleDisconnect = async () => {
-    await disconnect()
-    trackIntegrationDisconnected(integration.provider_key)
-    toast.success(`${integration.display_name} disconnected`)
-    onUpdate()
+    try {
+      await disconnect()
+      trackIntegrationDisconnected(integration.provider_key)
+      toast.success(`${integration.display_name} disconnected`)
+      onUpdate()
+    } catch {
+      // Error handled by mutation's onError callback
+    }
   }
 
   return (
@@ -894,10 +898,14 @@ function IntegrationCard({ integration, onUpdate }: IntegrationCardProps) {
   }
 
   const handleDisconnect = async () => {
-    await disconnect()
-    trackIntegrationDisconnected(integration.provider_key)
-    toast.success(`${integration.display_name} disconnected`)
-    onUpdate()
+    try {
+      await disconnect()
+      trackIntegrationDisconnected(integration.provider_key)
+      toast.success(`${integration.display_name} disconnected`)
+      onUpdate()
+    } catch {
+      // Error handled by mutation's onError callback
+    }
   }
 
   const actionButton =

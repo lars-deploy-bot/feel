@@ -240,9 +240,18 @@ if (typeof setInterval !== "undefined" && typeof process !== "undefined" && !pro
           userOrgMembershipCache.delete(userId)
         }
       }
+      for (const [userId, entry] of userDetailsCache.entries()) {
+        if (entry.expiry <= now) {
+          userDetailsCache.delete(userId)
+        }
+      }
     },
     10 * 60 * 1000,
   )
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 /**
@@ -269,11 +278,8 @@ async function fetchUserDetails(
     }
 
     let models: string[] = []
-    if (data.metadata && typeof data.metadata === "object") {
-      const metadata = data.metadata as Record<string, unknown>
-      if (Array.isArray(metadata.enabled_models)) {
-        models = metadata.enabled_models.filter((m): m is string => typeof m === "string")
-      }
+    if (isJsonObject(data.metadata) && Array.isArray(data.metadata.enabled_models)) {
+      models = data.metadata.enabled_models.filter((m): m is string => typeof m === "string")
     }
 
     const result = {

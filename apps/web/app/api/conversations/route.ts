@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
           lastMessageAt: t.last_message_at ? new Date(t.last_message_at).getTime() : null,
           createdAt: new Date(t.created_at).getTime(),
           closedAt: t.closed_at ? new Date(t.closed_at).getTime() : null,
-          draft: t.draft ?? null,
+          draft: isOwn ? (t.draft ?? null) : null,
         })),
       }
     }

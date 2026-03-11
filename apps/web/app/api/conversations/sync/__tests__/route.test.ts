@@ -75,6 +75,7 @@ const TEST_TAB = {
   lastMessageAt: Date.now(),
   createdAt: Date.now() - 10000,
   closedAt: null,
+  draft: { text: "Draft reply", attachments: [] },
 }
 
 const TEST_MESSAGE = {
@@ -212,6 +213,29 @@ describe("POST /api/conversations/sync", () => {
 
       expect(response.status).toBe(200)
       expect(data.synced.tabs).toBe(2)
+    })
+
+    it("should persist tab draft payloads during sync", async () => {
+      const req = createMockRequest({
+        conversation: TEST_CONVERSATION,
+        tabs: [TEST_TAB],
+        messages: [],
+      })
+      const response = await POST(req)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.ok).toBe(true)
+      expect(mockUpsert).toHaveBeenNthCalledWith(
+        2,
+        [
+          expect.objectContaining({
+            tab_id: "tab-123",
+            draft: { text: "Draft reply", attachments: [] },
+          }),
+        ],
+        { onConflict: "tab_id" },
+      )
     })
 
     it("should sync conversation with messages", async () => {

@@ -32,7 +32,9 @@ if [[ "$ALIVE_TOML" != "true" ]]; then
     GENERATE_SCRIPT="${TARGET_DIR}/scripts/generate-config.js"
     if [[ -f "$GENERATE_SCRIPT" ]]; then
         log_info "Generating vite.config.ts for $SITE_DOMAIN:$SITE_PORT..."
-        bun "$GENERATE_SCRIPT" "$SITE_DOMAIN" "$SITE_PORT" "$TARGET_DIR"
+        # Fix ownership first so the script runs as the site user (not root)
+        chown -R "$SITE_USER:$SITE_USER" "$TARGET_DIR"
+        sudo -u "$SITE_USER" bun "$GENERATE_SCRIPT" "$SITE_DOMAIN" "$SITE_PORT" "$TARGET_DIR"
         log_success "vite.config.ts generated"
     else
         # Fallback: patch the existing vite.config.ts copied from the template site.
@@ -81,6 +83,11 @@ else
     # Determine where to run setup/build commands
     if [[ "$ALIVE_TOML" == "true" ]]; then
         # alive.toml path: use explicit commands
+        # Validate required alive.toml vars before executing
+        if [[ -z "$SETUP_COMMAND" ]] || [[ -z "$BUILD_COMMAND" ]]; then
+            log_error "alive.toml mode requires SETUP_COMMAND and BUILD_COMMAND"
+            exit 13
+        fi
         # Setup/build run from TARGET_DIR (workspace root where package.json + bun.lock live),
         # NOT from PROJECT_ROOT (which is the app subdirectory for run commands).
         BUILD_DIR="$TARGET_DIR"
@@ -149,13 +156,16 @@ if [[ "$ALIVE_TOML" == "true" ]] && [[ -n "$RUN_COMMAND" ]]; then
     OVERRIDE_DIR="/etc/systemd/system/site@${SITE_SLUG}.service.d"
     log_info "Writing systemd override for run command: $RUN_COMMAND"
     mkdir -p "$OVERRIDE_DIR"
-    cat > "$OVERRIDE_DIR/alive-toml.conf" <<EOF
+    # Write atomically via temp file + mv to avoid partial overrides on interruption
+    OVERRIDE_TMP=$(mktemp "$OVERRIDE_DIR/alive-toml.conf.XXXXXX")
+    cat > "$OVERRIDE_TMP" <<OVERRIDE_EOF
 [Service]
 # Generated from alive.toml — do not edit manually
 ExecStart=
-ExecStart=/bin/sh -c 'exec $RUN_COMMAND'
+ExecStart=/bin/sh -c 'exec ${RUN_COMMAND//\'/\'\\\'\'}'
 WorkingDirectory=${TARGET_DIR}/${PROJECT_ROOT}
-EOF
+OVERRIDE_EOF
+    mv "$OVERRIDE_TMP" "$OVERRIDE_DIR/alive-toml.conf"
     log_success "Systemd override written to $OVERRIDE_DIR/alive-toml.conf"
 fi
 

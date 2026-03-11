@@ -12,7 +12,7 @@ import {
 } from "@/lib/testing/e2e-automation-transcript"
 import { expect, test } from "./fixtures"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
-import { gotoChatFast, waitForChatReady } from "./helpers/assertions"
+import { gotoChatAndWaitForConversationsSync } from "./helpers/assertions"
 import { buildE2ETestHeaders } from "./lib/test-headers"
 
 async function ensureConversationSidebarOpen(authenticatedPage: Page): Promise<void> {
@@ -27,25 +27,6 @@ async function ensureConversationSidebarOpen(authenticatedPage: Page): Promise<v
   await expect(sidebar).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
 }
 
-/**
- * Navigate to chat and wait for the conversations sync to complete.
- *
- * The chat page fires a fire-and-forget sync in useEffect. Without waiting for
- * the API response, the sidebar may not yet contain server-side conversations
- * (like seeded automation transcripts). This helper intercepts the first
- * /api/conversations response so callers can safely query the sidebar afterward.
- */
-async function gotoChatAndWaitForSync(page: Page, workspace: string, orgId: string): Promise<void> {
-  const syncPromise = page.waitForResponse(
-    response => response.url().includes("/api/conversations") && !response.url().includes("/messages"),
-    { timeout: TEST_TIMEOUTS.max },
-  )
-
-  await gotoChatFast(page, workspace, orgId)
-  await waitForChatReady(page)
-  await syncPromise
-}
-
 async function readJsonOrThrow<T>(
   response: APIResponse,
   context: string,
@@ -56,18 +37,6 @@ async function readJsonOrThrow<T>(
     throw new Error(`[${context}] ${response.status()} ${response.statusText()} ${JSON.stringify(payload)}`)
   }
   return parser.parse(payload)
-}
-
-async function findWorkspaceSiteId(request: APIRequestContext, workspace: string): Promise<string> {
-  const sitesRes = await request.get("/api/sites")
-  const sitesData = await readJsonOrThrow(sitesRes, "sites", apiSchemas.sites.res)
-  const site = sitesData.sites.find(candidate => candidate.hostname === workspace)
-
-  if (!site) {
-    throw new Error(`[sites] Workspace site not found for ${workspace}`)
-  }
-
-  return site.id
 }
 
 async function createAutomationJob(
@@ -165,8 +134,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
     authenticatedPage,
     workerTenant,
   }) => {
-    const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
-    const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
+    const automationJob = await createAutomationJob(authenticatedPage.request, workerTenant.siteId)
     const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)
     if (!seed) {
       await authenticatedPage.request.delete(`/api/automations/${automationJob.id}`)
@@ -182,7 +150,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
     }
 
     try {
-      await gotoChatAndWaitForSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await gotoChatAndWaitForConversationsSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
       // Open sidebar and find the automation conversation
       await ensureConversationSidebarOpen(authenticatedPage)
@@ -220,8 +188,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
   }, testInfo) => {
     // Keep timeout strict; the selector flow is deterministic via ensureConversationSidebarOpen().
     testInfo.setTimeout(120_000)
-    const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
-    const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
+    const automationJob = await createAutomationJob(authenticatedPage.request, workerTenant.siteId)
     const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)
     if (!seed) {
       await authenticatedPage.request.delete(`/api/automations/${automationJob.id}`)
@@ -237,7 +204,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
     }
 
     try {
-      await gotoChatAndWaitForSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await gotoChatAndWaitForConversationsSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
       // The default landing is a fresh chat tab — should have ChatInput
       const messageInput = authenticatedPage.locator('[data-testid="message-input"]')
@@ -278,8 +245,7 @@ test.describe("Automation Transcript Polling", () => {
     authenticatedPage,
     workerTenant,
   }) => {
-    const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
-    const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
+    const automationJob = await createAutomationJob(authenticatedPage.request, workerTenant.siteId)
     const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)
     if (!seed) {
       await authenticatedPage.request.delete(`/api/automations/${automationJob.id}`)
@@ -327,7 +293,7 @@ test.describe("Automation Transcript Polling", () => {
     authenticatedPage.on("response", onResponse)
 
     try {
-      await gotoChatAndWaitForSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await gotoChatAndWaitForConversationsSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
       await ensureConversationSidebarOpen(authenticatedPage)
       const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()

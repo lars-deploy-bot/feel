@@ -73,6 +73,9 @@ export async function bootstrapRunConversation(ctx: RunContext): Promise<Bootstr
 
     if (tabError) {
       console.error(`[Engine] Failed to create conversation tab for run ${ctx.runId}:`, tabError)
+      Sentry.captureException(new Error(`Bootstrap tab failed: ${tabError.message}`), {
+        tags: { component: "automation-engine", runId: ctx.runId, jobId: ctx.job.id },
+      })
       // Clean up the orphaned conversation
       await ctx.supabase.from("conversations").delete().eq("conversation_id", conversationId)
       return null

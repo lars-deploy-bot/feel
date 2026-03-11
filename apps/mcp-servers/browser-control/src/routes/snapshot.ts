@@ -40,5 +40,5 @@ export const handleSnapshot: RouteHandler = async (body, signal) => {
   // Store refs on session so /act can resolve them without re-snapshotting
   session.roleRefs = result.refs
 
-  return { ok: true, data: result as unknown as Record<string, unknown> }
+  return { ok: true, data: { ...result } }
 }

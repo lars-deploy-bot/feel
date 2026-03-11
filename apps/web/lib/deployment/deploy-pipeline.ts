@@ -117,23 +117,20 @@ function validatePort(domain: string, port: number): number {
   return port
 }
 
-function getRoutingVerificationPath(): string | null {
-  const serverConfigPath = process.env.SERVER_CONFIG_PATH
-  const generatorMode = !!serverConfigPath && existsSync(serverConfigPath)
-
-  if (generatorMode && PATHS.CADDYFILE_SITES && existsSync(PATHS.CADDYFILE_SITES)) {
-    return PATHS.CADDYFILE_SITES
+function getRoutingVerificationPath(preferredPath: string): string | null {
+  if (existsSync(preferredPath)) {
+    return preferredPath
   }
 
-  if (PATHS.CADDYFILE_PATH && existsSync(PATHS.CADDYFILE_PATH)) {
-    return PATHS.CADDYFILE_PATH
+  if (PATHS.CADDYFILE_SITES && existsSync(PATHS.CADDYFILE_SITES)) {
+    return PATHS.CADDYFILE_SITES
   }
 
   return null
 }
 
-async function verifyRouting(domain: string): Promise<void> {
-  const verificationPath = getRoutingVerificationPath()
+async function verifyRouting(domain: string, preferredPath: string): Promise<void> {
+  const verificationPath = getRoutingVerificationPath(preferredPath)
   if (!verificationPath) {
     return
   }
@@ -309,7 +306,7 @@ async function runStrictDeploymentLocked(
       flockTimeout: DEFAULTS.FLOCK_TIMEOUT,
     })
 
-    await verifyRouting(validated.domain)
+    await verifyRouting(validated.domain, PATHS.CADDYFILE_PATH)
 
     return {
       domain: validated.domain,
