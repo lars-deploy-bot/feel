@@ -14,7 +14,8 @@ use crate::db::{
 use crate::docker::push_image_and_resolve_artifact_digest;
 use crate::fingerprint::compute_build_fingerprint;
 use crate::github::{cleanup_source_snapshot, export_github_snapshot, resolve_github_commit};
-use crate::logging::{run_logged_command, TaskPipeline};
+use crate::constants::BUILD_TIMEOUT;
+use crate::logging::{run_logged_command_with_timeout, TaskPipeline};
 use crate::types::{ClaimedBuild, LeaseTarget, ServiceContext, TaskEventType, TaskStage};
 
 pub(super) async fn process_build(
@@ -267,10 +268,11 @@ pub(super) async fn process_build(
 
         command.arg(&build_context);
 
-        if let Err(error) = run_logged_command(
+        if let Err(error) = run_logged_command_with_timeout(
             command,
             build_image_stage.debug_path(),
             &format!("docker build {} ({})", build.build_id, image_ref),
+            BUILD_TIMEOUT,
         )
         .await
         {
@@ -377,9 +379,15 @@ pub(super) async fn process_build(
     })
     .await;
 
-    cleanup_source_snapshot(&source_dir, &archive_path, &log_path)
-        .await
-        .map_err(TaskExecutionError::source_snapshot)?;
+    if let Err(cleanup_error) =
+        cleanup_source_snapshot(&source_dir, &archive_path, &log_path).await
+    {
+        tracing::warn!(
+            message = "source snapshot cleanup failed",
+            build_id = %build.build_id,
+            error = %format!("{:#}", cleanup_error),
+        );
+    }
 
     if let Err(error) = build_result {
         pipeline.finish_failure(&error.to_string()).await?;

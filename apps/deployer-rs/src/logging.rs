@@ -211,6 +211,106 @@ pub(crate) async fn run_logged_command(
     Ok(())
 }
 
+pub(crate) async fn run_logged_command_with_timeout(
+    mut command: Command,
+    log_path: &Path,
+    description: &str,
+    timeout_duration: std::time::Duration,
+) -> Result<()> {
+    append_log(
+        log_path,
+        &format!("$ {} (timeout: {:?})\n", description, timeout_duration),
+    )
+    .await?;
+
+    let stdout = tokio_fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)
+        .await
+        .with_context(|| format!("failed to open {}", log_path.display()))?;
+    let stderr = stdout
+        .try_clone()
+        .await
+        .with_context(|| format!("failed to clone {}", log_path.display()))?;
+
+    command.stdout(Stdio::from(stdout.into_std().await));
+    command.stderr(Stdio::from(stderr.into_std().await));
+
+    let mut child = command
+        .spawn()
+        .context("failed to spawn child process")?;
+
+    match tokio::time::timeout(timeout_duration, child.wait()).await {
+        Ok(Ok(status)) if status.success() => {
+            append_log(log_path, "\n").await?;
+            Ok(())
+        }
+        Ok(Ok(status)) => Err(anyhow::anyhow!(
+            "{} failed with status {}",
+            description,
+            status
+        )),
+        Ok(Err(error)) => {
+            Err(anyhow::anyhow!("failed to wait for {}: {}", description, error))
+        }
+        Err(_) => {
+            let _ = child.kill().await;
+            append_log(
+                log_path,
+                &format!("\ntimed out after {:?}\n", timeout_duration),
+            )
+            .await?;
+            Err(anyhow::anyhow!(
+                "{} timed out after {:?}",
+                description,
+                timeout_duration
+            ))
+        }
+    }
+}
+
+pub(crate) async fn run_logged_command_with_retry(
+    build_command: impl Fn() -> Command,
+    log_path: &Path,
+    description: &str,
+    max_attempts: u32,
+    base_delay: std::time::Duration,
+) -> Result<()> {
+    let mut last_error = None;
+    for attempt in 0..max_attempts {
+        match run_logged_command(build_command(), log_path, description).await {
+            Ok(()) => return Ok(()),
+            Err(error) => {
+                if attempt + 1 < max_attempts {
+                    let delay = base_delay * 2u32.pow(attempt);
+                    tracing::warn!(
+                        message = "command failed, retrying",
+                        operation = description,
+                        attempt = attempt + 1,
+                        max_attempts = max_attempts,
+                        retry_delay_secs = delay.as_secs(),
+                        error = %format!("{:#}", error),
+                    );
+                    append_log(
+                        log_path,
+                        &format!(
+                            "retrying in {}s (attempt {}/{})\n",
+                            delay.as_secs(),
+                            attempt + 1,
+                            max_attempts
+                        ),
+                    )
+                    .await?;
+                    tokio::time::sleep(delay).await;
+                }
+                last_error = Some(error);
+            }
+        }
+    }
+    Err(last_error.unwrap())
+}
+
 pub(crate) async fn read_task_snapshot(
     data_dir: &Path,
     task_kind: TaskKind,

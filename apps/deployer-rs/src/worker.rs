@@ -20,7 +20,8 @@ use serde_json::json;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio_postgres::{Client, NoTls};
-use tracing::{error, info};
+use tokio::signal::unix::{signal, SignalKind};
+use tracing::{error, info, warn};
 
 use self::build::process_build;
 use self::deployment::{process_deployment, reconcile_running_deployments};
@@ -60,26 +61,46 @@ pub async fn run() -> Result<()> {
 
     let _health_server = tokio::spawn(run_health_server(state));
 
-    let (client, connection) = tokio_postgres::connect(&context.env.database_url, NoTls)
-        .await
-        .context("failed to connect to Postgres")?;
-
-    tokio::spawn(async move {
-        if let Err(error) = connection.await {
-            error!(message = "postgres connection error", error = %format!("{:#}", error));
-        }
-    });
+    let mut client = connect_postgres(&context.env.database_url).await?;
 
     info!(
         message = "alive deployer started",
         repo_root = %context.repo_root.display()
     );
 
+    let mut sigterm =
+        signal(SignalKind::terminate()).context("failed to register SIGTERM handler")?;
+
     loop {
         {
             let mut worker = health.write().await;
             worker.status = WorkerStatus::Idle;
             worker.last_poll_at = Some(Utc::now().to_rfc3339());
+        }
+
+        if client.simple_query("").await.is_err() {
+            warn!(message = "postgres connection lost, reconnecting");
+            match connect_postgres(&context.env.database_url).await {
+                Ok(new_client) => {
+                    client = new_client;
+                    info!(message = "postgres reconnected successfully");
+                }
+                Err(reconnect_error) => {
+                    error!(message = "postgres reconnect failed", error = %format!("{:#}", reconnect_error));
+                    let mut worker = health.write().await;
+                    worker.last_error =
+                        Some(format!("postgres reconnect failed: {:#}", reconnect_error));
+                    worker.status = WorkerStatus::Error;
+                    tokio::select! {
+                        biased;
+                        _ = sigterm.recv() => {
+                            info!(message = "received SIGTERM during reconnect backoff");
+                            break;
+                        }
+                        _ = sleep(POLL_INTERVAL) => continue,
+                    }
+                }
+            }
         }
 
         let tick_result = tick(&client, &context, &health).await;
@@ -92,8 +113,32 @@ pub async fn run() -> Result<()> {
             worker.current_deployment_id = None;
         }
 
-        sleep(POLL_INTERVAL).await;
+        tokio::select! {
+            biased;
+            _ = sigterm.recv() => {
+                info!(message = "received SIGTERM, shutting down gracefully");
+                break;
+            }
+            _ = sleep(POLL_INTERVAL) => {}
+        }
     }
+
+    info!(message = "alive deployer stopped");
+    Ok(())
+}
+
+async fn connect_postgres(database_url: &str) -> Result<Client> {
+    let (client, connection) = tokio_postgres::connect(database_url, NoTls)
+        .await
+        .context("failed to connect to Postgres")?;
+
+    tokio::spawn(async move {
+        if let Err(error) = connection.await {
+            error!(message = "postgres connection error", error = %format!("{:#}", error));
+        }
+    });
+
+    Ok(client)
 }
 
 async fn run_health_server(state: AppState) -> Result<()> {
@@ -117,7 +162,8 @@ async fn run_health_server(state: AppState) -> Result<()> {
 
 async fn health_handler(State(state): State<AppState>) -> Json<HealthResponse> {
     let worker = state.health.read().await.clone();
-    Json(HealthResponse { ok: true, worker })
+    let ok = worker.status != WorkerStatus::Error;
+    Json(HealthResponse { ok, worker })
 }
 
 async fn health_details_handler(State(state): State<AppState>) -> Json<serde_json::Value> {
