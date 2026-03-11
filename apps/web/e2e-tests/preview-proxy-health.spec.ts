@@ -53,18 +53,24 @@ if (!blankTemplate) {
 const TEST_DOMAIN = blankTemplate.internalHostname
 
 describeProxy("Preview Proxy Health", () => {
-  // Use JWT_SECRET to create preview tokens directly (no app auth needed)
-  // Safe to access here — this describe block is skipped on local (no Go proxy)
-  const jwtSecret = process.env.JWT_SECRET || ""
+  // Must match the Go preview proxy's JWT secret (differs from Supabase JWT in staging)
+  function getPreviewJwtSecret(): string {
+    const secret = process.env.PREVIEW_JWT_SECRET
+    if (!secret) throw new Error("PREVIEW_JWT_SECRET is not set")
+    return secret
+  }
 
   /**
    * Create a preview token (same format the app's /api/auth/preview-token generates)
    */
   function createPreviewToken(expiresIn: jwt.SignOptions["expiresIn"] = "5m"): string {
-    if (!jwtSecret) throw new Error("JWT_SECRET is not set")
-    return jwt.sign({ type: "preview", userId: "e2e-test-user", iat: Math.floor(Date.now() / 1000) }, jwtSecret, {
-      expiresIn,
-    })
+    return jwt.sign(
+      { type: "preview", userId: "e2e-test-user", iat: Math.floor(Date.now() / 1000) },
+      getPreviewJwtSecret(),
+      {
+        expiresIn,
+      },
+    )
   }
 
   // Any domain works for 401 rejection tests (proxy rejects before routing)

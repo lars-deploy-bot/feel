@@ -16,6 +16,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { createClient } from "@supabase/supabase-js"
 import { parseServerConfig, requireEnv, type ServerConfig } from "@webalive/shared"
+import { assertNoDangerousCountDrop, readExistingGeneratedCaddyDomainCount } from "../generated-safety.js"
+import { loadCanonicalInfraEnv } from "../infra-env.js"
 
 interface EnvironmentConfigRaw {
   key: string
@@ -128,11 +130,9 @@ async function atomicWrite(filePath: string, content: string) {
 // =============================================================================
 
 function createAppSupabaseClient() {
-  const url = must(process.env.SUPABASE_URL, "SUPABASE_URL is required")
-  const key = must(
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY,
-    "SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY is required",
-  )
+  const infraEnv = loadCanonicalInfraEnv()
+  const url = must(infraEnv.SUPABASE_URL, "SUPABASE_URL is required")
+  const key = must(infraEnv.SUPABASE_SERVICE_ROLE_KEY, "SUPABASE_SERVICE_ROLE_KEY is required")
 
   return createClient(url, key, {
     db: { schema: "app" },
@@ -439,10 +439,14 @@ async function run() {
   const embeddableHosts = new Set([...embeddableTemplateHosts, ...staticEmbeddableHosts])
   const filteredDomains = filterReservedDomains(domains, environments)
   const embeddableOnThisServer = filteredDomains.filter(d => embeddableHosts.has(d.hostname.toLowerCase())).length
+  const existingGeneratedDomainCount = readExistingGeneratedCaddyDomainCount(cfg.generated.caddySites)
   console.log(`  Found ${domains.length} domains for this server`)
   console.log(`  Found ${embeddableTemplateHosts.size} embeddable template domains (global)`)
   console.log(`  Found ${staticEmbeddableHosts.size} embeddable hosts from static allowlist`)
   console.log(`  Found ${embeddableOnThisServer} embeddable hosts on this server`)
+  if (existingGeneratedDomainCount > 0) {
+    console.log(`  Existing generated domain count: ${existingGeneratedDomainCount}`)
+  }
   console.log(`  Will generate ${filteredDomains.length + (cfg.domains.previewBase ? 1 : 0)} blocks total`)
   console.log(`    - ${filteredDomains.length} main domain blocks`)
   if (cfg.domains.previewBase) {
@@ -452,6 +456,13 @@ async function run() {
   }
 
   console.log("\nGenerating files...")
+
+  assertNoDangerousCountDrop({
+    kind: "generated Caddy routing",
+    filePath: cfg.generated.caddySites,
+    existingCount: existingGeneratedDomainCount,
+    nextCount: filteredDomains.length,
+  })
 
   // Ensure output directory exists
   await mkdir(cfg.generated.dir, { recursive: true })
@@ -503,9 +514,9 @@ if (import.meta.main) {
       console.error("     Copy from: ops/server-config.example.json")
       console.error("     Then edit with this server's configuration\n")
     } else if (msg.includes("SUPABASE_URL")) {
-      console.error("\x1b[33mFix:\x1b[0m Set database credentials:")
-      console.error("     export SUPABASE_URL=https://xxx.supabase.co")
-      console.error("     export SUPABASE_SERVICE_ROLE_KEY=eyJ...\n")
+      console.error("\x1b[33mFix:\x1b[0m Ensure database credentials are set in infra-env.ts source")
+      console.error("     Credentials are loaded via loadCanonicalInfraEnv(), not environment variables")
+      console.error("     Check packages/site-controller/src/infra-env.ts for the canonical source\n")
     } else if (msg.includes("server_id")) {
       console.error("\x1b[33mFix:\x1b[0m Add server_id column to domains table:")
       console.error("     ALTER TABLE app.domains ADD COLUMN server_id TEXT;\n")

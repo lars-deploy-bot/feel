@@ -6,7 +6,10 @@
  * the deploy pipeline, which calls regeneratePortMap() after every deployment.
  *
  * Usage:
- *   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... bun scripts/generate-port-map.ts
+ *   SERVER_CONFIG_PATH=/var/lib/alive/server-config.json bun scripts/generate-port-map.ts
+ *
+ * Infra DB credentials are loaded from the canonical production env file
+ * by @webalive/site-controller. Do not pass staging credentials here.
  */
 
 import { regeneratePortMap } from "@webalive/site-controller"
