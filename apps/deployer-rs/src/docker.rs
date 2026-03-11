@@ -25,32 +25,19 @@ pub(crate) fn docker_reference_repository(reference: &str) -> Result<&str> {
     }
 }
 
-pub(crate) async fn push_image_and_resolve_artifact_digest(
+pub(crate) async fn resolve_local_artifact_digest(
     image_ref: &str,
     log_path: &Path,
 ) -> Result<String> {
-    run_logged_command_with_retry(
-        || {
-            let mut command = Command::new("docker");
-            command.arg("push").arg(image_ref);
-            command
-        },
-        log_path,
-        &format!("docker push {}", image_ref),
-        DOCKER_RETRY_ATTEMPTS,
-        DOCKER_RETRY_BASE_DELAY,
-    )
-    .await?;
-
     let inspect_output = Command::new("docker")
         .arg("image")
         .arg("inspect")
         .arg("--format")
-        .arg("{{range .RepoDigests}}{{println .}}{{end}}")
+        .arg("{{.Id}}")
         .arg(image_ref)
         .output()
         .await
-        .context("failed to inspect pushed docker image")?;
+        .context("failed to inspect local docker image")?;
 
     append_log(log_path, &String::from_utf8_lossy(&inspect_output.stderr)).await?;
     if !inspect_output.status.success() {
@@ -61,20 +48,78 @@ pub(crate) async fn push_image_and_resolve_artifact_digest(
         ));
     }
 
-    let repository = docker_reference_repository(image_ref)?;
-    let repo_digest = String::from_utf8(inspect_output.stdout)
+    let image_id = String::from_utf8(inspect_output.stdout)
         .context("docker inspect output was not valid UTF-8")?
-        .lines()
-        .map(str::trim)
-        .find(|digest| digest.starts_with(&format!("{}@", repository)))
-        .map(str::to_string)
-        .with_context(|| format!("failed to resolve repo digest for {}", image_ref))?;
+        .trim()
+        .to_string();
+
+    if image_id.is_empty() {
+        return Err(anyhow!("docker image inspect returned empty id for {}", image_ref));
+    }
+
     append_log(
         log_path,
-        &format!("resolved artifact digest {}\n", repo_digest),
+        &format!("resolved local artifact digest {}\n", image_id),
     )
     .await?;
-    Ok(repo_digest)
+    Ok(image_id)
+}
+
+pub(crate) async fn stop_and_disable_systemd_unit(unit: &str, log_path: &Path) -> Result<()> {
+    let is_active = Command::new("systemctl")
+        .arg("is-active")
+        .arg("--quiet")
+        .arg(unit)
+        .status()
+        .await
+        .context("failed to check systemd unit status")?;
+
+    if !is_active.success() {
+        append_log(log_path, &format!("systemd unit {} is not active, skipping\n", unit)).await?;
+        return Ok(());
+    }
+
+    append_log(log_path, &format!("stopping systemd unit {}\n", unit)).await?;
+
+    let stop_output = Command::new("systemctl")
+        .arg("stop")
+        .arg(unit)
+        .output()
+        .await
+        .context("failed to stop systemd unit")?;
+
+    if !stop_output.status.success() {
+        let stderr = String::from_utf8_lossy(&stop_output.stderr);
+        append_log(log_path, &format!("systemctl stop stderr: {}\n", stderr)).await?;
+        return Err(anyhow!("failed to stop systemd unit {}: {}", unit, stderr));
+    }
+
+    let disable_output = Command::new("systemctl")
+        .arg("disable")
+        .arg(unit)
+        .output()
+        .await
+        .context("failed to disable systemd unit")?;
+
+    if !disable_output.status.success() {
+        let stderr = String::from_utf8_lossy(&disable_output.stderr);
+        append_log(log_path, &format!("systemctl disable stderr: {}\n", stderr)).await?;
+        // Not fatal — the unit is already stopped
+    }
+
+    append_log(log_path, &format!("systemd unit {} stopped and disabled\n", unit)).await?;
+    Ok(())
+}
+
+pub(crate) async fn image_exists_locally(image_ref: &str) -> Result<bool> {
+    let output = Command::new("docker")
+        .arg("image")
+        .arg("inspect")
+        .arg(image_ref)
+        .output()
+        .await
+        .context("failed to inspect docker image")?;
+    Ok(output.status.success())
 }
 
 pub(crate) async fn pull_artifact_digest(artifact_digest: &str, log_path: &Path) -> Result<()> {

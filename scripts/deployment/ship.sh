@@ -113,9 +113,9 @@ if [ "$DEPLOY_STAGING" = true ]; then
     lock_update_phase "staging"
 
     if [ "$SKIP_E2E" = true ]; then
-        SKIP_E2E=1 "$SCRIPT_DIR/build-and-serve.sh" staging
+        SKIP_E2E=1 "$SCRIPT_DIR/deploy-via-deployer.sh" staging
     else
-        "$SCRIPT_DIR/build-and-serve.sh" staging
+        "$SCRIPT_DIR/deploy-via-deployer.sh" staging
     fi
 
     log_success "Staging deployed"

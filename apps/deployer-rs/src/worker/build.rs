@@ -11,7 +11,7 @@ use crate::db::{
     fetch_application, find_reusable_release, mark_build_failed, mark_build_succeeded,
     record_release,
 };
-use crate::docker::push_image_and_resolve_artifact_digest;
+use crate::docker::resolve_local_artifact_digest;
 use crate::fingerprint::compute_build_fingerprint;
 use crate::github::{cleanup_source_snapshot, export_github_snapshot, resolve_github_commit};
 use crate::constants::BUILD_TIMEOUT;
@@ -300,11 +300,11 @@ pub(super) async fn process_build(
             .start_stage(
                 5,
                 TaskStage::PublishArtifact,
-                "pushing artifact and resolving digest",
+                "resolving local artifact digest",
             )
             .await?;
         let artifact_digest =
-            match push_image_and_resolve_artifact_digest(&image_ref, publish_stage.debug_path())
+            match resolve_local_artifact_digest(&image_ref, publish_stage.debug_path())
                 .await
             {
                 Ok(digest) => digest,
@@ -325,7 +325,7 @@ pub(super) async fn process_build(
             )
             .await?;
         publish_stage
-            .finish_ok(&format!("published {}", artifact_digest))
+            .finish_ok(&format!("resolved {}", artifact_digest))
             .await?;
 
         let record_release_stage = pipeline
