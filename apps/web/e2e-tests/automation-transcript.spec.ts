@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { APIRequestContext, APIResponse, Response as PageResponse, Request } from "@playwright/test"
+import type { APIRequestContext, APIResponse, Page, Response as PageResponse, Request } from "@playwright/test"
 import type { Req, Res } from "@/lib/api/schemas"
 import { apiSchemas, validateRequest } from "@/lib/api/schemas"
 import {
@@ -15,7 +15,7 @@ import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { gotoChatFast, waitForChatReady } from "./helpers/assertions"
 import { buildE2ETestHeaders } from "./lib/test-headers"
 
-async function ensureConversationSidebarOpen(authenticatedPage: import("@playwright/test").Page): Promise<void> {
+async function ensureConversationSidebarOpen(authenticatedPage: Page): Promise<void> {
   const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
   if (await sidebar.isVisible()) {
     return
@@ -25,6 +25,25 @@ async function ensureConversationSidebarOpen(authenticatedPage: import("@playwri
   await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await openSidebarButton.click()
   await expect(sidebar).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+}
+
+/**
+ * Navigate to chat and wait for the conversations sync to complete.
+ *
+ * The chat page fires a fire-and-forget sync in useEffect. Without waiting for
+ * the API response, the sidebar may not yet contain server-side conversations
+ * (like seeded automation transcripts). This helper intercepts the first
+ * /api/conversations response so callers can safely query the sidebar afterward.
+ */
+async function gotoChatAndWaitForSync(page: Page, workspace: string, orgId: string): Promise<void> {
+  const syncPromise = page.waitForResponse(
+    response => response.url().includes("/api/conversations") && !response.url().includes("/messages"),
+    { timeout: TEST_TIMEOUTS.max },
+  )
+
+  await gotoChatFast(page, workspace, orgId)
+  await waitForChatReady(page)
+  await syncPromise
 }
 
 async function readJsonOrThrow<T>(
@@ -163,8 +182,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
     }
 
     try {
-      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
-      await waitForChatReady(authenticatedPage)
+      await gotoChatAndWaitForSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
       // Open sidebar and find the automation conversation
       await ensureConversationSidebarOpen(authenticatedPage)
@@ -219,8 +237,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
     }
 
     try {
-      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
-      await waitForChatReady(authenticatedPage)
+      await gotoChatAndWaitForSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
       // The default landing is a fresh chat tab — should have ChatInput
       const messageInput = authenticatedPage.locator('[data-testid="message-input"]')
@@ -243,7 +260,7 @@ test.describe("Automation Transcript Read-Only UX", () => {
 
       // Switch back to a new regular conversation via "New Chat" in sidebar.
       await ensureConversationSidebarOpen(authenticatedPage)
-      const newChatButton = sidebar.getByRole("button", { name: "New Chat" })
+      const newChatButton = sidebar.getByRole("button", { name: "New chat" })
       await expect(newChatButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
       await newChatButton.click()
 
@@ -310,13 +327,9 @@ test.describe("Automation Transcript Polling", () => {
     authenticatedPage.on("response", onResponse)
 
     try {
-      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
-      await waitForChatReady(authenticatedPage)
+      await gotoChatAndWaitForSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
-      const openSidebarButton = authenticatedPage.getByRole("button", { name: "Open sidebar" })
-      await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
-      await openSidebarButton.click()
-
+      await ensureConversationSidebarOpen(authenticatedPage)
       const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
       const automationConversation = sidebar.getByText(seed.title, { exact: true })
       await expect(automationConversation).toBeVisible({ timeout: TEST_TIMEOUTS.max })
