@@ -134,6 +134,20 @@ async function cleanHostFilesIfRequested(workspace: string, files?: string[]): P
   return cleaned
 }
 
+async function getExistingHostWorkspace(workspace: string): Promise<string | undefined> {
+  const sourceWorkspace = getWorkspacePath(workspace)
+
+  try {
+    await fs.stat(sourceWorkspace)
+    return sourceWorkspace
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return undefined
+    }
+    throw error
+  }
+}
+
 async function prepareScratchWorkspaceOnTransition(
   workspace: string,
   currentMode: string,
@@ -143,7 +157,8 @@ async function prepareScratchWorkspaceOnTransition(
     return null
   }
 
-  return resetE2bScratchUserWorkspace(workspace, getWorkspacePath(workspace))
+  const sourceWorkspace = await getExistingHostWorkspace(workspace)
+  return resetE2bScratchUserWorkspace(workspace, sourceWorkspace)
 }
 
 export async function GET(req: Request) {
