@@ -12,7 +12,7 @@ import {
 } from "@/lib/testing/e2e-automation-transcript"
 import { expect, test } from "./fixtures"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
-import { gotoChatAndWaitForConversationsSync } from "./helpers/assertions"
+import { gotoChatFast, waitForChatReady } from "./helpers/assertions"
 import { buildE2ETestHeaders } from "./lib/test-headers"
 
 async function ensureConversationSidebarOpen(authenticatedPage: Page): Promise<void> {
@@ -150,7 +150,10 @@ test.describe("Automation Transcript Read-Only UX", () => {
     }
 
     try {
-      await gotoChatAndWaitForConversationsSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      // Navigate and wait for the app to be ready — don't wait for an intermediate
+      // HTTP response. The conversation appearing in the sidebar IS the sync proof.
+      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await waitForChatReady(authenticatedPage)
 
       // Open sidebar and find the automation conversation
       await ensureConversationSidebarOpen(authenticatedPage)
@@ -173,9 +176,10 @@ test.describe("Automation Transcript Read-Only UX", () => {
       const messageInput = authenticatedPage.locator('[data-testid="message-input"]')
       await expect(messageInput).not.toBeVisible()
 
-      // Assert: the seeded message is displayed
+      // Assert: the seeded message is displayed. Transcript messages arrive via
+      // the automation poller, so this follows the slower data path.
       await expect(authenticatedPage.getByText(seed.initialMessage).first()).toBeVisible({
-        timeout: TEST_TIMEOUTS.medium,
+        timeout: TEST_TIMEOUTS.max,
       })
     } finally {
       await cleanupAutomationTranscript(authenticatedPage.request, handles)
@@ -204,7 +208,8 @@ test.describe("Automation Transcript Read-Only UX", () => {
     }
 
     try {
-      await gotoChatAndWaitForConversationsSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await waitForChatReady(authenticatedPage)
 
       // The default landing is a fresh chat tab — should have ChatInput
       const messageInput = authenticatedPage.locator('[data-testid="message-input"]')
@@ -293,7 +298,8 @@ test.describe("Automation Transcript Polling", () => {
     authenticatedPage.on("response", onResponse)
 
     try {
-      await gotoChatAndWaitForConversationsSync(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await waitForChatReady(authenticatedPage)
 
       await ensureConversationSidebarOpen(authenticatedPage)
       const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()

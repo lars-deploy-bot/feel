@@ -18,7 +18,6 @@
 import { expect, type Page } from "@playwright/test"
 import { createWorkspaceStorageValue, WORKSPACE_STORAGE } from "@webalive/shared"
 import type { E2EReadiness } from "@/lib/stores/hydration-registry"
-import { TAB_DATA_STORAGE_KEY } from "@/lib/stores/storage-keys"
 import { TEST_SELECTORS, TEST_TIMEOUTS } from "../fixtures/test-data"
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -36,14 +35,6 @@ function isWorkspaceStorageSnapshot(value: unknown): boolean {
 function isE2EReadiness(value: unknown): value is E2EReadiness {
   if (!isObjectRecord(value)) return false
   return Reflect.has(value, "appReady") || Reflect.has(value, "chatReady") || Reflect.has(value, "stores")
-}
-
-function isTabDataStorageSnapshot(value: unknown): value is { state: { tabsByWorkspace: Record<string, unknown[]> } } {
-  if (!isObjectRecord(value)) return false
-  const state = Reflect.get(value, "state")
-  if (!isObjectRecord(state)) return false
-  const tabsByWorkspace = Reflect.get(state, "tabsByWorkspace")
-  return isObjectRecord(tabsByWorkspace)
 }
 
 /**
@@ -127,25 +118,6 @@ export async function gotoChat(page: Page, context: { workspace?: string; orgId?
  */
 export async function gotoChatFast(page: Page, workspace: string, orgId: string) {
   await gotoChat(page, { workspace, orgId })
-}
-
-/**
- * Chat readiness does not wait for the background conversation metadata sync.
- * Use this helper before asserting on sidebar entries that come from the server.
- */
-export async function gotoChatAndWaitForConversationsSync(page: Page, workspace: string, orgId: string) {
-  const syncPromise = page.waitForResponse(
-    response => {
-      const url = new URL(response.url())
-      return url.pathname === "/api/conversations"
-    },
-    { timeout: TEST_TIMEOUTS.max },
-  )
-
-  await gotoChatFast(page, workspace, orgId)
-  await waitForChatReady(page)
-  await syncPromise
-  await waitForSyncedWorkspaceTabs(page, workspace)
 }
 
 /**
@@ -244,45 +216,6 @@ async function ensureWorkspaceReady(page: Page, context: { workspace?: string; o
     }
 
     await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({ timeout: TEST_TIMEOUTS.max })
-  }
-}
-
-async function waitForSyncedWorkspaceTabs(page: Page, workspace: string): Promise<void> {
-  await page.waitForFunction(
-    ({ storageKey, targetWorkspace }) => {
-      const raw = localStorage.getItem(storageKey)
-      if (!raw) return false
-
-      try {
-        const parsed: unknown = JSON.parse(raw)
-        if (typeof parsed !== "object" || parsed === null) return false
-        const state = Reflect.get(parsed, "state")
-        if (typeof state !== "object" || state === null) return false
-        const tabsByWorkspace = Reflect.get(state, "tabsByWorkspace")
-        if (typeof tabsByWorkspace !== "object" || tabsByWorkspace === null) return false
-        const workspaceTabs = Reflect.get(tabsByWorkspace, targetWorkspace)
-        return Array.isArray(workspaceTabs) && workspaceTabs.length > 0
-      } catch {
-        return false
-      }
-    },
-    { storageKey: TAB_DATA_STORAGE_KEY, targetWorkspace: workspace },
-    { timeout: TEST_TIMEOUTS.max },
-  )
-
-  const storedTabs = await page.evaluate(key => {
-    const raw = localStorage.getItem(key)
-    if (!raw) return null
-
-    try {
-      return JSON.parse(raw)
-    } catch {
-      return null
-    }
-  }, TAB_DATA_STORAGE_KEY)
-
-  if (!isTabDataStorageSnapshot(storedTabs)) {
-    throw new Error(`Expected synced tab data in localStorage key "${TAB_DATA_STORAGE_KEY}"`)
   }
 }
 

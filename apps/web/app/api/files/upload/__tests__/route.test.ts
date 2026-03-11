@@ -45,6 +45,11 @@ vi.mock("@/features/workspace/lib/workspace-secure", () => ({
   writeAsWorkspaceOwner: vi.fn(),
 }))
 
+// Mock domain runtime resolution (skip E2B branch, use systemd path)
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  resolveDomainRuntime: vi.fn().mockResolvedValue(null),
+}))
+
 // Import after mocking
 const { POST } = await import("../route")
 const { getSessionUser, verifyWorkspaceAccess } = await import("@/features/auth/lib/auth")
