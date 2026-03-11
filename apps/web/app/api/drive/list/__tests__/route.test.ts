@@ -19,6 +19,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest, NextResponse } from "next/server"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Mock auth functions
 vi.mock("@/features/auth/lib/auth", async () => {
@@ -57,18 +58,6 @@ const TEST_DIR = path.join(tmpdir(), "drive-list-test")
 const TEST_WORKSPACE = path.join(TEST_DIR, "user")
 const TEST_DRIVE = path.join(TEST_DIR, "drive")
 
-const MOCK_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
-
 function createMockRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest("http://localhost/api/drive/list", {
     method: "POST",
@@ -101,7 +90,7 @@ describe("POST /api/drive/list", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+    vi.mocked(getSessionUser).mockResolvedValue(MOCK_SESSION_USER)
     vi.mocked(verifyWorkspaceAccess).mockResolvedValue("test-workspace")
     vi.mocked(getWorkspace).mockResolvedValue({
       success: true,

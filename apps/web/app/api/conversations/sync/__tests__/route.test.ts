@@ -12,6 +12,7 @@
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 // Mock auth
 vi.mock("@/features/auth/lib/auth", () => ({
@@ -47,17 +48,7 @@ const { POST } = await import("../route")
 const { getSessionUser } = await import("@/features/auth/lib/auth")
 
 // Test data
-const TEST_USER = {
-  id: "user-test-123",
-  email: "test@example.com",
-  name: "Test User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const TEST_USER = createMockSessionUser({ id: "user-test-123" })
 
 const TEST_CONVERSATION = {
   id: "conv-123",

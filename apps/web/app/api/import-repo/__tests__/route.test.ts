@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 const getSessionUserMock = vi.fn()
 const validateUserOrgAccessMock = vi.fn()
@@ -169,11 +170,9 @@ describe("POST /api/import-repo", () => {
     runStrictDeploymentMock.mockReset()
     siteMetadataSetSiteMock.mockReset()
 
-    getSessionUserMock.mockResolvedValue({
-      id: "user-1",
-      email: "owner@example.com",
-      name: "Owner",
-    })
+    getSessionUserMock.mockResolvedValue(
+      createMockSessionUser({ id: "user-1", email: "owner@example.com", name: "Owner" }),
+    )
     validateUserOrgAccessMock.mockResolvedValue(true)
     getUserQuotaMock.mockResolvedValue({
       canCreateSite: true,
@@ -440,12 +439,9 @@ describe("POST /api/import-repo", () => {
   })
 
   it("allows superadmins to bypass site quota checks", async () => {
-    getSessionUserMock.mockResolvedValueOnce({
-      id: "user-1",
-      email: "owner@example.com",
-      name: "Owner",
-      isSuperadmin: true,
-    })
+    getSessionUserMock.mockResolvedValueOnce(
+      createMockSessionUser({ id: "user-1", email: "owner@example.com", name: "Owner", isSuperadmin: true }),
+    )
     getUserQuotaMock.mockResolvedValueOnce({
       canCreateSite: false,
       maxSites: 1,

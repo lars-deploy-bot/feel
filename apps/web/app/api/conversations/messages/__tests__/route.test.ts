@@ -14,6 +14,7 @@
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Mock auth
 vi.mock("@/features/auth/lib/auth", () => ({
@@ -44,18 +45,6 @@ const { GET } = await import("../route")
 const { getSessionUser } = await import("@/features/auth/lib/auth")
 
 // Test data
-const TEST_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
-
 const TEST_TAB_WITH_CONVERSATION = {
   tab_id: "tab-123",
   conversation_id: "conv-123",
@@ -105,7 +94,7 @@ describe("GET /api/conversations/messages", () => {
     vi.clearAllMocks()
 
     // Default: authenticated user
-    vi.mocked(getSessionUser).mockResolvedValue(TEST_USER)
+    vi.mocked(getSessionUser).mockResolvedValue(MOCK_SESSION_USER)
 
     // Set up chainable mocks
     mockSingle.mockResolvedValue({

@@ -14,6 +14,7 @@ import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { SessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", async () => {
   const actual = await vi.importActual<typeof import("@/features/auth/lib/auth")>("@/features/auth/lib/auth")
@@ -60,17 +61,7 @@ const { WorktreeError, listWorktrees, createWorktree, removeWorktree } = await i
 )
 const Sentry = await import("@sentry/nextjs")
 
-const MOCK_USER: SessionUser = {
-  id: "user-1",
-  email: "test@example.com",
-  name: "Test User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const MOCK_USER: SessionUser = createMockSessionUser({ id: "user-1" })
 
 function createRequest(url: string, method: string, body?: Record<string, unknown>) {
   return new NextRequest(url, {

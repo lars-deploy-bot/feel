@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", () => ({
   requireAuthSession: vi.fn(),
@@ -18,22 +19,10 @@ const { POST } = await import("../route")
 const { requireAuthSession, AuthenticationError } = await import("@/features/auth/lib/auth")
 const { revokeOtherSessions } = await import("@/features/auth/sessions/session-service")
 
-const MOCK_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
-
 const CURRENT_SID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 const MOCK_AUTH_SESSION = {
-  user: MOCK_USER,
+  user: MOCK_SESSION_USER,
   payload: {
     role: "authenticated" as const,
     sub: "user-123",

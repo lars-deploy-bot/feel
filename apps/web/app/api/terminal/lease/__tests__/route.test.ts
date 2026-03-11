@@ -14,6 +14,7 @@
 
 import { NextResponse } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Track fetch calls for shell server
 const mockFetchImpl = vi.fn()
@@ -69,17 +70,7 @@ vi.stubGlobal(
 const { POST } = await import("../route")
 const { validateRequest } = await import("@/features/auth/lib/auth")
 
-const MOCK_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const MOCK_USER = MOCK_SESSION_USER
 
 function makeRequest(body: Record<string, unknown> = { workspace: "example.com" }): Request {
   return new Request("http://localhost/api/terminal/lease", {

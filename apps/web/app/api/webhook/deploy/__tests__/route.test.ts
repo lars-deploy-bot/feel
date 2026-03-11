@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", () => ({
   getSessionUser: vi.fn(),
@@ -9,17 +10,13 @@ const { GET } = await import("../route")
 const { getSessionUser } = await import("@/features/auth/lib/auth")
 
 function makeUser(isSuperadmin: boolean) {
-  return {
+  return createMockSessionUser({
     id: "user-1",
     email: "user@example.com",
     name: "User",
-    firstName: null,
-    lastName: null,
-    canSelectAnyModel: false,
     isAdmin: isSuperadmin,
     isSuperadmin,
-    enabledModels: [],
-  }
+  })
 }
 
 describe("GET /api/webhook/deploy", () => {
