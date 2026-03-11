@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", () => ({
   getSessionUser: vi.fn(),
@@ -15,17 +16,11 @@ const { getSessionUser } = await import("@/features/auth/lib/auth")
 const { invalidateUserAuthzCache } = await import("@/features/auth/lib/auth")
 const { createIamClient } = await import("@/lib/supabase/iam")
 
-const MOCK_USER = {
+const MOCK_USER = createMockSessionUser({
   id: "user-1",
   email: "user@example.com",
   name: "User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+})
 
 function makeGetRequest(orgId?: string): NextRequest {
   const url = orgId ? `http://localhost/api/auth/org-members?orgId=${orgId}` : "http://localhost/api/auth/org-members"

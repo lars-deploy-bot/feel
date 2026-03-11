@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 // --- Mock setup ---
 const requireSessionUserMock = vi.fn()
@@ -49,17 +50,10 @@ vi.mock("@sentry/nextjs", () => ({
 const { GET } = await import("../route")
 const { AuthenticationError } = await import("@/features/auth/lib/auth")
 
-const MOCK_USER = {
-  id: "user-123",
+const MOCK_USER = createMockSessionUser({
   email: "user@example.com",
   name: "User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+})
 
 function createRequest(path: string): NextRequest {
   return new NextRequest(`http://localhost${path}`, {

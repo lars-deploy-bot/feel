@@ -1,5 +1,6 @@
 import { OAUTH_MCP_PROVIDERS } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 import { getOAuthConfig, type OAuthFlowResult } from "../oauth-flow-handler"
 
 const baseUrl = "https://example.com"
@@ -190,17 +191,7 @@ const { handleOAuthCallback } = await import("../oauth-flow-handler")
 function makeContext(overrides?: Partial<{ provider: string; userId: string; baseUrl: string }>) {
   return {
     provider: overrides?.provider ?? "gmail",
-    user: {
-      id: overrides?.userId ?? "user-123",
-      email: "test@test.com",
-      name: null,
-      firstName: null,
-      lastName: null,
-      canSelectAnyModel: false,
-      isAdmin: false,
-      isSuperadmin: false,
-      enabledModels: [],
-    },
+    user: createMockSessionUser({ id: overrides?.userId ?? "user-123", email: "test@test.com", name: null }),
     baseUrl: overrides?.baseUrl ?? "https://app.test.com",
   }
 }

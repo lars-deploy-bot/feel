@@ -1,6 +1,7 @@
 import { SUPERADMIN } from "@webalive/shared"
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSessionUser, MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", () => ({
   getSessionUser: vi.fn(),
@@ -55,24 +56,13 @@ vi.mock("@/lib/supabase/app", () => ({
 const { GET } = await import("../route")
 const { getSessionUser, hasSessionScope } = await import("@/features/auth/lib/auth")
 
-const REGULAR_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const REGULAR_USER = MOCK_SESSION_USER
 
-const SUPERADMIN_USER = {
-  ...REGULAR_USER,
+const SUPERADMIN_USER = createMockSessionUser({
   id: "superadmin-1",
   email: "admin@alive.best",
   isSuperadmin: true,
-}
+})
 
 function createMockRequest(orgId?: string): NextRequest {
   const url = orgId ? `http://localhost/api/auth/workspaces?org_id=${orgId}` : "http://localhost/api/auth/workspaces"

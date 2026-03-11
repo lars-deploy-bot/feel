@@ -14,7 +14,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest, NextResponse } from "next/server"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
-import type { SessionUser } from "@/features/auth/lib/auth"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 const mockGetSessionUser = vi.fn()
 const mockVerifyWorkspaceAccess = vi.fn()
@@ -81,18 +81,6 @@ interface ReadErrorResponse {
 
 type ReadResponse = ReadSuccessResponse | ReadErrorResponse
 
-const MOCK_USER: SessionUser = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
-
 function createMockRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest("http://localhost/api/files/read", {
     method: "POST",
@@ -128,7 +116,7 @@ describe("POST /api/files/read", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetSessionUser.mockResolvedValue(MOCK_USER)
+    mockGetSessionUser.mockResolvedValue(MOCK_SESSION_USER)
     mockVerifyWorkspaceAccess.mockResolvedValue(TEST_WORKSPACE)
     mockResolveDomainRuntime.mockResolvedValue(null)
 

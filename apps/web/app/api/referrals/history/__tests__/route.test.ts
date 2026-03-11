@@ -14,6 +14,7 @@
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Mock auth - only override getSessionUser
 vi.mock("@/features/auth/lib/auth", async () => {
@@ -34,18 +35,7 @@ const { GET } = await import("../route")
 const { getSessionUser } = await import("@/features/auth/lib/auth")
 const { createIamClient } = await import("@/lib/supabase/iam")
 
-// Mock user
-const MOCK_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const MOCK_USER = MOCK_SESSION_USER
 
 // Sample referral data
 const MOCK_REFERRALS = [

@@ -15,6 +15,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 // Mock auth - only override getSessionUser
 vi.mock("@/features/auth/lib/auth", async () => {
@@ -60,18 +61,7 @@ const { getSessionUser } = await import("@/features/auth/lib/auth")
 const { createIamClient } = await import("@/lib/supabase/iam")
 const { sendReferralInvite } = await import("@/lib/email/send-referral-invite")
 
-// Mock user
-const MOCK_USER = {
-  id: "user-123",
-  email: "sender@example.com",
-  name: "Test Sender",
-  firstName: null,
-  lastName: null,
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const MOCK_USER = createMockSessionUser({ email: "sender@example.com", name: "Test Sender" })
 
 // Helper to create mock request
 function mockRequest(body: Record<string, unknown>): Request {

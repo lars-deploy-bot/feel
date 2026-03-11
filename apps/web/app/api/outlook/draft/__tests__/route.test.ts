@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 const mockGetAccessToken = vi.fn()
 const mockFetch = vi.fn()
@@ -51,17 +52,7 @@ describe("POST /api/outlook/draft", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(getSessionUser).mockResolvedValue({
-      id: "user-1",
-      email: "test@example.com",
-      name: "Test User",
-      firstName: null,
-      lastName: null,
-      canSelectAnyModel: false,
-      isAdmin: false,
-      isSuperadmin: false,
-      enabledModels: [],
-    })
+    vi.mocked(getSessionUser).mockResolvedValue(MOCK_SESSION_USER)
     mockGetAccessToken.mockResolvedValue("access-token-1")
 
     // Default: /me returns profile, /me/messages returns draft
