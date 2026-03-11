@@ -105,6 +105,9 @@ async function flushDexieSave(tabId: string): Promise<void> {
   }
 }
 
+// Stable empty reference — avoids re-renders when tab has no attachments
+const EMPTY_ATTACHMENTS: Attachment[] = []
+
 // Atomic selector — returns attachments for a specific tab (empty array if null/missing)
 export const useTabAttachments = (tabId: string | null) =>
-  useAttachmentStore(s => (tabId ? (s.byTab[tabId] ?? []) : []))
+  useAttachmentStore(s => (tabId ? (s.byTab[tabId] ?? EMPTY_ATTACHMENTS) : EMPTY_ATTACHMENTS))

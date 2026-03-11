@@ -52,7 +52,17 @@ export async function GET(request: NextRequest) {
         archived_at,
         source,
         source_metadata,
-        conversation_tabs (*)
+        conversation_tabs (
+          tab_id,
+          conversation_id,
+          name,
+          position,
+          message_count,
+          last_message_at,
+          created_at,
+          closed_at,
+          draft
+        )
       `)
       .eq("workspace", workspace)
       .is("deleted_at", null)

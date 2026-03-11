@@ -2,7 +2,7 @@
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { AnimatePresence, motion } from "framer-motion"
 import { useQueryState } from "nuqs"
-import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { GithubImportModal } from "@/components/modals/GithubImportModal"
@@ -307,12 +307,12 @@ function ChatPageContent() {
   // Context compaction state — tracks whether compaction is in progress
   // by comparing positions of the last "compacting" vs "compact_boundary" messages.
   // Handles multiple compaction cycles correctly (each cycle: compacting → compact_boundary).
-  const isCompactionInProgress = (() => {
+  const isCompactionInProgress = useMemo(() => {
     const lastCompactingIdx = messages.findLastIndex(m => m.type === "compacting")
     if (lastCompactingIdx < 0) return false
     const lastBoundaryIdx = messages.findLastIndex(m => m.type === "compact_boundary")
     return lastCompactingIdx > lastBoundaryIdx
-  })()
+  }, [messages])
 
   // Custom hooks
   const statusText = useStatusText(busy, messages)
