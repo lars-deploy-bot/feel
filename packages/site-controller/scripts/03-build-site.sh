@@ -81,7 +81,9 @@ else
     # Determine where to run setup/build commands
     if [[ "$ALIVE_TOML" == "true" ]]; then
         # alive.toml path: use explicit commands
-        BUILD_DIR="${TARGET_DIR}/${PROJECT_ROOT}"
+        # Setup/build run from TARGET_DIR (workspace root where package.json + bun.lock live),
+        # NOT from PROJECT_ROOT (which is the app subdirectory for run commands).
+        BUILD_DIR="$TARGET_DIR"
         log_info "Using alive.toml (root=${PROJECT_ROOT})"
 
         # Setup (install dependencies)

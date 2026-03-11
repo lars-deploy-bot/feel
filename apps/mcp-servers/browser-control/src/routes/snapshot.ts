@@ -1,4 +1,5 @@
 import { browserPool } from "../browser-pool.js"
+import { waitForPageStable } from "../page-wait.js"
 import { takeSnapshot } from "../snapshot-formatter.js"
 import type { RouteHandler } from "../types.js"
 
@@ -26,6 +27,11 @@ export const handleSnapshot: RouteHandler = async (body, signal) => {
   if (currentUrl === "about:blank") {
     return { ok: false, status: 400, error: "No page loaded. Use the 'open' action first to navigate to your site." }
   }
+
+  // Wait for page to stabilize before snapshotting — incomplete DOM = incomplete AX tree
+  await waitForPageStable(session.page, { timeoutMs: 5_000 })
+
+  if (signal.aborted) throw new Error("aborted")
 
   const result = await takeSnapshot(session.page, { interactive })
 
