@@ -22,9 +22,9 @@ import {
 // === Linear Components ===
 import { LinearIssueResult, validateLinearIssue } from "@/components/linear/LinearIssueResult"
 import { LinearIssuesResult, validateLinearIssues } from "@/components/linear/LinearIssuesResult"
-import { AutomationConfigOutput, validateAutomationConfig } from "@/components/ui/chat/tools/ai/AutomationConfigOutput"
 // === AI Components ===
 import { AskUserQuestionOutput, validateAskUserQuestion } from "@/components/ui/chat/tools/ai/AskUserQuestionOutput"
+import { AutomationConfigOutput, validateAutomationConfig } from "@/components/ui/chat/tools/ai/AutomationConfigOutput"
 import {
   ClarificationQuestionsOutput,
   validateClarificationQuestions,
