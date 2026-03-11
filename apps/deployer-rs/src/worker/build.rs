@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::{anyhow, Context, Result};
 use serde_json::json;
 use tokio::fs as tokio_fs;
@@ -17,6 +19,24 @@ use crate::github::{cleanup_source_snapshot, export_github_snapshot, resolve_git
 use crate::constants::BUILD_TIMEOUT;
 use crate::logging::{run_logged_command_with_timeout, TaskPipeline};
 use crate::types::{ClaimedBuild, LeaseTarget, ServiceContext, TaskEventType, TaskStage};
+
+fn assert_path_contained(child: &Path, parent: &Path, label: &str) -> Result<()> {
+    let canonical_parent = parent
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize parent {}", parent.display()))?;
+    let canonical_child = child
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize {} {}", label, child.display()))?;
+    if !canonical_child.starts_with(&canonical_parent) {
+        return Err(anyhow!(
+            "{} escapes source directory: {} is outside {}",
+            label,
+            canonical_child.display(),
+            canonical_parent.display()
+        ));
+    }
+    Ok(())
+}
 
 pub(super) async fn process_build(
     client: &Client,
@@ -61,14 +81,14 @@ pub(super) async fn process_build(
             }
             Err(error) => {
                 let typed_error = TaskExecutionError::source_resolution(error);
-                resolve_stage.finish_error(&typed_error.to_string()).await?;
+                resolve_stage.finish_error(&typed_error.display_full()).await?;
                 pipeline
                     .emit(
                         TaskEventType::Failed,
-                        json!({ "error": typed_error.to_string() }),
+                        json!({ "error": typed_error.display_full() }),
                     )
                     .await?;
-                mark_build_failed(client, &build.build_id, &typed_error.to_string(), &log_path)
+                mark_build_failed(client, &build.build_id, &typed_error.display_full(), &log_path)
                     .await
                     .map_err(TaskExecutionError::db_transition)?;
                 return Err(typed_error.into());
@@ -100,12 +120,14 @@ pub(super) async fn process_build(
         {
             let typed_error = TaskExecutionError::source_snapshot(error);
             prepare_source_stage
-                .finish_error(&typed_error.to_string())
+                .finish_error(&typed_error.display_full())
                 .await?;
             return Err(typed_error.into());
         }
 
         let config_path = source_dir.join(&application.config_path);
+        assert_path_contained(&config_path, &source_dir, "config_path")
+            .map_err(TaskExecutionError::build_validation)?;
         let config_metadata = tokio_fs::metadata(&config_path).await;
         if !matches!(config_metadata, Ok(metadata) if metadata.is_file()) {
             let typed_error = TaskExecutionError::build_validation(anyhow!(
@@ -114,7 +136,7 @@ pub(super) async fn process_build(
                 application.config_path
             ));
             prepare_source_stage
-                .finish_error(&typed_error.to_string())
+                .finish_error(&typed_error.display_full())
                 .await?;
             return Err(typed_error.into());
         }
@@ -127,7 +149,7 @@ pub(super) async fn process_build(
             Err(error) => {
                 let typed_error = TaskExecutionError::build_validation(error);
                 prepare_source_stage
-                    .finish_error(&typed_error.to_string())
+                    .finish_error(&typed_error.display_full())
                     .await?;
                 return Err(typed_error.into());
             }
@@ -136,7 +158,7 @@ pub(super) async fn process_build(
         if let Err(error) = validate_application_matches_config(&application, &alive_config) {
             let typed_error = TaskExecutionError::build_validation(error);
             prepare_source_stage
-                .finish_error(&typed_error.to_string())
+                .finish_error(&typed_error.display_full())
                 .await?;
             return Err(typed_error.into());
         }
@@ -224,7 +246,11 @@ pub(super) async fn process_build(
             .await?;
 
         let dockerfile_path = source_dir.join(&alive_config.docker.dockerfile);
+        assert_path_contained(&dockerfile_path, &source_dir, "dockerfile")
+            .map_err(TaskExecutionError::build_validation)?;
         let build_context = source_dir.join(&alive_config.docker.context);
+        assert_path_contained(&build_context, &source_dir, "docker context")
+            .map_err(TaskExecutionError::build_validation)?;
         let image_ref = format!("{}:{}", alive_config.docker.image_repository, short_sha);
         let iid_file = context
             .data_dir
@@ -278,7 +304,7 @@ pub(super) async fn process_build(
         {
             let typed_error = TaskExecutionError::build_image(error);
             build_image_stage
-                .finish_error(&typed_error.to_string())
+                .finish_error(&typed_error.display_full())
                 .await?;
             return Err(typed_error.into());
         }
@@ -310,7 +336,7 @@ pub(super) async fn process_build(
                 Ok(digest) => digest,
                 Err(error) => {
                     let typed_error = TaskExecutionError::artifact_publish(error);
-                    publish_stage.finish_error(&typed_error.to_string()).await?;
+                    publish_stage.finish_error(&typed_error.display_full()).await?;
                     return Err(typed_error.into());
                 }
             };
@@ -390,11 +416,12 @@ pub(super) async fn process_build(
     }
 
     if let Err(error) = build_result {
-        pipeline.finish_failure(&error.to_string()).await?;
+        let error_display = format!("{:#}", error);
+        pipeline.finish_failure(&error_display).await?;
         pipeline
-            .emit(TaskEventType::Failed, json!({ "error": error.to_string() }))
+            .emit(TaskEventType::Failed, json!({ "error": &error_display }))
             .await?;
-        mark_build_failed(client, &build.build_id, &error.to_string(), &log_path)
+        mark_build_failed(client, &build.build_id, &error_display, &log_path)
             .await
             .map_err(TaskExecutionError::db_transition)?;
         return Err(error);

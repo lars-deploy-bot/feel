@@ -11,6 +11,10 @@ target
 test-results
 playwright-report
 blob-report
+.env
+.env.*
+apps/api/.env
+apps/api/.env.*
 apps/web/.next
 apps/web/.env
 apps/web/.env.local
@@ -19,5 +23,7 @@ apps/web/.env.staging
 apps/web/.env.test
 apps/web/.env.production
 apps/web/.env.*.local
+apps/manager/.env
+apps/manager/.env.*
 ops/caddy/generated
 huurmatcher-work2

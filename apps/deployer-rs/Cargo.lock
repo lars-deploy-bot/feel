@@ -10,6 +10,7 @@ dependencies = [
  "axum",
  "chrono",
  "hostname",
+ "percent-encoding",
  "reqwest",
  "serde",
  "serde_json",

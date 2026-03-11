@@ -59,7 +59,7 @@ pub async fn run() -> Result<()> {
         data_dir: context.data_dir.clone(),
     };
 
-    let _health_server = tokio::spawn(run_health_server(state));
+    let health_server = tokio::spawn(run_health_server(state));
 
     let mut client = connect_postgres(&context.env.database_url).await?;
 
@@ -71,7 +71,18 @@ pub async fn run() -> Result<()> {
     let mut sigterm =
         signal(SignalKind::terminate()).context("failed to register SIGTERM handler")?;
 
+    let mut health_server = health_server;
+
     loop {
+        if health_server.is_finished() {
+            match (&mut health_server).await {
+                Ok(Ok(())) => warn!(message = "health server exited unexpectedly"),
+                Ok(Err(error)) => error!(message = "health server failed", error = %format!("{:#}", error)),
+                Err(error) => error!(message = "health server panicked", error = %error),
+            }
+            return Err(anyhow::anyhow!("health server is no longer running"));
+        }
+
         {
             let mut worker = health.write().await;
             worker.status = WorkerStatus::Idle;
@@ -246,7 +257,7 @@ async fn tick(
             WorkerStatus::Error
         };
         if let Err(error) = result {
-            worker.last_error = Some(error.to_string());
+            worker.last_error = Some(format!("{:#}", error));
             return Err(error);
         }
 
@@ -272,7 +283,7 @@ async fn tick(
             WorkerStatus::Error
         };
         if let Err(error) = result {
-            worker.last_error = Some(error.to_string());
+            worker.last_error = Some(format!("{:#}", error));
             return Err(error);
         }
     }

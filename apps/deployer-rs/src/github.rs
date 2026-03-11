@@ -5,6 +5,8 @@ use anyhow::{anyhow, Context, Result};
 use tokio::fs as tokio_fs;
 use tokio::process::Command;
 
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+
 use crate::constants::{GITHUB_API_PREFIX, GH_API_RETRY_ATTEMPTS, GH_API_RETRY_BASE_DELAY};
 use crate::logging::{append_log, run_logged_command};
 use crate::types::{ApplicationRow, GitHubCommitPayload};
@@ -19,9 +21,10 @@ pub(crate) async fn resolve_github_commit(
     } else {
         git_ref
     };
+    let encoded_ref = utf8_percent_encode(resolved_ref, NON_ALPHANUMERIC).to_string();
     let endpoint = format!(
         "{}/{}/{}/commits/{}",
-        GITHUB_API_PREFIX, application.repo_owner, application.repo_name, resolved_ref
+        GITHUB_API_PREFIX, application.repo_owner, application.repo_name, encoded_ref
     );
     let output = run_gh_api_capture(&endpoint, log_path).await?;
     let commit = serde_json::from_str::<GitHubCommitPayload>(&output)

@@ -1,7 +1,10 @@
-import { readFile } from "node:fs/promises"
+import { createReadStream } from "node:fs"
+import { open, stat } from "node:fs/promises"
 import path from "node:path"
+import { createInterface } from "node:readline"
 import {
   DEPLOY_DEPLOYMENT_ACTION_DEPLOY,
+  DEPLOY_DEPLOYMENT_ACTION_PROMOTE,
   DEPLOY_ENVIRONMENT_PRODUCTION,
   DEPLOY_ENVIRONMENT_STAGING,
   type DeployDeploymentAction,
@@ -85,9 +88,9 @@ async function readLogFile(logPath: string): Promise<string> {
     throw new NotFoundError("Log file is outside the deployer data directory")
   }
 
-  let content = ""
+  let fileHandle: Awaited<ReturnType<typeof open>> | null = null
   try {
-    content = await readFile(absoluteLogPath, "utf8")
+    fileHandle = await open(absoluteLogPath, "r")
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       throw new NotFoundError("Log file not found")
@@ -95,8 +98,22 @@ async function readLogFile(logPath: string): Promise<string> {
     throw error
   }
 
-  const lines = content.split("\n")
-  return lines.slice(-LOG_TAIL_LINES).join("\n")
+  try {
+    const ring: string[] = []
+    const rl = createInterface({
+      input: fileHandle.createReadStream({ encoding: "utf8" }),
+      crlfDelay: Number.POSITIVE_INFINITY,
+    })
+    for await (const line of rl) {
+      ring.push(line)
+      if (ring.length > LOG_TAIL_LINES) {
+        ring.shift()
+      }
+    }
+    return ring.join("\n")
+  } finally {
+    await fileHandle.close()
+  }
 }
 
 export async function listDeployApplications(): Promise<ManagerDeployApplication[]> {
@@ -236,7 +253,7 @@ export async function queueBuild(applicationId: string, gitRef?: string): Promis
 export async function queueDeployment(
   environmentId: string,
   releaseId: string,
-  action: DeployDeploymentAction = DEPLOYMENT_DEFAULT_ACTION,
+  action?: DeployDeploymentAction,
 ): Promise<ManagerDeployDeployment> {
   const environment = await deployRepo.findEnvironmentById(environmentId)
   const release = await deployRepo.findReleaseById(releaseId)
@@ -275,18 +292,22 @@ export async function queueDeployment(
     promotedFromDeploymentId = successfulStagingDeployment.deployment_id
   }
 
+  const resolvedAction =
+    action ??
+    (environment.name === DEPLOY_ENVIRONMENT_PRODUCTION
+      ? DEPLOY_DEPLOYMENT_ACTION_PROMOTE
+      : DEPLOY_DEPLOYMENT_ACTION_DEPLOY)
+
   const deployment = await deployRepo.createDeployment({
     environment_id: environment.environment_id,
     release_id: releaseId,
-    action,
+    action: resolvedAction,
     previous_deployment_id: previousDeployment?.deployment_id ?? null,
     promoted_from_deployment_id: promotedFromDeploymentId,
   })
 
   return mapDeployment(deployment, environment)
 }
-
-const DEPLOYMENT_DEFAULT_ACTION = DEPLOY_DEPLOYMENT_ACTION_DEPLOY
 
 export async function readBuildLog(buildId: string): Promise<string> {
   const build = await deployRepo.findBuildById(buildId)
