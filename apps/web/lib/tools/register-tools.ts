@@ -24,6 +24,7 @@ import { LinearIssueResult, validateLinearIssue } from "@/components/linear/Line
 import { LinearIssuesResult, validateLinearIssues } from "@/components/linear/LinearIssuesResult"
 import { AutomationConfigOutput, validateAutomationConfig } from "@/components/ui/chat/tools/ai/AutomationConfigOutput"
 // === AI Components ===
+import { AskUserQuestionOutput, validateAskUserQuestion } from "@/components/ui/chat/tools/ai/AskUserQuestionOutput"
 import {
   ClarificationQuestionsOutput,
   validateClarificationQuestions,
@@ -77,6 +78,7 @@ registerComponent(CALENDAR.PROPOSE_MEETING, CalendarEventDraftOutput, validateCa
 // ============================================================
 
 registerComponent(AI.ASK_CLARIFICATION, ClarificationQuestionsOutput, validateClarificationQuestions)
+registerComponent(AI.ASK_USER_QUESTION, AskUserQuestionOutput, validateAskUserQuestion)
 registerComponent(AI.ASK_WEBSITE_CONFIG, WebsiteConfigOutput, validateWebsiteConfig)
 registerComponent(AI.ASK_AUTOMATION_CONFIG, AutomationConfigOutput, validateAutomationConfig)
 
