@@ -69,7 +69,10 @@ export async function parseJsonBody(req: IncomingMessage): Promise<Record<string
 export async function dispatch(handler: RouteHandler, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const controller = new AbortController()
   const onClose = () => controller.abort()
-  req.on("close", onClose)
+  // IMPORTANT: Listen on `res` (response/socket close), NOT `req` (request stream close).
+  // In Bun, req.close fires 1ms after req.end (body fully read) — way before the handler
+  // finishes. This caused the AbortSignal to fire immediately, silently dropping responses.
+  res.on("close", onClose)
 
   let body: Record<string, unknown>
   try {

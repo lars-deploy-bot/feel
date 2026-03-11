@@ -1,5 +1,4 @@
 import { browserPool } from "../browser-pool.js"
-import { waitForPageStable } from "../page-wait.js"
 import { resolveUrl } from "../port-resolver.js"
 import type { RouteHandler } from "../types.js"
 
@@ -27,8 +26,7 @@ export const handleOpen: RouteHandler = async (body, signal) => {
 
   const session = await browserPool.getSession(domain, sessionId)
 
-  // "commit" = first response received, navigation committed to the new URL.
-  // Fast and reliable — we do the real rendering wait in waitForPageStable().
+  // Navigate with "commit" — fast and reliable.
   const response = await session.page.goto(url, {
     waitUntil: "commit",
     timeout: 15_000,
@@ -36,11 +34,9 @@ export const handleOpen: RouteHandler = async (body, signal) => {
 
   if (signal.aborted) throw new Error("aborted")
 
-  // Wait for the page to actually render.
-  // CRITICAL: Do NOT use Playwright's waitForLoadState() here — it hangs
-  // indefinitely on Vite dev mode pages with Chrome 144+ (Playwright 1.58 bug).
-  // Instead, use our own page.evaluate()-based wait which we fully control.
-  await waitForPageStable(session.page, { timeoutMs: 8_000 })
+  // Give page time to render — use a simple native timeout instead of
+  // Playwright's waitForLoadState() which hangs with Chrome 144+.
+  await new Promise<void>(resolve => setTimeout(resolve, 2_000))
 
   if (signal.aborted) throw new Error("aborted")
 
