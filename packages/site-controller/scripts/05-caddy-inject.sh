@@ -13,7 +13,7 @@ source "$(dirname "$0")/lib/common.sh"
 # Prerequisites:
 # - SERVER_CONFIG_PATH env var points to server-config.json with serverId
 # - Database has server_id column on domains table
-# - SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set
+# - Canonical production infra DB credentials are available via apps/web/.env.production
 
 # Validate required environment variables
 require_var SITE_DOMAIN

@@ -57,6 +57,10 @@ export const sharedConfig = {
       "@webalive/shared/manager-types": join(process.cwd(), "../../packages/shared/src/manager-types.ts"),
       "@webalive/shared/models": join(process.cwd(), "../../packages/shared/src/models.ts"),
       "@webalive/shared/path-security": join(process.cwd(), "../../packages/shared/src/path-security.ts"),
+      "@webalive/shared/sdk-message-tool-metadata": join(
+        process.cwd(),
+        "../../packages/shared/src/sdk-message-tool-metadata.ts",
+      ),
       "@webalive/shared/tools": join(process.cwd(), "../../packages/shared/src/tools/stream-tools.ts"),
       "@webalive/shared": join(process.cwd(), "../../packages/shared/src/index.ts"),
       "@webalive/tools/display": join(process.cwd(), "../../packages/tools/src/display.ts"),

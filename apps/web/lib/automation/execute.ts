@@ -15,6 +15,7 @@ import {
   unwrapStreamEnvelope,
   updateConversationMetadata,
 } from "@webalive/automation-engine"
+import { createToolMetadataStore, syncSdkMessageToolMetadata } from "@webalive/shared/sdk-message-tool-metadata"
 
 /**
  * Flush all pending message writes and report failures to Sentry.
@@ -93,6 +94,7 @@ export async function executeJob(ctx: RunContext): Promise<{
     const onPersistMessage = ctx.chatTabId
       ? (() => {
           let seq = startSeq
+          const toolMetadataStore = createToolMetadataStore()
           return (msg: Record<string, unknown>) => {
             // Only persist transcript-relevant messages (assistant, user, result).
             // Filters at both IPC level (skips session/complete) and SDK level
@@ -103,6 +105,7 @@ export async function executeJob(ctx: RunContext): Promise<{
             // Unwrap the NDJSON stream envelope to get the actual SDK message.
             // Worker pool wraps as: { type: "stream_message", messageType: "assistant", content: <SDK msg> }
             const sdkMessage = unwrapStreamEnvelope(msg.content)
+            syncSdkMessageToolMetadata(sdkMessage, toolMetadataStore)
             seq += 1
             pendingWrites.push(
               persistRunMessage({

@@ -25,6 +25,10 @@
       "import": "./dist/models.js",
       "types": "./dist/models.d.ts"
     },
+    "./sdk-message-tool-metadata": {
+      "import": "./dist/sdk-message-tool-metadata.js",
+      "types": "./dist/sdk-message-tool-metadata.d.ts"
+    },
     "./tools": {
       "import": "./dist/tools/stream-tools.js",
       "types": "./dist/tools/stream-tools.d.ts"

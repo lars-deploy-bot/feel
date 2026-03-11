@@ -14,6 +14,8 @@ import { dirname, join } from "node:path"
 import { createClient } from "@supabase/supabase-js"
 import { retryAsync } from "@webalive/shared"
 import { PATHS } from "../constants.js"
+import { assertNoDangerousCountDrop, readExistingPortMapCount } from "../generated-safety.js"
+import { loadCanonicalInfraEnv } from "../infra-env.js"
 
 const PORT_MAP_FILENAME = "port-map.json"
 const SANDBOX_MAP_FILENAME = "sandbox-map.json"
@@ -29,8 +31,9 @@ function getOutputPath(): string {
 }
 
 function getSupabaseClient() {
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const infraEnv = loadCanonicalInfraEnv()
+  const url = infraEnv.SUPABASE_URL
+  const key = infraEnv.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) {
     throw new Error("[port-map] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required")
   }
@@ -138,6 +141,7 @@ export function readTemplatePortMap(templateEnvDir = TEMPLATE_ENV_DIR): Record<s
 export async function regeneratePortMap(requiredHostname?: string): Promise<number> {
   const { portMap, sandboxMap } = await retryAsync(
     async () => {
+      const infraEnv = loadCanonicalInfraEnv()
       const app = getSupabaseClient()
       const { data, error } = await app
         .from("domains")
@@ -149,7 +153,7 @@ export async function regeneratePortMap(requiredHostname?: string): Promise<numb
 
       const ports: Record<string, number> = {}
       const sandboxes: Record<string, SandboxMapEntry> = {}
-      const e2bDomain = process.env.E2B_DOMAIN
+      const e2bDomain = infraEnv.E2B_DOMAIN
 
       for (const row of data || []) {
         if (!row.hostname) continue
@@ -191,6 +195,16 @@ export async function regeneratePortMap(requiredHostname?: string): Promise<numb
 
   const portMapPath = getOutputPath()
   const sandboxMapPath = getSandboxMapPath()
+  const existingTotal = readExistingPortMapCount(portMapPath) + readExistingPortMapCount(sandboxMapPath)
+  const nextTotal = Object.keys(portMap).length + Object.keys(sandboxMap).length
+
+  assertNoDangerousCountDrop({
+    kind: "generated port-map",
+    filePath: portMapPath,
+    existingCount: existingTotal,
+    nextCount: nextTotal,
+  })
+
   mkdirSync(dirname(portMapPath), { recursive: true })
 
   writeFileSync(portMapPath, JSON.stringify(portMap, null, 2), "utf-8")
@@ -211,7 +225,7 @@ export async function regeneratePortMap(requiredHostname?: string): Promise<numb
   // Signal preview-proxy to reload immediately
   signalPreviewProxy()
 
-  const total = Object.keys(portMap).length + Object.keys(sandboxMap).length
+  const total = nextTotal
   if (Object.keys(sandboxMap).length > 0) {
     console.error(`[port-map] Wrote ${Object.keys(portMap).length} ports + ${Object.keys(sandboxMap).length} sandboxes`)
   }

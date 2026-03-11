@@ -1,6 +1,7 @@
 import { COOKIE_NAMES, DOMAINS } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createMockNextRequest, parseCookieHeader, splitSetCookieHeaders } from "@/lib/test-helpers/mock-request"
 
 // Mock env modules before importing route
 // Both @/lib/env (internal) and @webalive/env/server (package) need to be mocked
@@ -50,127 +51,8 @@ const { POST: logoutPOST } = await import("../../logout/route")
  * 5. CORS handling
  */
 
-// Helper to parse Set-Cookie header
-interface CookieConfig {
-  name: string
-  value: string
-  httpOnly: boolean
-  secure: boolean
-  sameSite: string | null
-  path: string | null
-  maxAge: number | null
-  expires: string | null
-}
-
-function parseCookieHeader(setCookieHeader: string): CookieConfig {
-  // Split by semicolon first to get cookie attributes
-  const parts = setCookieHeader.split(";").map(p => p.trim())
-  const [nameValue] = parts
-  const [name, value] = nameValue.split("=")
-
-  const config: CookieConfig = {
-    name,
-    value,
-    httpOnly: false,
-    secure: false,
-    sameSite: null,
-    path: null,
-    maxAge: null,
-    expires: null,
-  }
-
-  // Parse attributes
-  for (let i = 1; i < parts.length; i++) {
-    const part = parts[i]
-    const lower = part.toLowerCase()
-
-    if (lower === "httponly") {
-      config.httpOnly = true
-    } else if (lower === "secure") {
-      config.secure = true
-    } else if (lower.startsWith("samesite=")) {
-      config.sameSite = part.split("=")[1]
-    } else if (lower.startsWith("path=")) {
-      config.path = part.split("=")[1]
-    } else if (lower.startsWith("max-age=")) {
-      config.maxAge = Number.parseInt(part.split("=")[1], 10)
-    } else if (lower.startsWith("expires=")) {
-      // Expires value is everything after "Expires="
-      // Just take the value directly (no need to collect multiple parts)
-      config.expires = part.substring(part.indexOf("=") + 1)
-    }
-  }
-
-  return config
-}
-
-// Helper to split multiple Set-Cookie headers properly
-function splitSetCookieHeaders(setCookieHeader: string): string[] {
-  // Multiple cookies in Set-Cookie are separated by ", <cookiename>="
-  // but Expires values also contain ", "
-  // Strategy: Look for pattern ", <word>=" where word is not a known attribute
-
-  const cookies: string[] = []
-  const parts = setCookieHeader.split("; ")
-  let current = ""
-
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i]
-
-    // Check if this part contains a cookie separator (", cookiename=")
-    const separatorMatch = part.match(/(.*),\s*([a-zA-Z_][a-zA-Z0-9_-]*)=(.*)/)
-
-    if (separatorMatch && !separatorMatch[2].match(/^(Path|Expires|Max-Age|Domain|Secure|HttpOnly|SameSite)$/i)) {
-      // This part contains a new cookie start
-      // separatorMatch[1] is the end of current cookie
-      // separatorMatch[2] is the new cookie name
-      // separatorMatch[3] is the new cookie value
-
-      if (current) {
-        current += "; "
-      }
-      current += separatorMatch[1]
-      cookies.push(current.trim())
-
-      // Start new cookie
-      current = `${separatorMatch[2]}=${separatorMatch[3]}`
-    } else {
-      // Regular part, append to current cookie
-      if (current) {
-        current += "; "
-      }
-      current += part
-    }
-  }
-
-  if (current) {
-    cookies.push(current.trim())
-  }
-
-  return cookies
-}
-
-// Helper to create mock NextRequest
-function createMockRequest(url: string, options?: RequestInit) {
-  const urlObj = new URL(url)
-  const req = new Request(url, options) as unknown as import("next/server").NextRequest
-  ;(req as unknown as Record<string, unknown>).nextUrl = urlObj
-  // Add cookies property that NextRequest provides (for logout route)
-  ;(req as unknown as Record<string, unknown>).cookies = {
-    get: () => undefined,
-    getAll: () => [],
-    has: () => false,
-    set: () => {},
-    delete: () => {},
-  }
-  const originalGet = req.headers.get.bind(req.headers)
-  req.headers.get = (name: string) => {
-    if (name === "origin") return DOMAINS.STREAM_PROD
-    if (name === "host") return "localhost"
-    return originalGet(name)
-  }
-  return req
-}
+// createMockNextRequest, parseCookieHeader, splitSetCookieHeaders, CookieConfig
+// are imported from @/lib/test-helpers/mock-request
 
 describe("POST /api/login-manager", () => {
   beforeEach(() => {
@@ -190,7 +72,7 @@ describe("POST /api/login-manager", () => {
    * Should authenticate successfully with correct passcode
    */
   it("should authenticate successfully with valid passcode", async () => {
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "wachtwoord" }),
@@ -225,7 +107,7 @@ describe("POST /api/login-manager", () => {
    * Should reject authentication with wrong passcode
    */
   it("should reject invalid passcode with proper error code", async () => {
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "wrong_password" }),
@@ -250,7 +132,7 @@ describe("POST /api/login-manager", () => {
    * Should validate request body and reject empty passcode
    */
   it("should reject missing passcode with validation error", async () => {
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -270,7 +152,7 @@ describe("POST /api/login-manager", () => {
    * Should reject empty string passcode
    */
   it("should reject empty passcode", async () => {
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "" }),
@@ -291,7 +173,7 @@ describe("POST /api/login-manager", () => {
   it("should authenticate with test passcode in local mode", async () => {
     vi.stubEnv("STREAM_ENV", "local")
 
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "test" }),
@@ -318,7 +200,7 @@ describe("POST /api/login-manager", () => {
     vi.stubEnv("STREAM_ENV", "")
     vi.stubEnv("NODE_ENV", "production")
 
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "test" }),
@@ -339,7 +221,7 @@ describe("POST /api/login-manager", () => {
   it("should reject all passcodes if ALIVE_PASSCODE not set", async () => {
     process.env.ALIVE_PASSCODE = undefined
 
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "any_password" }),
@@ -361,7 +243,7 @@ describe("POST /api/login-manager", () => {
     vi.stubEnv("NODE_ENV", "production")
 
     // Get login cookie config
-    const loginReq = createMockRequest("http://localhost/api/login-manager", {
+    const loginReq = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "wachtwoord" }),
@@ -377,7 +259,7 @@ describe("POST /api/login-manager", () => {
     const loginCookie = parseCookieHeader(loginSetCookie)
 
     // Get logout cookie config
-    const logoutReq = createMockRequest("http://localhost/api/logout", {
+    const logoutReq = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })
@@ -419,7 +301,7 @@ describe("POST /api/login-manager", () => {
   it("should set manager cookie with attributes matching logout (DEVELOPMENT)", async () => {
     vi.stubEnv("NODE_ENV", "development")
 
-    const loginReq = createMockRequest("http://localhost/api/login-manager", {
+    const loginReq = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "wachtwoord" }),
@@ -435,7 +317,7 @@ describe("POST /api/login-manager", () => {
     const loginCookie = parseCookieHeader(loginSetCookie)
 
     // Get logout cookie
-    const logoutReq = createMockRequest("http://localhost/api/logout", {
+    const logoutReq = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })
@@ -470,7 +352,7 @@ describe("POST /api/login-manager", () => {
   it("should set secure flag based on STREAM_ENV", async () => {
     // Deployed server (STREAM_ENV !== "local"): secure should be TRUE
     vi.stubEnv("STREAM_ENV", "production")
-    let req = createMockRequest("http://localhost/api/login-manager", {
+    let req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "wachtwoord" }),
@@ -481,7 +363,7 @@ describe("POST /api/login-manager", () => {
 
     // Local development (STREAM_ENV === "local"): secure should be FALSE
     vi.stubEnv("STREAM_ENV", "local")
-    req = createMockRequest("http://localhost/api/login-manager", {
+    req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "wachtwoord" }),
@@ -497,7 +379,7 @@ describe("POST /api/login-manager", () => {
    * Requires DOMAINS.STREAM_PROD — skipped in CI (no server-config.json)
    */
   it.skipIf(!DOMAINS.STREAM_PROD)("should include CORS headers", async () => {
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passcode: "wachtwoord" }),
@@ -513,7 +395,7 @@ describe("POST /api/login-manager", () => {
    * Should handle malformed JSON gracefully
    */
   it("should handle malformed JSON", async () => {
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "not valid json{",
@@ -534,7 +416,7 @@ describe("OPTIONS /api/login-manager", () => {
    * Requires DOMAINS.STREAM_PROD — skipped in CI (no server-config.json)
    */
   it.skipIf(!DOMAINS.STREAM_PROD)("should handle CORS preflight requests", async () => {
-    const req = createMockRequest("http://localhost/api/login-manager", {
+    const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "OPTIONS",
     })
 
