@@ -141,17 +141,17 @@ pub(super) async fn process_deployment(
         mark_deployment_failed(
             client,
             &deployment.deployment_id,
-            &typed_error.to_string(),
+            &typed_error.display_full(),
             None,
             &log_path,
         )
         .await
         .map_err(TaskExecutionError::db_transition)?;
-        pipeline.finish_failure(&typed_error.to_string()).await?;
+        pipeline.finish_failure(&typed_error.display_full()).await?;
         pipeline
             .emit(
                 TaskEventType::Failed,
-                json!({ "error": typed_error.to_string(), "reason": "server_mismatch" }),
+                json!({ "error": typed_error.display_full(), "reason": "server_mismatch" }),
             )
             .await?;
         return Err(typed_error.into());
@@ -166,17 +166,17 @@ pub(super) async fn process_deployment(
         mark_deployment_failed(
             client,
             &deployment.deployment_id,
-            &typed_error.to_string(),
+            &typed_error.display_full(),
             None,
             &log_path,
         )
         .await
         .map_err(TaskExecutionError::db_transition)?;
-        pipeline.finish_failure(&typed_error.to_string()).await?;
+        pipeline.finish_failure(&typed_error.display_full()).await?;
         pipeline
             .emit(
                 TaskEventType::Failed,
-                json!({ "error": typed_error.to_string(), "reason": "release_mismatch" }),
+                json!({ "error": typed_error.display_full(), "reason": "release_mismatch" }),
             )
             .await?;
         return Err(typed_error.into());
@@ -234,7 +234,7 @@ pub(super) async fn process_deployment(
             {
                 let typed_error = TaskExecutionError::runtime_preparation(error);
                 prepare_runtime_stage
-                    .finish_error(&typed_error.to_string())
+                    .finish_error(&typed_error.display_full())
                     .await?;
                 return Err(typed_error.into());
             }
@@ -267,7 +267,7 @@ pub(super) async fn process_deployment(
             {
                 let typed_error = TaskExecutionError::artifact_pull(error);
                 pull_artifact_stage
-                    .finish_error(&typed_error.to_string())
+                    .finish_error(&typed_error.display_full())
                     .await?;
                 return Err(typed_error.into());
             }
@@ -321,7 +321,7 @@ pub(super) async fn process_deployment(
                 Err(error) => {
                     let typed_error = TaskExecutionError::rollback_preparation(error);
                     reserve_rollback_stage
-                        .finish_error(&typed_error.to_string())
+                        .finish_error(&typed_error.display_full())
                         .await?;
                     return Err(typed_error.into());
                 }
@@ -404,7 +404,7 @@ pub(super) async fn process_deployment(
             {
                 let typed_error = TaskExecutionError::runtime_start(error);
                 start_container_stage
-                    .finish_error(&typed_error.to_string())
+                    .finish_error(&typed_error.display_full())
                     .await?;
                 return Err(typed_error.into());
             }
@@ -435,7 +435,7 @@ pub(super) async fn process_deployment(
             {
                 let typed_error = TaskExecutionError::local_health(error);
                 local_health_stage
-                    .finish_error(&typed_error.to_string())
+                    .finish_error(&typed_error.display_full())
                     .await?;
                 return Err(typed_error.into());
             }
@@ -466,7 +466,7 @@ pub(super) async fn process_deployment(
                 Err(error) => {
                     let typed_error = TaskExecutionError::stability(error);
                     stability_stage
-                        .finish_error(&typed_error.to_string())
+                        .finish_error(&typed_error.display_full())
                         .await?;
                     return Err(typed_error.into());
                 }
@@ -490,7 +490,7 @@ pub(super) async fn process_deployment(
             {
                 let typed_error = TaskExecutionError::public_health(error);
                 public_health_stage
-                    .finish_error(&typed_error.to_string())
+                    .finish_error(&typed_error.display_full())
                     .await?;
                 return Err(typed_error.into());
             }

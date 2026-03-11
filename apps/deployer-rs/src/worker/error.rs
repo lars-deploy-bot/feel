@@ -192,4 +192,14 @@ impl TaskExecutionError {
             source: source.into(),
         }
     }
+
+    pub(crate) fn display_full(&self) -> String {
+        use std::error::Error;
+        let mut msg = self.to_string();
+        if let Some(source) = self.source() {
+            msg.push_str(": ");
+            msg.push_str(&format!("{:#}", source));
+        }
+        msg
+    }
 }

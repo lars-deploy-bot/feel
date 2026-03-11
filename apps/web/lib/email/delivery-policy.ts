@@ -3,7 +3,11 @@ import { EmailProviderError } from "./types"
 
 export function isEmailDeliveryDisabled(): boolean {
   const nodeEnv = process.env.NODE_ENV?.toString()
-  return nodeEnv === "staging" || process.env.STREAM_ENV === STREAM_ENV.STAGING
+  const streamEnv = process.env.STREAM_ENV
+  if (!streamEnv && nodeEnv !== "production") {
+    return true
+  }
+  return nodeEnv === "staging" || streamEnv === STREAM_ENV.STAGING
 }
 
 export function assertEmailDeliveryAllowed(channel: string): void {
