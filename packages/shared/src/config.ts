@@ -238,8 +238,32 @@ const CONTACT_EMAIL_RAW = serverConfig.contactEmail ?? ""
 // When config is absent (browser, test, local-dev), default to false — automations must never run accidentally.
 const IS_AUTOMATION_PRIMARY: boolean = serverConfig.automationPrimary ?? false
 
+function isE2bConfiguredViaEnv(): boolean {
+  if (isBrowser || typeof process === "undefined") {
+    return false
+  }
+
+  return (
+    Boolean(process.env.E2B_DOMAIN) || Boolean(process.env.E2B_API_KEY) || process.env.NEW_SITE_EXECUTION_MODE === "e2b"
+  )
+}
+
+function assertE2bScratchRootConfigured(): void {
+  if (!configActuallyLoaded || !isE2bConfiguredViaEnv()) {
+    return
+  }
+
+  if (!E2B_SCRATCH_ROOT) {
+    throw new Error(
+      "FATAL: paths.e2bScratchRoot is required in server-config.json when E2B is enabled. " +
+        'Set it to a host scratch directory such as "/srv/webalive/e2b-scratch".',
+    )
+  }
+}
+
 // NOTE: Startup validation is now handled by Zod schema (parseServerConfig).
 // When config file is present, ALL required fields are validated at parse time.
+assertE2bScratchRootConfigured()
 
 // =============================================================================
 // Path Constants
