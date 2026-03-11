@@ -17,7 +17,7 @@ import path from "node:path"
 import { createClient } from "@supabase/supabase-js"
 import { parseServerConfig, requireEnv, type ServerConfig } from "@webalive/shared"
 import { assertNoDangerousCountDrop, readExistingGeneratedCaddyDomainCount } from "../generated-safety.js"
-import { loadCanonicalInfraEnv } from "../infra-env.js"
+import { loadCanonicalInfraEnvFileOnly } from "../infra-env.js"
 
 interface EnvironmentConfigRaw {
   key: string
@@ -130,7 +130,7 @@ async function atomicWrite(filePath: string, content: string) {
 // =============================================================================
 
 function createAppSupabaseClient() {
-  const infraEnv = loadCanonicalInfraEnv()
+  const infraEnv = loadCanonicalInfraEnvFileOnly()
   const url = must(infraEnv.SUPABASE_URL, "SUPABASE_URL is required")
   const key = must(infraEnv.SUPABASE_SERVICE_ROLE_KEY, "SUPABASE_SERVICE_ROLE_KEY is required")
 
@@ -515,7 +515,9 @@ if (import.meta.main) {
       console.error("     Then edit with this server's configuration\n")
     } else if (msg.includes("SUPABASE_URL")) {
       console.error("\x1b[33mFix:\x1b[0m Ensure database credentials are set in infra-env.ts source")
-      console.error("     Credentials are loaded via loadCanonicalInfraEnv(), not environment variables")
+      console.error(
+        "     Credentials are loaded from .env.production (canonical file only), not runtime environment variables",
+      )
       console.error("     Check packages/site-controller/src/infra-env.ts for the canonical source\n")
     } else if (msg.includes("server_id")) {
       console.error("\x1b[33mFix:\x1b[0m Add server_id column to domains table:")

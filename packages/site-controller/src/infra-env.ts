@@ -93,3 +93,22 @@ export function loadCanonicalInfraEnv(): CanonicalInfraEnv {
   // overridden by production credentials from the canonical file.
   return mergeCanonicalInfraEnv(fileEnv, runtimeEnv)
 }
+
+/**
+ * Load infra env ONLY from the canonical file (.env.production).
+ * Ignores runtime env vars entirely.
+ *
+ * Use this for server-wide infrastructure generation (port-map, Caddy routing)
+ * where the output is a shared artifact under /var/lib/alive/generated/.
+ * These generators must always query the production/canonical DB regardless
+ * of which environment's process invokes them (staging, dev, etc.).
+ */
+export function loadCanonicalInfraEnvFileOnly(): CanonicalInfraEnv {
+  if (!PATHS.ALIVE_ROOT) {
+    throw new Error(
+      "[infra-env] ALIVE_ROOT is not set. Server-wide infra generation requires the canonical .env.production file.",
+    )
+  }
+
+  return loadCanonicalInfraEnvFromFile(join(PATHS.ALIVE_ROOT, "apps/web/.env.production"))
+}
