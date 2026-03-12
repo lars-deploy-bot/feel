@@ -1,6 +1,6 @@
 "use client"
 
-import { ClipboardList, Eye, FileText, Globe, Loader2, Sparkles, X } from "lucide-react"
+import { ClipboardList, FileText, Globe, Loader2, Sparkles, X } from "lucide-react"
 import Image from "next/image"
 import { useChatInput } from "./ChatInputContext"
 import {
@@ -114,25 +114,23 @@ export function PromptBarAttachmentGrid() {
                   Upload failed
                 </span>
               ) : isUploading ? (
-                <span className="text-[11px] text-blue-500 dark:text-blue-400">Uploading...</span>
+                <span className="text-[11px] text-black/60 dark:text-white/60">Uploading...</span>
               ) : (
-                <span className="text-[11px] text-black/40 dark:text-white/40">
+                <span className="text-[11px] text-black/60 dark:text-white/60">
                   {isSkillAttachment(attachment)
-                    ? attachment.source === "superadmin"
-                      ? "Skill"
-                      : "Custom Skill"
+                    ? "Skill"
                     : isUserPromptAttachment(attachment)
-                      ? "User Prompt"
+                      ? "Prompt"
                       : isSuperTemplateAttachment(attachment)
-                        ? "SuperTemplate"
+                        ? "Template"
                         : isFileUpload(attachment)
                           ? `${(attachment.file.size / 1024).toFixed(1)} KB`
-                          : "Library"}
+                          : "Image"}
                 </span>
               )}
             </div>
 
-            {/* Mode toggle for library images */}
+            {/* Mode toggle for library images — inline text, no icon, stable width */}
             {isLibraryImage(attachment) && (
               <button
                 type="button"
@@ -140,28 +138,13 @@ export function PromptBarAttachmentGrid() {
                   e.stopPropagation()
                   toggleImageMode(attachment.id)
                 }}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ml-1 ${
-                  attachment.mode === "analyze"
-                    ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
-                    : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                }`}
+                className="text-[11px] text-black/60 dark:text-white/60 hover:text-black/80 dark:hover:text-white/80 transition-colors ml-1 w-[52px] text-right"
                 title={
-                  attachment.mode === "analyze"
-                    ? "Analyze mode: Claude will look at this image"
-                    : "Website mode: Add this image to your site"
+                  attachment.mode === "analyze" ? "Click to switch to website mode" : "Click to switch to analyze mode"
                 }
+                aria-label={attachment.mode === "analyze" ? "Switch to website mode" : "Switch to analyze mode"}
               >
-                {attachment.mode === "analyze" ? (
-                  <>
-                    <Eye className="size-3" />
-                    <span>Analyze</span>
-                  </>
-                ) : (
-                  <>
-                    <Globe className="size-3" />
-                    <span>Website</span>
-                  </>
-                )}
+                {attachment.mode === "analyze" ? "analyze" : "website"}
               </button>
             )}
 

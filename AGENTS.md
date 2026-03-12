@@ -16,6 +16,10 @@ This repo is deployed on two servers. Check which one you're on:
 
 Both servers run the same codebase. Server 1 is primary production, Server 2 is the replica. PostHog and Sentry are only on Server 2 but serve both.
 
+**Supabase instances are SEPARATE per environment — never mix credentials:**
+- **Production** → Supabase Cloud (`qnvprftdorualkdyogka.supabase.co`)
+- **Staging** → Self-hosted Supabase on Server 2 (`supabase-api.sonno.tech`)
+
 **PostHog Analytics**: Queryable from any server via API. Use the `/analytics` skill to check app performance. API key is in `apps/web/.env.production` as `POSTHOG_PERSONAL_API_KEY`, project ID is `2`.
 
 **Quick Links:** [Getting Started](./docs/GETTING_STARTED.md) | [Architecture](./docs/architecture/README.md) | [Security](./docs/security/README.md) | [Testing](./docs/testing/README.md)
@@ -60,6 +64,7 @@ Use the `/roadmap` skill to manage issues, milestones, and the project board. Th
     - **Runtime sets**: `RUN_STATUSES`, `TRIGGER_TYPES`, `ACTION_TYPES`, `JOB_STATUSES`
     - **Zod schemas**: Derive with `z.enum(AppConstants.app.Enums.<name>)`, never hand-write the values
     - Source file: `packages/database/src/automation-enums.ts`, derived from auto-generated `AppConstants`
+24. **`canUseTool` IS BROKEN IN THE SDK — DO NOT RELY ON IT** - The Claude Agent SDK's `canUseTool` callback is **NEVER CALLED** by the CLI subprocess. Tested empirically on SDK v0.2.41: regardless of `permissionMode` (`default`, `acceptEdits`, `dontAsk`), the CLI auto-approves all tools without sending `can_use_tool` control requests back via stdio. Even a callback that returns `{ behavior: "deny" }` for everything is silently ignored — tools run anyway. **Our ONLY enforceable security layers are:** (1) `allowedTools` / `disallowedTools` arrays passed to the SDK (CLI enforces these), (2) `cwd` workspace sandboxing (CLI restricts file tools to cwd), (3) MCP tool-level `validateWorkspacePath()`. Do not put security logic in `canUseTool`; the CLI subprocess will not enforce it. If Anthropic fixes this in a future SDK version, re-verify with `scripts/verify-canUseTool-callback.mjs` before trusting it.
 
 ## E2B Sandbox Migration (ACTIVE)
 
@@ -595,7 +600,7 @@ make rollback    # Interactive rollback (if needed)
 
 ### Deploying from Chat
 
-See **Core Rules 10-12** at the top of this file. Summary: clean orphans, check `make deploy-status`, deploy with `nohup`.
+See **Core Rules 10-12** at the top of this file. Summary: deploy with `nohup`, check `make deploy-status`, then clean orphaned processes and locks before starting if needed.
 
 ### Site Deployment (Different)
 
@@ -801,4 +806,3 @@ curl http://localhost:5070/health
 External codebases cloned for reference when stuck on frontend issues.
 
 Check these repos for working examples before reinventing.
-

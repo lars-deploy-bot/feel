@@ -12,6 +12,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Mock auth - only override getSessionUser
 vi.mock("@/features/auth/lib/auth", async () => {
@@ -52,16 +53,7 @@ const { getSessionUser } = await import("@/features/auth/lib/auth")
 const { createIamClient } = await import("@/lib/supabase/iam")
 const { awardReferralCredits } = await import("@/lib/credits/add-credits")
 
-// Mock user
-const MOCK_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const MOCK_USER = MOCK_SESSION_USER
 
 const MOCK_REFERRER = {
   user_id: "referrer-456",

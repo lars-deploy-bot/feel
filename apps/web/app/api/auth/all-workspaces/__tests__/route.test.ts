@@ -14,6 +14,7 @@
 import { SECURITY, SUPERADMIN, TEST_CONFIG } from "@webalive/shared"
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSessionUser, MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Mock auth functions
 vi.mock("@/features/auth/lib/auth", () => ({
@@ -76,35 +77,21 @@ const { getSessionUser, hasSessionScope } = await import("@/features/auth/lib/au
 const { domainExistsOnThisServer } = await import("@/lib/domains")
 
 // Mock users
-const REGULAR_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const REGULAR_USER = MOCK_SESSION_USER
 
-const SUPERADMIN_USER = {
+const SUPERADMIN_USER = createMockSessionUser({
   id: "admin-456",
   email: "admin@example.com",
   name: "Admin User",
   canSelectAnyModel: true,
   isAdmin: true,
   isSuperadmin: true,
-  enabledModels: [],
-}
+})
 
-const LOCAL_TEST_USER = {
+const LOCAL_TEST_USER = createMockSessionUser({
   id: SECURITY.LOCAL_TEST.SESSION_VALUE,
   email: "test@alive.local",
-  name: "Test User",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+})
 
 function createMockRequest(): NextRequest {
   return new NextRequest("http://localhost/api/auth/all-workspaces", {

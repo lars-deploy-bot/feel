@@ -74,6 +74,23 @@ What it showed:
 Anything else you noticed while investigating that may or may not be related.
 Don't speculate — just state what you saw.
 
+## Structural code smells (if any)
+
+If the bug reveals deeper structural issues, document them here.
+These are patterns that make the bug likely to exist and hard to fix in isolation.
+Each smell: name, location (file:line), what it means, why it matters.
+Don't propose fixes — just document what you see.
+Skip this section if the bug is straightforward.
+
+Categories to look for:
+- State consistency gaps: two pieces of state that must agree but nothing enforces it
+- Race conditions by design: independent async flows touching the same state without coordination
+- Test blind spots: test infrastructure that systematically skips the failing code path
+- Missing data in calls: a function requires context that callers don't have
+- Implicit ordering: code that only works if unrelated code runs first
+- Multiple uncoordinated writers: N call sites mutating the same state with different invariants
+- Silent degradation: errors/mismatches that produce blank UI instead of feedback
+
 ## Acceptance criteria
 
 Each criterion must be verifiable by running a specific command or query.
@@ -117,6 +134,7 @@ An issue should be **one clear thing someone can investigate and fix**. Not a pr
 - **DO** include timestamps and IDs so someone can reproduce
 - **DO** separate observations from each other — they might have different causes
 - **DO** include a `## Validation gates (strict)` section in every issue
+- **DO** include `## Structural code smells` when the bug reveals deeper patterns (races, state gaps, test blind spots, silent degradation, uncoordinated writers)
 - **DO** require Sentry evidence, E2E evidence, and DRY evidence in acceptance criteria
 - **DON'T** write "the bug is X" or "this causes Y" — write "X was observed"
 - **DON'T** include email addresses, display names, or IPs — use `org_id` / `user_id` / `domain_id` only

@@ -9,20 +9,13 @@ import { SUPERADMIN } from "@webalive/shared"
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { SessionUser } from "@/features/auth/lib/auth"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // =============================================================================
 // Mocks
 // =============================================================================
 
-const mockUser: SessionUser = {
-  id: "u1",
-  email: "user@example.com",
-  name: "User",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const mockUser: SessionUser = { ...MOCK_SESSION_USER, id: "u1", email: "user@example.com", name: "User" }
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),

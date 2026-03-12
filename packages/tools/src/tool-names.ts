@@ -127,6 +127,7 @@ export const AI = {
   ASK_CLARIFICATION: "mcp__alive-tools__ask_clarification",
   ASK_WEBSITE_CONFIG: "mcp__alive-tools__ask_website_config",
   ASK_AUTOMATION_CONFIG: "mcp__alive-tools__ask_automation_config",
+  ASK_USER_QUESTION: SDK_TOOL_LOWER.ASK_USER_QUESTION,
   LIST_AUTOMATIONS: "mcp__alive-tools__list_automations",
 } as const
 

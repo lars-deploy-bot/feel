@@ -360,6 +360,16 @@ register(AI.ASK_CLARIFICATION, {
   },
 })
 
+register(AI.ASK_USER_QUESTION, {
+  autoExpand: true, // Always show the questionnaire
+  getPreview: (_data, toolInput) => {
+    const input = toolInput as Record<string, unknown> | undefined
+    const questions = input?.questions as unknown[] | undefined
+    const count = questions?.length ?? 0
+    return `${count} ${plural(count, "question")}`
+  },
+})
+
 register(AI.ASK_WEBSITE_CONFIG, {
   autoExpand: true, // Always show the config form
   transform: unwrapMcp,

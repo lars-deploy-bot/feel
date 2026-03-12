@@ -15,6 +15,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest, NextResponse } from "next/server"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Mock auth functions
 vi.mock("@/features/auth/lib/auth", async () => {
@@ -44,6 +45,11 @@ vi.mock("@/features/workspace/lib/workspace-secure", () => ({
   writeAsWorkspaceOwner: vi.fn(),
 }))
 
+// Mock domain runtime resolution (skip E2B branch, use systemd path)
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  resolveDomainRuntime: vi.fn().mockResolvedValue(null),
+}))
+
 // Import after mocking
 const { POST } = await import("../route")
 const { getSessionUser, verifyWorkspaceAccess } = await import("@/features/auth/lib/auth")
@@ -52,17 +58,6 @@ const { writeAsWorkspaceOwner } = await import("@/features/workspace/lib/workspa
 
 // Test workspace directory
 const TEST_WORKSPACE = path.join(tmpdir(), "upload-test-workspace")
-
-// Mock user
-const MOCK_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
 
 function createMockFormData(fields: Record<string, string | File>): FormData {
   const formData = new FormData()
@@ -105,7 +100,7 @@ describe("POST /api/files/upload", () => {
     vi.clearAllMocks()
 
     // Default: authenticated user
-    vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+    vi.mocked(getSessionUser).mockResolvedValue(MOCK_SESSION_USER)
 
     // Default: workspace authorized
     vi.mocked(verifyWorkspaceAccess).mockResolvedValue("test-workspace")
@@ -188,7 +183,7 @@ describe("POST /api/files/upload", () => {
       await POST(req)
 
       expect(verifyWorkspaceAccess).toHaveBeenCalledWith(
-        MOCK_USER,
+        MOCK_SESSION_USER,
         expect.objectContaining({ workspace: "my-workspace.com" }),
         expect.any(String),
       )

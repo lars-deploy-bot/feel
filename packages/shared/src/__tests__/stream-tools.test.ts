@@ -173,7 +173,7 @@ describe("stream tool role policy", () => {
     expect(disallowed).toContain("Bash")
     expect(disallowed).toContain("NotebookEdit")
     expect(allowed).toContain("TodoWrite")
-    expect(allowed).toContain("AskUserQuestion")
+    expect(disallowed).toContain("AskUserQuestion") // restricted to plan/superadmin mode
     expect(allowed).toContain("ListMcpResources")
     expect(allowed).toContain("ReadMcpResource")
     expect(disallowed).toContain("TaskStop")
@@ -213,7 +213,7 @@ describe("stream tool role policy", () => {
     expect(allowed).toContain("Task")
     expect(allowed).toContain("WebSearch")
     expect(allowed).toContain("TodoWrite")
-    expect(allowed).toContain("AskUserQuestion")
+    expect(disallowed).toContain("AskUserQuestion") // restricted to plan/superadmin mode, not role
     expect(allowed).not.toContain("ListMcpResources")
     expect(allowed).not.toContain("ReadMcpResource")
     // ExitPlanMode is in allowedTools (so SDK registers it) but denied by canUseTool
@@ -244,17 +244,14 @@ describe("stream tool role policy", () => {
     expect(isStreamPolicyTool("mcp__context7__resolve-library-id")).toBe(true)
   })
 
-  it("allows AskUserQuestion for all roles", () => {
-    const member = getStreamToolDecision("AskUserQuestion", createStreamToolContext())
-    const admin = getStreamToolDecision("AskUserQuestion", createStreamToolContext({ isAdmin: true }))
-    const superadmin = getStreamToolDecision(
-      "AskUserQuestion",
-      createStreamToolContext({ isAdmin: true, isSuperadmin: true }),
-    )
+  it("restricts AskUserQuestion to plan and superadmin modes", () => {
+    const defaultMode = getStreamToolDecision("AskUserQuestion", createStreamToolContext())
+    const planMode = getStreamToolDecision("AskUserQuestion", createStreamToolContext({ mode: "plan" }))
+    const superadminMode = getStreamToolDecision("AskUserQuestion", createStreamToolContext({ mode: "superadmin" }))
 
-    expect(member.executable).toBe(true)
-    expect(admin.executable).toBe(true)
-    expect(superadmin.executable).toBe(true)
+    expect(defaultMode.executable).toBe(false)
+    expect(planMode.executable).toBe(true)
+    expect(superadminMode.executable).toBe(true)
   })
 
   it("blocks ExitPlanMode for all roles", () => {

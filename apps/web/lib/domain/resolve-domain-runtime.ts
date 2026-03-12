@@ -6,6 +6,7 @@ export interface DomainRuntime {
   hostname: string
   port: number
   is_test_env: boolean | null
+  test_run_id: string | null
   execution_mode: ExecutionMode
   sandbox_id: string | null
   sandbox_status: SandboxStatus | null
@@ -25,7 +26,7 @@ interface DomainRuntimeQueryResult {
 }
 
 export const DOMAIN_RUNTIME_SELECT =
-  "domain_id, hostname, port, is_test_env, execution_mode, sandbox_id, sandbox_status"
+  "domain_id, hostname, port, is_test_env, test_run_id, execution_mode, sandbox_id, sandbox_status"
 
 /**
  * Resolve execution runtime for a domain.

@@ -50,20 +50,25 @@ const CONTENT_ROLES = new Set([
   "navigation",
 ])
 
-const STRUCTURAL_ROLES = new Set([
-  "generic",
-  "group",
-  "list",
+/** Structural roles that provide semantic context (tables, lists, nav). Keep in compact mode. */
+const SEMANTIC_STRUCTURAL_ROLES = new Set([
   "table",
   "row",
   "rowgroup",
   "grid",
   "treegrid",
+  "list",
   "menu",
   "menubar",
   "toolbar",
   "tablist",
   "tree",
+])
+
+const STRUCTURAL_ROLES = new Set([
+  "generic",
+  "group",
+  ...SEMANTIC_STRUCTURAL_ROLES,
   "directory",
   "document",
   "application",
@@ -252,7 +257,9 @@ export function buildRoleSnapshotFromAriaSnapshot(
     const isContent = CONTENT_ROLES.has(role)
     const isStructural = STRUCTURAL_ROLES.has(role)
 
-    if (options.compact && isStructural && !name) continue
+    // In compact mode, drop generic/group wrappers but keep semantically
+    // important structural nodes (table, row, list, etc.) so data stays readable.
+    if (options.compact && isStructural && !name && !SEMANTIC_STRUCTURAL_ROLES.has(role)) continue
 
     const shouldHaveRef = isInteractive || (isContent && !!name)
     if (!shouldHaveRef) {
