@@ -1,7 +1,7 @@
 import * as path from "node:path"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { Sandbox } from "e2b"
-import { SANDBOX_WORKSPACE_ROOT, SandboxManager, type SandboxDomain } from "./manager.js"
+import { SANDBOX_WORKSPACE_ROOT, type SandboxDomain, type SandboxManager } from "./manager.js"
 
 const SANDBOX_GONE_MESSAGE_PATTERNS = [/\bnot found\b/i, /\bdoes not exist\b/i, /\bno such sandbox\b/i]
 

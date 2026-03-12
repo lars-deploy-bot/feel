@@ -1,8 +1,8 @@
 import {
+  type ConnectedSandboxRuntime,
   createConnectedSandboxRuntime,
   DEFAULT_SANDBOX_CONNECT_TIMEOUT_MS,
   type SandboxDomain,
-  type ConnectedSandboxRuntime,
 } from "@webalive/sandbox"
 import type { DomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { getE2bDomain } from "@/lib/env"
