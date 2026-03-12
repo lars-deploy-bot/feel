@@ -296,6 +296,8 @@ describe("API Schema Type System", () => {
           id: string
           email: string
           name: string | null
+          firstName: string | null
+          lastName: string | null
           canSelectAnyModel: boolean
           isAdmin: boolean
           isSuperadmin: boolean

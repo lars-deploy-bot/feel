@@ -15,6 +15,7 @@
     "clean": "rm -rf dist",
     "dev": "tsc --watch",
     "type-check": "tsgo --noEmit",
+    "test": "vitest run",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "ci": "biome ci ."
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.5.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

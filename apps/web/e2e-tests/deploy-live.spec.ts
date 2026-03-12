@@ -12,7 +12,12 @@ import { readdir } from "node:fs/promises"
 import { type APIRequestContext, expect, test } from "@playwright/test"
 import type { Req, Res } from "@/lib/api/schemas"
 import { apiSchemas, validateRequest } from "@/lib/api/schemas"
-import { CleanupDeployedSiteRequestSchema, CleanupDeployedSiteResponseSchema } from "@/lib/testing/e2e-site-deployment"
+import {
+  CleanupDeployedSiteRequestSchema,
+  CleanupDeployedSiteResponseSchema,
+  isReusableLiveDeploySlug,
+  readReusableLiveDeploySlugsFromCaddyFile,
+} from "@/lib/testing/e2e-site-deployment"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
 import { buildE2ETestHeaders } from "./lib/test-headers"
 
@@ -20,7 +25,7 @@ const LIVE_DEPLOY_TIMEOUT_MS = 540_000
 const LIVE_PROBE_INTERVAL_MS = 5_000
 const LIVE_PROBE_FAST_FAIL_525_COUNT = 8
 const CADDY_CERT_STORE_ROOT = "/var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory"
-const PREWARMED_DEPLOY_SLUG_PREFIX = "dl"
+const GENERATED_CADDY_SITES_PATH = "/var/lib/alive/generated/Caddyfile.sites"
 
 function resolveWildcardDomain(baseUrl: string): string {
   const hostname = new URL(baseUrl).hostname
@@ -29,10 +34,6 @@ function resolveWildcardDomain(baseUrl: string): string {
     throw new Error(`Unable to derive wildcard domain from base URL host: ${hostname}`)
   }
   return labels.slice(1).join(".")
-}
-
-function isReusableDeploySlug(value: string): boolean {
-  return value.startsWith(PREWARMED_DEPLOY_SLUG_PREFIX) && /^[a-z0-9-]+$/.test(value)
 }
 
 async function listPrewarmedDeploySlugs(wildcardDomain: string): Promise<string[]> {
@@ -51,11 +52,15 @@ async function listPrewarmedDeploySlugs(wildcardDomain: string): Promise<string[
     if (!entry.name.endsWith(suffix)) continue
 
     const slug = entry.name.slice(0, -suffix.length)
-    if (!isReusableDeploySlug(slug)) continue
+    if (!isReusableLiveDeploySlug(slug)) continue
     candidateSlugs.add(slug)
   }
 
   return [...candidateSlugs].sort()
+}
+
+async function listRoutedDeploySlugs(wildcardDomain: string): Promise<string[]> {
+  return readReusableLiveDeploySlugsFromCaddyFile(GENERATED_CADDY_SITES_PATH, wildcardDomain)
 }
 
 function rotateCandidates(slugs: string[], workerIndex: number): string[] {
@@ -117,12 +122,25 @@ async function resolveDeploySlug(
   workerIndex: number,
   wildcardDomain: string,
 ): Promise<{ slug: string; source: string }> {
-  const prewarmedSlugs = rotateCandidates(await listPrewarmedDeploySlugs(wildcardDomain), workerIndex)
+  const prewarmedSlugs = await listPrewarmedDeploySlugs(wildcardDomain)
+  const routedSlugs = new Set(await listRoutedDeploySlugs(wildcardDomain))
+  const reusableSlugs = rotateCandidates(
+    prewarmedSlugs.filter(slug => routedSlugs.has(slug)),
+    workerIndex,
+  )
+
   if (prewarmedSlugs.length === 0) {
     throw new Error(`No prewarmed deploy slugs found for *.${wildcardDomain}; refusing to mint new certs in E2E`)
   }
 
-  for (const slug of prewarmedSlugs) {
+  if (reusableSlugs.length === 0) {
+    throw new Error(
+      `No reusable prewarmed deploy slug is present in ${GENERATED_CADDY_SITES_PATH} for *.${wildcardDomain}; ` +
+        "live deploy requires an already-routed dl* domain.",
+    )
+  }
+
+  for (const slug of reusableSlugs) {
     const domain = `${slug}.${wildcardDomain}`
     const preparation = await prepareReusableDomain(request, domain)
     if (preparation === "blocked") {
@@ -298,7 +316,17 @@ test.describe("Live staging deploy", () => {
     console.log("[deploy-live] Quota headroom ready, selecting template")
     const templateId = await resolveTemplateId(page.request)
     const wildcardDomain = resolveWildcardDomain(baseUrl)
-    const slugChoice = await resolveDeploySlug(page.request, test.info().workerIndex, wildcardDomain)
+    let slugChoice: { slug: string; source: string }
+    try {
+      slugChoice = await resolveDeploySlug(page.request, test.info().workerIndex, wildcardDomain)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (message.includes("live deploy requires an already-routed dl* domain")) {
+        test.skip(true, message)
+        return
+      }
+      throw error
+    }
     const slug = slugChoice.slug
     console.log(`[deploy-live] Using ${slugChoice.source} slug: ${slug}`)
 

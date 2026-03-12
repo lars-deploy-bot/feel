@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test"
 import { parseWorkspaceStorageValue, TEST_CONFIG, WORKSPACE_STORAGE } from "@webalive/shared"
-import { BootstrapTenantResponseSchema, type TestTenant } from "@/app/api/test/test-route-schemas"
+import {
+  BootstrapTenantRequestSchema,
+  BootstrapTenantResponseSchema,
+  type TestTenant,
+} from "@/app/api/test/test-route-schemas"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { login } from "./helpers"
@@ -28,16 +32,17 @@ async function bootstrapLiveSuperadminUser(
   const normalizedWorkerIndex = workerIndex % TEST_CONFIG.MAX_WORKERS
   const workspace =
     process.env.E2E_SUPERADMIN_WORKSPACE || `superadmin-mode-${normalizedWorkerIndex}.${TEST_CONFIG.EMAIL_DOMAIN}`
+  const bootstrapBody = BootstrapTenantRequestSchema.parse({
+    runId: getRunId(),
+    workerIndex: normalizedWorkerIndex,
+    email,
+    workspace,
+  })
 
   const response = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
     method: "POST",
     headers: buildE2ETestHeaders(true),
-    body: JSON.stringify({
-      runId: getRunId(),
-      workerIndex: normalizedWorkerIndex,
-      email,
-      workspace,
-    }),
+    body: JSON.stringify(bootstrapBody),
   })
 
   if (!response.ok) {

@@ -47,6 +47,7 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
     GMAIL_READONLY: "https://www.googleapis.com/auth/gmail.readonly",
     CALENDAR_EVENTS: "https://www.googleapis.com/auth/calendar.events",
     CALENDAR_LIST_READONLY: "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+    WEBMASTERS_READONLY: "https://www.googleapis.com/auth/webmasters.readonly",
     USERINFO_PROFILE: "https://www.googleapis.com/auth/userinfo.profile",
     USERINFO_EMAIL: "https://www.googleapis.com/auth/userinfo.email",
   } as const
@@ -80,6 +81,14 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
   static readonly CALENDAR_SCOPES = [
     GoogleProvider.SCOPES.CALENDAR_EVENTS,
     GoogleProvider.SCOPES.CALENDAR_LIST_READONLY,
+    GoogleProvider.SCOPES.USERINFO_EMAIL,
+  ].join(" ")
+
+  /**
+   * Search Console scopes: read-only access to search analytics, URL inspection, sitemaps.
+   */
+  static readonly SEARCH_CONSOLE_SCOPES = [
+    GoogleProvider.SCOPES.WEBMASTERS_READONLY,
     GoogleProvider.SCOPES.USERINFO_EMAIL,
   ].join(" ")
 

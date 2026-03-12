@@ -68,6 +68,8 @@ export interface StreamToolPolicy {
   workspaceKinds: readonly StreamWorkspaceKind[]
   visibility: StreamToolVisibility
   requiresUserApproval?: boolean
+  /** Restrict tool to specific modes. Omit to allow in all modes (default). */
+  modes?: readonly StreamMode[]
   reason: string
 }
 
@@ -564,7 +566,10 @@ const SDK_TOOL_POLICIES: Record<StreamSdkToolName, StreamToolPolicy> = {
     reason: "Planning scratchpad is allowed but hidden from user UI.",
     visibility: "silent",
   }),
-  [SDK_TOOL.ASK_USER_QUESTION]: policy({ reason: "Clarification UI questions are allowed for all roles." }),
+  [SDK_TOOL.ASK_USER_QUESTION]: policy({
+    reason: "SDK clarification questions only in plan/superadmin mode — use ask_clarification MCP tool elsewhere.",
+    modes: ["plan", "superadmin"],
+  }),
   [SDK_TOOL.MCP]: policy({ reason: "MCP bridge invocation is allowed." }),
   [SDK_TOOL.LIST_MCP_RESOURCES]: policy({
     reason: "MCP resource listing is member-only by product policy.",
@@ -733,6 +738,15 @@ export function getStreamToolDecision(toolName: string, context: StreamToolConte
       visibleToClient,
       policyFound: true,
       reason: policy.reason,
+    }
+  }
+
+  if (policy.modes && !policy.modes.includes(context.mode)) {
+    return {
+      executable: false,
+      visibleToClient,
+      policyFound: true,
+      reason: `Tool "${toolName}" is only available in ${policy.modes.join(", ")} mode.`,
     }
   }
 

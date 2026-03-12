@@ -12,6 +12,7 @@ import { cpus, loadavg, platform } from "node:os"
 import * as path from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { promisify } from "node:util"
+import * as Sentry from "@sentry/node"
 import { PATHS, type QueueReason, SUPERADMIN } from "@webalive/shared"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { createConfig } from "./config.js"
@@ -512,6 +513,9 @@ export class WorkerPoolManager extends EventEmitter {
       this.orphanSweepTimer = setInterval(() => {
         this.sweepOrphanedCliProcesses().catch(err => {
           console.error("[pool] orphan_sweep_failed", { error: err instanceof Error ? err.message : String(err) })
+          Sentry.captureException(err instanceof Error ? err : new Error(String(err)), {
+            tags: { component: "worker-pool", operation: "orphan_sweep" },
+          })
         })
       }, this.config.orphanSweepIntervalMs)
       this.orphanSweepTimer.unref()
@@ -651,6 +655,13 @@ export class WorkerPoolManager extends EventEmitter {
     if (!shouldLog) return
 
     this.lastPidsPressureLogAtMs = now
+    if (!this.pidsPressureActive) {
+      Sentry.captureMessage("Worker pool PID pressure detected — spawn throttled", {
+        level: "warning",
+        tags: { component: "worker-pool", reason: check.reason },
+        extra: { current: check.snapshot.current, max: check.snapshot.max, headroom: check.snapshot.headroom },
+      })
+    }
     this.pidsPressureActive = true
     console.error("[pool][PID_PRESSURE] spawn throttled", {
       context,
@@ -1349,6 +1360,10 @@ export class WorkerPoolManager extends EventEmitter {
 
     if (worker.state !== "shutting_down" && worker.state !== "dead") {
       console.error(`[pool] Worker ${workspaceKey} disconnected unexpectedly`)
+      Sentry.captureMessage(`Worker disconnected unexpectedly: ${workspaceKey}`, {
+        level: "warning",
+        tags: { component: "worker-pool", workspaceKey },
+      })
       worker.state = "dead"
       worker.ipc?.close()
       this.rejectPendingQueries(worker, "Worker disconnected unexpectedly")
@@ -1371,9 +1386,17 @@ export class WorkerPoolManager extends EventEmitter {
 
     if (!wasShuttingDown && !this.isShuttingDown) {
       const pidsSnapshot = this.lastPidsPressureCheck?.pressured ? this.lastPidsPressureCheck.snapshot : undefined
-      console.error(
-        `[pool] Worker ${workspaceKey} crashed: ${exitReason}, pid=${worker.process.pid}, uptime=${Date.now() - worker.createdAt.getTime()}ms${stderr ? `, stderr: ${stderr.slice(0, 2000)}` : ", stderr: (empty)"}${pidsSnapshot ? `, pids=${pidsSnapshot.current}/${pidsSnapshot.max}` : ""}`,
-      )
+      const crashMsg = `Worker ${workspaceKey} crashed: ${exitReason}, pid=${worker.process.pid}, uptime=${Date.now() - worker.createdAt.getTime()}ms${stderr ? `, stderr: ${stderr.slice(0, 2000)}` : ", stderr: (empty)"}${pidsSnapshot ? `, pids=${pidsSnapshot.current}/${pidsSnapshot.max}` : ""}`
+      console.error(`[pool] ${crashMsg}`)
+      Sentry.captureException(new Error(`Worker crashed: ${exitReason}`), {
+        tags: { component: "worker-pool", workspaceKey },
+        extra: {
+          exitCode: code,
+          signal,
+          uptime: Date.now() - worker.createdAt.getTime(),
+          stderr: stderr?.slice(0, 2000),
+        },
+      })
       this.emit("worker:crashed", {
         workspaceKey,
         exitCode: code,
@@ -1409,6 +1432,9 @@ export class WorkerPoolManager extends EventEmitter {
         workspaceKey,
         source,
         error: err.message,
+      })
+      Sentry.captureException(err, {
+        tags: { component: "worker-pool", source, workspaceKey },
       })
       this.emit("pool:error", {
         error: err,

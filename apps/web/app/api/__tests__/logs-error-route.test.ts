@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", () => ({
   getSessionUser: vi.fn(),
@@ -18,15 +19,13 @@ const { getSessionUser } = await import("@/features/auth/lib/auth")
 const { errorLogger } = await import("@/lib/error-logger")
 
 function makeUser(isSuperadmin: boolean) {
-  return {
+  return createMockSessionUser({
     id: "user-1",
     email: "user@example.com",
     name: "User",
-    canSelectAnyModel: false,
     isAdmin: isSuperadmin,
     isSuperadmin,
-    enabledModels: [],
-  }
+  })
 }
 
 describe("POST /api/logs/error", () => {

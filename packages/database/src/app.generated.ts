@@ -8,11 +8,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
-  }
   app: {
     Tables: {
       automation_jobs: {
@@ -221,6 +216,7 @@ export type Database = {
           closed_at: string | null
           conversation_id: string
           created_at: string
+          draft: Json | null
           last_message_at: string | null
           message_count: number
           name: string
@@ -231,6 +227,7 @@ export type Database = {
           closed_at?: string | null
           conversation_id: string
           created_at?: string
+          draft?: Json | null
           last_message_at?: string | null
           message_count?: number
           name?: string
@@ -241,6 +238,7 @@ export type Database = {
           closed_at?: string | null
           conversation_id?: string
           created_at?: string
+          draft?: Json | null
           last_message_at?: string | null
           message_count?: number
           name?: string

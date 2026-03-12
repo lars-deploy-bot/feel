@@ -3,14 +3,14 @@
 // DO NOT EDIT MANUALLY - Run 'bun run gen:types' to regenerate
 
 // Import Database types for renaming
-import type { Database as AppDatabase } from "./app.generated"
-import type { Database as IamDatabase } from "./iam.generated"
-import type { Database as IntegrationsDatabase } from "./integrations.generated"
-import type { Database as LockboxDatabase } from "./lockbox.generated"
-import type { Database as PublicDatabase } from "./public.generated"
+import type { Database as AppDatabase } from "./app.generated.js"
+import type { Database as IamDatabase } from "./iam.generated.js"
+import type { Database as IntegrationsDatabase } from "./integrations.generated.js"
+import type { Database as LockboxDatabase } from "./lockbox.generated.js"
+import type { Database as PublicDatabase } from "./public.generated.js"
 
 // Export generated constants (runtime enum values derived from DB)
-export { Constants as AppConstants } from "./app.generated"
+export { Constants as AppConstants } from "./app.generated.js"
 
 // Export automation enum types, guards, and runtime sets
 export {
@@ -33,7 +33,7 @@ export {
   type TerminalRunStatus,
   TRIGGER_TYPES,
   type TriggerType,
-} from "./automation-enums"
+} from "./automation-enums.js"
 
 // Export common types from public schema (if available) or lockbox as fallback
 export {
@@ -43,7 +43,7 @@ export {
   Tables,
   TablesInsert,
   TablesUpdate,
-} from "./public.generated"
+} from "./public.generated.js"
 
 // Re-export with schema-specific names
 export type { AppDatabase }
@@ -56,7 +56,7 @@ export type { PublicDatabase }
 export type Database = PublicDatabase
 
 // Export database client creators
-export * from "./client"
+export * from "./client.js"
 
 // Export startup verification (schema + server identity)
 export {
@@ -65,4 +65,4 @@ export {
   formatSchemaFailure,
   formatServerCheckFailure,
   type ServerIdentity,
-} from "./seed-check"
+} from "./seed-check.js"

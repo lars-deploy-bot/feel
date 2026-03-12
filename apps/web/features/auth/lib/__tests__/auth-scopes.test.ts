@@ -1,6 +1,7 @@
 import type { OrgRole } from "@webalive/shared"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 import { runWithRequestContext } from "../../../../tests/setup"
 
 vi.mock("@/lib/supabase/app", () => ({
@@ -17,15 +18,7 @@ import { type SessionUser, verifyWorkspaceAccess } from "../auth"
 import { createSessionToken, SESSION_SCOPES } from "../jwt"
 
 function createUser(id: string): SessionUser {
-  return {
-    id,
-    email: `${id}@example.com`,
-    name: "Test User",
-    canSelectAnyModel: false,
-    isAdmin: false,
-    isSuperadmin: false,
-    enabledModels: [],
-  }
+  return createMockSessionUser({ id, email: `${id}@example.com` })
 }
 
 function mockWorkspaceOrgId(orgId: string | null) {

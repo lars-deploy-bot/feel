@@ -350,8 +350,10 @@ export type Database = {
           display_name: string | null
           email: string | null
           email_verified: boolean | null
+          first_name: string | null
           invite_code: string | null
           is_test_env: boolean
+          last_name: string | null
           metadata: Json
           password_hash: string | null
           status: Database["iam"]["Enums"]["user_status"]
@@ -366,8 +368,10 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           email_verified?: boolean | null
+          first_name?: string | null
           invite_code?: string | null
           is_test_env?: boolean
+          last_name?: string | null
           metadata?: Json
           password_hash?: string | null
           status?: Database["iam"]["Enums"]["user_status"]
@@ -382,8 +386,10 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           email_verified?: boolean | null
+          first_name?: string | null
           invite_code?: string | null
           is_test_env?: boolean
+          last_name?: string | null
           metadata?: Json
           password_hash?: string | null
           status?: Database["iam"]["Enums"]["user_status"]

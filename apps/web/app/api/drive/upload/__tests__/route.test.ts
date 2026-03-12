@@ -19,6 +19,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Mock auth functions
 vi.mock("@/features/auth/lib/auth", async () => {
@@ -73,16 +74,6 @@ const TEST_DIR = path.join(tmpdir(), "drive-upload-test")
 const TEST_WORKSPACE = path.join(TEST_DIR, "user")
 const TEST_DRIVE = path.join(TEST_DIR, "drive")
 
-const MOCK_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
-
 function createMockUploadRequest(fields: { file?: File; workspace?: string; worktree?: string }): NextRequest {
   const formData = new FormData()
   if (fields.file) formData.append("file", fields.file)
@@ -114,7 +105,7 @@ describe("POST /api/drive/upload", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+    vi.mocked(getSessionUser).mockResolvedValue(MOCK_SESSION_USER)
     vi.mocked(verifyWorkspaceAccess).mockResolvedValue("test-workspace")
     vi.mocked(getWorkspace).mockResolvedValue({
       success: true,
