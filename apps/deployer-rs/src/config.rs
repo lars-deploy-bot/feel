@@ -353,7 +353,9 @@ fn resolve_runtime_override_env_file(configured: &Path, alive_root: &Path) -> Re
 }
 
 fn rebase_repo_path_to_alive_root(configured: &Path, alive_root: &Path) -> Option<PathBuf> {
-    const REPO_ROOT_MARKERS: [&str; 7] = ["apps", "packages", "ops", "scripts", "docs", "config", "patches"];
+    const REPO_ROOT_MARKERS: [&str; 7] = [
+        "apps", "packages", "ops", "scripts", "docs", "config", "patches",
+    ];
 
     let components = configured
         .components()
@@ -448,8 +450,7 @@ pub(crate) fn prepare_runtime_bind_mount_source(
             bind_mount.target
         )
     })?;
-    fs::create_dir_all(parent)
-        .with_context(|| format!("failed to create {}", parent.display()))?;
+    fs::create_dir_all(parent).with_context(|| format!("failed to create {}", parent.display()))?;
     fs::copy(source, &staged_source).with_context(|| {
         format!(
             "failed to copy bind mount source {} to {}",

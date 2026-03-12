@@ -237,9 +237,7 @@ pub(crate) async fn run_logged_command_with_timeout(
     command.stdout(Stdio::from(stdout.into_std().await));
     command.stderr(Stdio::from(stderr.into_std().await));
 
-    let mut child = command
-        .spawn()
-        .context("failed to spawn child process")?;
+    let mut child = command.spawn().context("failed to spawn child process")?;
 
     match tokio::time::timeout(timeout_duration, child.wait()).await {
         Ok(Ok(status)) if status.success() => {
@@ -251,9 +249,11 @@ pub(crate) async fn run_logged_command_with_timeout(
             description,
             status
         )),
-        Ok(Err(error)) => {
-            Err(anyhow::anyhow!("failed to wait for {}: {}", description, error))
-        }
+        Ok(Err(error)) => Err(anyhow::anyhow!(
+            "failed to wait for {}: {}",
+            description,
+            error
+        )),
         Err(_) => {
             let _ = child.kill().await;
             append_log(

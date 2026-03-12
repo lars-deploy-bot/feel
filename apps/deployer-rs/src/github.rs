@@ -7,7 +7,7 @@ use tokio::process::Command;
 
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
-use crate::constants::{GITHUB_API_PREFIX, GH_API_RETRY_ATTEMPTS, GH_API_RETRY_BASE_DELAY};
+use crate::constants::{GH_API_RETRY_ATTEMPTS, GH_API_RETRY_BASE_DELAY, GITHUB_API_PREFIX};
 use crate::logging::{append_log, run_logged_command};
 use crate::types::{ApplicationRow, GitHubCommitPayload};
 
@@ -133,12 +133,7 @@ pub(crate) async fn run_gh_api_capture(endpoint: &str, log_path: &Path) -> Resul
     for attempt in 0..GH_API_RETRY_ATTEMPTS {
         append_log(log_path, &format!("$ gh api {}\n", endpoint)).await?;
 
-        let output = match Command::new("gh")
-            .arg("api")
-            .arg(endpoint)
-            .output()
-            .await
-        {
+        let output = match Command::new("gh").arg("api").arg(endpoint).output().await {
             Ok(output) => output,
             Err(error) => {
                 let error = anyhow::Error::from(error).context("failed to execute gh api command");
@@ -160,8 +155,7 @@ pub(crate) async fn run_gh_api_capture(endpoint: &str, log_path: &Path) -> Resul
         append_log(log_path, &String::from_utf8_lossy(&output.stderr)).await?;
 
         if output.status.success() {
-            return Ok(String::from_utf8(output.stdout)
-                .context("gh output was not valid UTF-8")?);
+            return Ok(String::from_utf8(output.stdout).context("gh output was not valid UTF-8")?);
         }
 
         let error = anyhow!("gh api command failed with status {}", output.status);
