@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS deploy.environments (
 CREATE TABLE IF NOT EXISTS deploy.builds (
   build_id text PRIMARY KEY NOT NULL DEFAULT public.gen_prefixed_id('dep_build_'::text),
   application_id text NOT NULL REFERENCES deploy.applications(application_id) ON DELETE CASCADE,
+  server_id text NOT NULL REFERENCES app.servers(server_id),
   requested_by_user_id text REFERENCES iam.users(user_id) ON DELETE SET NULL,
   status deploy.task_status NOT NULL DEFAULT 'pending',
   git_ref text NOT NULL,
@@ -136,8 +137,7 @@ CREATE TABLE IF NOT EXISTS deploy.releases (
   alive_toml_snapshot text NOT NULL,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT deploy_releases_build_id_key UNIQUE (build_id),
-  CONSTRAINT deploy_releases_application_digest_key UNIQUE (application_id, artifact_digest)
+  CONSTRAINT deploy_releases_build_id_key UNIQUE (build_id)
 );
 
 CREATE TABLE IF NOT EXISTS deploy.deployments (
@@ -176,18 +176,24 @@ CREATE INDEX IF NOT EXISTS deploy_environments_domain_idx
 CREATE INDEX IF NOT EXISTS deploy_builds_application_created_idx
   ON deploy.builds (application_id, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS deploy_builds_status_created_idx
-  ON deploy.builds (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS deploy_builds_server_status_created_idx
+  ON deploy.builds (server_id, status, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS deploy_builds_lease_idx
   ON deploy.builds (lease_expires_at);
 
-CREATE UNIQUE INDEX IF NOT EXISTS deploy_builds_one_running_per_application_uidx
-  ON deploy.builds (application_id)
+CREATE UNIQUE INDEX IF NOT EXISTS deploy_builds_one_running_per_application_server_uidx
+  ON deploy.builds (application_id, server_id)
   WHERE status = 'running';
 
 CREATE INDEX IF NOT EXISTS deploy_releases_application_created_idx
   ON deploy.releases (application_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS deploy_releases_application_fingerprint_created_idx
+  ON deploy.releases (application_id, (metadata->>'build_fingerprint'), created_at DESC);
+
+CREATE INDEX IF NOT EXISTS deploy_releases_application_digest_idx
+  ON deploy.releases (application_id, artifact_digest, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS deploy_releases_git_sha_idx
   ON deploy.releases (git_sha);

@@ -14,11 +14,10 @@ use uuid::Uuid;
 
 use crate::config::{
     normalize_env_value, parse_alive_toml, parse_server_id_from_server_config,
-    parse_server_identity_from_server_config,
-    policy_for_environment, prepare_runtime_bind_mount_source, resolve_bind_mount_source,
-    resolve_build_secrets, resolve_runtime_env_file, runtime_network_mode,
-    validate_application_matches_config, validate_runtime_policy,
-    write_sanitized_env_file,
+    parse_server_identity_from_server_config, policy_for_environment,
+    prepare_runtime_bind_mount_source, resolve_bind_mount_source, resolve_build_secrets,
+    resolve_runtime_env_file, runtime_network_mode, validate_application_matches_config,
+    validate_runtime_policy, write_sanitized_env_file,
 };
 use crate::db::{
     claim_next_build, claim_next_deployment, mark_build_succeeded, mark_deployment_succeeded,
@@ -127,6 +126,7 @@ async fn setup_test_postgres_schema(client: &tokio_postgres::Client) {
             CREATE TABLE deploy.builds (
               build_id text PRIMARY KEY,
               application_id text NOT NULL REFERENCES deploy.applications(application_id),
+              server_id text NOT NULL,
               status deploy.task_status NOT NULL DEFAULT 'pending',
               git_ref text NOT NULL,
               git_sha text,
@@ -159,8 +159,7 @@ async fn setup_test_postgres_schema(client: &tokio_postgres::Client) {
               artifact_digest text NOT NULL,
               alive_toml_snapshot text NOT NULL,
               metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-              created_at timestamptz NOT NULL DEFAULT now(),
-              UNIQUE (application_id, artifact_digest)
+              created_at timestamptz NOT NULL DEFAULT now()
             );
 
             CREATE TABLE deploy.environments (
@@ -312,14 +311,16 @@ fn validate_runtime_policy_requires_production_node_env() {
         forced_env: BTreeMap::from([("NODE_ENV".to_string(), "production".to_string())]),
     };
     validate_runtime_policy("staging", &valid_policy).expect("staging policy should be valid");
-    validate_runtime_policy("production", &valid_policy).expect("production policy should be valid");
+    validate_runtime_policy("production", &valid_policy)
+        .expect("production policy should be valid");
 
     let invalid_policy = EnvironmentPolicy {
         allow_email: false,
         blocked_env_keys: Vec::new(),
         forced_env: BTreeMap::from([("NODE_ENV".to_string(), "staging".to_string())]),
     };
-    let error = validate_runtime_policy("staging", &invalid_policy).expect_err("policy should fail");
+    let error =
+        validate_runtime_policy("staging", &invalid_policy).expect_err("policy should fail");
     assert!(error
         .to_string()
         .contains("staging policy must force NODE_ENV=production"));
@@ -575,15 +576,20 @@ async fn db_transitions_work_against_live_postgres() {
     client
         .execute(
             "
-            INSERT INTO deploy.builds (build_id, application_id, status, git_ref)
-            VALUES ($1, $2, 'pending'::deploy.task_status, $3)
+            INSERT INTO deploy.builds (build_id, application_id, server_id, status, git_ref)
+            VALUES ($1, $2, $3, 'pending'::deploy.task_status, $4)
             ",
-            &[&"dep_build_test", &"dep_app_test", &"main"],
+            &[&"dep_build_test", &"dep_app_test", &"srv-test", &"main"],
         )
         .await
         .expect("failed to insert build");
 
-    let claimed_build = claim_next_build(&client, "builder-host")
+    let wrong_server_claim = claim_next_build(&client, "srv-other", "builder-host")
+        .await
+        .expect("failed to claim build from wrong server");
+    assert!(wrong_server_claim.is_none());
+
+    let claimed_build = claim_next_build(&client, "srv-test", "builder-host")
         .await
         .expect("failed to claim build")
         .expect("expected build to be claimable");
@@ -649,6 +655,22 @@ async fn db_transitions_work_against_live_postgres() {
         Some("fingerprint-123")
     );
     assert!(build_row.get::<_, bool>(5));
+
+    let reusable_on_same_server =
+        crate::db::find_reusable_release(&client, "dep_app_test", "fingerprint-123", "srv-test")
+            .await
+            .expect("failed to query reusable release on same server");
+    assert_eq!(
+        reusable_on_same_server
+            .expect("expected reusable release on same server")
+            .release_id,
+        release_id
+    );
+    let reusable_on_other_server =
+        crate::db::find_reusable_release(&client, "dep_app_test", "fingerprint-123", "srv-other")
+            .await
+            .expect("failed to query reusable release on other server");
+    assert!(reusable_on_other_server.is_none());
 
     client
         .execute(
