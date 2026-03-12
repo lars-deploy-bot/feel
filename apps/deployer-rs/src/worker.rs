@@ -8,7 +8,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use axum::extract::Path;
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -25,7 +25,7 @@ use tracing::{error, info, warn};
 
 use self::build::process_build;
 use self::deployment::{process_deployment, reconcile_running_deployments};
-use crate::constants::{DATA_DIR, HEALTH_PORT, LEASE_RENEW_INTERVAL, POLL_INTERVAL};
+use crate::constants::{DATA_DIR, DATA_DIR_ENV, HEALTH_PORT, LEASE_RENEW_INTERVAL, POLL_INTERVAL};
 use crate::db::{claim_next_build, claim_next_deployment, expire_stale_tasks, renew_lease};
 use crate::logging::{ensure_data_dirs, read_task_snapshot};
 use crate::types::{
@@ -38,7 +38,7 @@ pub async fn run() -> Result<()> {
 
     let service_env = ServiceEnv::from_env()?;
     let repo_root = env::current_dir().context("failed to determine current working directory")?;
-    let data_dir = PathBuf::from(DATA_DIR);
+    let data_dir = resolve_data_dir()?;
     ensure_data_dirs(&data_dir).await?;
 
     let hostname = get_hostname()
@@ -136,6 +136,18 @@ pub async fn run() -> Result<()> {
 
     info!(message = "alive deployer stopped");
     Ok(())
+}
+
+pub(crate) fn resolve_data_dir() -> Result<PathBuf> {
+    match env::var_os(DATA_DIR_ENV) {
+        Some(value) => {
+            if value.is_empty() {
+                return Err(anyhow!("{DATA_DIR_ENV} is set but empty"));
+            }
+            Ok(PathBuf::from(value))
+        }
+        None => Ok(PathBuf::from(DATA_DIR)),
+    }
 }
 
 async fn connect_postgres(database_url: &str) -> Result<Client> {

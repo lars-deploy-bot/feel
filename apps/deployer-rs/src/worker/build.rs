@@ -256,6 +256,7 @@ pub(super) async fn process_build(
             .data_dir
             .join("iids")
             .join(format!("{}.txt", build.build_id));
+        let buildx_config_dir = context.data_dir.join("buildx-config");
 
         if tokio_fs::try_exists(&iid_file)
             .await
@@ -274,6 +275,7 @@ pub(super) async fn process_build(
         let mut command = Command::new("docker");
         command
             .env("DOCKER_BUILDKIT", "1")
+            .env("BUILDX_CONFIG", &buildx_config_dir)
             .arg("build")
             .arg("--file")
             .arg(&dockerfile_path)

@@ -122,21 +122,6 @@ pub(crate) async fn image_exists_locally(image_ref: &str) -> Result<bool> {
     Ok(output.status.success())
 }
 
-pub(crate) async fn pull_artifact_digest(artifact_digest: &str, log_path: &Path) -> Result<()> {
-    run_logged_command_with_retry(
-        || {
-            let mut command = Command::new("docker");
-            command.arg("pull").arg(artifact_digest);
-            command
-        },
-        log_path,
-        &format!("docker pull {}", artifact_digest),
-        DOCKER_RETRY_ATTEMPTS,
-        DOCKER_RETRY_BASE_DELAY,
-    )
-    .await
-}
-
 pub(crate) fn deployment_container_name(application_slug: &str, environment_name: &str) -> String {
     let normalized_slug = application_slug
         .chars()

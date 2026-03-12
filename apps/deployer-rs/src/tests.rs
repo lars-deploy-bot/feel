@@ -13,8 +13,10 @@ use uuid::Uuid;
 
 use crate::config::{
     normalize_env_value, parse_alive_toml, parse_server_id_from_server_config,
+    parse_server_identity_from_server_config,
     policy_for_environment, resolve_bind_mount_source, resolve_build_secrets,
     resolve_runtime_env_file, runtime_network_mode, validate_application_matches_config,
+    validate_runtime_policy,
     write_sanitized_env_file,
 };
 use crate::db::{
@@ -33,6 +35,7 @@ use crate::types::{
     FailureKind, LeaseTarget, RuntimeNetworkMode, ServiceContext, ServiceEnv, TaskKind, TaskStage,
     TaskStatus,
 };
+use crate::worker::resolve_data_dir;
 
 fn temp_file_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("alive-deployer-{}-{}", name, Uuid::new_v4()))
@@ -218,6 +221,38 @@ fn parse_server_id_from_server_config_reads_server_id() {
 }
 
 #[test]
+fn parse_server_identity_from_server_config_reads_alive_root() {
+    let (server_id, alive_root) = parse_server_identity_from_server_config(
+        r#"{"serverId":"srv_alive_dot_best_138_201_56_93","paths":{"aliveRoot":"/root/webalive/alive"}}"#,
+    )
+    .expect("failed to parse server config identity");
+
+    assert_eq!(server_id, "srv_alive_dot_best_138_201_56_93");
+    assert_eq!(alive_root, PathBuf::from("/root/webalive/alive"));
+}
+
+#[test]
+fn resolve_data_dir_uses_override_when_set() {
+    let previous = env::var_os("ALIVE_DEPLOYER_DATA_DIR");
+
+    unsafe {
+        env::set_var("ALIVE_DEPLOYER_DATA_DIR", "/tmp/alive-deployer-tests");
+    }
+
+    let resolved = resolve_data_dir().expect("failed to resolve override data dir");
+    assert_eq!(resolved, PathBuf::from("/tmp/alive-deployer-tests"));
+
+    match previous {
+        Some(value) => unsafe {
+            env::set_var("ALIVE_DEPLOYER_DATA_DIR", value);
+        },
+        None => unsafe {
+            env::remove_var("ALIVE_DEPLOYER_DATA_DIR");
+        },
+    }
+}
+
+#[test]
 fn docker_reference_repository_handles_registry_ports() {
     assert_eq!(
         docker_reference_repository("ghcr.io/webalive/app:abc123").expect("missing repository"),
@@ -266,6 +301,27 @@ fn write_sanitized_env_file_normalizes_quoted_values_and_forces_port() {
 
     let _ = fs::remove_file(source_env);
     let _ = fs::remove_file(output_env);
+}
+
+#[test]
+fn validate_runtime_policy_requires_production_node_env() {
+    let valid_policy = EnvironmentPolicy {
+        allow_email: false,
+        blocked_env_keys: Vec::new(),
+        forced_env: BTreeMap::from([("NODE_ENV".to_string(), "production".to_string())]),
+    };
+    validate_runtime_policy("staging", &valid_policy).expect("staging policy should be valid");
+    validate_runtime_policy("production", &valid_policy).expect("production policy should be valid");
+
+    let invalid_policy = EnvironmentPolicy {
+        allow_email: false,
+        blocked_env_keys: Vec::new(),
+        forced_env: BTreeMap::from([("NODE_ENV".to_string(), "staging".to_string())]),
+    };
+    let error = validate_runtime_policy("staging", &invalid_policy).expect_err("policy should fail");
+    assert!(error
+        .to_string()
+        .contains("staging policy must force NODE_ENV=production"));
 }
 
 #[tokio::test]
@@ -732,6 +788,7 @@ allow_email = false
 blocked_env_keys = ["MAILER_API_KEY"]
 
 [policies.staging.forced_env]
+NODE_ENV = "production"
 PUBLIC_MARKER = "ready"
 
 [policies.production]
@@ -739,6 +796,7 @@ allow_email = true
 blocked_env_keys = []
 
 [policies.production.forced_env]
+NODE_ENV = "production"
 PUBLIC_MARKER = "prod"
 "#,
         mounted_config_source = mounted_config_path.display()
@@ -852,6 +910,7 @@ CMD ["sh","-c","test \"$PUBLIC_MARKER\" = \"ready\" && test -z \"$MAILER_API_KEY
             database_url: "postgresql://example.invalid/alive".to_string(),
             server_config_path: server_config_path.clone(),
             server_id: "srv_e2e_smoke".to_string(),
+            alive_root: host_root.clone(),
         },
         repo_root: host_root.clone(),
         data_dir: data_dir.clone(),

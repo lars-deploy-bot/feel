@@ -46,6 +46,7 @@ pub(crate) struct ServiceEnv {
     pub(crate) database_url: String,
     pub(crate) server_config_path: PathBuf,
     pub(crate) server_id: String,
+    pub(crate) alive_root: PathBuf,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -188,6 +189,13 @@ pub(crate) struct EnvironmentRuntimeOverrides {
 pub(crate) struct ServerConfigIdentity {
     #[serde(rename = "serverId")]
     pub(crate) server_id: String,
+    pub(crate) paths: ServerConfigPaths,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct ServerConfigPaths {
+    #[serde(rename = "aliveRoot")]
+    pub(crate) alive_root: String,
 }
 
 #[derive(Clone, Copy)]
