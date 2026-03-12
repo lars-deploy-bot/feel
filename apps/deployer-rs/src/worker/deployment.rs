@@ -7,7 +7,8 @@ use tokio_postgres::Client;
 use super::error::TaskExecutionError;
 use super::with_lease_heartbeat;
 use crate::config::{
-    parse_alive_toml, policy_for_environment, resolve_bind_mount_source,
+    parse_alive_toml, policy_for_environment, prepare_runtime_bind_mount_source_async,
+    resolve_bind_mount_source,
     resolve_runtime_env_file_async, runtime_network_mode, validate_runtime_policy,
     write_sanitized_env_file_async,
 };
@@ -378,9 +379,20 @@ pub(super) async fn process_deployment(
                 }
             }
 
+            let staged_bind_mount_root = context
+                .data_dir
+                .join("bind-mounts")
+                .join(&deployment.deployment_id);
             for bind_mount in &config.runtime.bind_mounts {
-                let source = resolve_bind_mount_source(bind_mount, context)
+                let original_source = resolve_bind_mount_source(bind_mount, context)
                     .map_err(TaskExecutionError::runtime_preparation)?;
+                let source = prepare_runtime_bind_mount_source_async(
+                    &original_source,
+                    bind_mount.clone(),
+                    &staged_bind_mount_root,
+                )
+                .await
+                .map_err(TaskExecutionError::runtime_preparation)?;
                 let mount_spec = if bind_mount.read_only {
                     format!("{}:{}:ro", source.display(), bind_mount.target)
                 } else {

@@ -2,6 +2,7 @@ use std::{
     collections::BTreeMap,
     env, fs,
     net::TcpListener,
+    os::unix::fs::PermissionsExt,
     path::PathBuf,
     process::{Command as StdCommand, Stdio as StdStdio},
 };
@@ -14,9 +15,9 @@ use uuid::Uuid;
 use crate::config::{
     normalize_env_value, parse_alive_toml, parse_server_id_from_server_config,
     parse_server_identity_from_server_config,
-    policy_for_environment, resolve_bind_mount_source, resolve_build_secrets,
-    resolve_runtime_env_file, runtime_network_mode, validate_application_matches_config,
-    validate_runtime_policy,
+    policy_for_environment, prepare_runtime_bind_mount_source, resolve_bind_mount_source,
+    resolve_build_secrets, resolve_runtime_env_file, runtime_network_mode,
+    validate_application_matches_config, validate_runtime_policy,
     write_sanitized_env_file,
 };
 use crate::db::{
@@ -31,9 +32,9 @@ use crate::logging::{
     build_log_path, prepare_log, read_task_snapshot, run_logged_command, TaskPipeline,
 };
 use crate::types::{
-    AliveConfig, ApplicationRow, EnvironmentPolicy, EnvironmentRow, EnvironmentRuntimeOverrides,
-    FailureKind, LeaseTarget, RuntimeNetworkMode, ServiceContext, ServiceEnv, TaskKind, TaskStage,
-    TaskStatus,
+    AliveConfig, ApplicationRow, BindMount, EnvironmentPolicy, EnvironmentRow,
+    EnvironmentRuntimeOverrides, FailureKind, LeaseTarget, RuntimeNetworkMode, ServiceContext,
+    ServiceEnv, TaskKind, TaskStage, TaskStatus,
 };
 use crate::worker::resolve_data_dir;
 
@@ -322,6 +323,45 @@ fn validate_runtime_policy_requires_production_node_env() {
     assert!(error
         .to_string()
         .contains("staging policy must force NODE_ENV=production"));
+}
+
+#[test]
+fn prepare_runtime_bind_mount_source_copies_files_with_readable_permissions() {
+    let source_file = temp_file_path("server-config-source.json");
+    let staged_root = temp_dir_path("bind-mount-root");
+    let bind_mount = BindMount {
+        source: None,
+        source_env: Some("SERVER_CONFIG_PATH".to_string()),
+        target: "/var/lib/alive/server-config.json".to_string(),
+        read_only: true,
+    };
+
+    fs::write(&source_file, r#"{"serverId":"srv_test"}"#).expect("failed to write source file");
+    fs::set_permissions(&source_file, fs::Permissions::from_mode(0o640))
+        .expect("failed to chmod source file");
+
+    let staged_source = prepare_runtime_bind_mount_source(&source_file, &bind_mount, &staged_root)
+        .expect("failed to stage bind mount source");
+
+    assert_eq!(
+        staged_source,
+        staged_root.join("var/lib/alive/server-config.json")
+    );
+    assert_eq!(
+        fs::read_to_string(&staged_source).expect("failed to read staged file"),
+        r#"{"serverId":"srv_test"}"#
+    );
+    assert_eq!(
+        fs::metadata(&staged_source)
+            .expect("failed to stat staged file")
+            .permissions()
+            .mode()
+            & 0o777,
+        0o644
+    );
+
+    let _ = fs::remove_file(source_file);
+    let _ = fs::remove_dir_all(staged_root);
 }
 
 #[tokio::test]
