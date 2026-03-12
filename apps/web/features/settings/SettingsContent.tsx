@@ -1,13 +1,11 @@
 "use client"
 
 import { lazy, Suspense } from "react"
+import { GeneralSettings } from "@/features/settings/tabs/GeneralSettings"
 import { useSettingsTabContext } from "./SettingsTabProvider"
 import { SettingsTabLayout } from "./tabs/SettingsTabLayout"
 
-// Lazy load tab components
-const GeneralSettings = lazy(() =>
-  import("@/features/settings/tabs/GeneralSettings").then(m => ({ default: m.GeneralSettings })),
-)
+// Lazy load non-default tab components (General is eager — it's the default tab)
 const SkillsSettings = lazy(() =>
   import("@/features/settings/tabs/SkillsSettings").then(m => ({ default: m.SkillsSettings })),
 )
@@ -46,7 +44,7 @@ const SessionsSettings = lazy(() =>
 export function SettingsContent() {
   const { activeTab } = useSettingsTabContext()
   const isFixedTab = activeTab === "automations"
-  const isWideTab = activeTab === "websites"
+  const isWideTab = activeTab === "websites" || activeTab === "integrations"
 
   return (
     <div
@@ -81,7 +79,10 @@ export function SettingsContent() {
 
 function IntegrationsListWithHeader() {
   return (
-    <SettingsTabLayout title="Integrations" description="Connect external services to enhance your workspace">
+    <SettingsTabLayout
+      title="Integrations"
+      description="Connect your personal accounts. Only you can use your connected integrations."
+    >
       <IntegrationsList />
     </SettingsTabLayout>
   )

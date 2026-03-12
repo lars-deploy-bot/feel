@@ -9,6 +9,14 @@ vi.mock("e2b", () => ({
 
 vi.mock("@webalive/sandbox", () => ({
   SANDBOX_WORKSPACE_ROOT: "/home/user/project",
+  getSandboxConnectErrorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
+  isSandboxDefinitelyGone: (error: unknown) => {
+    if (typeof error === "object" && error !== null && "statusCode" in error && error.statusCode === 404) {
+      return true
+    }
+
+    return (error instanceof Error ? error.message : String(error)).toLowerCase().includes("not found")
+  },
 }))
 
 vi.mock("@/lib/domain/resolve-domain-runtime", () => ({}))
@@ -30,6 +38,7 @@ function makeDomain(overrides: Record<string, unknown> = {}) {
     hostname: "example.com",
     port: 3701,
     is_test_env: false,
+    test_run_id: null,
     execution_mode: "e2b" as const,
     sandbox_id: "sbx_abc",
     sandbox_status: "running" as const,

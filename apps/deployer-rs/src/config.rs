@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
+use std::io::Write;
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
@@ -21,24 +24,29 @@ impl ServiceEnv {
         let server_config_path = env::var("SERVER_CONFIG_PATH")
             .map(PathBuf::from)
             .context("SERVER_CONFIG_PATH is required")?;
-        let (server_id, alive_root) = load_server_identity(&server_config_path)?;
+        let (server_id, alive_root, sites_root) = load_server_identity(&server_config_path)?;
 
         Ok(Self {
             database_url,
             server_config_path,
             server_id,
             alive_root,
+            sites_root,
         })
     }
 }
 
-pub(crate) fn load_server_identity(server_config_path: &Path) -> Result<(String, PathBuf)> {
+pub(crate) fn load_server_identity(
+    server_config_path: &Path,
+) -> Result<(String, PathBuf, Option<PathBuf>)> {
     let raw = fs::read_to_string(server_config_path)
         .with_context(|| format!("failed to read {}", server_config_path.display()))?;
     parse_server_identity_from_server_config(&raw)
 }
 
-pub(crate) fn parse_server_identity_from_server_config(raw: &str) -> Result<(String, PathBuf)> {
+pub(crate) fn parse_server_identity_from_server_config(
+    raw: &str,
+) -> Result<(String, PathBuf, Option<PathBuf>)> {
     let config = serde_json::from_str::<ServerConfigIdentity>(raw)
         .context("failed to parse server-config.json")?;
     if config.server_id.trim().is_empty() {
@@ -47,7 +55,16 @@ pub(crate) fn parse_server_identity_from_server_config(raw: &str) -> Result<(Str
     if config.paths.alive_root.trim().is_empty() {
         return Err(anyhow!("server-config.json is missing paths.aliveRoot"));
     }
-    Ok((config.server_id, PathBuf::from(config.paths.alive_root)))
+    let sites_root = config
+        .paths
+        .sites_root
+        .filter(|value| !value.trim().is_empty())
+        .map(PathBuf::from);
+    Ok((
+        config.server_id,
+        PathBuf::from(config.paths.alive_root),
+        sites_root,
+    ))
 }
 
 pub(crate) fn parse_alive_toml(content: &str) -> Result<AliveConfig> {
@@ -226,23 +243,45 @@ pub(crate) fn write_sanitized_env_file(
     }
 
     for (key, value) in &policy.forced_env {
+        if key == "PORT" {
+            continue;
+        }
         output.push_str(&format!("{}={}\n", key, value));
         written_keys.insert(key.clone());
     }
 
-    if !written_keys.contains("PORT") {
-        output.push_str(&format!("PORT={}\n", runtime_port));
-    }
+    output.push_str(&format!("PORT={}\n", runtime_port));
 
     if let Some(parent) = output_env_file.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create {}", parent.display()))?;
     }
 
-    fs::write(output_env_file, output)
-        .with_context(|| format!("failed to write {}", output_env_file.display()))?;
+    write_sensitive_file(output_env_file, output.as_bytes())?;
 
     Ok(())
+}
+
+fn write_sensitive_file(path: &Path, contents: &[u8]) -> Result<()> {
+    #[cfg(unix)]
+    {
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .mode(0o600)
+            .open(path)
+            .with_context(|| format!("failed to open {}", path.display()))?;
+        file.write_all(contents)
+            .with_context(|| format!("failed to write {}", path.display()))?;
+        return Ok(());
+    }
+
+    #[cfg(not(unix))]
+    {
+        fs::write(path, contents).with_context(|| format!("failed to write {}", path.display()))?;
+        Ok(())
+    }
 }
 
 pub(crate) async fn write_sanitized_env_file_async(
@@ -372,11 +411,7 @@ pub(crate) async fn resolve_runtime_env_file_async(
 pub(crate) fn runtime_network_mode(
     runtime: &crate::types::RuntimeConfig,
 ) -> Result<RuntimeNetworkMode> {
-    match runtime.network_mode.as_deref() {
-        None | Some("bridge") => Ok(RuntimeNetworkMode::Bridge),
-        Some("host") => Ok(RuntimeNetworkMode::Host),
-        Some(other) => Err(anyhow!("unsupported runtime network mode {}", other)),
-    }
+    Ok(runtime.network_mode.unwrap_or(RuntimeNetworkMode::Bridge))
 }
 
 pub(crate) fn resolve_bind_mount_source(
@@ -385,6 +420,17 @@ pub(crate) fn resolve_bind_mount_source(
 ) -> Result<PathBuf> {
     if let Some(source) = &bind_mount.source {
         return Ok(PathBuf::from(source));
+    }
+
+    if let Some(source_server_path) = bind_mount.source_server_path {
+        return match source_server_path {
+            crate::types::BindMountServerPath::AliveRoot => Ok(context.env.alive_root.clone()),
+            crate::types::BindMountServerPath::SitesRoot => context
+                .env
+                .sites_root
+                .clone()
+                .ok_or_else(|| anyhow!("server-config.json is missing paths.sitesRoot")),
+        };
     }
 
     if let Some(source_env) = &bind_mount.source_env {
@@ -398,8 +444,34 @@ pub(crate) fn resolve_bind_mount_source(
     }
 
     Err(anyhow!(
-        "bind mount for target {} must set source or source_env",
-        bind_mount.target
+        "bind mount must set source, source_env, or source_server_path"
+    ))
+}
+
+pub(crate) fn resolve_bind_mount_target(
+    bind_mount: &BindMount,
+    context: &ServiceContext,
+) -> Result<String> {
+    if let Some(target) = &bind_mount.target {
+        return Ok(target.clone());
+    }
+
+    if let Some(target_server_path) = bind_mount.target_server_path {
+        let target = match target_server_path {
+            crate::types::BindMountServerPath::AliveRoot => context.env.alive_root.display().to_string(),
+            crate::types::BindMountServerPath::SitesRoot => context
+                .env
+                .sites_root
+                .as_ref()
+                .ok_or_else(|| anyhow!("server-config.json is missing paths.sitesRoot"))?
+                .display()
+                .to_string(),
+        };
+        return Ok(target);
+    }
+
+    Err(anyhow!(
+        "bind mount must set target or target_server_path"
     ))
 }
 
@@ -422,11 +494,15 @@ pub(crate) fn prepare_runtime_bind_mount_source(
         ));
     }
 
-    let relative_target = bind_mount.target.trim_start_matches('/');
+    let target = bind_mount
+        .target
+        .as_deref()
+        .ok_or_else(|| anyhow!("bind mount file source requires an explicit target path"))?;
+    let relative_target = target.trim_start_matches('/');
     if relative_target.is_empty() {
         return Err(anyhow!(
             "bind mount target {} must include a file path",
-            bind_mount.target
+            target
         ));
     }
 
@@ -434,7 +510,7 @@ pub(crate) fn prepare_runtime_bind_mount_source(
     let parent = staged_source.parent().ok_or_else(|| {
         anyhow!(
             "failed to determine staged parent directory for bind mount target {}",
-            bind_mount.target
+            target
         )
     })?;
     fs::create_dir_all(parent).with_context(|| format!("failed to create {}", parent.display()))?;

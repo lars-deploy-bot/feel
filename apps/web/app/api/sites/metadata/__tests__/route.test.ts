@@ -2,20 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { SessionUser } from "@/features/auth/lib/auth"
 import type { SiteMetadata } from "@/lib/siteMetadataStore"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }))
 
-const mockUser: SessionUser = {
-  id: "u1",
-  email: "owner@example.com",
-  name: "Owner",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const mockUser: SessionUser = createMockSessionUser({ id: "u1", email: "owner@example.com", name: "Owner" })
 
 let requireSessionUserResult: SessionUser | null = mockUser
 let isWorkspaceAuthenticatedResult = true

@@ -7,6 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSessionUser, MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Mock Redis client
 vi.mock("@webalive/redis", () => ({
@@ -139,15 +140,7 @@ describe("GET /api/health", () => {
 
     it("should return shallow response for non-superadmin authenticated user", async () => {
       setupHealthyServices()
-      vi.mocked(getSessionUser).mockResolvedValue({
-        id: "user-1",
-        email: "user@example.com",
-        name: "Regular User",
-        isSuperadmin: false,
-        isAdmin: false,
-        canSelectAnyModel: false,
-        enabledModels: [],
-      })
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_SESSION_USER)
 
       const response = await GET(publicRequest())
       const data = await response.json()
@@ -187,15 +180,16 @@ describe("GET /api/health", () => {
   describe("Deep Response (authenticated)", () => {
     it("should return full response for superadmin", async () => {
       setupHealthyServices()
-      vi.mocked(getSessionUser).mockResolvedValue({
-        id: "admin-1",
-        email: "admin@alive.best",
-        name: "Super Admin",
-        isSuperadmin: true,
-        isAdmin: true,
-        canSelectAnyModel: true,
-        enabledModels: [],
-      })
+      vi.mocked(getSessionUser).mockResolvedValue(
+        createMockSessionUser({
+          id: "admin-1",
+          email: "admin@alive.best",
+          name: "Super Admin",
+          isSuperadmin: true,
+          isAdmin: true,
+          canSelectAnyModel: true,
+        }),
+      )
 
       const response = await GET(publicRequest())
       const data = await response.json()

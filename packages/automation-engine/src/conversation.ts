@@ -10,6 +10,7 @@
  */
 
 import { randomUUID } from "node:crypto"
+import * as Sentry from "@sentry/node"
 import type { RunContext } from "./types"
 
 export interface BootstrapResult {
@@ -33,6 +34,9 @@ export async function bootstrapRunConversation(ctx: RunContext): Promise<Bootstr
 
     if (domainError || !domain?.org_id) {
       console.error(`[Engine] Failed to look up org_id for site ${ctx.job.site_id}:`, domainError)
+      Sentry.captureException(domainError ?? new Error(`org_id not found for site ${ctx.job.site_id}`), {
+        tags: { component: "automation-engine", jobId: ctx.job.id, siteId: ctx.job.site_id },
+      })
       return null
     }
 
@@ -54,6 +58,9 @@ export async function bootstrapRunConversation(ctx: RunContext): Promise<Bootstr
 
     if (convError) {
       console.error(`[Engine] Failed to create conversation for run ${ctx.runId}:`, convError)
+      Sentry.captureException(new Error(`Bootstrap conversation failed: ${convError.message}`), {
+        tags: { component: "automation-engine", runId: ctx.runId, jobId: ctx.job.id },
+      })
       return null
     }
 
@@ -66,6 +73,9 @@ export async function bootstrapRunConversation(ctx: RunContext): Promise<Bootstr
 
     if (tabError) {
       console.error(`[Engine] Failed to create conversation tab for run ${ctx.runId}:`, tabError)
+      Sentry.captureException(new Error(`Bootstrap tab failed: ${tabError.message}`), {
+        tags: { component: "automation-engine", runId: ctx.runId, jobId: ctx.job.id },
+      })
       // Clean up the orphaned conversation
       await ctx.supabase.from("conversations").delete().eq("conversation_id", conversationId)
       return null
@@ -74,6 +84,9 @@ export async function bootstrapRunConversation(ctx: RunContext): Promise<Bootstr
     return { conversationId, tabId }
   } catch (err) {
     console.error(`[Engine] Unexpected error bootstrapping conversation for run ${ctx.runId}:`, err)
+    Sentry.captureException(err, {
+      tags: { component: "automation-engine", runId: ctx.runId, jobId: ctx.job.id },
+    })
     return null
   }
 }

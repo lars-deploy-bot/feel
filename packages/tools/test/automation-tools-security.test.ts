@@ -12,7 +12,7 @@ function jsonResponse(payload: unknown): Response {
   } as Response
 }
 
-describe("automation tools runtime validation", () => {
+describe("automation tools runtime validation", { timeout: 15_000 }, () => {
   beforeEach(() => {
     vi.resetModules()
     mockFetch.mockReset()

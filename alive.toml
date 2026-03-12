@@ -31,7 +31,12 @@ dockerfile = "ops/docker/alive.Dockerfile"
 target = "runtime"
 image_repository = "alive-control/alive"
 
+[source]
+adapter = "local_fs"
+path = "."
+
 [runtime]
+kind = "host"
 env_file = "apps/web/.env.production"
 container_port = 3000
 healthcheck_path = "/api/health"
@@ -43,8 +48,9 @@ target = "/var/lib/alive/server-config.json"
 read_only = true
 
 [[runtime.bind_mounts]]
-source = "/srv/webalive/sites"
-target = "/srv/webalive/sites"
+source_server_path = "sites_root"
+target_server_path = "sites_root"
+read_only = false
 
 [[build_secrets]]
 id = "build_env"

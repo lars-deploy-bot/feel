@@ -50,6 +50,7 @@ export const INTEGRATION_UI_REGISTRY = {
   linear: null, // Issues viewable via Linear MCP tools, not settings panel
   gmail: null, // Email operations via Gmail MCP tools
   google_calendar: null, // Calendar operations via Google Calendar MCP tools
+  google_search_console: null, // Search Console operations via mini-tools service
   supabase: null, // Database operations via Supabase MCP tools (run_query, etc.)
   outlook: null, // Email operations via Outlook MCP tools
 } as const satisfies Record<OAuthMcpProviderKey, IntegrationUIConfig | null>

@@ -1,16 +1,16 @@
 "use client"
 
+import { useQueryState } from "nuqs"
 import { useCallback, useMemo, useState } from "react"
 import type { SettingsTab } from "@/features/settings/settings-tabs"
+import { isSettingsTab } from "@/features/settings/settings-tabs"
 import { trackSettingsOpened } from "@/lib/analytics/events"
-
-/** Settings state: null = closed, object = open with optional initial tab */
-type SettingsState = { initialTab?: SettingsTab } | null
+import { QUERY_KEYS } from "@/lib/url/queryState"
 
 interface ModalState {
   feedback: boolean
   invite: boolean
-  settings: SettingsState
+  settings: { initialTab?: SettingsTab } | null
   templates: boolean
   photoMenu: boolean
   mobilePreview: boolean
@@ -34,13 +34,21 @@ interface ModalActions {
 
 /**
  * Hook to manage all modal visibility state in one place.
- * Reduces 6 separate useState calls to 1 consolidated state.
+ * Settings open/close state is synced to the URL via ?settings= query param
+ * so it persists across page reloads.
  */
 export function useModals(): ModalState & ModalActions {
-  const [state, setState] = useState<ModalState>({
+  const [settingsParam, setSettingsParam] = useQueryState(QUERY_KEYS.settings)
+  const [, setSettingsTabParam] = useQueryState(QUERY_KEYS.settingsTab)
+
+  // Derive settings state from URL param
+  const settingsFromUrl: { initialTab?: SettingsTab } | null = settingsParam
+    ? { initialTab: isSettingsTab(settingsParam) ? settingsParam : undefined }
+    : null
+
+  const [state, setState] = useState<Omit<ModalState, "settings">>({
     feedback: false,
     invite: false,
-    settings: null,
     templates: false,
     photoMenu: false,
     mobilePreview: false,
@@ -52,18 +60,26 @@ export function useModals(): ModalState & ModalActions {
   const openInvite = useCallback(() => setState(s => ({ ...s, invite: true })), [])
   const closeInvite = useCallback(() => setState(s => ({ ...s, invite: false })), [])
 
-  const openSettings = useCallback((initialTab?: SettingsTab) => {
-    trackSettingsOpened(initialTab)
-    setState(s => ({ ...s, settings: { initialTab } }))
-  }, [])
-  const closeSettings = useCallback(() => setState(s => ({ ...s, settings: null })), [])
+  const openSettings = useCallback(
+    (initialTab?: SettingsTab) => {
+      trackSettingsOpened(initialTab)
+      void setSettingsParam(initialTab || "1")
+    },
+    [setSettingsParam],
+  )
+  const closeSettings = useCallback(() => {
+    void setSettingsParam(null)
+    void setSettingsTabParam(null)
+  }, [setSettingsParam, setSettingsTabParam])
   const toggleSettings = useCallback(() => {
-    setState(s => {
-      if (s.settings) return { ...s, settings: null }
+    if (settingsParam) {
+      void setSettingsParam(null)
+      void setSettingsTabParam(null)
+    } else {
       trackSettingsOpened(undefined)
-      return { ...s, settings: {} }
-    })
-  }, [])
+      void setSettingsParam("1")
+    }
+  }, [settingsParam, setSettingsParam, setSettingsTabParam])
 
   const openTemplates = useCallback(() => setState(s => ({ ...s, templates: true })), [])
   const closeTemplates = useCallback(() => setState(s => ({ ...s, templates: false })), [])
@@ -77,6 +93,7 @@ export function useModals(): ModalState & ModalActions {
   return useMemo(
     () => ({
       ...state,
+      settings: settingsFromUrl,
       openFeedback,
       closeFeedback,
       openInvite,
@@ -93,6 +110,7 @@ export function useModals(): ModalState & ModalActions {
     }),
     [
       state,
+      settingsFromUrl,
       openFeedback,
       closeFeedback,
       openInvite,

@@ -15,7 +15,11 @@
 import { randomUUID } from "node:crypto"
 import { COOKIE_NAMES, TEST_CONFIG } from "@webalive/shared"
 import jwt from "jsonwebtoken"
-import { BootstrapTenantResponseSchema, type TestTenant } from "@/app/api/test/test-route-schemas"
+import {
+  BootstrapTenantRequestSchema,
+  BootstrapTenantResponseSchema,
+  type TestTenant,
+} from "@/app/api/test/test-route-schemas"
 import { DEFAULT_USER_SCOPES } from "@/features/auth/lib/jwt"
 import { expect, test } from "./fixtures"
 import { requireProjectBaseUrl } from "./lib/base-url"
@@ -71,17 +75,18 @@ async function bootstrapSecondTenant(baseUrl: string, suffix: string): Promise<T
   const workerIndex = TEST_CONFIG.MAX_WORKERS - 1
   const email = `e2e_lockbox_${suffix}@${TEST_CONFIG.EMAIL_DOMAIN}`
   const workspace = `e2e-lockbox-${suffix}.${TEST_CONFIG.EMAIL_DOMAIN}`
+  const bootstrapBody = BootstrapTenantRequestSchema.parse({
+    runId,
+    workerIndex,
+    email,
+    workspace,
+    credits: TEST_CONFIG.DEFAULT_CREDITS,
+  })
 
   const res = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
     method: "POST",
     headers: buildE2ETestHeaders(true),
-    body: JSON.stringify({
-      runId,
-      workerIndex,
-      email,
-      workspace,
-      credits: TEST_CONFIG.DEFAULT_CREDITS,
-    }),
+    body: JSON.stringify(bootstrapBody),
   })
 
   if (!res.ok) {

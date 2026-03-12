@@ -3,7 +3,7 @@
  *
  * Manages E2B sandbox lifecycle: create, connect, evict, kill.
  * Deduplicates concurrent creates for the same domain.
- * Reconnects by stored sandbox_id; on failure creates a new sandbox.
+ * Reconnects by stored sandbox_id; only creates a new sandbox when the old one is definitely gone.
  * Syncs workspace source files into the sandbox on first create.
  *
  * The manager is a singleton per worker process. Sandboxes are keyed by domain_id.
@@ -13,6 +13,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import type { SandboxStatus } from "@webalive/database"
 import { Sandbox } from "e2b"
+import { getSandboxConnectErrorMessage, isSandboxDefinitelyGone } from "./connect-errors.js"
 import type { E2bTemplate } from "./constants.js"
 import { E2B_DEFAULT_TEMPLATE } from "./constants.js"
 
@@ -23,6 +24,7 @@ export interface SandboxDomain {
   sandbox_id: string | null
   sandbox_status: SandboxStatus | null
   is_test_env?: boolean
+  test_run_id?: string | null
 }
 
 /** Standard workspace root inside the sandbox. */
@@ -187,8 +189,12 @@ export class SandboxManager {
         return sandbox
       } catch (err) {
         console.error(
-          `[sandbox-manager] Reconnect failed for ${domain.hostname} (${domain.sandbox_id}): ${err instanceof Error ? err.message : String(err)}`,
+          `[sandbox-manager] Reconnect failed for ${domain.hostname} (${domain.sandbox_id}): ${getSandboxConnectErrorMessage(err)}`,
         )
+        if (!isSandboxDefinitelyGone(err)) {
+          throw err
+        }
+
         // Mark dead, then fall through to create
         await this.persistence.updateSandbox(domain.domain_id, domain.sandbox_id, "dead")
       }
@@ -207,6 +213,8 @@ export class SandboxManager {
       metadata: {
         domain_id: domain.domain_id,
         hostname: domain.hostname,
+        ...(domain.is_test_env !== undefined ? { is_test_env: String(domain.is_test_env) } : {}),
+        ...(domain.test_run_id ? { test_run_id: domain.test_run_id } : {}),
       },
     })
 

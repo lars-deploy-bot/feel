@@ -13,6 +13,48 @@ REMOVE_FILES=${REMOVE_FILES:-false}
 
 log_info "Tearing down site: $SITE_DOMAIN"
 
+wait_for_user_processes_to_exit() {
+    local site_user=$1
+    local attempts=$2
+
+    for ((i=0; i<attempts; i++)); do
+        if ! pgrep -u "$site_user" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+    done
+
+    return 1
+}
+
+stop_lingering_user_processes() {
+    local site_user=$1
+
+    if ! pgrep -u "$site_user" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log_info "Stopping lingering processes for user: $site_user"
+    pkill -TERM -u "$site_user" >/dev/null 2>&1 || true
+
+    if wait_for_user_processes_to_exit "$site_user" 10; then
+        log_success "Lingering processes stopped for: $site_user"
+        return 0
+    fi
+
+    log_warn "Processes still running for $site_user, sending SIGKILL"
+    pkill -KILL -u "$site_user" >/dev/null 2>&1 || true
+
+    if wait_for_user_processes_to_exit "$site_user" 5; then
+        log_success "Lingering processes force-stopped for: $site_user"
+        return 0
+    fi
+
+    log_error "Failed to stop lingering processes for: $site_user"
+    pgrep -a -u "$site_user" >&2 || true
+    return 1
+}
+
 # =============================================================================
 # Stop systemd service
 # =============================================================================
@@ -82,8 +124,13 @@ if [[ "$REMOVE_USER" == "true" ]]; then
     SITE_USER="site-${SITE_SLUG}"
     if user_exists "$SITE_USER"; then
         log_info "Removing user: $SITE_USER"
-        userdel "$SITE_USER" || log_warn "Failed to remove user"
-        log_success "User removed"
+        stop_lingering_user_processes "$SITE_USER" || die "Failed to stop processes for $SITE_USER"
+
+        if userdel "$SITE_USER"; then
+            log_success "User removed"
+        else
+            die "Failed to remove user: $SITE_USER"
+        fi
     fi
 fi
 
@@ -102,6 +149,9 @@ if [[ "$REMOVE_FILES" == "true" ]]; then
     if [[ -d "$TARGET_DIR" ]]; then
         log_info "Removing files: $TARGET_DIR"
         rm -rf "$TARGET_DIR"
+        if [[ -e "$TARGET_DIR" ]]; then
+            die "Failed to remove files: $TARGET_DIR"
+        fi
         log_success "Files removed"
     fi
 

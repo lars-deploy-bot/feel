@@ -5,6 +5,11 @@
  * Called after every deployment. Verifies the target domain is present, then
  * sends SIGHUP to preview-proxy for instant reload.
  *
+ * IMPORTANT: This writes shared server-wide artifacts under /var/lib/alive/generated/.
+ * It always uses canonical (production) DB credentials and filters by server_id,
+ * matching the same authoritative domain set as the Caddy routing generator.
+ * This prevents staging/dev processes from overwriting production data.
+ *
  * Strict: throws on any failure. A deployment without a working preview is not a deployment.
  */
 
@@ -12,10 +17,10 @@ import { execSync } from "node:child_process"
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { createClient } from "@supabase/supabase-js"
-import { retryAsync } from "@webalive/shared"
+import { getServerId, retryAsync } from "@webalive/shared"
 import { PATHS } from "../constants.js"
 import { assertNoDangerousCountDrop, readExistingPortMapCount } from "../generated-safety.js"
-import { loadCanonicalInfraEnv } from "../infra-env.js"
+import { loadCanonicalInfraEnvFileOnly } from "../infra-env.js"
 
 const PORT_MAP_FILENAME = "port-map.json"
 const SANDBOX_MAP_FILENAME = "sandbox-map.json"
@@ -30,14 +35,14 @@ function getOutputPath(): string {
   return `/var/lib/alive/generated/${PORT_MAP_FILENAME}`
 }
 
-function getSupabaseClient() {
-  const infraEnv = loadCanonicalInfraEnv()
+function getCanonicalSupabaseClient() {
+  const infraEnv = loadCanonicalInfraEnvFileOnly()
   const url = infraEnv.SUPABASE_URL
   const key = infraEnv.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) {
-    throw new Error("[port-map] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required")
+    throw new Error("[port-map] Canonical .env.production must have SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
   }
-  return createClient(url, key, { db: { schema: "app" } })
+  return { client: createClient(url, key, { db: { schema: "app" } }), infraEnv }
 }
 
 /**
@@ -133,19 +138,31 @@ export function readTemplatePortMap(templateEnvDir = TEMPLATE_ENV_DIR): Record<s
  * port-map.json: { "hostname": port } — for systemd sites (local port)
  * sandbox-map.json: { "hostname": { sandboxId, e2bDomain } } — for E2B sites
  *
+ * Uses canonical (production) DB credentials and filters by server_id,
+ * matching the same authoritative domain set as the Caddy routing generator.
+ *
  * @param requiredHostname - If set, throws if this hostname is missing from the result.
  *                           Used by deploy pipeline to guarantee the new site is routable.
  * @returns number of domains written
  * @throws Error if Supabase query fails, required hostname missing, or signal fails
  */
 export async function regeneratePortMap(requiredHostname?: string): Promise<number> {
+  const serverId = getServerId()
+  if (!serverId) {
+    throw new Error("[port-map] serverId not configured in server-config.json")
+  }
+
   const { portMap, sandboxMap } = await retryAsync(
     async () => {
-      const infraEnv = loadCanonicalInfraEnv()
-      const app = getSupabaseClient()
+      const { client: app, infraEnv } = getCanonicalSupabaseClient()
+
+      // Query domains assigned to THIS server only, excluding test envs.
+      // Same scoping as Caddy routing generator (generate-routing.ts:queryDomains).
       const { data, error } = await app
         .from("domains")
         .select("hostname, port, execution_mode, sandbox_id, sandbox_status")
+        .eq("server_id", serverId)
+        .is("is_test_env", false)
 
       if (error) {
         throw new Error(`[port-map] Failed to fetch domains: ${error.message}`)
@@ -225,9 +242,8 @@ export async function regeneratePortMap(requiredHostname?: string): Promise<numb
   // Signal preview-proxy to reload immediately
   signalPreviewProxy()
 
-  const total = nextTotal
   if (Object.keys(sandboxMap).length > 0) {
     console.error(`[port-map] Wrote ${Object.keys(portMap).length} ports + ${Object.keys(sandboxMap).length} sandboxes`)
   }
-  return total
+  return nextTotal
 }

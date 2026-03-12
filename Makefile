@@ -10,7 +10,7 @@
 #
 # =============================================================================
 
-.PHONY: all clean test help ship ship-fast staging staging-fast production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager deployer
+.PHONY: all clean test help ship ship-fast staging staging-fast production production-fast deploy-status smoke-deploy-entrypoint dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager deployer
 
 all: help
 
@@ -47,6 +47,7 @@ help:
 	@echo "  make production      Deploy production only (port 9000)"
 	@echo "  make production-fast Deploy production only, skip E2E tests"
 	@echo "  make deploy-status   Check if a deployment is running"
+	@echo "  make smoke-deploy-entrypoint Verify detached 'nohup make staging' startup path"
 	@echo "  CLEAN_BUILD=1 ...    Force a full rebuild and clear deploy caches"
 	@echo ""
 	@echo "$(GREEN)Development:$(NC)"
@@ -107,6 +108,9 @@ production-fast:
 # Check deployment lock status
 deploy-status:
 	@./scripts/deployment/ship.sh --status || true
+
+smoke-deploy-entrypoint:
+	@./scripts/deployment/smoke-detached-entrypoint.sh
 
 # =============================================================================
 # Development

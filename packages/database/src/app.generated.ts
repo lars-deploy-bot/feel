@@ -216,6 +216,7 @@ export type Database = {
           closed_at: string | null
           conversation_id: string
           created_at: string
+          draft: Json | null
           last_message_at: string | null
           message_count: number
           name: string
@@ -226,6 +227,7 @@ export type Database = {
           closed_at?: string | null
           conversation_id: string
           created_at?: string
+          draft?: Json | null
           last_message_at?: string | null
           message_count?: number
           name?: string
@@ -236,6 +238,7 @@ export type Database = {
           closed_at?: string | null
           conversation_id?: string
           created_at?: string
+          draft?: Json | null
           last_message_at?: string | null
           message_count?: number
           name?: string

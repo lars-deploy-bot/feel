@@ -69,9 +69,6 @@ const WORKER_SPAWN_ALLOWED_ENV_KEYS = [
 
   // E2B sandbox — needed by SandboxManager, stripped from SDK subprocess env.
   ...E2B_INFRASTRUCTURE_ENV_KEYS,
-
-  // TLS override — needed when self-hosted E2B uses internal/self-signed certs
-  "NODE_TLS_REJECT_UNAUTHORIZED",
 ] as const
 
 /**

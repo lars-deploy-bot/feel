@@ -6,11 +6,8 @@ import { getWorkspacePath } from "@webalive/shared"
 import { getWorkerPool } from "@webalive/worker-pool"
 import { Sandbox } from "e2b"
 import type { z } from "zod"
-import {
-  TestE2BDomainResponseSchema,
-  TestE2BDomainSchema,
-  TestE2BDomainUpdateBodySchema,
-} from "@/app/api/test/test-route-schemas"
+import type { TestE2BDomainResponseSchema } from "@/app/api/test/test-route-schemas"
+import { TestE2BDomainSchema, TestE2BDomainUpdateBodySchema } from "@/app/api/test/test-route-schemas"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { resetE2bScratchUserWorkspace } from "@/lib/sandbox/e2b-workspace"
@@ -137,6 +134,20 @@ async function cleanHostFilesIfRequested(workspace: string, files?: string[]): P
   return cleaned
 }
 
+async function getExistingHostWorkspace(workspace: string): Promise<string | undefined> {
+  const sourceWorkspace = getWorkspacePath(workspace)
+
+  try {
+    const stats = await fs.stat(sourceWorkspace)
+    return stats.isDirectory() ? sourceWorkspace : undefined
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return undefined
+    }
+    throw error
+  }
+}
+
 async function prepareScratchWorkspaceOnTransition(
   workspace: string,
   currentMode: string,
@@ -146,7 +157,8 @@ async function prepareScratchWorkspaceOnTransition(
     return null
   }
 
-  return resetE2bScratchUserWorkspace(workspace, getWorkspacePath(workspace))
+  const sourceWorkspace = await getExistingHostWorkspace(workspace)
+  return resetE2bScratchUserWorkspace(workspace, sourceWorkspace)
 }
 
 export async function GET(req: Request) {

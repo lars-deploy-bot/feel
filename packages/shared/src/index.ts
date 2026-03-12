@@ -147,6 +147,7 @@ export {
   getAllOAuthProviderKeys,
   getMcpToolFriendlyName,
   getOAuthKeyForProvider,
+  getProviderInfo,
   isOAuthMcpTool,
   isValidOAuthMcpProviderKey,
   isValidOAuthProviderKey,

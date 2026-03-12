@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::process::Stdio;
+use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use tokio::fs as tokio_fs;
@@ -7,7 +8,9 @@ use tokio::process::Command;
 
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
-use crate::constants::{GH_API_RETRY_ATTEMPTS, GH_API_RETRY_BASE_DELAY, GITHUB_API_PREFIX};
+use crate::constants::{
+    GH_API_RETRY_ATTEMPTS, GH_API_RETRY_BASE_DELAY, GH_API_RETRY_MAX_DELAY, GITHUB_API_PREFIX,
+};
 use crate::logging::{append_log, run_logged_command};
 use crate::types::{ApplicationRow, GitHubCommitPayload};
 
@@ -138,7 +141,7 @@ pub(crate) async fn run_gh_api_capture(endpoint: &str, log_path: &Path) -> Resul
             Err(error) => {
                 let error = anyhow::Error::from(error).context("failed to execute gh api command");
                 if attempt + 1 < GH_API_RETRY_ATTEMPTS {
-                    let delay = GH_API_RETRY_BASE_DELAY * 2u32.pow(attempt);
+                    let delay = retry_delay_for_attempt(attempt);
                     tracing::warn!(
                         message = "gh api call failed to execute, retrying",
                         endpoint = endpoint,
@@ -160,7 +163,7 @@ pub(crate) async fn run_gh_api_capture(endpoint: &str, log_path: &Path) -> Resul
 
         let error = anyhow!("gh api command failed with status {}", output.status);
         if attempt + 1 < GH_API_RETRY_ATTEMPTS {
-            let delay = GH_API_RETRY_BASE_DELAY * 2u32.pow(attempt);
+            let delay = retry_delay_for_attempt(attempt);
             tracing::warn!(
                 message = "gh api call returned error status, retrying",
                 endpoint = endpoint,
@@ -227,7 +230,7 @@ pub(crate) async fn download_github_tarball(
 
         let error = anyhow!("gh api tarball download failed with status {}", status);
         if attempt + 1 < GH_API_RETRY_ATTEMPTS {
-            let delay = GH_API_RETRY_BASE_DELAY * 2u32.pow(attempt);
+            let delay = retry_delay_for_attempt(attempt);
             tracing::warn!(
                 message = "gh api tarball download failed, retrying",
                 attempt = attempt + 1,
@@ -248,4 +251,10 @@ pub(crate) async fn download_github_tarball(
         last_error = Some(error);
     }
     Err(last_error.unwrap())
+}
+
+fn retry_delay_for_attempt(attempt: u32) -> Duration {
+    let multiplier = 2u32.saturating_pow(attempt);
+    let delay = GH_API_RETRY_BASE_DELAY.saturating_mul(multiplier);
+    delay.min(GH_API_RETRY_MAX_DELAY)
 }

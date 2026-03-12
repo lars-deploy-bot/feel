@@ -117,23 +117,27 @@ function validatePort(domain: string, port: number): number {
   return port
 }
 
-function getRoutingVerificationPath(): string | null {
-  const serverConfigPath = process.env.SERVER_CONFIG_PATH
-  const generatorMode = !!serverConfigPath && existsSync(serverConfigPath)
-
-  if (generatorMode && PATHS.CADDYFILE_SITES && existsSync(PATHS.CADDYFILE_SITES)) {
+function getRoutingVerificationPath(preferredPath: string): string | null {
+  if (PATHS.CADDYFILE_SITES) {
+    if (!existsSync(PATHS.CADDYFILE_SITES)) {
+      throw new DomainRegistrationError(
+        ErrorCodes.DEPLOYMENT_FAILED,
+        "Generated Caddyfile.sites is missing after reload",
+        { caddyfile: PATHS.CADDYFILE_SITES },
+      )
+    }
     return PATHS.CADDYFILE_SITES
   }
 
-  if (PATHS.CADDYFILE_PATH && existsSync(PATHS.CADDYFILE_PATH)) {
-    return PATHS.CADDYFILE_PATH
+  if (existsSync(preferredPath)) {
+    return preferredPath
   }
 
   return null
 }
 
-async function verifyRouting(domain: string): Promise<void> {
-  const verificationPath = getRoutingVerificationPath()
+async function verifyRouting(domain: string, preferredPath: string): Promise<void> {
+  const verificationPath = getRoutingVerificationPath(preferredPath)
   if (!verificationPath) {
     return
   }
@@ -295,9 +299,9 @@ async function runStrictDeploymentLocked(
       orgId: validated.orgId,
     })
 
-    // Regenerate port-map.json and verify the domain is routable by preview-proxy.
-    // Awaited: a deployment without a working preview is not a deployment.
-    await regeneratePortMap(validated.domain)
+    // Regenerate port-map.json from canonical (production) DB.
+    const isProduction = process.env.STREAM_ENV === "production"
+    await regeneratePortMap(isProduction ? validated.domain : undefined)
 
     await configureCaddy({
       domain: validated.domain,
@@ -307,7 +311,7 @@ async function runStrictDeploymentLocked(
       flockTimeout: DEFAULTS.FLOCK_TIMEOUT,
     })
 
-    await verifyRouting(validated.domain)
+    await verifyRouting(validated.domain, PATHS.CADDYFILE_PATH)
 
     return {
       domain: validated.domain,
