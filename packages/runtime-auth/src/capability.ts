@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { jwtVerify, SignJWT } from "jose"
 import { z } from "zod"
-import { RuntimeRoleSchema, RuntimeScopeSchema, type RuntimeRole, type RuntimeScope } from "./scopes.js"
+import { type RuntimeRole, RuntimeRoleSchema, type RuntimeScope, RuntimeScopeSchema } from "./scopes.js"
 
 const RuntimeCapabilitySchema = z.object({
   iss: z.string().min(1),

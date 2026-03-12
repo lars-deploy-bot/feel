@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
   mintRuntimeCapability,
-  requireCapabilityScope,
   RuntimeCapabilityError,
+  requireCapabilityScope,
   verifyRuntimeCapability,
 } from "../capability.js"
 import { RuntimeRoleSchema, RuntimeScopeSchema } from "../scopes.js"

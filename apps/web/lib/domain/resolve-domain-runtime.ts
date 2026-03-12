@@ -1,4 +1,4 @@
-import { DOMAIN_RUNTIME_SELECT, resolveDomainRuntimeQuery, type DomainRuntimeRecord } from "@webalive/sandbox"
+import { DOMAIN_RUNTIME_SELECT, type DomainRuntimeRecord, resolveDomainRuntimeQuery } from "@webalive/sandbox"
 import { createAppClient } from "@/lib/supabase/app"
 
 export { DOMAIN_RUNTIME_SELECT, resolveDomainRuntimeQuery }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { SANDBOX_WORKSPACE_ROOT } from "./manager.js"
-import { resolveSandboxWorkspacePath, RuntimePathValidationError } from "./runtime-facade.js"
+import { RuntimePathValidationError, resolveSandboxWorkspacePath } from "./runtime-facade.js"
 
 describe("resolveSandboxWorkspacePath", () => {
   it("allows the workspace root for directory listings", () => {
