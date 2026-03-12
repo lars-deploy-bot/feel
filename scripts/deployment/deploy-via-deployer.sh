@@ -110,8 +110,8 @@ phase_end ok "Services deployed"
 phase_start "Requesting build"
 
 BUILD_ID=$(db_query "
-INSERT INTO deploy.builds (application_id, git_ref, git_sha, commit_message, status)
-VALUES ('$APPLICATION_ID', '$GIT_REF', '$GIT_SHA', '$(echo "$COMMIT_MSG" | sed "s/'/''/g")', 'pending')
+INSERT INTO deploy.builds (application_id, server_id, git_ref, git_sha, commit_message, status)
+VALUES ('$APPLICATION_ID', '$CURRENT_SERVER_ID', '$GIT_REF', '$GIT_SHA', '$(echo "$COMMIT_MSG" | sed "s/'/''/g")', 'pending')
 RETURNING build_id;
 ")
 
@@ -164,11 +164,6 @@ fi
 phase_start "Resolving release"
 
 RELEASE_ID=$(db_query "SELECT release_id FROM deploy.releases WHERE build_id = '$BUILD_ID' LIMIT 1;")
-
-if [[ -z "$RELEASE_ID" ]]; then
-    ARTIFACT_DIGEST=$(db_query "SELECT artifact_digest FROM deploy.builds WHERE build_id = '$BUILD_ID';")
-    RELEASE_ID=$(db_query "SELECT release_id FROM deploy.releases WHERE artifact_digest = '$ARTIFACT_DIGEST' AND application_id = '$APPLICATION_ID' ORDER BY created_at DESC LIMIT 1;")
-fi
 
 if [[ -z "$RELEASE_ID" ]]; then
     phase_end error "No release found for build $BUILD_ID"

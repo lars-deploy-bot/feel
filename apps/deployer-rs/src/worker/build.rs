@@ -9,6 +9,7 @@ use tokio_postgres::Client;
 use super::error::TaskExecutionError;
 use super::with_lease_heartbeat;
 use crate::config::{parse_alive_toml, resolve_build_secrets, validate_application_matches_config};
+use crate::constants::BUILD_TIMEOUT;
 use crate::db::{
     fetch_application, find_reusable_release, mark_build_failed, mark_build_succeeded,
     record_release,
@@ -16,7 +17,6 @@ use crate::db::{
 use crate::docker::resolve_local_artifact_digest;
 use crate::fingerprint::compute_build_fingerprint;
 use crate::github::{cleanup_source_snapshot, export_github_snapshot, resolve_github_commit};
-use crate::constants::BUILD_TIMEOUT;
 use crate::logging::{run_logged_command_with_timeout, TaskPipeline};
 use crate::types::{ClaimedBuild, LeaseTarget, ServiceContext, TaskEventType, TaskStage};
 
@@ -81,16 +81,23 @@ pub(super) async fn process_build(
             }
             Err(error) => {
                 let typed_error = TaskExecutionError::source_resolution(error);
-                resolve_stage.finish_error(&typed_error.display_full()).await?;
+                resolve_stage
+                    .finish_error(&typed_error.display_full())
+                    .await?;
                 pipeline
                     .emit(
                         TaskEventType::Failed,
                         json!({ "error": typed_error.display_full() }),
                     )
                     .await?;
-                mark_build_failed(client, &build.build_id, &typed_error.display_full(), &log_path)
-                    .await
-                    .map_err(TaskExecutionError::db_transition)?;
+                mark_build_failed(
+                    client,
+                    &build.build_id,
+                    &typed_error.display_full(),
+                    &log_path,
+                )
+                .await
+                .map_err(TaskExecutionError::db_transition)?;
                 return Err(typed_error.into());
             }
         };
@@ -190,22 +197,40 @@ pub(super) async fn process_build(
         let reuse_release_stage = pipeline
             .start_stage(3, TaskStage::ReuseRelease, "checking for reusable release")
             .await?;
-        if let Some(existing_release) =
-            find_reusable_release(client, &build.application_id, &build_fingerprint)
-                .await
-                .map_err(TaskExecutionError::db_transition)?
+        if let Some(existing_release) = find_reusable_release(
+            client,
+            &build.application_id,
+            &build_fingerprint,
+            &context.env.server_id,
+        )
+        .await
+        .map_err(TaskExecutionError::db_transition)?
         {
+            let release_id = record_release(
+                client,
+                &build.build_id,
+                &build.application_id,
+                &existing_release.git_sha,
+                &existing_release.commit_message,
+                &existing_release.artifact_ref,
+                &existing_release.artifact_digest,
+                &existing_release.alive_toml_snapshot,
+                &build_fingerprint,
+            )
+            .await
+            .map_err(TaskExecutionError::release_record)?;
             pipeline
                 .append_summary(&format!(
-                    "reusing existing release {} ({})\n",
-                    existing_release.release_id, existing_release.artifact_digest
+                    "reusing artifact from release {} as new release {} ({})\n",
+                    existing_release.release_id, release_id, existing_release.artifact_digest
                 ))
                 .await?;
             pipeline
                 .emit(
                     TaskEventType::ReleaseReused,
                     json!({
-                        "release_id": existing_release.release_id,
+                        "source_release_id": existing_release.release_id,
+                        "release_id": release_id,
                         "artifact_ref": existing_release.artifact_ref,
                         "artifact_digest": existing_release.artifact_digest,
                         "git_sha": existing_release.git_sha,
@@ -230,14 +255,17 @@ pub(super) async fn process_build(
                 .emit(
                     TaskEventType::Succeeded,
                     json!({
-                        "release_id": existing_release.release_id,
+                        "release_id": release_id,
                         "reused": true,
                         "build_fingerprint": build_fingerprint,
                     }),
                 )
                 .await?;
             reuse_release_stage
-                .finish_ok(&format!("reused release {}", existing_release.release_id))
+                .finish_ok(&format!(
+                    "reused artifact from {} into {}",
+                    existing_release.release_id, release_id
+                ))
                 .await?;
             return Ok::<(), anyhow::Error>(());
         }
@@ -332,13 +360,13 @@ pub(super) async fn process_build(
             )
             .await?;
         let artifact_digest =
-            match resolve_local_artifact_digest(&image_ref, publish_stage.debug_path())
-                .await
-            {
+            match resolve_local_artifact_digest(&image_ref, publish_stage.debug_path()).await {
                 Ok(digest) => digest,
                 Err(error) => {
                     let typed_error = TaskExecutionError::artifact_publish(error);
-                    publish_stage.finish_error(&typed_error.display_full()).await?;
+                    publish_stage
+                        .finish_error(&typed_error.display_full())
+                        .await?;
                     return Err(typed_error.into());
                 }
             };
@@ -407,8 +435,7 @@ pub(super) async fn process_build(
     })
     .await;
 
-    if let Err(cleanup_error) =
-        cleanup_source_snapshot(&source_dir, &archive_path, &log_path).await
+    if let Err(cleanup_error) = cleanup_source_snapshot(&source_dir, &archive_path, &log_path).await
     {
         tracing::warn!(
             message = "source snapshot cleanup failed",

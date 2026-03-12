@@ -17,10 +17,10 @@ use axum::{Json, Router};
 use chrono::Utc;
 use hostname::get as get_hostname;
 use serde_json::json;
+use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio_postgres::{Client, NoTls};
-use tokio::signal::unix::{signal, SignalKind};
 use tracing::{error, info, warn};
 
 use self::build::process_build;
@@ -77,7 +77,9 @@ pub async fn run() -> Result<()> {
         if health_server.is_finished() {
             match (&mut health_server).await {
                 Ok(Ok(())) => warn!(message = "health server exited unexpectedly"),
-                Ok(Err(error)) => error!(message = "health server failed", error = %format!("{:#}", error)),
+                Ok(Err(error)) => {
+                    error!(message = "health server failed", error = %format!("{:#}", error))
+                }
                 Err(error) => error!(message = "health server panicked", error = %error),
             }
             return Err(anyhow::anyhow!("health server is no longer running"));
@@ -250,7 +252,8 @@ async fn tick(
     expire_stale_tasks(client).await?;
     reconcile_running_deployments(client, context).await?;
 
-    if let Some(build) = claim_next_build(client, &context.hostname).await? {
+    if let Some(build) = claim_next_build(client, &context.env.server_id, &context.hostname).await?
+    {
         {
             let mut worker = health.write().await;
             worker.status = WorkerStatus::Building;
