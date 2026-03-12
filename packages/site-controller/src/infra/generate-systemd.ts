@@ -210,6 +210,20 @@ WantedBy=multi-user.target
 `
 }
 
+async function writeFileIfChanged(path: string, content: string): Promise<"written" | "unchanged"> {
+  try {
+    const existing = await readFile(path, "utf8")
+    if (existing === content) {
+      return "unchanged"
+    }
+  } catch {
+    // Missing or unreadable files get rewritten below.
+  }
+
+  await writeFile(path, content)
+  return "written"
+}
+
 // =============================================================================
 // Main
 // =============================================================================
@@ -279,8 +293,12 @@ async function main() {
   for (const svc of services) {
     const content = generateService(svc)
     const path = `${generatedDir}/${svc.name}.service`
-    await writeFile(path, content)
-    console.log(`${COLORS.green}✓${COLORS.reset} ${svc.name}.service`)
+    const status = await writeFileIfChanged(path, content)
+    console.log(
+      status === "written"
+        ? `${COLORS.green}✓${COLORS.reset} ${svc.name}.service`
+        : `${COLORS.dim}-${COLORS.reset} ${svc.name}.service ${COLORS.dim}(unchanged)${COLORS.reset}`,
+    )
   }
 
   // Generate preview-proxy service (opt-in: only when previewProxy.port is set)
@@ -312,8 +330,12 @@ async function main() {
 
     const content = generateGoService(previewProxyCfg)
     const path = `${generatedDir}/${previewProxyCfg.name}.service`
-    await writeFile(path, content)
-    console.log(`${COLORS.green}✓${COLORS.reset} ${previewProxyCfg.name}.service`)
+    const status = await writeFileIfChanged(path, content)
+    console.log(
+      status === "written"
+        ? `${COLORS.green}✓${COLORS.reset} ${previewProxyCfg.name}.service`
+        : `${COLORS.dim}-${COLORS.reset} ${previewProxyCfg.name}.service ${COLORS.dim}(unchanged)${COLORS.reset}`,
+    )
   } else {
     console.log(
       `${COLORS.dim}-${COLORS.reset} preview-proxy.service ${COLORS.dim}(skipped: previewProxy.port not set)${COLORS.reset}`,
