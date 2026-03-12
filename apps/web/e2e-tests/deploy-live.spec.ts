@@ -8,15 +8,15 @@
  */
 
 import type { Dirent } from "node:fs"
-import { readdir, readFile } from "node:fs/promises"
+import { readdir } from "node:fs/promises"
 import { type APIRequestContext, expect, test } from "@playwright/test"
 import type { Req, Res } from "@/lib/api/schemas"
 import { apiSchemas, validateRequest } from "@/lib/api/schemas"
 import {
   CleanupDeployedSiteRequestSchema,
   CleanupDeployedSiteResponseSchema,
-  extractReusableLiveDeploySlugsFromCaddy,
   isReusableLiveDeploySlug,
+  readReusableLiveDeploySlugsFromCaddyFile,
 } from "@/lib/testing/e2e-site-deployment"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
 import { buildE2ETestHeaders } from "./lib/test-headers"
@@ -60,12 +60,7 @@ async function listPrewarmedDeploySlugs(wildcardDomain: string): Promise<string[
 }
 
 async function listRoutedDeploySlugs(wildcardDomain: string): Promise<string[]> {
-  try {
-    const raw = await readFile(GENERATED_CADDY_SITES_PATH, "utf8")
-    return extractReusableLiveDeploySlugsFromCaddy(raw, wildcardDomain)
-  } catch {
-    return []
-  }
+  return readReusableLiveDeploySlugsFromCaddyFile(GENERATED_CADDY_SITES_PATH, wildcardDomain)
 }
 
 function rotateCandidates(slugs: string[], workerIndex: number): string[] {

@@ -64,7 +64,7 @@ Use the `/roadmap` skill to manage issues, milestones, and the project board. Th
     - **Runtime sets**: `RUN_STATUSES`, `TRIGGER_TYPES`, `ACTION_TYPES`, `JOB_STATUSES`
     - **Zod schemas**: Derive with `z.enum(AppConstants.app.Enums.<name>)`, never hand-write the values
     - Source file: `packages/database/src/automation-enums.ts`, derived from auto-generated `AppConstants`
-24. **`canUseTool` IS BROKEN IN THE SDK — DO NOT RELY ON IT** - The Claude Agent SDK's `canUseTool` callback is **NEVER CALLED** by the CLI subprocess. Tested empirically on SDK v0.2.41: regardless of `permissionMode` (`default`, `acceptEdits`, `dontAsk`), the CLI auto-approves all tools without sending `can_use_tool` control requests back via stdio. Even a callback that returns `{ behavior: "deny" }` for everything is silently ignored — tools run anyway. **Our ONLY enforceable security layers are:** (1) `allowedTools` / `disallowedTools` arrays passed to the SDK (CLI enforces these), (2) `cwd` workspace sandboxing (CLI restricts file tools to cwd), (3) MCP tool-level `validateWorkspacePath()`. The `canUseTool` code in `worker-entry.mjs` (path traversal checks, heavy-command blocking) is **dead code** that provides zero protection. Do not add security logic there — it will never execute. If Anthropic fixes this in a future SDK version, re-verify with the test script at `/tmp/test-permission-mode.mjs` before trusting it.
+24. **`canUseTool` IS BROKEN IN THE SDK — DO NOT RELY ON IT** - The Claude Agent SDK's `canUseTool` callback is **NEVER CALLED** by the CLI subprocess. Tested empirically on SDK v0.2.41: regardless of `permissionMode` (`default`, `acceptEdits`, `dontAsk`), the CLI auto-approves all tools without sending `can_use_tool` control requests back via stdio. Even a callback that returns `{ behavior: "deny" }` for everything is silently ignored — tools run anyway. **Our ONLY enforceable security layers are:** (1) `allowedTools` / `disallowedTools` arrays passed to the SDK (CLI enforces these), (2) `cwd` workspace sandboxing (CLI restricts file tools to cwd), (3) MCP tool-level `validateWorkspacePath()`. Do not put security logic in `canUseTool`; the CLI subprocess will not enforce it. If Anthropic fixes this in a future SDK version, re-verify with `scripts/verify-canUseTool-callback.mjs` before trusting it.
 
 ## E2B Sandbox Migration (ACTIVE)
 
@@ -600,7 +600,7 @@ make rollback    # Interactive rollback (if needed)
 
 ### Deploying from Chat
 
-See **Core Rules 12-14** at the top of this file. Summary: clean orphans, check `make deploy-status`, deploy with `nohup`.
+See **Core Rules 10-12** at the top of this file. Summary: deploy with `nohup`, check `make deploy-status`, then clean orphaned processes and locks before starting if needed.
 
 ### Site Deployment (Different)
 
@@ -660,7 +660,7 @@ if (!isPathWithinWorkspace(resolvedPath, workspacePath)) {
 **Solution**: Check session key format and storage
 ```typescript
 import { tabKey } from '@/features/auth/lib/sessionStore'
-const key = tabKey({ userId, workspace, tabId })
+const key = tabKey({ userId, workspace, tabGroupId, tabId })
 const sessionId = await sessionStore.get(key)
 ```
 

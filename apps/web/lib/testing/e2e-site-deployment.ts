@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises"
 import { z } from "zod"
 import { extractSlugFromDomain } from "@/lib/config"
 
@@ -34,6 +35,28 @@ export function extractReusableLiveDeploySlugsFromCaddy(rawCaddyfile: string, wi
   }
 
   return [...slugs].sort()
+}
+
+function isNodeErrorWithCode(error: unknown, code: string): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === code
+}
+
+export async function readReusableLiveDeploySlugsFromCaddyFile(
+  caddyfilePath: string,
+  wildcardDomain: string,
+): Promise<string[]> {
+  try {
+    const raw = await readFile(caddyfilePath, "utf8")
+    return extractReusableLiveDeploySlugsFromCaddy(raw, wildcardDomain)
+  } catch (error) {
+    if (isNodeErrorWithCode(error, "ENOENT")) {
+      return []
+    }
+
+    throw new Error(
+      `Failed to read generated Caddy routing from ${caddyfilePath}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
 }
 
 export const CleanupDeployedSiteRequestSchema = z.object({

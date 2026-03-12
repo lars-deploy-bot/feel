@@ -31,12 +31,13 @@ function runConfigProbe(envOverrides: Record<string, string | undefined>) {
   }
 
   const script = `
-import { DOMAINS, PATHS, SECURITY, SUPERADMIN } from "${CONFIG_MODULE_URL}";
-console.log(JSON.stringify({
-  aliveRoot: PATHS.ALIVE_ROOT,
-  sitesRoot: PATHS.SITES_ROOT,
-  imagesStorage: PATHS.IMAGES_STORAGE,
-  mainDomain: DOMAINS.MAIN,
+	import { DOMAINS, PATHS, SECURITY, SUPERADMIN } from "${CONFIG_MODULE_URL}";
+	console.log(JSON.stringify({
+	  aliveRoot: PATHS.ALIVE_ROOT,
+	  e2bScratchRoot: PATHS.E2B_SCRATCH_ROOT,
+	  sitesRoot: PATHS.SITES_ROOT,
+	  imagesStorage: PATHS.IMAGES_STORAGE,
+	  mainDomain: DOMAINS.MAIN,
   mainSuffix: DOMAINS.MAIN_SUFFIX,
   allowedBases: [...SECURITY.ALLOWED_WORKSPACE_BASES],
   workspacePath: SUPERADMIN.WORKSPACE_PATH
@@ -210,7 +211,7 @@ describe("E2B config validation", () => {
       const result = runConfigProbe({
         STREAM_ENV: "staging",
         SERVER_CONFIG_PATH: join(configDir, "server-config.json"),
-        E2B_DOMAIN: "e2b.example.com",
+        NEW_SITE_EXECUTION_MODE: "e2b",
         CI: undefined,
         VITEST: undefined,
       })
@@ -285,6 +286,88 @@ describe("E2B config validation", () => {
     } finally {
       rmSync(configDir, { recursive: true, force: true })
     }
+  })
+
+  it("does not fail host-mode config when shared E2B secrets exist but new sites stay on systemd", () => {
+    const configDir = writeServerConfig({
+      serverId: "srv_test_server_123456",
+      serverIp: "127.0.0.1",
+      serverIpv6: "::1",
+      automationPrimary: false,
+      paths: {
+        aliveRoot: "/root/alive",
+        sitesRoot: "/srv/webalive/sites",
+        templatesRoot: "/srv/webalive/templates",
+        imagesStorage: "/srv/webalive/storage",
+      },
+      domains: {
+        main: "example.com",
+        wildcard: "example.com",
+        cookieDomain: ".example.com",
+        previewBase: "preview.example.com",
+        frameAncestors: ["https://app.example.com"],
+      },
+      urls: {
+        prod: "https://app.example.com",
+        staging: "https://staging.example.com",
+        dev: "https://dev.example.com",
+      },
+      shell: {
+        domains: ["go.example.com"],
+        listen: ":8443",
+        upstream: "localhost:3888",
+      },
+      sentry: {
+        dsn: "https://abc123@sentry.example.com/2",
+        url: "https://sentry.example.com",
+        projectId: "2",
+      },
+      contactEmail: "ops@example.com",
+      previewProxy: {
+        port: 5055,
+      },
+      generated: {
+        dir: "/var/lib/alive/generated",
+        caddySites: "/var/lib/alive/generated/Caddyfile.sites",
+        caddyShell: "/var/lib/alive/generated/Caddyfile.shell",
+        nginxMap: "/var/lib/alive/generated/nginx.sni.map",
+      },
+    })
+
+    try {
+      const result = runConfigProbe({
+        STREAM_ENV: "staging",
+        SERVER_CONFIG_PATH: join(configDir, "server-config.json"),
+        E2B_DOMAIN: "e2b.example.com",
+        E2B_API_KEY: "shared-secret",
+        NEW_SITE_EXECUTION_MODE: "systemd",
+        CI: undefined,
+        VITEST: undefined,
+      })
+
+      expect(result.status).toBe(0)
+    } finally {
+      rmSync(configDir, { recursive: true, force: true })
+    }
+  })
+
+  it("provides a local E2B scratch root when local mode enables E2B execution", () => {
+    const home = `/tmp/alive-config-test-${Date.now()}`
+    const result = runConfigProbe({
+      STREAM_ENV: "local",
+      HOME: home,
+      SERVER_CONFIG_PATH: undefined,
+      NEW_SITE_EXECUTION_MODE: "e2b",
+      CI: undefined,
+      VITEST: undefined,
+    })
+
+    expect(result.status).toBe(0)
+    const parsed: unknown = JSON.parse(result.stdout)
+    expect(parsed).toMatchObject({
+      e2bScratchRoot: `${home}/.alive/e2b-scratch`,
+      allowedBases: [`${home}/.alive/workspaces`, `${home}/.alive/e2b-scratch`],
+    })
   })
 })
 

@@ -3,10 +3,10 @@ import { z } from "zod"
 
 export const BootstrapTenantRequestSchema = z.object({
   runId: z.string().min(1),
-  workerIndex: z.number().int(),
+  workerIndex: z.number().int().min(0),
   email: z.string().email(),
   workspace: z.string().min(1),
-  credits: z.number().int().optional(),
+  credits: z.number().int().min(0).optional(),
 })
 
 export const TestTenantSchema = z.object({

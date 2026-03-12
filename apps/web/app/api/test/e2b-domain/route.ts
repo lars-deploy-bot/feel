@@ -138,8 +138,8 @@ async function getExistingHostWorkspace(workspace: string): Promise<string | und
   const sourceWorkspace = getWorkspacePath(workspace)
 
   try {
-    await fs.stat(sourceWorkspace)
-    return sourceWorkspace
+    const stats = await fs.stat(sourceWorkspace)
+    return stats.isDirectory() ? sourceWorkspace : undefined
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       return undefined

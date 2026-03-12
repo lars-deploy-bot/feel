@@ -348,7 +348,9 @@ export const browserTool = tool(
   browserParamsSchema,
   async (args, extra) => {
     const signal =
-      extra && typeof extra === "object" && "signal" in extra ? (extra as { signal: AbortSignal }).signal : undefined
+      extra && typeof extra === "object" && "signal" in extra && extra.signal instanceof AbortSignal
+        ? extra.signal
+        : undefined
     return browserAction(args, signal)
   },
 )

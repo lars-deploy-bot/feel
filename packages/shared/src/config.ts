@@ -124,6 +124,7 @@ function localDefaults(): Partial<ServerConfig> {
       aliveRoot,
       sitesRoot: `${home}/.alive/workspaces`,
       imagesStorage: `${home}/.alive/storage`,
+      e2bScratchRoot: process.env.NEW_SITE_EXECUTION_MODE === "e2b" ? `${home}/.alive/e2b-scratch` : undefined,
       templatesRoot: `${aliveRoot}/templates`,
     },
     domains: {
@@ -238,18 +239,16 @@ const CONTACT_EMAIL_RAW = serverConfig.contactEmail ?? ""
 // When config is absent (browser, test, local-dev), default to false — automations must never run accidentally.
 const IS_AUTOMATION_PRIMARY: boolean = serverConfig.automationPrimary ?? false
 
-function isE2bConfiguredViaEnv(): boolean {
+function isE2bExecutionMode(): boolean {
   if (isBrowser || typeof process === "undefined") {
     return false
   }
 
-  return (
-    Boolean(process.env.E2B_DOMAIN) || Boolean(process.env.E2B_API_KEY) || process.env.NEW_SITE_EXECUTION_MODE === "e2b"
-  )
+  return process.env.NEW_SITE_EXECUTION_MODE === "e2b"
 }
 
 function assertE2bScratchRootConfigured(): void {
-  if (!configActuallyLoaded || !isE2bConfiguredViaEnv()) {
+  if (!isE2bExecutionMode()) {
     return
   }
 

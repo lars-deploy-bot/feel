@@ -118,6 +118,17 @@ function validatePort(domain: string, port: number): number {
 }
 
 function getRoutingVerificationPath(preferredPath: string): string | null {
+  if (PATHS.CADDYFILE_SITES) {
+    if (!existsSync(PATHS.CADDYFILE_SITES)) {
+      throw new DomainRegistrationError(
+        ErrorCodes.DEPLOYMENT_FAILED,
+        "Generated Caddyfile.sites is missing after reload",
+        { caddyfile: PATHS.CADDYFILE_SITES },
+      )
+    }
+    return PATHS.CADDYFILE_SITES
+  }
+
   if (existsSync(preferredPath)) {
     return preferredPath
   }
