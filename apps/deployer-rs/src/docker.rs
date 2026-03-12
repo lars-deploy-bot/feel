@@ -7,23 +7,11 @@ use tokio::process::Command;
 use tokio::time::sleep;
 
 use crate::constants::{
-    DOCKER_RETRY_ATTEMPTS, DOCKER_RETRY_BASE_DELAY, HEALTH_TIMEOUT, LOCAL_BIND_IP,
-    PUBLIC_HEALTH_TIMEOUT, STABILIZATION_POLL_INTERVAL, STABILIZATION_WINDOW,
+    HEALTH_TIMEOUT, LOCAL_BIND_IP, PUBLIC_HEALTH_TIMEOUT, STABILIZATION_POLL_INTERVAL,
+    STABILIZATION_WINDOW,
 };
-use crate::logging::{append_log, run_logged_command, run_logged_command_with_retry};
+use crate::logging::{append_log, run_logged_command};
 use crate::types::RollbackContainer;
-
-pub(crate) fn docker_reference_repository(reference: &str) -> Result<&str> {
-    let last_slash = reference.rfind('/');
-    let last_colon = reference.rfind(':');
-    match last_colon {
-        Some(index) if last_slash.map_or(true, |slash| index > slash) => Ok(&reference[..index]),
-        _ => Err(anyhow!(
-            "docker image reference {} must include a tag",
-            reference
-        )),
-    }
-}
 
 pub(crate) async fn resolve_local_artifact_digest(
     image_ref: &str,

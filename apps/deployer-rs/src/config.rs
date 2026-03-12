@@ -38,19 +38,6 @@ pub(crate) fn load_server_identity(server_config_path: &Path) -> Result<(String,
     parse_server_identity_from_server_config(&raw)
 }
 
-pub(crate) fn parse_server_id_from_server_config(raw: &str) -> Result<String> {
-    let config = serde_json::from_str::<serde_json::Value>(raw)
-        .context("failed to parse server-config.json")?;
-    let server_id = config
-        .get("serverId")
-        .and_then(|value| value.as_str())
-        .ok_or_else(|| anyhow!("server-config.json is missing serverId"))?;
-    if server_id.trim().is_empty() {
-        return Err(anyhow!("server-config.json is missing serverId"));
-    }
-    Ok(server_id.to_string())
-}
-
 pub(crate) fn parse_server_identity_from_server_config(raw: &str) -> Result<(String, PathBuf)> {
     let config = serde_json::from_str::<ServerConfigIdentity>(raw)
         .context("failed to parse server-config.json")?;
