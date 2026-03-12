@@ -8,9 +8,8 @@ use super::error::TaskExecutionError;
 use super::with_lease_heartbeat;
 use crate::config::{
     parse_alive_toml, policy_for_environment, prepare_runtime_bind_mount_source_async,
-    resolve_bind_mount_source,
-    resolve_runtime_env_file_async, runtime_network_mode, validate_runtime_policy,
-    write_sanitized_env_file_async,
+    resolve_bind_mount_source, resolve_runtime_env_file_async, runtime_network_mode,
+    validate_runtime_policy, write_sanitized_env_file_async,
 };
 use crate::constants::LOCAL_BIND_IP;
 use crate::db::{
@@ -19,9 +18,8 @@ use crate::db::{
 use crate::docker::{
     append_container_logs, container_is_running, deployment_container_name,
     discard_rollback_container, image_exists_locally, prepare_rollback_container,
-    remove_container_if_exists, restore_rollback_container,
-    stop_and_disable_systemd_unit, wait_for_container_stability, wait_for_health,
-    wait_for_public_health,
+    remove_container_if_exists, restore_rollback_container, stop_and_disable_systemd_unit,
+    wait_for_container_stability, wait_for_health, wait_for_public_health,
 };
 use crate::logging::{
     append_log, append_task_event, deployment_event_path, deployment_log_path, prepare_log,

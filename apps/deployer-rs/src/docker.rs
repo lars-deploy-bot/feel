@@ -54,7 +54,10 @@ pub(crate) async fn resolve_local_artifact_digest(
         .to_string();
 
     if image_id.is_empty() {
-        return Err(anyhow!("docker image inspect returned empty id for {}", image_ref));
+        return Err(anyhow!(
+            "docker image inspect returned empty id for {}",
+            image_ref
+        ));
     }
 
     append_log(
@@ -75,7 +78,11 @@ pub(crate) async fn stop_and_disable_systemd_unit(unit: &str, log_path: &Path) -
         .context("failed to check systemd unit status")?;
 
     if !is_active.success() {
-        append_log(log_path, &format!("systemd unit {} is not active, skipping\n", unit)).await?;
+        append_log(
+            log_path,
+            &format!("systemd unit {} is not active, skipping\n", unit),
+        )
+        .await?;
         return Ok(());
     }
 
@@ -107,7 +114,11 @@ pub(crate) async fn stop_and_disable_systemd_unit(unit: &str, log_path: &Path) -
         // Not fatal — the unit is already stopped
     }
 
-    append_log(log_path, &format!("systemd unit {} stopped and disabled\n", unit)).await?;
+    append_log(
+        log_path,
+        &format!("systemd unit {} stopped and disabled\n", unit),
+    )
+    .await?;
     Ok(())
 }
 
