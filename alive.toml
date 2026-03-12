@@ -70,7 +70,7 @@ blocked_env_keys = [
   "MAILGUN_API_KEY",
   "MAILJET_API_KEY",
 ]
-forced_env = { NODE_ENV = "staging", HOSTNAME = "0.0.0.0" }
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0" }
 
 [policies.production]
 allow_email = true

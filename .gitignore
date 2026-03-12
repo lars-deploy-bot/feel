@@ -141,6 +141,7 @@ public
 tmp/
 temp/
 .tmp/
+.artifacts/
 
 # Local development workspace
 .alive/

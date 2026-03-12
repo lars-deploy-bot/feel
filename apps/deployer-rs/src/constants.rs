@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 pub(crate) const DATA_DIR: &str = "/var/lib/alive/deployer";
+pub(crate) const DATA_DIR_ENV: &str = "ALIVE_DEPLOYER_DATA_DIR";
 pub(crate) const HEALTH_PORT: u16 = 5095;
 pub(crate) const POLL_INTERVAL: Duration = Duration::from_secs(5);
 pub(crate) const HEALTH_TIMEOUT: Duration = Duration::from_secs(60);

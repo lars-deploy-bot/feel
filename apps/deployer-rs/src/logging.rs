@@ -733,6 +733,7 @@ impl PipelineStage {
 fn ensure_data_dirs_blocking(data_dir: &Path) -> Result<()> {
     for relative in [
         "archives",
+        "buildx-config",
         "events/builds",
         "events/deployments",
         "logs/builds",

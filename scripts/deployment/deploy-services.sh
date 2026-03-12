@@ -20,6 +20,15 @@ cd "$PROJECT_ROOT"
 
 source "$SCRIPT_DIR/lib/common.sh"
 
+LOCAL_CARGO_HOME="$PROJECT_ROOT/.cargo"
+LOCAL_RUSTUP_HOME="$PROJECT_ROOT/.rustup"
+
+if ! command -v cargo >/dev/null 2>&1 && [ -x "$LOCAL_CARGO_HOME/bin/cargo" ]; then
+    export CARGO_HOME="$LOCAL_CARGO_HOME"
+    export RUSTUP_HOME="$LOCAL_RUSTUP_HOME"
+    export PATH="$CARGO_HOME/bin:$PATH"
+fi
+
 # =============================================================================
 # Parse Arguments
 # =============================================================================
@@ -121,6 +130,11 @@ fi
 # =============================================================================
 if [ "$DEPLOY_DEPLOYER" = true ]; then
     banner "Deploying Alive Deployer (Rust + Docker)"
+
+    if ! command -v cargo >/dev/null 2>&1; then
+        log_error "cargo not found. Install Rust or bootstrap the repo-local toolchain in $LOCAL_CARGO_HOME"
+        exit 1
+    fi
 
     log_info "Syncing repo-managed systemd units..."
     "$PROJECT_ROOT/scripts/systemd/sync-ops-units.sh" --alive-root "$PROJECT_ROOT"

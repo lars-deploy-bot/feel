@@ -20,29 +20,46 @@ impl ServiceEnv {
         let server_config_path = env::var("SERVER_CONFIG_PATH")
             .map(PathBuf::from)
             .context("SERVER_CONFIG_PATH is required")?;
-        let server_id = load_server_id(&server_config_path)?;
+        let (server_id, alive_root) = load_server_identity(&server_config_path)?;
 
         Ok(Self {
             database_url,
             server_config_path,
             server_id,
+            alive_root,
         })
     }
 }
 
-pub(crate) fn load_server_id(server_config_path: &Path) -> Result<String> {
+pub(crate) fn load_server_identity(server_config_path: &Path) -> Result<(String, PathBuf)> {
     let raw = fs::read_to_string(server_config_path)
         .with_context(|| format!("failed to read {}", server_config_path.display()))?;
-    parse_server_id_from_server_config(&raw)
+    parse_server_identity_from_server_config(&raw)
 }
 
 pub(crate) fn parse_server_id_from_server_config(raw: &str) -> Result<String> {
+    let config = serde_json::from_str::<serde_json::Value>(raw)
+        .context("failed to parse server-config.json")?;
+    let server_id = config
+        .get("serverId")
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| anyhow!("server-config.json is missing serverId"))?;
+    if server_id.trim().is_empty() {
+        return Err(anyhow!("server-config.json is missing serverId"));
+    }
+    Ok(server_id.to_string())
+}
+
+pub(crate) fn parse_server_identity_from_server_config(raw: &str) -> Result<(String, PathBuf)> {
     let config = serde_json::from_str::<ServerConfigIdentity>(raw)
         .context("failed to parse server-config.json")?;
     if config.server_id.trim().is_empty() {
         return Err(anyhow!("server-config.json is missing serverId"));
     }
-    Ok(config.server_id)
+    if config.paths.alive_root.trim().is_empty() {
+        return Err(anyhow!("server-config.json is missing paths.aliveRoot"));
+    }
+    Ok((config.server_id, PathBuf::from(config.paths.alive_root)))
 }
 
 pub(crate) fn parse_alive_toml(content: &str) -> Result<AliveConfig> {
@@ -147,6 +164,27 @@ pub(crate) fn policy_for_environment<'a>(
             .production
             .as_ref()
             .context("missing production policy in alive.toml"),
+        other => Err(anyhow!("unsupported environment {}", other)),
+    }
+}
+
+pub(crate) fn validate_runtime_policy(
+    environment_name: &str,
+    policy: &EnvironmentPolicy,
+) -> Result<()> {
+    match environment_name {
+        "staging" | "production" => match policy.forced_env.get("NODE_ENV").map(String::as_str) {
+            Some("production") => Ok(()),
+            Some(value) => Err(anyhow!(
+                "{} policy must force NODE_ENV=production, got {}",
+                environment_name,
+                value
+            )),
+            None => Err(anyhow!(
+                "{} policy must force NODE_ENV=production",
+                environment_name
+            )),
+        },
         other => Err(anyhow!("unsupported environment {}", other)),
     }
 }
@@ -261,14 +299,7 @@ pub(crate) fn resolve_runtime_env_file(
     context: &ServiceContext,
 ) -> Result<PathBuf> {
     if let Some(path) = &environment.runtime_overrides.env_file_path {
-        let resolved = PathBuf::from(path);
-        if !resolved.exists() {
-            return Err(anyhow!(
-                "runtime override env file {} does not exist",
-                resolved.display()
-            ));
-        }
-        return Ok(resolved);
+        return resolve_runtime_override_env_file(&PathBuf::from(path), &context.env.alive_root);
     }
 
     let configured = PathBuf::from(&config.runtime.env_file);
@@ -286,6 +317,56 @@ pub(crate) fn resolve_runtime_env_file(
     }
 
     Ok(resolved)
+}
+
+fn resolve_runtime_override_env_file(configured: &Path, alive_root: &Path) -> Result<PathBuf> {
+    if !configured.is_absolute() {
+        let resolved = alive_root.join(configured);
+        if resolved.exists() {
+            return Ok(resolved);
+        }
+
+        return Err(anyhow!(
+            "runtime override env file {} does not exist when resolved against aliveRoot {}",
+            configured.display(),
+            alive_root.display()
+        ));
+    }
+
+    if configured.exists() {
+        return Ok(configured.to_path_buf());
+    }
+
+    if configured.is_absolute() {
+        if let Some(rebased) = rebase_repo_path_to_alive_root(configured, alive_root) {
+            if rebased.exists() {
+                return Ok(rebased);
+            }
+        }
+    }
+
+    Err(anyhow!(
+        "runtime override env file {} does not exist",
+        configured.display()
+    ))
+}
+
+fn rebase_repo_path_to_alive_root(configured: &Path, alive_root: &Path) -> Option<PathBuf> {
+    const REPO_ROOT_MARKERS: [&str; 7] = ["apps", "packages", "ops", "scripts", "docs", "config", "patches"];
+
+    let components = configured
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+
+    for (index, component) in components.iter().enumerate() {
+        if REPO_ROOT_MARKERS.contains(&component.as_str()) {
+            let relative = components[index..].join("/");
+            return Some(alive_root.join(relative));
+        }
+    }
+
+    None
 }
 
 pub(crate) async fn resolve_runtime_env_file_async(
