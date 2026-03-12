@@ -11,16 +11,16 @@
  * - Token storage and retrieval
  *
  * REQUIREMENTS:
- * - Valid user UUIDs in environment variables (TEST_TENANT_ID, TEST_USER_ID)
+ * - Valid user IDs in environment variables (TEST_TENANT_ID, TEST_USER_ID)
  * - Users must exist in iam.users table (for foreign key constraints)
- * - Supabase lockbox schema must be set up (run setup-schema.sql first)
+ * - Supabase lockbox schema must be set up (run `bun run setup-schema` first)
  */
 
 import { createClient } from "@supabase/supabase-js"
 import { oauth } from "../src/index.js"
 import { Security } from "../src/security.js"
 
-// Test user IDs - MUST be valid UUIDs from iam.users
+// Test user IDs - MUST be valid iam.users.user_id values
 const MOCK_TENANT_ID = process.env.TEST_TENANT_ID || "CHANGE_ME"
 const MOCK_USER_ID = process.env.TEST_USER_ID || "CHANGE_ME"
 
@@ -28,10 +28,18 @@ async function verify() {
   console.log("🔐 OAuth Core Verification\n")
   console.log("=====================================\n")
 
+  const supabaseUrl = process.env.SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
+
   // Check environment
   if (MOCK_TENANT_ID === "CHANGE_ME" || MOCK_USER_ID === "CHANGE_ME") {
     console.error("❌ ERROR: Set TEST_TENANT_ID and TEST_USER_ID environment variables")
-    console.error("   These must be valid user UUIDs from iam.users table\n")
+    console.error("   These must be valid iam.users.user_id values (for example: user_abc123)\n")
+    process.exit(1)
+  }
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("❌ ERROR: Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SERVICE_KEY)\n")
     process.exit(1)
   }
 
@@ -92,13 +100,14 @@ async function verify() {
 
     // Test 4: Database Verification
     console.log("4️⃣  Verifying Database Storage...")
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const { data, error } = await supabase
       .schema("lockbox")
       .from("user_secrets")
       .select("*")
-      .eq("clerk_id", MOCK_TENANT_ID)
+      .eq("user_id", MOCK_TENANT_ID)
+      .eq("instance_id", "default")
       .eq("name", "github_client_secret")
       .eq("is_current", true)
       .single()

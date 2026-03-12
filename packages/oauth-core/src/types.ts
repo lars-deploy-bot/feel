@@ -5,6 +5,8 @@
 import type { IRefreshLockManager, LockStrategy } from "./refresh-lock"
 
 export type SecretNamespace = "provider_config" | "oauth_tokens" | "oauth_connections" | "user_env_keys"
+export type OAuthProviderMetadataValue = string | number | boolean | null
+export type OAuthProviderMetadata = Record<string, OAuthProviderMetadataValue>
 
 /**
  * Namespace for OAuth token storage
@@ -62,6 +64,15 @@ export interface OAuthTokens {
   expires_in?: number
   scope?: string
   token_type?: string
+  provider_metadata?: OAuthProviderMetadata
+}
+
+export interface SaveTokensContext {
+  email?: string
+  tenantUserId?: string
+  credentialProvider?: string
+  redirectUri?: string
+  providerMetadata?: OAuthProviderMetadata
 }
 
 /**

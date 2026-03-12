@@ -7,8 +7,9 @@ use tokio_postgres::Client;
 use super::error::TaskExecutionError;
 use super::with_lease_heartbeat;
 use crate::config::{
-    parse_alive_toml, policy_for_environment, resolve_bind_mount_source,
-    resolve_runtime_env_file_async, runtime_network_mode, write_sanitized_env_file_async,
+    parse_alive_toml, policy_for_environment, prepare_runtime_bind_mount_source_async,
+    resolve_bind_mount_source, resolve_runtime_env_file_async, runtime_network_mode,
+    validate_runtime_policy, write_sanitized_env_file_async,
 };
 use crate::constants::LOCAL_BIND_IP;
 use crate::db::{
@@ -17,9 +18,8 @@ use crate::db::{
 use crate::docker::{
     append_container_logs, container_is_running, deployment_container_name,
     discard_rollback_container, image_exists_locally, prepare_rollback_container,
-    pull_artifact_digest, remove_container_if_exists, restore_rollback_container,
-    stop_and_disable_systemd_unit, wait_for_container_stability, wait_for_health,
-    wait_for_public_health,
+    remove_container_if_exists, restore_rollback_container, stop_and_disable_systemd_unit,
+    wait_for_container_stability, wait_for_health, wait_for_public_health,
 };
 use crate::logging::{
     append_log, append_task_event, deployment_event_path, deployment_log_path, prepare_log,
@@ -186,6 +186,8 @@ pub(super) async fn process_deployment(
         .map_err(TaskExecutionError::deployment_validation)?;
     let policy = policy_for_environment(&config, &environment.name)
         .map_err(TaskExecutionError::runtime_preparation)?;
+    validate_runtime_policy(&environment.name, policy)
+        .map_err(TaskExecutionError::runtime_preparation)?;
     let env_file =
         resolve_runtime_env_file_async(config.clone(), environment.clone(), context.clone())
             .await
@@ -257,15 +259,22 @@ pub(super) async fn process_deployment(
             let pull_artifact_stage = pipeline
                 .start_stage(2, TaskStage::PullArtifact, "verifying artifact available locally")
                 .await?;
-            if image_exists_locally(&release.artifact_digest).await? {
+            let digest_exists = image_exists_locally(&release.artifact_digest).await?;
+            let ref_exists = image_exists_locally(&release.artifact_ref).await?;
+            if digest_exists || ref_exists {
                 pull_artifact_stage
-                    .append_debug(&format!("image {} found locally, skipping pull\n", release.artifact_digest))
+                    .append_debug(&format!(
+                        "artifact available locally (ref_exists={}, digest_exists={}, ref={}, digest={})\n",
+                        ref_exists, digest_exists, release.artifact_ref, release.artifact_digest
+                    ))
                     .await?;
-            } else if let Err(error) =
-                pull_artifact_digest(&release.artifact_digest, pull_artifact_stage.debug_path())
-                    .await
-            {
-                let typed_error = TaskExecutionError::artifact_pull(error);
+            } else {
+                let typed_error = TaskExecutionError::artifact_pull(anyhow!(
+                    "artifact missing locally on server {}: ref={} digest={}",
+                    context.env.server_id,
+                    release.artifact_ref,
+                    release.artifact_digest
+                ));
                 pull_artifact_stage
                     .finish_error(&typed_error.display_full())
                     .await?;
@@ -275,6 +284,7 @@ pub(super) async fn process_deployment(
                 .emit(
                     TaskEventType::ArtifactPulled,
                     json!({
+                        "artifact_ref": release.artifact_ref,
                         "artifact_digest": release.artifact_digest,
                         "debug_log_path": pull_artifact_stage.debug_path().display().to_string(),
                     }),
@@ -291,18 +301,6 @@ pub(super) async fn process_deployment(
                     "reserving previous container for rollback",
                 )
                 .await?;
-            if config.project.slug == "alive" {
-                let legacy_container_name = format!("alive-control-{}", environment.name);
-                if legacy_container_name != container_name {
-                    remove_container_if_exists(
-                        &legacy_container_name,
-                        reserve_rollback_stage.debug_path(),
-                    )
-                    .await
-                    .map_err(TaskExecutionError::rollback_preparation)?;
-                }
-            }
-
             // Stop the systemd service that previously owned this port.
             // The deployer-rs Docker container is the new owner.
             let systemd_unit = format!("alive-{}.service", environment.name);
@@ -379,9 +377,20 @@ pub(super) async fn process_deployment(
                 }
             }
 
+            let staged_bind_mount_root = context
+                .data_dir
+                .join("bind-mounts")
+                .join(&deployment.deployment_id);
             for bind_mount in &config.runtime.bind_mounts {
-                let source = resolve_bind_mount_source(bind_mount, context)
+                let original_source = resolve_bind_mount_source(bind_mount, context)
                     .map_err(TaskExecutionError::runtime_preparation)?;
+                let source = prepare_runtime_bind_mount_source_async(
+                    &original_source,
+                    bind_mount.clone(),
+                    &staged_bind_mount_root,
+                )
+                .await
+                .map_err(TaskExecutionError::runtime_preparation)?;
                 let mount_spec = if bind_mount.read_only {
                     format!("{}:{}:ro", source.display(), bind_mount.target)
                 } else {
@@ -390,7 +399,7 @@ pub(super) async fn process_deployment(
                 command.arg("--volume").arg(mount_spec);
             }
 
-            command.arg(&release.artifact_digest);
+            command.arg(&release.artifact_ref);
 
             if let Err(error) = crate::logging::run_logged_command(
                 command,

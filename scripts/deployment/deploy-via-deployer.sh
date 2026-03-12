@@ -32,6 +32,18 @@ fi
 source "$PROJECT_ROOT/apps/web/.env.production"
 export PGPASSWORD="$DATABASE_PASSWORD"
 DB_URL="postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres"
+SERVER_CONFIG_PATH="${SERVER_CONFIG_PATH:-/var/lib/alive/server-config.json}"
+
+if [[ ! -f "$SERVER_CONFIG_PATH" ]]; then
+    log_error "server-config.json not found at $SERVER_CONFIG_PATH"
+    exit 1
+fi
+
+CURRENT_SERVER_ID="$(jq -r '.serverId // empty' "$SERVER_CONFIG_PATH")"
+if [[ -z "$CURRENT_SERVER_ID" ]]; then
+    log_error "serverId missing in $SERVER_CONFIG_PATH"
+    exit 1
+fi
 
 DEPLOYER_HEALTH="http://127.0.0.1:5095"
 APPLICATION_ID="dep_app_bd57129d0218c50d"
@@ -62,9 +74,9 @@ if [[ "$HEALTH_OK" != "True" ]]; then
     exit 1
 fi
 
-ENVIRONMENT_ID=$(db_query "SELECT environment_id FROM deploy.environments WHERE application_id = '$APPLICATION_ID' AND name = '$ENVIRONMENT' LIMIT 1;")
+ENVIRONMENT_ID=$(db_query "SELECT environment_id FROM deploy.environments WHERE application_id = '$APPLICATION_ID' AND name = '$ENVIRONMENT' AND server_id = '$CURRENT_SERVER_ID' LIMIT 1;")
 if [[ -z "$ENVIRONMENT_ID" ]]; then
-    phase_end error "No environment '$ENVIRONMENT' found for application $APPLICATION_ID"
+    phase_end error "No environment '$ENVIRONMENT' found for application $APPLICATION_ID on server $CURRENT_SERVER_ID"
     exit 1
 fi
 
@@ -98,8 +110,8 @@ phase_end ok "Services deployed"
 phase_start "Requesting build"
 
 BUILD_ID=$(db_query "
-INSERT INTO deploy.builds (application_id, git_ref, git_sha, commit_message, status)
-VALUES ('$APPLICATION_ID', '$GIT_REF', '$GIT_SHA', '$(echo "$COMMIT_MSG" | sed "s/'/''/g")', 'pending')
+INSERT INTO deploy.builds (application_id, server_id, git_ref, git_sha, commit_message, status)
+VALUES ('$APPLICATION_ID', '$CURRENT_SERVER_ID', '$GIT_REF', '$GIT_SHA', '$(echo "$COMMIT_MSG" | sed "s/'/''/g")', 'pending')
 RETURNING build_id;
 ")
 
@@ -152,11 +164,6 @@ fi
 phase_start "Resolving release"
 
 RELEASE_ID=$(db_query "SELECT release_id FROM deploy.releases WHERE build_id = '$BUILD_ID' LIMIT 1;")
-
-if [[ -z "$RELEASE_ID" ]]; then
-    ARTIFACT_DIGEST=$(db_query "SELECT artifact_digest FROM deploy.builds WHERE build_id = '$BUILD_ID';")
-    RELEASE_ID=$(db_query "SELECT release_id FROM deploy.releases WHERE artifact_digest = '$ARTIFACT_DIGEST' AND application_id = '$APPLICATION_ID' ORDER BY created_at DESC LIMIT 1;")
-fi
 
 if [[ -z "$RELEASE_ID" ]]; then
     phase_end error "No release found for build $BUILD_ID"
@@ -243,7 +250,7 @@ else
     log_step "Running E2E suite against $ENVIRONMENT"
     cd "$PROJECT_ROOT/apps/web"
 
-    if E2E_STRICT_API_GUARD=1 playwright test --config=playwright.gate.config.ts; then
+    if ENV_FILE=".env.$ENVIRONMENT" E2E_STRICT_API_GUARD=1 bun run test:e2e:gate; then
         phase_end ok "E2E passed"
     else
         phase_end error "E2E tests failed"

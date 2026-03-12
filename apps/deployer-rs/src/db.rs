@@ -87,6 +87,7 @@ pub(crate) async fn expire_stale_tasks(client: &Client) -> Result<()> {
 
 pub(crate) async fn claim_next_build(
     client: &Client,
+    server_id: &str,
     hostname: &str,
 ) -> Result<Option<ClaimedBuild>> {
     let lease_token = Uuid::new_v4().to_string();
@@ -97,6 +98,7 @@ pub(crate) async fn claim_next_build(
               SELECT build_id
               FROM deploy.builds
               WHERE status = 'pending'::deploy.task_status
+                AND server_id = $1
               ORDER BY created_at ASC
               LIMIT 1
               FOR UPDATE SKIP LOCKED
@@ -105,15 +107,15 @@ pub(crate) async fn claim_next_build(
             SET status = 'running'::deploy.task_status,
                 started_at = now(),
                 attempt_count = builds.attempt_count + 1,
-                builder_hostname = $1,
-                lease_token = $2,
-                lease_expires_at = now() + make_interval(secs => $3::integer),
+                builder_hostname = $2,
+                lease_token = $3,
+                lease_expires_at = now() + make_interval(secs => $4::integer),
                 updated_at = now()
             FROM candidate
             WHERE builds.build_id = candidate.build_id
             RETURNING builds.build_id, builds.application_id, builds.git_ref
             ",
-            &[&hostname, &lease_token, &LEASE_DURATION_SECONDS],
+            &[&server_id, &hostname, &lease_token, &LEASE_DURATION_SECONDS],
         )
         .await
         .context("failed to claim next build")?;
@@ -254,24 +256,36 @@ pub(crate) async fn find_reusable_release(
     client: &Client,
     application_id: &str,
     build_fingerprint: &str,
+    server_id: &str,
 ) -> Result<Option<ReleaseRow>> {
     let row = client
         .query_opt(
             "
-            SELECT release_id, application_id, git_sha, COALESCE(commit_message, ''), artifact_ref, artifact_digest, alive_toml_snapshot, metadata->>'build_fingerprint'
-            FROM deploy.releases
-            WHERE application_id = $1
-              AND metadata->>'build_fingerprint' = $2
-            ORDER BY created_at DESC
+            SELECT
+              releases.release_id,
+              releases.application_id,
+              releases.git_sha,
+              COALESCE(releases.commit_message, ''),
+              releases.artifact_ref,
+              releases.artifact_digest,
+              releases.alive_toml_snapshot,
+              releases.metadata->>'build_fingerprint'
+            FROM deploy.releases AS releases
+            INNER JOIN deploy.builds AS builds
+              ON builds.build_id = releases.build_id
+            WHERE releases.application_id = $1
+              AND releases.metadata->>'build_fingerprint' = $2
+              AND builds.server_id = $3
+            ORDER BY releases.created_at DESC
             LIMIT 1
             ",
-            &[&application_id, &build_fingerprint],
+            &[&application_id, &build_fingerprint, &server_id],
         )
         .await
         .with_context(|| {
             format!(
-                "failed to look up reusable release for application {} using build fingerprint {}",
-                application_id, build_fingerprint
+                "failed to look up reusable release for application {} using build fingerprint {} on server {}",
+                application_id, build_fingerprint, server_id
             )
         })?;
 
@@ -485,10 +499,6 @@ pub(crate) async fn record_release(
               $7,
               jsonb_build_object('build_fingerprint', $8::text)
             )
-            ON CONFLICT (application_id, artifact_digest)
-            DO UPDATE SET
-              artifact_ref = EXCLUDED.artifact_ref,
-              metadata = deploy.releases.metadata || EXCLUDED.metadata
             RETURNING release_id
             ",
             &[

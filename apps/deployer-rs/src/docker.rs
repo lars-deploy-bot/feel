@@ -54,7 +54,10 @@ pub(crate) async fn resolve_local_artifact_digest(
         .to_string();
 
     if image_id.is_empty() {
-        return Err(anyhow!("docker image inspect returned empty id for {}", image_ref));
+        return Err(anyhow!(
+            "docker image inspect returned empty id for {}",
+            image_ref
+        ));
     }
 
     append_log(
@@ -75,7 +78,11 @@ pub(crate) async fn stop_and_disable_systemd_unit(unit: &str, log_path: &Path) -
         .context("failed to check systemd unit status")?;
 
     if !is_active.success() {
-        append_log(log_path, &format!("systemd unit {} is not active, skipping\n", unit)).await?;
+        append_log(
+            log_path,
+            &format!("systemd unit {} is not active, skipping\n", unit),
+        )
+        .await?;
         return Ok(());
     }
 
@@ -107,7 +114,11 @@ pub(crate) async fn stop_and_disable_systemd_unit(unit: &str, log_path: &Path) -
         // Not fatal — the unit is already stopped
     }
 
-    append_log(log_path, &format!("systemd unit {} stopped and disabled\n", unit)).await?;
+    append_log(
+        log_path,
+        &format!("systemd unit {} stopped and disabled\n", unit),
+    )
+    .await?;
     Ok(())
 }
 
@@ -120,21 +131,6 @@ pub(crate) async fn image_exists_locally(image_ref: &str) -> Result<bool> {
         .await
         .context("failed to inspect docker image")?;
     Ok(output.status.success())
-}
-
-pub(crate) async fn pull_artifact_digest(artifact_digest: &str, log_path: &Path) -> Result<()> {
-    run_logged_command_with_retry(
-        || {
-            let mut command = Command::new("docker");
-            command.arg("pull").arg(artifact_digest);
-            command
-        },
-        log_path,
-        &format!("docker pull {}", artifact_digest),
-        DOCKER_RETRY_ATTEMPTS,
-        DOCKER_RETRY_BASE_DELAY,
-    )
-    .await
 }
 
 pub(crate) fn deployment_container_name(application_slug: &str, environment_name: &str) -> String {

@@ -11,7 +11,7 @@
  */
 
 import { fetchWithRetry } from "../fetch-with-retry"
-import type { GraphQLError, OAuthTokens } from "../types"
+import type { GraphQLError, OAuthProviderMetadata, OAuthTokens } from "../types"
 import type { OAuthProviderCore, OAuthRefreshable, OAuthRevocable, PKCEOptions, TokenExchangeOptions } from "./base"
 
 export const LINEAR_SCOPES = ["read", "write", "issues:create"] as const
@@ -139,7 +139,12 @@ export class LinearProvider implements OAuthProviderCore, OAuthRefreshable, OAut
   /**
    * Revokes a Linear access token
    */
-  async revokeToken(token: string, clientId: string, clientSecret: string): Promise<void> {
+  async revokeToken(
+    token: string,
+    clientId: string,
+    clientSecret: string,
+    _providerMetadata?: OAuthProviderMetadata,
+  ): Promise<void> {
     const params = new URLSearchParams({
       access_token: token,
       client_id: clientId,

@@ -30,18 +30,18 @@ import { query } from "@anthropic-ai/claude-agent-sdk"
 // IMPORTANT: Import these BEFORE dropping privileges!
 // After privilege drop, the worker can't read /root/alive/node_modules/
 import * as Sentry from "@sentry/node"
+import { requireRuntimeScope } from "@webalive/runtime-auth"
 import {
   createE2bMcp,
   E2B_DEFAULT_TEMPLATE,
   E2B_DISABLED_SDK_TOOLS,
   E2B_MCP_TOOLS,
-  EXECUTION_MODES,
-  SANDBOX_STATUSES,
+  fetchDomainRuntimeByHostname,
   SANDBOX_WORKSPACE_ROOT,
   SandboxManager,
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, OAUTH_MCP_PROVIDERS, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
+import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, OAUTH_MCP_PROVIDERS, resolveStreamMode, SENTRY, STREAM_MODES, SUPERADMIN } from "@webalive/shared"
 import {
   emailInternalMcp,
   sandboxedFsInternalMcp,
@@ -123,6 +123,64 @@ function getSandboxManager(template = E2B_DEFAULT_TEMPLATE) {
   })
   sandboxManagers.set(template, manager)
   return manager
+}
+
+function getSupabasePersistenceConfig() {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl) {
+    throw new Error("[worker] FATAL: SUPABASE_URL is required to resolve runtime state")
+  }
+  if (!serviceRoleKey) {
+    throw new Error("[worker] FATAL: SUPABASE_SERVICE_ROLE_KEY is required to resolve runtime state")
+  }
+
+  return { supabaseUrl, serviceRoleKey }
+}
+
+async function resolveWorkerDomainRuntime(workspace) {
+  const { supabaseUrl, serviceRoleKey } = getSupabasePersistenceConfig()
+  return fetchDomainRuntimeByHostname({
+    hostname: workspace,
+    supabaseUrl,
+    serviceRoleKey,
+  })
+}
+
+function removeTools(target, blocked) {
+  if (blocked.length === 0) {
+    return
+  }
+  for (let index = target.length - 1; index >= 0; index--) {
+    if (blocked.includes(target[index])) {
+      target.splice(index, 1)
+    }
+  }
+}
+
+function enforceRuntimeAccess(payload, allowedTools, disallowedTools, workspaceKey) {
+  const runtimeAccess = payload.runtimeAccess
+  if (!runtimeAccess || typeof runtimeAccess !== "object") {
+    throw new Error("[worker] runtimeAccess is required")
+  }
+  if (runtimeAccess.workspace !== workspaceKey) {
+    throw new Error(`[worker] runtimeAccess workspace mismatch: ${runtimeAccess.workspace} != ${workspaceKey}`)
+  }
+
+  requireRuntimeScope(runtimeAccess.scopes, "runtime:connect")
+
+  if (!runtimeAccess.scopes.includes("files:write")) {
+    removeTools(allowedTools, ["Write", "Edit", "NotebookEdit", "mcp__e2b__Write", "mcp__e2b__Edit"])
+    disallowedTools.push("Write", "Edit", "NotebookEdit", "mcp__e2b__Write", "mcp__e2b__Edit")
+  }
+
+  if (!runtimeAccess.scopes.includes("files:read")) {
+    removeTools(allowedTools, ["Read", "Glob", "Grep", "mcp__e2b__Read", "mcp__e2b__Glob", "mcp__e2b__Grep"])
+    disallowedTools.push("Read", "Glob", "Grep", "mcp__e2b__Read", "mcp__e2b__Glob", "mcp__e2b__Grep")
+  }
+
+  return runtimeAccess
 }
 
 // Global unhandled rejection handler - smart handling based on error type
@@ -741,29 +799,21 @@ async function handleQuery(ipc, requestId, payload) {
     }
   }
 
-  if (payload.executionMode !== undefined && !EXECUTION_MODES.has(payload.executionMode)) {
-    validationErrors.push("executionMode must be 'systemd' or 'e2b'")
-  }
-  if (payload.executionMode === "e2b") {
-    if (!payload.sandboxDomain || typeof payload.sandboxDomain !== "object") {
-      validationErrors.push("sandboxDomain is required when executionMode is 'e2b'")
-    } else {
-      const domain = payload.sandboxDomain
-      if (typeof domain.domain_id !== "string" || domain.domain_id.length === 0) {
-        validationErrors.push("sandboxDomain.domain_id must be a non-empty string")
-      }
-      if (typeof domain.hostname !== "string" || domain.hostname.length === 0) {
-        validationErrors.push("sandboxDomain.hostname must be a non-empty string")
-      }
-      if (domain.sandbox_id !== null && typeof domain.sandbox_id !== "string") {
-        validationErrors.push("sandboxDomain.sandbox_id must be string|null")
-      }
-      if (domain.sandbox_status !== null && !SANDBOX_STATUSES.has(domain.sandbox_status)) {
-        validationErrors.push("sandboxDomain.sandbox_status must be 'creating'|'running'|'dead'|null")
-      }
-      if (domain.is_test_env !== undefined && typeof domain.is_test_env !== "boolean") {
-        validationErrors.push("sandboxDomain.is_test_env must be boolean|undefined")
-      }
+  if (!payload.runtimeAccess || typeof payload.runtimeAccess !== "object") {
+    validationErrors.push("runtimeAccess is required and must be an object")
+  } else {
+    const runtimeAccess = payload.runtimeAccess
+    if (typeof runtimeAccess.userId !== "string" || runtimeAccess.userId.length === 0) {
+      validationErrors.push("runtimeAccess.userId must be a non-empty string")
+    }
+    if (typeof runtimeAccess.workspace !== "string" || runtimeAccess.workspace.length === 0) {
+      validationErrors.push("runtimeAccess.workspace must be a non-empty string")
+    }
+    if (!Array.isArray(runtimeAccess.scopes) || !runtimeAccess.scopes.every(scope => typeof scope === "string")) {
+      validationErrors.push("runtimeAccess.scopes must be an array of strings")
+    }
+    if (typeof runtimeAccess.role !== "string" || runtimeAccess.role.length === 0) {
+      validationErrors.push("runtimeAccess.role must be a non-empty string")
     }
   }
 
@@ -804,6 +854,12 @@ async function handleQuery(ipc, requestId, payload) {
   let initSessionId = null
   let connectedProviders = []
   let enabledMcpServerKeys = []
+  const workspaceKey = process.env.WORKER_WORKSPACE_KEY
+  if (!workspaceKey) {
+    ipc.send({ type: "error", requestId, error: "Missing WORKER_WORKSPACE_KEY in worker environment" })
+    clearQueryState()
+    return
+  }
 
   try {
     // SECURITY: Isolate process.env between requests to prevent credential leakage.
@@ -830,6 +886,12 @@ async function handleQuery(ipc, requestId, payload) {
           console.error(`[worker] Added ${config.knownTools.length} tools for OAuth provider: ${providerKey}`)
         }
       }
+    }
+
+    const runtimeAccess = enforceRuntimeAccess(payload, allowedTools, disallowedTools, workspaceKey)
+    let domainRuntime = null
+    if (runtimeAccess.workspace !== SUPERADMIN.WORKSPACE_NAME) {
+      domainRuntime = await resolveWorkerDomainRuntime(runtimeAccess.workspace)
     }
 
     console.error(`[worker] Allowed tools count: ${allowedTools.length}`)
@@ -918,27 +980,36 @@ async function handleQuery(ipc, requestId, payload) {
     // E2B sandbox routing: swap file/shell tools to remote sandbox.
     // The SDK cwd stays local (needed for subprocess), but Claude sees SANDBOX_WORKSPACE_ROOT
     // in the system prompt and all file ops go through the sandbox MCP.
-    if (payload.executionMode === "e2b" && payload.sandboxDomain) {
+    if (domainRuntime?.execution_mode === "e2b") {
       if (!modeConfig.mcpEnabled) {
         throw new Error(
-          `[worker] executionMode=e2b requires MCP routing, but streamMode="${streamMode}" has mcpEnabled=false`,
+          `[worker] execution_mode=e2b requires MCP routing, but streamMode="${streamMode}" has mcpEnabled=false`,
         )
       }
       try {
-        const template = resolveSandboxTemplate(payload.sandboxDomain.hostname)
+        const template = resolveSandboxTemplate(domainRuntime.hostname)
         const manager = getSandboxManager(template)
         const hostWorkspacePath = process.cwd()
-        const sandbox = await manager.getOrCreate(payload.sandboxDomain, hostWorkspacePath)
+        const sandbox = await manager.getOrCreate(
+          {
+            domain_id: domainRuntime.domain_id,
+            hostname: domainRuntime.hostname,
+            sandbox_id: domainRuntime.sandbox_id,
+            sandbox_status: domainRuntime.sandbox_status,
+            is_test_env: domainRuntime.is_test_env ?? undefined,
+          },
+          hostWorkspacePath,
+        )
         mcpServers.e2b = createE2bMcp(
           sandbox,
           (error, context) => {
             Sentry.captureException(error, {
-              tags: { component: "e2b", security: "path_traversal", domain: payload.sandboxDomain.hostname },
+              tags: { component: "e2b", security: "path_traversal", domain: domainRuntime.hostname },
               extra: context,
             })
           },
           {
-            hostname: payload.sandboxDomain.hostname,
+            hostname: domainRuntime.hostname,
             previewBase: DEFAULTS.PREVIEW_BASE,
           },
         )
@@ -951,10 +1022,10 @@ async function handleQuery(ipc, requestId, payload) {
           if (key !== "e2b") delete mcpServers[key]
         }
         console.error(
-          `[worker] E2B mode: template ${template}, sandbox ${sandbox.sandboxId} for ${payload.sandboxDomain.hostname}, workspace at ${SANDBOX_WORKSPACE_ROOT}`,
+          `[worker] E2B mode: template ${template}, sandbox ${sandbox.sandboxId} for ${domainRuntime.hostname}, workspace at ${SANDBOX_WORKSPACE_ROOT}`,
         )
       } catch (e2bError) {
-        const ctx = payload.sandboxDomain
+        const ctx = domainRuntime
         const wrapped = new Error(
           `[E2B] Sandbox setup failed for ${ctx.hostname} (domain_id=${ctx.domain_id}, sandbox_id=${ctx.sandbox_id}): ${e2bError instanceof Error ? e2bError.message : String(e2bError)}`,
         )

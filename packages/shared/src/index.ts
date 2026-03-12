@@ -36,6 +36,7 @@ export {
   requireEnv,
   resolveTemplatePath,
   SECURITY,
+  SHELL,
   SENTRY,
   STANDALONE,
   STREAM_ENV,

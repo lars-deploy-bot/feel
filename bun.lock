@@ -59,6 +59,7 @@
       "dependencies": {
         "@tanstack/react-query": "^5.90.21",
         "@tanstack/react-virtual": "^3.13.19",
+        "@webalive/database": "workspace:*",
         "@webalive/shared": "workspace:*",
         "nuqs": "^2.8.8",
         "react": "^19.2.0",
@@ -180,6 +181,7 @@
         "@webalive/images": "workspace:*",
         "@webalive/oauth-core": "workspace:*",
         "@webalive/redis": "workspace:*",
+        "@webalive/runtime-auth": "workspace:*",
         "@webalive/sandbox": "workspace:*",
         "@webalive/shared": "workspace:*",
         "@webalive/site-controller": "workspace:*",
@@ -380,6 +382,20 @@
         "typescript": "^5.0.0",
       },
     },
+    "packages/runtime-auth": {
+      "name": "@webalive/runtime-auth",
+      "version": "1.0.0",
+      "dependencies": {
+        "jose": "^6.1.2",
+        "zod": "^4.1.5",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "2.3.14",
+        "@types/node": "^24.10.0",
+        "typescript": "^5.9.3",
+        "vitest": "^4.0.18",
+      },
+    },
     "packages/sandbox": {
       "name": "@webalive/sandbox",
       "version": "1.0.0",
@@ -393,6 +409,7 @@
       "devDependencies": {
         "@types/node": "^22.5.2",
         "typescript": "^5.9.3",
+        "vitest": "^4.0.18",
       },
     },
     "packages/shared": {
@@ -444,6 +461,7 @@
         "@opentelemetry/api": "^1.9.0",
         "@sentry/node": "^10.39.0",
         "@types/node": "^20.0.0",
+        "@webalive/runtime-auth": "workspace:*",
         "@webalive/sandbox": "workspace:*",
         "@webalive/shared": "workspace:*",
         "@webalive/tools": "workspace:*",
@@ -1260,6 +1278,8 @@
     "@webalive/preview-proxy": ["@webalive/preview-proxy@workspace:apps/preview-proxy"],
 
     "@webalive/redis": ["@webalive/redis@workspace:packages/redis"],
+
+    "@webalive/runtime-auth": ["@webalive/runtime-auth@workspace:packages/runtime-auth"],
 
     "@webalive/sandbox": ["@webalive/sandbox@workspace:packages/sandbox"],
 
