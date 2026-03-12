@@ -29,6 +29,7 @@ use crate::types::{
     ClaimedDeployment, LeaseTarget, RuntimeNetworkMode, ServiceContext, TaskEventType, TaskKind,
     TaskStage,
 };
+use crate::workspace_contract::{DeployRequest, RuntimeKind, RuntimeTarget, WorkspaceScope};
 
 pub(super) async fn reconcile_running_deployments(
     client: &Client,
@@ -184,6 +185,29 @@ pub(super) async fn process_deployment(
 
     let config = parse_alive_toml(&release.alive_toml_snapshot)
         .map_err(TaskExecutionError::deployment_validation)?;
+    let workspace_scope = WorkspaceScope::from_environment(&environment)
+        .map_err(TaskExecutionError::deployment_validation)?;
+    let runtime_target = RuntimeTarget::for_environment(RuntimeKind::Host, &environment)
+        .map_err(TaskExecutionError::deployment_validation)?;
+    let deploy_request =
+        DeployRequest::from_release(workspace_scope.clone(), &release, runtime_target.clone())
+            .map_err(TaskExecutionError::deployment_validation)?;
+    pipeline
+        .emit(
+            TaskEventType::DeployRequestPrepared,
+            json!({
+                "organization_id": deploy_request.desired_snapshot.scope.organization_id.as_str(),
+                "workspace_id": deploy_request.desired_snapshot.scope.workspace_id.as_str(),
+                "snapshot_id": deploy_request.desired_snapshot.snapshot_id.as_str(),
+                "policy_version": deploy_request.desired_snapshot.policy_version.as_str(),
+                "runtime": deploy_request.runtime_target.runtime,
+                "server_id": deploy_request.runtime_target.server_id,
+                "environment": deploy_request.runtime_target.environment,
+                "hostname": deploy_request.runtime_target.hostname,
+                "port": deploy_request.runtime_target.port,
+            }),
+        )
+        .await?;
     let policy = policy_for_environment(&config, &environment.name)
         .map_err(TaskExecutionError::runtime_preparation)?;
     validate_runtime_policy(&environment.name, policy)

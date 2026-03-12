@@ -7,6 +7,7 @@ mod github;
 mod logging;
 mod types;
 mod worker;
+mod workspace_contract;
 
 #[cfg(test)]
 mod tests;

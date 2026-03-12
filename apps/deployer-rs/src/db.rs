@@ -202,9 +202,21 @@ pub(crate) async fn fetch_environment(
     let row = client
         .query_one(
             "
-            SELECT environment_id, application_id, server_id, name::text, hostname, port, healthcheck_path, allow_email, runtime_overrides::text
-            FROM deploy.environments
-            WHERE environment_id = $1
+            SELECT environments.environment_id,
+                   environments.application_id,
+                   environments.server_id,
+                   environments.domain_id,
+                   domains.org_id,
+                   environments.name::text,
+                   environments.hostname,
+                   environments.port,
+                   environments.healthcheck_path,
+                   environments.allow_email,
+                   environments.runtime_overrides::text
+            FROM deploy.environments AS environments
+            LEFT JOIN app.domains AS domains
+              ON domains.domain_id = environments.domain_id
+            WHERE environments.environment_id = $1
             ",
             &[&environment_id],
         )
@@ -215,13 +227,15 @@ pub(crate) async fn fetch_environment(
         environment_id: row.get(0),
         application_id: row.get(1),
         server_id: row.get(2),
-        name: row.get(3),
-        hostname: row.get(4),
-        port: row.get(5),
-        healthcheck_path: row.get(6),
-        allow_email: row.get(7),
+        domain_id: row.get(3),
+        org_id: row.get(4),
+        name: row.get(5),
+        hostname: row.get(6),
+        port: row.get(7),
+        healthcheck_path: row.get(8),
+        allow_email: row.get(9),
         runtime_overrides: serde_json::from_str::<EnvironmentRuntimeOverrides>(
-            &row.get::<_, String>(8),
+            &row.get::<_, String>(10),
         )
         .context("failed to parse deploy environment runtime overrides")?,
     })

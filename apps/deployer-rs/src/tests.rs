@@ -13,20 +13,16 @@ use tokio_postgres::NoTls;
 use uuid::Uuid;
 
 use crate::config::{
-    normalize_env_value, parse_alive_toml, parse_server_id_from_server_config,
-    parse_server_identity_from_server_config, policy_for_environment,
-    prepare_runtime_bind_mount_source, resolve_bind_mount_source, resolve_build_secrets,
-    resolve_runtime_env_file, runtime_network_mode, validate_application_matches_config,
-    validate_runtime_policy, write_sanitized_env_file,
+    normalize_env_value, parse_alive_toml, parse_server_identity_from_server_config,
+    policy_for_environment, prepare_runtime_bind_mount_source, resolve_bind_mount_source,
+    resolve_build_secrets, resolve_runtime_env_file, runtime_network_mode,
+    validate_application_matches_config, validate_runtime_policy, write_sanitized_env_file,
 };
 use crate::db::{
     claim_next_build, claim_next_deployment, mark_build_succeeded, mark_deployment_succeeded,
     record_release, renew_lease,
 };
-use crate::docker::{
-    docker_reference_repository, remove_container_if_exists, wait_for_container_stability,
-    wait_for_health,
-};
+use crate::docker::{remove_container_if_exists, wait_for_container_stability, wait_for_health};
 use crate::logging::{
     build_log_path, prepare_log, read_task_snapshot, run_logged_command, TaskPipeline,
 };
@@ -36,6 +32,9 @@ use crate::types::{
     ServiceEnv, TaskKind, TaskStage, TaskStatus,
 };
 use crate::worker::resolve_data_dir;
+use crate::workspace_contract::{
+    DeployRequest, PolicyVersion, RuntimeKind, RuntimeTarget, SnapshotId, WorkspaceScope,
+};
 
 fn temp_file_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("alive-deployer-{}-{}", name, Uuid::new_v4()))
@@ -212,15 +211,6 @@ fn normalize_env_value_strips_matching_quotes() {
 }
 
 #[test]
-fn parse_server_id_from_server_config_reads_server_id() {
-    let server_id =
-        parse_server_id_from_server_config(r#"{"serverId":"srv_alive_dot_best_138_201_56_93"}"#)
-            .expect("failed to parse server config");
-
-    assert_eq!(server_id, "srv_alive_dot_best_138_201_56_93");
-}
-
-#[test]
 fn parse_server_identity_from_server_config_reads_alive_root() {
     let (server_id, alive_root) = parse_server_identity_from_server_config(
         r#"{"serverId":"srv_alive_dot_best_138_201_56_93","paths":{"aliveRoot":"/root/webalive/alive"}}"#,
@@ -253,15 +243,59 @@ fn resolve_data_dir_uses_override_when_set() {
 }
 
 #[test]
-fn docker_reference_repository_handles_registry_ports() {
+fn policy_version_hashes_alive_toml_content() {
+    let version = PolicyVersion::from_alive_toml("[runtime]\ncontainer_port = 3000\n")
+        .expect("policy version");
+
+    assert!(version.as_str().starts_with("alive_toml_"));
+    assert_eq!(version.as_str().len(), "alive_toml_".len() + 24);
+}
+
+#[test]
+fn deploy_request_uses_org_scoped_workspace_identity() {
+    let environment = EnvironmentRow {
+        environment_id: "dep_env_test".to_string(),
+        application_id: "dep_app_test".to_string(),
+        server_id: "srv_test".to_string(),
+        domain_id: Some("dom_workspace_123".to_string()),
+        org_id: Some("org_workspace_456".to_string()),
+        name: "staging".to_string(),
+        hostname: "staging.example.test".to_string(),
+        port: 8998,
+        healthcheck_path: "/api/health".to_string(),
+        allow_email: false,
+        runtime_overrides: EnvironmentRuntimeOverrides::default(),
+    };
+    let release = crate::types::ReleaseRow {
+        release_id: "dep_rel_test".to_string(),
+        application_id: "dep_app_test".to_string(),
+        git_sha: "75f5b345aa8b".to_string(),
+        commit_message: "test".to_string(),
+        artifact_ref: "alive-control/alive:test".to_string(),
+        artifact_digest: "sha256:test".to_string(),
+        alive_toml_snapshot: "[runtime]\ncontainer_port = 3000\n".to_string(),
+        build_fingerprint: None,
+    };
+
+    let scope = WorkspaceScope::from_environment(&environment).expect("workspace scope");
+    let target =
+        RuntimeTarget::for_environment(RuntimeKind::Host, &environment).expect("runtime target");
+    let request =
+        DeployRequest::from_release(scope.clone(), &release, target).expect("deploy request");
+
+    assert_eq!(scope.organization_id.as_str(), "org_workspace_456");
+    assert_eq!(scope.workspace_id.as_str(), "dom_workspace_123");
     assert_eq!(
-        docker_reference_repository("ghcr.io/webalive/app:abc123").expect("missing repository"),
-        "ghcr.io/webalive/app"
+        request.desired_snapshot.scope.organization_id.as_str(),
+        "org_workspace_456"
     );
     assert_eq!(
-        docker_reference_repository("registry.example.com:5000/webalive/app:abc123")
-            .expect("missing repository"),
-        "registry.example.com:5000/webalive/app"
+        request.desired_snapshot.scope.workspace_id.as_str(),
+        "dom_workspace_123"
+    );
+    assert_eq!(
+        request.desired_snapshot.snapshot_id,
+        SnapshotId::from_git_sha("75f5b345aa8b").expect("snapshot id")
     );
 }
 
@@ -1032,6 +1066,8 @@ CMD ["sh","-c","test \"$PUBLIC_MARKER\" = \"ready\" && test -z \"$MAILER_API_KEY
         environment_id: "dep_env_e2e".to_string(),
         application_id: "dep_app_e2e".to_string(),
         server_id: "srv_e2e_smoke".to_string(),
+        domain_id: None,
+        org_id: None,
         name: "staging".to_string(),
         hostname: "unused.local".to_string(),
         port: i32::from(host_port),

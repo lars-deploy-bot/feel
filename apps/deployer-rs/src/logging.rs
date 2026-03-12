@@ -270,47 +270,6 @@ pub(crate) async fn run_logged_command_with_timeout(
     }
 }
 
-pub(crate) async fn run_logged_command_with_retry(
-    build_command: impl Fn() -> Command,
-    log_path: &Path,
-    description: &str,
-    max_attempts: u32,
-    base_delay: std::time::Duration,
-) -> Result<()> {
-    let mut last_error = None;
-    for attempt in 0..max_attempts {
-        match run_logged_command(build_command(), log_path, description).await {
-            Ok(()) => return Ok(()),
-            Err(error) => {
-                if attempt + 1 < max_attempts {
-                    let delay = base_delay * 2u32.pow(attempt);
-                    tracing::warn!(
-                        message = "command failed, retrying",
-                        operation = description,
-                        attempt = attempt + 1,
-                        max_attempts = max_attempts,
-                        retry_delay_secs = delay.as_secs(),
-                        error = %format!("{:#}", error),
-                    );
-                    append_log(
-                        log_path,
-                        &format!(
-                            "retrying in {}s (attempt {}/{})\n",
-                            delay.as_secs(),
-                            attempt + 1,
-                            max_attempts
-                        ),
-                    )
-                    .await?;
-                    tokio::time::sleep(delay).await;
-                }
-                last_error = Some(error);
-            }
-        }
-    }
-    Err(last_error.unwrap())
-}
-
 pub(crate) async fn read_task_snapshot(
     data_dir: &Path,
     task_kind: TaskKind,
