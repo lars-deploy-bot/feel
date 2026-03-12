@@ -2,6 +2,7 @@ import type { Stats } from "node:fs"
 import { lstat, readdir, readlink, realpath, rm, unlink } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { RuntimePathValidationError } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -10,7 +11,8 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { connectSandbox, SANDBOX_WORKSPACE_ROOT, SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { deleteE2bPath, getE2bFileEntryKind } from "@/lib/sandbox/e2b-file-runtime"
 
 /**
  * Critical files within /user that cannot be deleted.
@@ -322,33 +324,9 @@ async function handleE2bDelete(
   recursive: boolean,
   requestId: string,
 ): Promise<NextResponse> {
-  // Path traversal check for E2B
-  const normalized = path.normalize(targetPath)
-  if (normalized.startsWith("..") || path.isAbsolute(normalized) || normalized === "." || normalized === "") {
-    console.warn(`[Delete ${requestId}] E2B path traversal blocked: ${targetPath}`)
-    return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
-      status: 403,
-      details: { requestId },
-    })
-  }
-
   try {
-    const sandbox = await connectSandbox(domain)
-    const sandboxPath = path.join(SANDBOX_WORKSPACE_ROOT, targetPath)
-
-    // Check if target is a directory by listing parent and finding the entry
-    let isDir = false
-    const parentDir = path.dirname(sandboxPath)
-    const baseName = path.basename(sandboxPath)
-    try {
-      const entries = await sandbox.files.list(parentDir)
-      const entry = entries.find(e => e.name === baseName)
-      if (entry) {
-        isDir = entry.type === "dir"
-      }
-    } catch (_listErr) {
-      // Parent listing failed — target likely doesn't exist, let remove() handle the error
-    }
+    const entryKind = await getE2bFileEntryKind(domain, targetPath)
+    const isDir = entryKind === "directory"
 
     // Directory requires recursive flag (mirrors systemd path)
     if (isDir && !recursive) {
@@ -362,16 +340,23 @@ async function handleE2bDelete(
       })
     }
 
-    await sandbox.files.remove(sandboxPath)
+    const deleted = await deleteE2bPath(domain, targetPath)
 
-    console.log(`[Delete ${requestId}] E2B deleted: ${sandboxPath}`)
+    console.log(`[Delete ${requestId}] E2B deleted: ${targetPath}`)
 
     return NextResponse.json({
       ok: true,
       deleted: targetPath,
-      type: isDir ? "directory" : "file",
+      type: deleted.kind === "directory" ? "directory" : "file",
     })
   } catch (err) {
+    if (err instanceof RuntimePathValidationError) {
+      console.warn(`[Delete ${requestId}] E2B path traversal blocked: ${targetPath}`)
+      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
+        status: 403,
+        details: { requestId },
+      })
+    }
     if (err instanceof SandboxNotReadyError) {
       return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
     }

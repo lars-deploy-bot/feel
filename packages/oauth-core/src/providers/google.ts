@@ -12,7 +12,7 @@
  */
 
 import { fetchWithRetry } from "../fetch-with-retry"
-import type { OAuthTokens } from "../types"
+import type { OAuthProviderMetadata, OAuthTokens } from "../types"
 import type { OAuthProviderCore, OAuthRefreshable, OAuthRevocable, PKCEOptions, TokenExchangeOptions } from "./base"
 
 /**
@@ -226,7 +226,12 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
    * Can revoke either access_token or refresh_token
    * Revoking refresh_token also invalidates associated access_tokens
    */
-  async revokeToken(token: string, _clientId: string, _clientSecret: string): Promise<void> {
+  async revokeToken(
+    token: string,
+    _clientId: string,
+    _clientSecret: string,
+    _providerMetadata?: OAuthProviderMetadata,
+  ): Promise<void> {
     // Google token revocation doesn't need client credentials
     const res = await fetchWithRetry(
       `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`,

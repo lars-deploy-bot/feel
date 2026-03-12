@@ -2,6 +2,7 @@ use std::{
     collections::BTreeMap,
     env, fs,
     net::TcpListener,
+    os::unix::fs::PermissionsExt,
     path::PathBuf,
     process::{Command as StdCommand, Stdio as StdStdio},
 };
@@ -13,9 +14,10 @@ use uuid::Uuid;
 
 use crate::config::{
     normalize_env_value, parse_alive_toml, parse_server_id_from_server_config,
-    policy_for_environment, resolve_bind_mount_source, resolve_build_secrets,
+    parse_server_identity_from_server_config, policy_for_environment,
+    prepare_runtime_bind_mount_source, resolve_bind_mount_source, resolve_build_secrets,
     resolve_runtime_env_file, runtime_network_mode, validate_application_matches_config,
-    write_sanitized_env_file,
+    validate_runtime_policy, write_sanitized_env_file,
 };
 use crate::db::{
     claim_next_build, claim_next_deployment, mark_build_succeeded, mark_deployment_succeeded,
@@ -29,10 +31,11 @@ use crate::logging::{
     build_log_path, prepare_log, read_task_snapshot, run_logged_command, TaskPipeline,
 };
 use crate::types::{
-    AliveConfig, ApplicationRow, EnvironmentPolicy, EnvironmentRow, EnvironmentRuntimeOverrides,
-    FailureKind, LeaseTarget, RuntimeNetworkMode, ServiceContext, ServiceEnv, TaskKind, TaskStage,
-    TaskStatus,
+    AliveConfig, ApplicationRow, BindMount, EnvironmentPolicy, EnvironmentRow,
+    EnvironmentRuntimeOverrides, FailureKind, LeaseTarget, RuntimeNetworkMode, ServiceContext,
+    ServiceEnv, TaskKind, TaskStage, TaskStatus,
 };
+use crate::worker::resolve_data_dir;
 
 fn temp_file_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("alive-deployer-{}-{}", name, Uuid::new_v4()))
@@ -123,6 +126,7 @@ async fn setup_test_postgres_schema(client: &tokio_postgres::Client) {
             CREATE TABLE deploy.builds (
               build_id text PRIMARY KEY,
               application_id text NOT NULL REFERENCES deploy.applications(application_id),
+              server_id text NOT NULL,
               status deploy.task_status NOT NULL DEFAULT 'pending',
               git_ref text NOT NULL,
               git_sha text,
@@ -155,8 +159,7 @@ async fn setup_test_postgres_schema(client: &tokio_postgres::Client) {
               artifact_digest text NOT NULL,
               alive_toml_snapshot text NOT NULL,
               metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-              created_at timestamptz NOT NULL DEFAULT now(),
-              UNIQUE (application_id, artifact_digest)
+              created_at timestamptz NOT NULL DEFAULT now()
             );
 
             CREATE TABLE deploy.environments (
@@ -218,6 +221,38 @@ fn parse_server_id_from_server_config_reads_server_id() {
 }
 
 #[test]
+fn parse_server_identity_from_server_config_reads_alive_root() {
+    let (server_id, alive_root) = parse_server_identity_from_server_config(
+        r#"{"serverId":"srv_alive_dot_best_138_201_56_93","paths":{"aliveRoot":"/root/webalive/alive"}}"#,
+    )
+    .expect("failed to parse server config identity");
+
+    assert_eq!(server_id, "srv_alive_dot_best_138_201_56_93");
+    assert_eq!(alive_root, PathBuf::from("/root/webalive/alive"));
+}
+
+#[test]
+fn resolve_data_dir_uses_override_when_set() {
+    let previous = env::var_os("ALIVE_DEPLOYER_DATA_DIR");
+
+    unsafe {
+        env::set_var("ALIVE_DEPLOYER_DATA_DIR", "/tmp/alive-deployer-tests");
+    }
+
+    let resolved = resolve_data_dir().expect("failed to resolve override data dir");
+    assert_eq!(resolved, PathBuf::from("/tmp/alive-deployer-tests"));
+
+    match previous {
+        Some(value) => unsafe {
+            env::set_var("ALIVE_DEPLOYER_DATA_DIR", value);
+        },
+        None => unsafe {
+            env::remove_var("ALIVE_DEPLOYER_DATA_DIR");
+        },
+    }
+}
+
+#[test]
 fn docker_reference_repository_handles_registry_ports() {
     assert_eq!(
         docker_reference_repository("ghcr.io/webalive/app:abc123").expect("missing repository"),
@@ -266,6 +301,68 @@ fn write_sanitized_env_file_normalizes_quoted_values_and_forces_port() {
 
     let _ = fs::remove_file(source_env);
     let _ = fs::remove_file(output_env);
+}
+
+#[test]
+fn validate_runtime_policy_requires_production_node_env() {
+    let valid_policy = EnvironmentPolicy {
+        allow_email: false,
+        blocked_env_keys: Vec::new(),
+        forced_env: BTreeMap::from([("NODE_ENV".to_string(), "production".to_string())]),
+    };
+    validate_runtime_policy("staging", &valid_policy).expect("staging policy should be valid");
+    validate_runtime_policy("production", &valid_policy)
+        .expect("production policy should be valid");
+
+    let invalid_policy = EnvironmentPolicy {
+        allow_email: false,
+        blocked_env_keys: Vec::new(),
+        forced_env: BTreeMap::from([("NODE_ENV".to_string(), "staging".to_string())]),
+    };
+    let error =
+        validate_runtime_policy("staging", &invalid_policy).expect_err("policy should fail");
+    assert!(error
+        .to_string()
+        .contains("staging policy must force NODE_ENV=production"));
+}
+
+#[test]
+fn prepare_runtime_bind_mount_source_copies_files_with_readable_permissions() {
+    let source_file = temp_file_path("server-config-source.json");
+    let staged_root = temp_dir_path("bind-mount-root");
+    let bind_mount = BindMount {
+        source: None,
+        source_env: Some("SERVER_CONFIG_PATH".to_string()),
+        target: "/var/lib/alive/server-config.json".to_string(),
+        read_only: true,
+    };
+
+    fs::write(&source_file, r#"{"serverId":"srv_test"}"#).expect("failed to write source file");
+    fs::set_permissions(&source_file, fs::Permissions::from_mode(0o640))
+        .expect("failed to chmod source file");
+
+    let staged_source = prepare_runtime_bind_mount_source(&source_file, &bind_mount, &staged_root)
+        .expect("failed to stage bind mount source");
+
+    assert_eq!(
+        staged_source,
+        staged_root.join("var/lib/alive/server-config.json")
+    );
+    assert_eq!(
+        fs::read_to_string(&staged_source).expect("failed to read staged file"),
+        r#"{"serverId":"srv_test"}"#
+    );
+    assert_eq!(
+        fs::metadata(&staged_source)
+            .expect("failed to stat staged file")
+            .permissions()
+            .mode()
+            & 0o777,
+        0o644
+    );
+
+    let _ = fs::remove_file(source_file);
+    let _ = fs::remove_dir_all(staged_root);
 }
 
 #[tokio::test]
@@ -479,15 +576,20 @@ async fn db_transitions_work_against_live_postgres() {
     client
         .execute(
             "
-            INSERT INTO deploy.builds (build_id, application_id, status, git_ref)
-            VALUES ($1, $2, 'pending'::deploy.task_status, $3)
+            INSERT INTO deploy.builds (build_id, application_id, server_id, status, git_ref)
+            VALUES ($1, $2, $3, 'pending'::deploy.task_status, $4)
             ",
-            &[&"dep_build_test", &"dep_app_test", &"main"],
+            &[&"dep_build_test", &"dep_app_test", &"srv-test", &"main"],
         )
         .await
         .expect("failed to insert build");
 
-    let claimed_build = claim_next_build(&client, "builder-host")
+    let wrong_server_claim = claim_next_build(&client, "srv-other", "builder-host")
+        .await
+        .expect("failed to claim build from wrong server");
+    assert!(wrong_server_claim.is_none());
+
+    let claimed_build = claim_next_build(&client, "srv-test", "builder-host")
         .await
         .expect("failed to claim build")
         .expect("expected build to be claimable");
@@ -553,6 +655,22 @@ async fn db_transitions_work_against_live_postgres() {
         Some("fingerprint-123")
     );
     assert!(build_row.get::<_, bool>(5));
+
+    let reusable_on_same_server =
+        crate::db::find_reusable_release(&client, "dep_app_test", "fingerprint-123", "srv-test")
+            .await
+            .expect("failed to query reusable release on same server");
+    assert_eq!(
+        reusable_on_same_server
+            .expect("expected reusable release on same server")
+            .release_id,
+        release_id
+    );
+    let reusable_on_other_server =
+        crate::db::find_reusable_release(&client, "dep_app_test", "fingerprint-123", "srv-other")
+            .await
+            .expect("failed to query reusable release on other server");
+    assert!(reusable_on_other_server.is_none());
 
     client
         .execute(
@@ -732,6 +850,7 @@ allow_email = false
 blocked_env_keys = ["MAILER_API_KEY"]
 
 [policies.staging.forced_env]
+NODE_ENV = "production"
 PUBLIC_MARKER = "ready"
 
 [policies.production]
@@ -739,6 +858,7 @@ allow_email = true
 blocked_env_keys = []
 
 [policies.production.forced_env]
+NODE_ENV = "production"
 PUBLIC_MARKER = "prod"
 "#,
         mounted_config_source = mounted_config_path.display()
@@ -852,6 +972,7 @@ CMD ["sh","-c","test \"$PUBLIC_MARKER\" = \"ready\" && test -z \"$MAILER_API_KEY
             database_url: "postgresql://example.invalid/alive".to_string(),
             server_config_path: server_config_path.clone(),
             server_id: "srv_e2e_smoke".to_string(),
+            alive_root: host_root.clone(),
         },
         repo_root: host_root.clone(),
         data_dir: data_dir.clone(),

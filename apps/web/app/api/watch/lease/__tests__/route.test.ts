@@ -25,6 +25,11 @@ vi.mock("@webalive/shared", () => ({
       return mockEnv.SHELL_HOST
     },
   },
+  SHELL: {
+    get UPSTREAM() {
+      return mockEnv.SHELL_UPSTREAM
+    },
+  },
   SUPERADMIN: { WORKSPACE_NAME: "alive" },
 }))
 
@@ -80,6 +85,7 @@ describe("POST /api/watch/lease", () => {
     vi.clearAllMocks()
     mockEnv.SHELL_PASSWORD = "test-secret"
     mockEnv.SHELL_HOST = "go.example.com"
+    mockEnv.SHELL_UPSTREAM = "http://localhost:3888"
     mockResolveDomainRuntime.mockResolvedValue(null)
   })
 
@@ -105,6 +111,18 @@ describe("POST /api/watch/lease", () => {
 
   it("returns 500 when SHELL_HOST is not configured", async () => {
     mockEnv.SHELL_HOST = undefined
+    mockValidateRequest.mockResolvedValue({
+      data: { workspace: "example.com", body: { workspace: "example.com" } },
+    })
+
+    const res = await POST(makeRequest())
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.error.code).toBe("INTERNAL_ERROR")
+  })
+
+  it("returns 500 when shell upstream is not configured", async () => {
+    mockEnv.SHELL_UPSTREAM = undefined
     mockValidateRequest.mockResolvedValue({
       data: { workspace: "example.com", body: { workspace: "example.com" } },
     })

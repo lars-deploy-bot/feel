@@ -8,15 +8,29 @@ import { beforeEach, describe, expect, it } from "vitest"
 import { createOAuthManager, type OAuthManagerConfig } from "../src"
 import type { OAuthTokens } from "../src/types"
 
-describe("Secret Rotation Safety", () => {
+const testUserId = process.env.TEST_USER_ID
+const hasIntegrationEnv = Boolean(
+  testUserId &&
+    process.env.SUPABASE_URL &&
+    (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY) &&
+    process.env.LOCKBOX_MASTER_KEY,
+)
+
+describe.skipIf(!hasIntegrationEnv)("Secret Rotation Safety", () => {
   let manager: ReturnType<typeof createOAuthManager>
-  const testUserId = `test-user-${Date.now()}`
+
+  function requireTestUserId(): string {
+    if (!testUserId) {
+      throw new Error("TEST_USER_ID is required for rotation integration tests")
+    }
+    return testUserId
+  }
 
   beforeEach(() => {
     const config: OAuthManagerConfig = {
       provider: "test-provider",
       instanceId: `test:${Date.now()}`,
-      namespace: "oauth_tokens",
+      namespace: "oauth_connections",
       environment: "test",
       defaultTtlSeconds: 300, // 5 minutes for tests
     }
@@ -37,17 +51,18 @@ describe("Secret Rotation Safety", () => {
     }
 
     // Save first token
-    await manager.saveTokens(testUserId, "github", tokens1)
-    const token1 = await manager.getAccessToken(testUserId, "github")
+    const userId = requireTestUserId()
+    await manager.saveTokens(userId, "github", tokens1)
+    const token1 = await manager.getAccessToken(userId, "github")
     expect(token1).toBe("token-1")
 
     // Rotate to second token
-    await manager.saveTokens(testUserId, "github", tokens2)
-    const token2 = await manager.getAccessToken(testUserId, "github")
+    await manager.saveTokens(userId, "github", tokens2)
+    const token2 = await manager.getAccessToken(userId, "github")
     expect(token2).toBe("token-2")
 
     // Verify we can still read the current token
-    const tokenFinal = await manager.getAccessToken(testUserId, "github")
+    const tokenFinal = await manager.getAccessToken(userId, "github")
     expect(tokenFinal).toBe("token-2")
   })
 
@@ -63,7 +78,7 @@ describe("Secret Rotation Safety", () => {
       }
 
       promises.push(
-        manager.saveTokens(testUserId, "linear", tokens).catch(error => {
+        manager.saveTokens(requireTestUserId(), "linear", tokens).catch(error => {
           // Expected: some may fail with concurrent rotation error
           expect(error.message).toMatch(/Concurrent rotation detected|Save failed/)
           throw error
@@ -84,7 +99,7 @@ describe("Secret Rotation Safety", () => {
     console.log(`Concurrent rotation test: ${succeeded.length} succeeded, ${failed.length} failed`)
 
     // Verify we can read a token (exactly one should be current)
-    const finalToken = await manager.getAccessToken(testUserId, "linear")
+    const finalToken = await manager.getAccessToken(requireTestUserId(), "linear")
     expect(finalToken).toMatch(/^concurrent-token-\d+$/)
   })
 
@@ -96,7 +111,8 @@ describe("Secret Rotation Safety", () => {
     }
 
     // Save initial token
-    await manager.saveTokens(testUserId, "slack", tokens)
+    const userId = requireTestUserId()
+    await manager.saveTokens(userId, "slack", tokens)
 
     // Start reading in a loop while rotating
     let readErrors = 0
@@ -107,7 +123,7 @@ describe("Secret Rotation Safety", () => {
     const readerPromise = (async () => {
       while (reading) {
         try {
-          const token = await manager.getAccessToken(testUserId, "slack")
+          const token = await manager.getAccessToken(userId, "slack")
           expect(token).toBeTruthy() // Should always get a token
           successfulReads++
         } catch (error) {
@@ -126,7 +142,7 @@ describe("Secret Rotation Safety", () => {
         refresh_token: `rotated-refresh-${i}`,
         expires_in: 3600,
       }
-      await manager.saveTokens(testUserId, "slack", newTokens)
+      await manager.saveTokens(userId, "slack", newTokens)
       // Small delay between rotations
       await new Promise(resolve => setTimeout(resolve, 50))
     }
@@ -172,12 +188,13 @@ describe("Secret Rotation Safety", () => {
     }
 
     // Same user, same provider, different instances
-    await manager1.saveTokens(testUserId, "github", tokens1)
-    await manager2.saveTokens(testUserId, "github", tokens2)
+    const userId = requireTestUserId()
+    await manager1.saveTokens(userId, "github", tokens1)
+    await manager2.saveTokens(userId, "github", tokens2)
 
     // Each instance should have its own token
-    const token1 = await manager1.getAccessToken(testUserId, "github")
-    const token2 = await manager2.getAccessToken(testUserId, "github")
+    const token1 = await manager1.getAccessToken(userId, "github")
+    const token2 = await manager2.getAccessToken(userId, "github")
 
     expect(token1).toBe("tenant1-token")
     expect(token2).toBe("tenant2-token")
@@ -188,11 +205,11 @@ describe("Secret Rotation Safety", () => {
       refresh_token: "tenant1-refresh-rotated",
     }
 
-    await manager1.saveTokens(testUserId, "github", rotatedTokens1)
+    await manager1.saveTokens(userId, "github", rotatedTokens1)
 
     // Check isolation is maintained
-    const newToken1 = await manager1.getAccessToken(testUserId, "github")
-    const stillToken2 = await manager2.getAccessToken(testUserId, "github")
+    const newToken1 = await manager1.getAccessToken(userId, "github")
+    const stillToken2 = await manager2.getAccessToken(userId, "github")
 
     expect(newToken1).toBe("tenant1-rotated")
     expect(stillToken2).toBe("tenant2-token") // Unchanged

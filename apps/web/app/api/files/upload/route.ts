@@ -1,6 +1,7 @@
 import { chown, mkdir, realpath, stat } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { RuntimePathValidationError } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -10,7 +11,8 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { connectSandbox, SANDBOX_WORKSPACE_ROOT, SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { ensureE2bDirectory, writeE2bFile } from "@/lib/sandbox/e2b-file-runtime"
 
 /**
  * Maximum file size for uploads (10MB)
@@ -253,17 +255,9 @@ async function handleE2bUpload(
   requestId: string,
 ): Promise<NextResponse> {
   try {
-    const sandbox = await connectSandbox(domain)
-
-    const uploadsDir = path.join(SANDBOX_WORKSPACE_ROOT, UPLOADS_DIR)
-    // Ensure .uploads dir exists (ignore if already exists)
-    await sandbox.files.makeDir(uploadsDir).catch((err: Error) => {
-      if (!err.message?.includes("exists")) throw err
-    })
-
-    const savePath = path.join(uploadsDir, sanitizedName)
     const arrayBuffer = await file.arrayBuffer()
-    await sandbox.files.write(savePath, arrayBuffer)
+    await ensureE2bDirectory(domain, UPLOADS_DIR)
+    await writeE2bFile(domain, `${UPLOADS_DIR}/${sanitizedName}`, arrayBuffer)
 
     const relativePath = `${UPLOADS_DIR}/${sanitizedName}`
     console.log(`[Upload ${requestId}] E2B uploaded: ${file.name} -> ${relativePath} (${file.size} bytes)`)
@@ -276,6 +270,12 @@ async function handleE2bUpload(
       mimeType: file.type,
     })
   } catch (err) {
+    if (err instanceof RuntimePathValidationError) {
+      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
+        status: 403,
+        details: { requestId },
+      })
+    }
     if (err instanceof SandboxNotReadyError) {
       return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
     }
