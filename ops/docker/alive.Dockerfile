@@ -37,10 +37,12 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
-COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./
-COPY --from=build --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build --chown=node:node /app/apps/web/public ./apps/web/public
-USER node
+# The app needs direct access to host-mounted systemd workspaces under /srv/webalive/sites.
+# Those directories are owned by per-site Linux users with 750 permissions, so the runtime
+# container must preserve root privileges instead of dropping to the image's `node` user.
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /app/apps/web/public ./apps/web/public
 
 EXPOSE 3000
 
