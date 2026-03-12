@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", () => ({
   getSessionUser: vi.fn(),
@@ -21,15 +22,7 @@ const { getSessionUser, verifyWorkspaceAccess } = await import("@/features/auth/
 const { resolveWorkspace } = await import("@/features/workspace/lib/workspace-utils")
 const { imageStorage } = await import("@/lib/storage")
 
-const MOCK_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+const MOCK_USER = MOCK_SESSION_USER
 
 function createRequest(query = ""): NextRequest {
   return new NextRequest(`http://localhost/api/images/list${query}`, {

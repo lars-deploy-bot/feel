@@ -15,6 +15,7 @@
 import { randomUUID } from "node:crypto"
 import fs from "node:fs/promises"
 import path from "node:path"
+import * as Sentry from "@sentry/node"
 import { computeNextRunAtMs } from "@webalive/automation"
 import type { Json } from "@webalive/database"
 import { getServerId } from "@webalive/shared"
@@ -62,6 +63,9 @@ export async function claimDueJobs(opts: {
 
   if (error) {
     console.error("[Engine] claim_due_jobs RPC error:", error)
+    Sentry.captureException(new Error(`claim_due_jobs RPC failed: ${error.message}`), {
+      tags: { component: "automation-engine", operation: "claim_due_jobs" },
+    })
     return []
   }
 
@@ -165,6 +169,9 @@ export async function claimJob(job: AutomationJob, opts: ClaimOptions): Promise<
 
   if (claimError) {
     console.error(`[Engine] Claim error for "${job.name}" (${job.id}):`, claimError)
+    Sentry.captureException(new Error(`Job claim failed: ${claimError.message}`), {
+      tags: { component: "automation-engine", jobId: job.id, jobName: job.name },
+    })
     return null
   }
 
@@ -362,9 +369,9 @@ export async function finishJob(ctx: RunContext, result: FinishOptions): Promise
     .eq("run_id", ctx.runId)
 
   if (!updateCount) {
-    console.warn(
-      `[Engine] Conditional finish failed for "${ctx.job.name}" (${ctx.job.id}) — run_id mismatch (ours: ${ctx.runId}). Another runner took over.`,
-    )
+    const msg = `Conditional finish failed for "${ctx.job.name}" (${ctx.job.id}) — run_id mismatch (ours: ${ctx.runId}). Another runner took over.`
+    console.warn(`[Engine] ${msg}`)
+    Sentry.captureMessage(msg, { level: "warning", tags: { component: "automation-engine", jobId: ctx.job.id } })
     return
   }
 
@@ -395,6 +402,9 @@ export async function finishJob(ctx: RunContext, result: FinishOptions): Promise
 
   if (runInsertError) {
     console.error(`[Engine] Failed to insert run record for "${ctx.job.name}":`, runInsertError)
+    Sentry.captureException(new Error(`Run record insert failed: ${runInsertError.message}`), {
+      tags: { component: "automation-engine", jobId: ctx.job.id, runId: ctx.runId },
+    })
   }
 
   // Log to file-based run log
@@ -417,6 +427,9 @@ export async function finishJob(ctx: RunContext, result: FinishOptions): Promise
         await result.hooks.onJobDisabled(ctx, result.error)
       } catch (hookErr) {
         console.error(`[Engine] onJobDisabled hook failed for "${ctx.job.name}":`, hookErr)
+        Sentry.captureException(hookErr, {
+          tags: { component: "automation-engine", hook: "onJobDisabled", jobId: ctx.job.id },
+        })
       }
     }
     if (result.hooks.onJobFinished) {
@@ -424,6 +437,9 @@ export async function finishJob(ctx: RunContext, result: FinishOptions): Promise
         await result.hooks.onJobFinished(ctx, result.status, result.summary)
       } catch (hookErr) {
         console.error(`[Engine] onJobFinished hook failed for "${ctx.job.name}":`, hookErr)
+        Sentry.captureException(hookErr, {
+          tags: { component: "automation-engine", hook: "onJobFinished", jobId: ctx.job.id },
+        })
       }
     }
   }

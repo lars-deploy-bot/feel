@@ -38,4 +38,5 @@ if ! find "$PLAYWRIGHT_BROWSERS_DIR" -maxdepth 1 -type d \( -name 'chromium-*' -
     fail "PLAYWRIGHT_BROWSERS_PATH has no Chromium browser payloads: $PLAYWRIGHT_BROWSERS_DIR"
 fi
 
+export PLAYWRIGHT_BROWSERS_PATH="$PLAYWRIGHT_BROWSERS_DIR"
 exec node "$PLAYWRIGHT_CLI" "$@"

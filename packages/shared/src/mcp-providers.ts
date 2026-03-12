@@ -30,9 +30,27 @@
  */
 
 /**
+ * Shared fields for all OAuth provider configs (MCP and OAuth-only)
+ */
+export interface OAuthProviderBaseConfig {
+  /** Human-readable name for display in UI (e.g., "Stripe", "Linear") */
+  friendlyName: string
+  /** Short description shown to users (e.g., "Create and manage issues from chat") */
+  description: string
+  /** Default OAuth scopes to request */
+  defaultScopes: string
+  /** Environment variable prefix for credentials (e.g., "LINEAR" for LINEAR_CLIENT_ID) */
+  envPrefix: string
+  /** Whether this provider supports Personal Access Tokens (PAT) */
+  supportsPat?: boolean
+  /** Whether this provider supports OAuth flow */
+  supportsOAuth?: boolean
+}
+
+/**
  * Configuration for an OAuth-authenticated MCP provider
  */
-export interface OAuthMcpProviderConfig {
+export interface OAuthMcpProviderConfig extends OAuthProviderBaseConfig {
   /** MCP server URL */
   url: string
   /**
@@ -41,34 +59,10 @@ export interface OAuthMcpProviderConfig {
    */
   oauthKey: string
   /**
-   * Human-readable name for display in UI (e.g., "Stripe", "Linear")
-   */
-  friendlyName: string
-  /**
-   * Default OAuth scopes to request
-   * Format varies by provider (comma-separated for Linear, space-separated for others)
-   */
-  defaultScopes: string
-  /**
-   * Environment variable prefix for credentials (e.g., "LINEAR" for LINEAR_CLIENT_ID)
-   */
-  envPrefix: string
-  /**
    * Known tools provided by this MCP server (for documentation)
    * Tools are auto-discovered at runtime, this is just for reference
    */
   knownTools?: readonly string[]
-  /**
-   * Whether this provider supports Personal Access Tokens (PAT) as an alternative to OAuth.
-   * When true, users can connect by providing their PAT directly instead of OAuth flow.
-   */
-  supportsPat?: boolean
-  /**
-   * Whether this provider supports OAuth flow.
-   * When true, users can connect via OAuth popup flow.
-   * Most providers use OAuth by default, but some (like GitHub) also support PAT.
-   */
-  supportsOAuth?: boolean
 }
 
 /**
@@ -89,6 +83,7 @@ export const OAUTH_MCP_PROVIDERS = {
     url: "https://mcp.stripe.com",
     oauthKey: "stripe",
     friendlyName: "Stripe",
+    description: "View customers, invoices, and payments",
     defaultScopes: "read_write",
     envPrefix: "STRIPE",
     knownTools: [
@@ -135,6 +130,7 @@ export const OAUTH_MCP_PROVIDERS = {
     url: "https://mcp.linear.app/mcp",
     oauthKey: "linear",
     friendlyName: "Linear",
+    description: "Create and manage issues from chat",
     defaultScopes: "read,write,issues:create",
     envPrefix: "LINEAR",
     knownTools: [
@@ -176,6 +172,7 @@ export const OAUTH_MCP_PROVIDERS = {
     url: "http://localhost:8085/mcp",
     oauthKey: "google", // Uses Google OAuth (gmail is a Google service)
     friendlyName: "Gmail",
+    description: "Search, read, and compose emails",
     defaultScopes: [
       "https://www.googleapis.com/auth/gmail.modify", // Read/write/send (no delete)
       "https://www.googleapis.com/auth/userinfo.profile",
@@ -207,6 +204,7 @@ export const OAUTH_MCP_PROVIDERS = {
     url: "http://localhost:8087/mcp",
     oauthKey: "google_calendar", // Dedicated token slot (still uses Google OAuth provider + credentials)
     friendlyName: "Google Calendar",
+    description: "View events and check availability",
     defaultScopes: [
       "https://www.googleapis.com/auth/calendar.events", // View/edit events
       "https://www.googleapis.com/auth/calendar.calendarlist.readonly", // List user's calendars
@@ -231,10 +229,27 @@ export const OAUTH_MCP_PROVIDERS = {
       // They are REST-only (/api/google/calendar/*) - user must click
     ],
   },
+  google_search_console: {
+    url: "internal", // Tools call mini-tools service (port 1235), not a separate MCP server
+    oauthKey: "google_search_console", // Dedicated token slot (uses Google OAuth credentials)
+    friendlyName: "Google Search Console",
+    description: "Analyze search performance and rankings",
+    defaultScopes: [
+      "https://www.googleapis.com/auth/webmasters.readonly",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ].join(" "),
+    envPrefix: "GOOGLE",
+    knownTools: [
+      "mcp__google_search_console__list_sites",
+      "mcp__google_search_console__query_search_analytics",
+      "mcp__google_search_console__inspect_url",
+    ],
+  },
   supabase: {
     url: "internal", // Tools are built into @webalive/tools, not a separate MCP server
     oauthKey: "supabase",
     friendlyName: "Supabase",
+    description: "Query databases and manage projects",
     defaultScopes: "", // Supabase OAuth doesn't use scopes - grants full Management API access
     envPrefix: "SUPABASE",
     supportsOAuth: true,
@@ -253,6 +268,7 @@ export const OAUTH_MCP_PROVIDERS = {
     url: "http://localhost:8088/mcp",
     oauthKey: "microsoft", // Uses Microsoft OAuth (Outlook is a Microsoft service)
     friendlyName: "Outlook",
+    description: "Search, read, and compose emails",
     supportsOAuth: true,
     defaultScopes: [
       "https://graph.microsoft.com/Mail.ReadWrite",
@@ -382,6 +398,25 @@ export function getOAuthMcpProviderConfig(providerKey: string): OAuthMcpProvider
 }
 
 /**
+ * Get description and tool names for any provider (MCP or OAuth-only)
+ *
+ * @returns Object with description and human-readable tool names, or null
+ */
+export function getProviderInfo(providerKey: string): { description: string; tools: string[] } | null {
+  if (providerKey in OAUTH_MCP_PROVIDERS) {
+    const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
+    const prefix = `mcp__${providerKey}__`
+    const tools = (config.knownTools ?? []).map(t => t.slice(prefix.length).replace(/_/g, " "))
+    return { description: config.description, tools }
+  }
+  if (providerKey in OAUTH_ONLY_PROVIDERS) {
+    const config = OAUTH_ONLY_PROVIDERS[providerKey as OAuthOnlyProviderKey]
+    return { description: config.description, tools: [] }
+  }
+  return null
+}
+
+/**
  * Check if a tool name belongs to a connected OAuth MCP provider
  *
  * @param toolName - The tool name (e.g., "mcp__stripe__list_customers")
@@ -477,28 +512,7 @@ export const MICROSOFT_GRAPH_SCOPES = {
  * These providers authenticate users but don't connect to an MCP server.
  * Used for direct API access (e.g., Gmail API, Google Calendar API).
  */
-export interface OAuthOnlyProviderConfig {
-  /**
-   * Human-readable name for display in UI
-   */
-  friendlyName: string
-  /**
-   * Default OAuth scopes to request
-   */
-  defaultScopes: string
-  /**
-   * Environment variable prefix for credentials (e.g., "GOOGLE" for GOOGLE_CLIENT_ID)
-   */
-  envPrefix: string
-  /**
-   * Whether this provider supports Personal Access Tokens (PAT) as an alternative to OAuth.
-   */
-  supportsPat?: boolean
-  /**
-   * Whether this provider supports OAuth flow.
-   */
-  supportsOAuth?: boolean
-}
+export interface OAuthOnlyProviderConfig extends OAuthProviderBaseConfig {}
 
 /**
  * Type for the OAuth-only provider registry
@@ -516,6 +530,7 @@ export type OAuthOnlyProviderRegistry = Record<string, OAuthOnlyProviderConfig>
 export const OAUTH_ONLY_PROVIDERS = {
   github: {
     friendlyName: "GitHub",
+    description: "Access repos, pull requests, and code",
     defaultScopes: "repo user",
     envPrefix: "GITHUB",
     supportsPat: true,
@@ -523,6 +538,7 @@ export const OAUTH_ONLY_PROVIDERS = {
   },
   google: {
     friendlyName: "Google",
+    description: "Google account authentication",
     defaultScopes: [
       "https://www.googleapis.com/auth/gmail.modify",
       "https://www.googleapis.com/auth/calendar.events",
@@ -534,6 +550,7 @@ export const OAUTH_ONLY_PROVIDERS = {
   },
   microsoft: {
     friendlyName: "Microsoft",
+    description: "Microsoft account authentication",
     // offline_access is NOT included here — it's a request-time hint that controls
     // whether a refresh token is returned, not a resource scope. Microsoft doesn't
     // echo it back in the token response scope field, so including it would cause

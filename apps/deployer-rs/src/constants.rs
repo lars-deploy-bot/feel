@@ -15,3 +15,4 @@ pub(crate) const GITHUB_API_PREFIX: &str = "repos";
 pub(crate) const BUILD_TIMEOUT: Duration = Duration::from_secs(600);
 pub(crate) const GH_API_RETRY_ATTEMPTS: u32 = 3;
 pub(crate) const GH_API_RETRY_BASE_DELAY: Duration = Duration::from_secs(3);
+pub(crate) const GH_API_RETRY_MAX_DELAY: Duration = Duration::from_secs(30);

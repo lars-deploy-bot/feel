@@ -2,7 +2,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -546,8 +546,7 @@ impl TaskPipeline {
     fn write_state_blocking(&self, state: PipelineState) -> Result<()> {
         let raw =
             serde_json::to_string_pretty(&state).context("failed to serialize pipeline state")?;
-        fs::write(&self.state_path, raw)
-            .with_context(|| format!("failed to write {}", self.state_path.display()))
+        write_file_atomically(&self.state_path, raw.as_bytes())
     }
 }
 
@@ -846,7 +845,31 @@ fn write_pipeline_state(
 ) -> Result<()> {
     let state_path = state_path_from_summary_path(summary_path)?;
     let raw = serde_json::to_string_pretty(&state).context("failed to serialize pipeline state")?;
-    fs::write(&state_path, raw).with_context(|| format!("failed to write {}", state_path.display()))
+    write_file_atomically(&state_path, raw.as_bytes())
+}
+
+fn write_file_atomically(path: &Path, contents: &[u8]) -> Result<()> {
+    let parent = path
+        .parent()
+        .with_context(|| format!("path {} has no parent", path.display()))?;
+    fs::create_dir_all(parent).with_context(|| format!("failed to create {}", parent.display()))?;
+
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .context("system clock went backwards")?
+        .as_nanos();
+    let tmp_path = parent.join(format!(
+        ".{}.{}.{}.tmp",
+        path.file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("state"),
+        std::process::id(),
+        timestamp
+    ));
+    fs::write(&tmp_path, contents)
+        .with_context(|| format!("failed to write {}", tmp_path.display()))?;
+    fs::rename(&tmp_path, path).with_context(|| format!("failed to replace {}", path.display()))?;
+    Ok(())
 }
 
 fn read_task_snapshot_blocking(

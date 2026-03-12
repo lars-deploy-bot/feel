@@ -5,9 +5,11 @@ use std::{
     os::unix::fs::PermissionsExt,
     path::PathBuf,
     process::{Command as StdCommand, Stdio as StdStdio},
+    sync::OnceLock,
 };
 
 use tokio::process::Command;
+use tokio::sync::Mutex as AsyncMutex;
 use tokio::time::{sleep, Duration};
 use tokio_postgres::NoTls;
 use uuid::Uuid;
@@ -15,7 +17,7 @@ use uuid::Uuid;
 use crate::config::{
     normalize_env_value, parse_alive_toml, parse_server_identity_from_server_config,
     policy_for_environment, prepare_runtime_bind_mount_source, resolve_bind_mount_source,
-    resolve_build_secrets, resolve_runtime_env_file, runtime_network_mode,
+    resolve_bind_mount_target, resolve_build_secrets, resolve_runtime_env_file, runtime_network_mode,
     validate_application_matches_config, validate_runtime_policy, write_sanitized_env_file,
 };
 use crate::db::{
@@ -26,10 +28,16 @@ use crate::docker::{remove_container_if_exists, wait_for_container_stability, wa
 use crate::logging::{
     build_log_path, prepare_log, read_task_snapshot, run_logged_command, TaskPipeline,
 };
+use crate::runtime_adapter::{ResolvedRuntimeAdapter, RuntimeAdapter};
+use crate::source_contract::{BuildArtifact, BuildInput, SourceKind};
 use crate::types::{
-    AliveConfig, ApplicationRow, BindMount, EnvironmentPolicy, EnvironmentRow,
-    EnvironmentRuntimeOverrides, FailureKind, LeaseTarget, RuntimeNetworkMode, ServiceContext,
-    ServiceEnv, TaskKind, TaskStage, TaskStatus,
+    AliveConfig, ApplicationRow, BindMount, BindMountServerPath, ClaimedBuild, EnvironmentPolicy,
+    EnvironmentRow, EnvironmentRuntimeOverrides, FailureKind, LeaseTarget, RuntimeConfig,
+    RuntimeKindConfig, RuntimeNetworkMode, ServiceContext, ServiceEnv, SourceAdapter, TaskKind,
+    TaskStage, TaskStatus,
+};
+use crate::worker::build::{
+    compute_local_source_identity, prepare_build_source, resolve_local_source_root,
 };
 use crate::worker::resolve_data_dir;
 use crate::workspace_contract::{
@@ -42,6 +50,268 @@ fn temp_file_path(name: &str) -> PathBuf {
 
 fn temp_dir_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("alive-deployer-{}-{}", name, Uuid::new_v4()))
+}
+
+#[test]
+fn parse_alive_toml_defaults_source_adapter_to_git() {
+    let config = parse_alive_toml(
+        r#"
+schema = 1
+
+[project]
+slug = "alive"
+display_name = "Alive"
+repo_owner = "eenlars"
+repo_name = "alive"
+default_branch = "main"
+
+[docker]
+context = "."
+dockerfile = "Dockerfile"
+target = "runtime"
+image_repository = "alive-control/alive"
+
+[runtime]
+env_file = ".env.production"
+container_port = 3000
+healthcheck_path = "/health"
+"#,
+    )
+    .expect("alive.toml should parse");
+
+    assert_eq!(config.source.adapter, SourceAdapter::Git);
+    assert_eq!(config.source.path, ".");
+    assert_eq!(config.runtime.kind, RuntimeKindConfig::Host);
+}
+
+#[test]
+fn parse_alive_toml_reads_local_fs_source_adapter() {
+    let config = parse_alive_toml(
+        r#"
+schema = 1
+
+[project]
+slug = "alive"
+display_name = "Alive"
+repo_owner = "eenlars"
+repo_name = "alive"
+default_branch = "main"
+
+[source]
+adapter = "local_fs"
+path = "control-plane"
+
+[docker]
+context = "."
+dockerfile = "Dockerfile"
+target = "runtime"
+image_repository = "alive-control/alive"
+
+[runtime]
+kind = "host"
+env_file = ".env.production"
+container_port = 3000
+healthcheck_path = "/health"
+"#,
+    )
+    .expect("alive.toml should parse");
+
+    assert_eq!(config.source.adapter, SourceAdapter::LocalFs);
+    assert_eq!(config.source.path, "control-plane");
+    assert_eq!(config.runtime.kind, RuntimeKindConfig::Host);
+}
+
+#[test]
+fn build_artifact_uses_context_fingerprint_short_id() {
+    let snapshot_root = PathBuf::from("/srv/alive/repo");
+    let snapshot = BuildInput::new(
+        SourceKind::LocalFs,
+        snapshot_root.clone(),
+        snapshot_root,
+        "snap_local_fs_test".to_string(),
+        "source-identity".to_string(),
+        "0123456789abcdef0123456789abcdef".to_string(),
+        PolicyVersion::from_alive_toml("schema = 1").expect("policy version"),
+        "abc1234".to_string(),
+        "test commit".to_string(),
+    )
+    .expect("source snapshot");
+
+    let artifact =
+        BuildArtifact::local_image("alive-control/alive", &snapshot).expect("build artifact");
+
+    assert_eq!(artifact.image_ref, "alive-control/alive:0123456789ab");
+}
+
+#[test]
+fn host_runtime_adapter_maps_environment_to_runtime_target() {
+    let runtime =
+        ResolvedRuntimeAdapter::from_config(RuntimeKindConfig::Host).expect("host runtime adapter");
+    let environment = EnvironmentRow {
+        environment_id: "dep_env_test".to_string(),
+        application_id: "dep_app_test".to_string(),
+        server_id: "srv_test".to_string(),
+        domain_id: Some("dom_test".to_string()),
+        org_id: Some("org_test".to_string()),
+        name: "staging".to_string(),
+        hostname: "staging.alive.best".to_string(),
+        port: 8998,
+        healthcheck_path: "/api/health".to_string(),
+        allow_email: false,
+        runtime_overrides: EnvironmentRuntimeOverrides::default(),
+    };
+    let runtime_config = RuntimeConfig {
+        kind: RuntimeKindConfig::Host,
+        env_file: ".env.production".to_string(),
+        container_port: 3000,
+        healthcheck_path: "/api/health".to_string(),
+        network_mode: Some(RuntimeNetworkMode::Host),
+        bind_mounts: Vec::new(),
+    };
+
+    let target = runtime
+        .target_for_environment(&environment)
+        .expect("runtime target");
+    let runtime_port = runtime
+        .runtime_port(&environment, &runtime_config, RuntimeNetworkMode::Host)
+        .expect("runtime port");
+
+    assert_eq!(target.runtime, RuntimeKind::Host);
+    assert_eq!(target.server_id, "srv_test");
+    assert_eq!(runtime_port, 8998);
+}
+
+#[test]
+fn local_fs_resolution_uses_alive_root() {
+    let alive_root = temp_dir_path("alive-root");
+    fs::create_dir_all(&alive_root).expect("failed to create alive root");
+    let source_root = resolve_local_source_root(alive_root.as_path(), ".").expect("source root");
+
+    assert_eq!(source_root, alive_root);
+}
+
+#[tokio::test]
+async fn local_fs_prepare_build_source_does_not_touch_github() {
+    let repo_root = temp_dir_path("local-fs-source");
+    fs::create_dir_all(&repo_root).expect("failed to create repo root");
+    fs::write(
+        repo_root.join("alive.toml"),
+        r#"
+schema = 1
+
+[project]
+slug = "alive"
+display_name = "Alive"
+repo_owner = "eenlars"
+repo_name = "alive"
+default_branch = "main"
+
+[source]
+adapter = "local_fs"
+path = "."
+
+[docker]
+context = "."
+dockerfile = "Dockerfile"
+target = "runtime"
+image_repository = "alive-control/alive"
+
+[runtime]
+kind = "host"
+env_file = ".env.production"
+container_port = 3000
+healthcheck_path = "/health"
+"#,
+    )
+    .expect("failed to write alive.toml");
+    fs::write(repo_root.join("Dockerfile"), "FROM scratch\n").expect("failed to write Dockerfile");
+
+    let application = ApplicationRow {
+        slug: "alive".to_string(),
+        display_name: "Alive".to_string(),
+        repo_owner: "eenlars".to_string(),
+        repo_name: "alive".to_string(),
+        default_branch: "main".to_string(),
+        config_path: "alive.toml".to_string(),
+    };
+    let build = ClaimedBuild {
+        build_id: "dep_build_test".to_string(),
+        application_id: "dep_app_test".to_string(),
+        git_ref: "definitely-not-a-real-ref".to_string(),
+        git_sha: "abc1234".to_string(),
+        commit_message: "local changes".to_string(),
+        lease_token: "lease_test".to_string(),
+    };
+    let context = ServiceContext {
+        env: ServiceEnv {
+            database_url: "postgresql://example".to_string(),
+            server_config_path: repo_root.join("server-config.json"),
+            server_id: "srv_test".to_string(),
+            alive_root: repo_root.clone(),
+            sites_root: None,
+        },
+        repo_root: repo_root.clone(),
+        data_dir: temp_dir_path("local-fs-data"),
+        hostname: "test-host".to_string(),
+    };
+
+    let prepared = prepare_build_source(
+        &application,
+        &context,
+        &build,
+        &temp_dir_path("unused-source-export"),
+        &temp_file_path("unused-source-archive"),
+        &temp_file_path("unused-source-log"),
+    )
+    .await
+    .expect("local_fs source should resolve without github");
+
+    assert_eq!(prepared.build_input.source_kind, SourceKind::LocalFs);
+    assert_eq!(prepared.build_input.source_root, repo_root);
+}
+
+#[tokio::test]
+async fn build_context_fingerprint_ignores_dot_git_but_changes_for_included_files() {
+    let source_root = temp_dir_path("fingerprint-source");
+    fs::create_dir_all(source_root.join(".git")).expect("failed to create .git");
+    fs::write(source_root.join("Dockerfile"), "FROM scratch\n")
+        .expect("failed to write Dockerfile");
+    fs::write(source_root.join("app.txt"), "hello\n").expect("failed to write app.txt");
+
+    let initial = compute_local_source_identity(&source_root, ".")
+        .await
+        .expect("initial fingerprint");
+
+    fs::write(source_root.join(".git/HEAD"), "ref: refs/heads/main\n")
+        .expect("failed to write git head");
+    let with_git_change = compute_local_source_identity(&source_root, ".")
+        .await
+        .expect("fingerprint after .git change");
+    assert_eq!(initial, with_git_change);
+
+    fs::write(source_root.join("app.txt"), "hello world\n").expect("failed to update app.txt");
+    let with_app_change = compute_local_source_identity(&source_root, ".")
+        .await
+        .expect("fingerprint after app change");
+    assert_ne!(initial, with_app_change);
+
+    fs::write(source_root.join("Dockerfile"), "FROM busybox\n")
+        .expect("failed to update Dockerfile");
+    let with_dockerfile_change = compute_local_source_identity(&source_root, ".")
+        .await
+        .expect("fingerprint after dockerfile change");
+    assert_ne!(with_app_change, with_dockerfile_change);
+}
+
+#[test]
+fn unimplemented_runtime_kinds_fail_fast() {
+    let e2b =
+        ResolvedRuntimeAdapter::from_config(RuntimeKindConfig::E2b).expect_err("e2b should fail");
+    let hetzner = ResolvedRuntimeAdapter::from_config(RuntimeKindConfig::Hetzner)
+        .expect_err("hetzner should fail");
+
+    assert!(format!("{e2b:#}").contains("not implemented"));
+    assert!(format!("{hetzner:#}").contains("not implemented"));
 }
 
 fn assert_std_command_success(command: &mut StdCommand, description: &str) {
@@ -67,6 +337,11 @@ fn docker_available() -> bool {
         .status()
         .map(|status| status.success())
         .unwrap_or(false)
+}
+
+fn process_env_lock() -> &'static AsyncMutex<()> {
+    static LOCK: OnceLock<AsyncMutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| AsyncMutex::new(()))
 }
 
 struct PostgresTestContainer {
@@ -212,17 +487,19 @@ fn normalize_env_value_strips_matching_quotes() {
 
 #[test]
 fn parse_server_identity_from_server_config_reads_alive_root() {
-    let (server_id, alive_root) = parse_server_identity_from_server_config(
-        r#"{"serverId":"srv_alive_dot_best_138_201_56_93","paths":{"aliveRoot":"/root/webalive/alive"}}"#,
+    let (server_id, alive_root, sites_root) = parse_server_identity_from_server_config(
+        r#"{"serverId":"srv_alive_dot_best_138_201_56_93","paths":{"aliveRoot":"/srv/alive/repo","sitesRoot":"/srv/sites"}}"#,
     )
     .expect("failed to parse server config identity");
 
     assert_eq!(server_id, "srv_alive_dot_best_138_201_56_93");
-    assert_eq!(alive_root, PathBuf::from("/root/webalive/alive"));
+    assert_eq!(alive_root, PathBuf::from("/srv/alive/repo"));
+    assert_eq!(sites_root, Some(PathBuf::from("/srv/sites")));
 }
 
-#[test]
-fn resolve_data_dir_uses_override_when_set() {
+#[tokio::test]
+async fn resolve_data_dir_uses_override_when_set() {
+    let _env_lock = process_env_lock().lock().await;
     let previous = env::var_os("ALIVE_DEPLOYER_DATA_DIR");
 
     unsafe {
@@ -332,6 +609,12 @@ fn write_sanitized_env_file_normalizes_quoted_values_and_forces_port() {
     assert!(output.contains("HOSTNAME=0.0.0.0\n"));
     assert!(output.contains("PORT=3000\n"));
     assert!(!output.contains("MAILER_API_KEY"));
+    let permissions = fs::metadata(&output_env)
+        .expect("failed to stat sanitized env")
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(permissions, 0o600);
 
     let _ = fs::remove_file(source_env);
     let _ = fs::remove_file(output_env);
@@ -367,7 +650,9 @@ fn prepare_runtime_bind_mount_source_copies_files_with_readable_permissions() {
     let bind_mount = BindMount {
         source: None,
         source_env: Some("SERVER_CONFIG_PATH".to_string()),
-        target: "/var/lib/alive/server-config.json".to_string(),
+        source_server_path: None,
+        target: Some("/var/lib/alive/server-config.json".to_string()),
+        target_server_path: None,
         read_only: true,
     };
 
@@ -397,6 +682,38 @@ fn prepare_runtime_bind_mount_source_copies_files_with_readable_permissions() {
 
     let _ = fs::remove_file(source_file);
     let _ = fs::remove_dir_all(staged_root);
+}
+
+#[test]
+fn resolve_bind_mount_source_reads_sites_root_from_server_config() {
+    let context = ServiceContext {
+        env: ServiceEnv {
+            database_url: "postgresql://example".to_string(),
+            server_config_path: PathBuf::from("/var/lib/alive/server-config.json"),
+            server_id: "srv_test".to_string(),
+            alive_root: PathBuf::from("/srv/alive/repo"),
+            sites_root: Some(PathBuf::from("/srv/workspaces")),
+        },
+        repo_root: PathBuf::from("/srv/alive/repo"),
+        data_dir: temp_dir_path("resolve-bind-source"),
+        hostname: "test-host".to_string(),
+    };
+    let bind_mount = BindMount {
+        source: None,
+        source_env: None,
+        source_server_path: Some(BindMountServerPath::SitesRoot),
+        target: None,
+        target_server_path: Some(BindMountServerPath::SitesRoot),
+        read_only: false,
+    };
+
+    let resolved =
+        resolve_bind_mount_source(&bind_mount, &context).expect("should resolve sitesRoot path");
+    let target =
+        resolve_bind_mount_target(&bind_mount, &context).expect("should resolve sitesRoot target");
+
+    assert_eq!(resolved, PathBuf::from("/srv/workspaces"));
+    assert_eq!(target, "/srv/workspaces");
 }
 
 #[tokio::test]
@@ -628,9 +945,14 @@ async fn db_transitions_work_against_live_postgres() {
         .expect("failed to claim build")
         .expect("expected build to be claimable");
     assert_eq!(claimed_build.build_id, "dep_build_test");
-    renew_lease(&client, LeaseTarget::Build, &claimed_build.build_id)
-        .await
-        .expect("failed to renew build lease");
+    renew_lease(
+        &client,
+        LeaseTarget::Build,
+        &claimed_build.build_id,
+        &claimed_build.lease_token,
+    )
+    .await
+    .expect("failed to renew build lease");
 
     let build_log = temp_file_path("build-log");
     let release_id = record_release(
@@ -649,6 +971,7 @@ async fn db_transitions_work_against_live_postgres() {
     mark_build_succeeded(
         &client,
         &claimed_build.build_id,
+        &claimed_build.lease_token,
         "abc123",
         "test commit",
         "schema = 1",
@@ -709,6 +1032,23 @@ async fn db_transitions_work_against_live_postgres() {
     client
         .execute(
             "
+            UPDATE deploy.builds
+            SET status = 'failed'::deploy.task_status
+            WHERE build_id = $1
+            ",
+            &[&claimed_build.build_id],
+        )
+        .await
+        .expect("failed to mark build failed for reuse regression test");
+    let reusable_after_failed_build =
+        crate::db::find_reusable_release(&client, "dep_app_test", "fingerprint-123", "srv-test")
+            .await
+            .expect("failed to query reusable release after failed build");
+    assert!(reusable_after_failed_build.is_none());
+
+    client
+        .execute(
+            "
             INSERT INTO deploy.environments (
               environment_id, application_id, server_id, name, hostname, port, healthcheck_path, allow_email
             )
@@ -738,14 +1078,21 @@ async fn db_transitions_work_against_live_postgres() {
         &client,
         LeaseTarget::Deployment,
         &claimed_deployment.deployment_id,
+        &claimed_deployment.lease_token,
     )
     .await
     .expect("failed to renew deployment lease");
 
     let deploy_log = temp_file_path("deploy-log");
-    mark_deployment_succeeded(&client, &claimed_deployment.deployment_id, 200, &deploy_log)
-        .await
-        .expect("failed to mark deployment success");
+    mark_deployment_succeeded(
+        &client,
+        &claimed_deployment.deployment_id,
+        &claimed_deployment.lease_token,
+        200,
+        &deploy_log,
+    )
+    .await
+    .expect("failed to mark deployment success");
 
     let deployment_row = client
         .query_one(
@@ -770,6 +1117,7 @@ async fn db_transitions_work_against_live_postgres() {
 
 #[tokio::test]
 async fn e2e_builds_and_runs_a_committed_repo_with_complex_alive_toml() {
+    let _env_lock = process_env_lock().lock().await;
     // Trigger: a committed git repo with a simple app and a non-trivial alive.toml enters the deployer flow.
     // Expected user-visible outcome: the built container serves healthy HTTP responses and exposes built assets.
     // Negative boundary: blocked env vars must not reach runtime, and mounts/secrets must be required for startup.
@@ -1007,6 +1355,7 @@ CMD ["sh","-c","test \"$PUBLIC_MARKER\" = \"ready\" && test -z \"$MAILER_API_KEY
             server_config_path: server_config_path.clone(),
             server_id: "srv_e2e_smoke".to_string(),
             alive_root: host_root.clone(),
+            sites_root: Some(PathBuf::from("/srv/workspaces")),
         },
         repo_root: host_root.clone(),
         data_dir: data_dir.clone(),
@@ -1123,10 +1472,12 @@ CMD ["sh","-c","test \"$PUBLIC_MARKER\" = \"ready\" && test -z \"$MAILER_API_KEY
     for bind_mount in &alive_config.runtime.bind_mounts {
         let source =
             resolve_bind_mount_source(bind_mount, &context).expect("failed to resolve bind mount");
+        let target =
+            resolve_bind_mount_target(bind_mount, &context).expect("failed to resolve bind target");
         let mount_spec = if bind_mount.read_only {
-            format!("{}:{}:ro", source.display(), bind_mount.target)
+            format!("{}:{}:ro", source.display(), target)
         } else {
-            format!("{}:{}", source.display(), bind_mount.target)
+            format!("{}:{}", source.display(), target)
         };
         run_command.arg("--volume").arg(mount_spec);
     }

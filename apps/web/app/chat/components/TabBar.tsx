@@ -1,7 +1,7 @@
 "use client"
 
 import { History, Plus } from "lucide-react"
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { trackTabClosed, trackTabCreated, trackTabReopened } from "@/lib/analytics/events"
 import type { Tab } from "@/lib/stores/tabStore"
@@ -67,6 +67,89 @@ function useInlineEdit(onSave: (id: string, value: string) => void) {
   return { editingId, editValue, setEditValue, inputRef, startEdit, commitEdit, handleKeyDown }
 }
 
+// ─── Swipe-to-close hook (mobile only) ──────────────────────────────────────
+
+const SWIPE_THRESHOLD = 40
+
+function useSwipeToClose(canClose: boolean, onClose: () => void) {
+  const startY = useRef(0)
+  const startX = useRef(0)
+  const isTracking = useRef(false)
+  const directionLocked = useRef<"vertical" | "horizontal" | null>(null)
+  const [offsetY, setOffsetY] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
+
+  const onTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!canClose) return
+      const touch = e.touches[0]
+      startY.current = touch.clientY
+      startX.current = touch.clientX
+      isTracking.current = true
+      directionLocked.current = null
+      setIsSwiping(false)
+    },
+    [canClose],
+  )
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isTracking.current) return
+    const touch = e.touches[0]
+    const deltaY = startY.current - touch.clientY
+    const deltaX = Math.abs(touch.clientX - startX.current)
+
+    if (!directionLocked.current) {
+      if (Math.abs(deltaY) > 5 || deltaX > 5) {
+        directionLocked.current = deltaX > Math.abs(deltaY) ? "horizontal" : "vertical"
+      }
+    }
+
+    if (directionLocked.current === "horizontal") {
+      isTracking.current = false
+      return
+    }
+
+    if (deltaY > 0) {
+      e.preventDefault()
+      setIsSwiping(true)
+      setOffsetY(deltaY)
+    }
+  }, [])
+
+  const onTouchEnd = useCallback(() => {
+    if (!isTracking.current && !isSwiping) return
+    isTracking.current = false
+
+    if (offsetY > SWIPE_THRESHOLD) {
+      setIsClosing(true)
+      setTimeout(() => {
+        onClose()
+        setIsClosing(false)
+        setOffsetY(0)
+        setIsSwiping(false)
+      }, 200)
+    } else {
+      setOffsetY(0)
+      setIsSwiping(false)
+    }
+  }, [offsetY, isSwiping, onClose])
+
+  const style = useMemo<React.CSSProperties>(() => {
+    if (isClosing) {
+      return { transform: "translateY(-60px) scale(0.8)", opacity: 0, transition: "all 200ms ease-out" }
+    }
+    if (isSwiping) {
+      const opacity = Math.max(0, 1 - offsetY / 100)
+      const scale = Math.max(0.85, 1 - offsetY / 300)
+      return { transform: `translateY(${-offsetY}px) scale(${scale})`, opacity, transition: "none" }
+    }
+    return {}
+  }, [isClosing, isSwiping, offsetY])
+
+  return { onTouchStart, onTouchMove, onTouchEnd, style, isSwiping: isSwiping || isClosing }
+}
+
 // ─── Tab Pill ────────────────────────────────────────────────────────────────
 
 interface TabPillProps {
@@ -99,6 +182,10 @@ function TabPill({
   onEditKeyDown,
 }: TabPillProps) {
   const isEditing = tab.id === editingId
+  const swipe = useSwipeToClose(canClose, () => {
+    trackTabClosed()
+    onClose()
+  })
 
   return (
     <div
@@ -108,7 +195,8 @@ function TabPill({
       data-testid={`tab-${tab.id}`}
       data-tab-name={tab.name}
       data-active={isActive}
-      className={`flex items-center gap-1.5 h-8 px-3.5 text-[13px] font-medium rounded-full transition-all duration-200 shrink-0 ${isActive ? PILL_ACTIVE : PILL_INACTIVE}`}
+      className={`flex items-center gap-1.5 h-8 px-3.5 text-[13px] font-medium rounded-full shrink-0 select-none touch-pan-x ${isActive ? PILL_ACTIVE : PILL_INACTIVE} ${swipe.isSwiping ? "" : "transition-all duration-200"}`}
+      style={swipe.style}
       onClick={() => {
         if (!isEditing) onSelect()
       }}
@@ -119,6 +207,9 @@ function TabPill({
           onClose()
         }
       }}
+      onTouchStart={swipe.onTouchStart}
+      onTouchMove={swipe.onTouchMove}
+      onTouchEnd={swipe.onTouchEnd}
     >
       {isActive && <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />}
       <div className="flex-1 min-w-0">
@@ -329,9 +420,14 @@ export function TabBar({
           )}
 
           {tabs.length > 1 && (
-            <span className="text-[10px] text-black/0 dark:text-white/0 group-hover/bar:text-black/25 dark:group-hover/bar:text-white/25 transition-colors duration-300 mt-0.5 select-none">
-              right-click to archive
-            </span>
+            <>
+              <span className="hidden md:block text-[10px] text-black/0 dark:text-white/0 group-hover/bar:text-black/25 dark:group-hover/bar:text-white/25 transition-colors duration-300 mt-0.5 select-none">
+                right-click to archive
+              </span>
+              <span className="md:hidden text-[10px] text-black/25 dark:text-white/25 mt-0.5 select-none">
+                swipe up to close
+              </span>
+            </>
           )}
 
           {showClosedMenu && (

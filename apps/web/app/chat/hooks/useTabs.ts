@@ -61,6 +61,7 @@ export function useTabsManagement({
   } = useTabActions()
   const { reopenTab: dexieReopenTab, loadTabMessages } = useDexieMessageActions()
   const streamingActions = useStreamingActions()
+
   const notifyTabLimit = useCallback(() => {
     toast.error("Tab limit reached. Close a tab to open a new one.", { id: "tab-limit" })
   }, [])
@@ -107,7 +108,7 @@ export function useTabsManagement({
     }
     const tabId = initializeAndSwitchTab(tab, tabGroupId)
     if (!tabId) return
-    // Clear input for new tab
+    // Clear input for new tab (attachments are scoped per-tab in the store)
     if (onInputRestore) {
       onInputRestore("")
     }
@@ -117,8 +118,6 @@ export function useTabsManagement({
     activeTabInGroup,
     currentInput,
     addTab,
-    onInitializeTab,
-    onSwitchTab,
     setTabInputDraft,
     onInputRestore,
     notifyTabLimit,
@@ -139,7 +138,7 @@ export function useTabsManagement({
         // Lazy-load messages from server if not already present locally
         void loadTabMessages(tab.id)
 
-        // Restore input from the new tab's draft
+        // Restore input from the new tab's draft (attachments are scoped per-tab in the store)
         if (onInputRestore) {
           onInputRestore(tab.inputDraft ?? "")
         }
@@ -259,7 +258,7 @@ export function useTabsManagement({
       // Lazy-load messages from server (critical for cross-device sync:
       // syncFromServer fetches metadata only, messages must be fetched per-tab)
       void loadTabMessages(tabId)
-      // Restore input from the tab's draft (empty for new tabs)
+      // Restore input from the tab's draft (attachments are scoped per-tab in the store)
       if (onInputRestore) {
         onInputRestore(tab.inputDraft ?? "")
       }
@@ -269,8 +268,6 @@ export function useTabsManagement({
       activeTabInGroup,
       currentInput,
       openTabGroupInTab,
-      onSwitchTab,
-      onInitializeTab,
       loadTabMessages,
       setTabInputDraft,
       onInputRestore,
@@ -290,7 +287,7 @@ export function useTabsManagement({
       onSwitchTab(activeTabInGroup.id)
       // Load messages for the fallback tab (may not be in local Dexie on new device)
       void loadTabMessages(activeTabInGroup.id)
-      // Restore input from the new active tab
+      // Restore input from the new active tab (attachments are scoped per-tab in the store)
       if (onInputRestore) {
         onInputRestore(activeTabInGroup.inputDraft ?? "")
       }

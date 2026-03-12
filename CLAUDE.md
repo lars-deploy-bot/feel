@@ -24,6 +24,22 @@ Both servers run the same codebase. Server 1 is primary production, Server 2 is 
 
 **Quick Links:** [Getting Started](./docs/GETTING_STARTED.md) | [Architecture](./docs/architecture/README.md) | [Security](./docs/security/README.md) | [Testing](./docs/testing/README.md)
 
+## Deploy Control Plane
+
+Alive now has a deploy control plane in addition to the legacy `build-and-serve.sh` path.
+
+- **Service**: `apps/deployer-rs/` runs as `alive-deployer.service` and exposes a localhost health/control surface on port `5095`
+- **Database schema**: Deploy state lives in `deploy.*` tables (`deploy.builds`, `deploy.releases`, `deploy.deployments`, `deploy.environments`)
+- **Flow**: `scripts/deployment/deploy-via-deployer.sh` inserts a pending build, waits for the Rust worker to create a release, then inserts a deployment and tails status via `/health/details`
+- **Current rollout**: staging uses the deployer path now; production still goes through `scripts/deployment/build-and-serve.sh` until the migration is complete
+
+**Operational commands:**
+- `make deployer` - build and restart only `alive-deployer`
+- `systemctl status alive-deployer`
+- `journalctl -u alive-deployer -n 100`
+- `curl http://127.0.0.1:5095/health`
+- `curl http://127.0.0.1:5095/health/details`
+
 ## Project Management
 
 Use the `/roadmap` skill to manage issues, milestones, and the project board. This is the source of truth for what we're building and what's next.
@@ -64,7 +80,7 @@ Use the `/roadmap` skill to manage issues, milestones, and the project board. Th
     - **Runtime sets**: `RUN_STATUSES`, `TRIGGER_TYPES`, `ACTION_TYPES`, `JOB_STATUSES`
     - **Zod schemas**: Derive with `z.enum(AppConstants.app.Enums.<name>)`, never hand-write the values
     - Source file: `packages/database/src/automation-enums.ts`, derived from auto-generated `AppConstants`
-24. **`canUseTool` IS BROKEN IN THE SDK — DO NOT RELY ON IT** - The Claude Agent SDK's `canUseTool` callback is **NEVER CALLED** by the CLI subprocess. Tested empirically on SDK v0.2.41: regardless of `permissionMode` (`default`, `acceptEdits`, `dontAsk`), the CLI auto-approves all tools without sending `can_use_tool` control requests back via stdio. Even a callback that returns `{ behavior: "deny" }` for everything is silently ignored — tools run anyway. **Our ONLY enforceable security layers are:** (1) `allowedTools` / `disallowedTools` arrays passed to the SDK (CLI enforces these), (2) `cwd` workspace sandboxing (CLI restricts file tools to cwd), (3) MCP tool-level `validateWorkspacePath()`. The `canUseTool` code in `worker-entry.mjs` (path traversal checks, heavy-command blocking) is **dead code** that provides zero protection. Do not add security logic there — it will never execute. If Anthropic fixes this in a future SDK version, re-verify with the test script at `/tmp/test-permission-mode.mjs` before trusting it.
+24. **`canUseTool` IS BROKEN IN THE SDK — DO NOT RELY ON IT** - The Claude Agent SDK's `canUseTool` callback is **NEVER CALLED** by the CLI subprocess. Tested empirically on SDK v0.2.41: regardless of `permissionMode` (`default`, `acceptEdits`, `dontAsk`), the CLI auto-approves all tools without sending `can_use_tool` control requests back via stdio. Even a callback that returns `{ behavior: "deny" }` for everything is silently ignored — tools run anyway. **Our ONLY enforceable security layers are:** (1) `allowedTools` / `disallowedTools` arrays passed to the SDK (CLI enforces these), (2) `cwd` workspace sandboxing (CLI restricts file tools to cwd), (3) MCP tool-level `validateWorkspacePath()`. Do not put security logic in `canUseTool`; the CLI subprocess will not enforce it. If Anthropic fixes this in a future SDK version, re-verify with `scripts/verify-canUseTool-callback.mjs` before trusting it.
 
 ## E2B Sandbox Migration (ACTIVE)
 
@@ -600,7 +616,7 @@ make rollback    # Interactive rollback (if needed)
 
 ### Deploying from Chat
 
-See **Core Rules 12-14** at the top of this file. Summary: clean orphans, check `make deploy-status`, deploy with `nohup`.
+See **Core Rules 10-12** at the top of this file. Summary: deploy with `nohup`, check `make deploy-status`, then clean orphaned processes and locks before starting if needed.
 
 ### Site Deployment (Different)
 
@@ -660,7 +676,7 @@ if (!isPathWithinWorkspace(resolvedPath, workspacePath)) {
 **Solution**: Check session key format and storage
 ```typescript
 import { tabKey } from '@/features/auth/lib/sessionStore'
-const key = tabKey({ userId, workspace, tabId })
+const key = tabKey({ userId, workspace, tabGroupId, tabId })
 const sessionId = await sessionStore.get(key)
 ```
 
@@ -806,4 +822,3 @@ curl http://localhost:5070/health
 External codebases cloned for reference when stuck on frontend issues.
 
 Check these repos for working examples before reinventing.
-

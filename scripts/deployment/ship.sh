@@ -34,6 +34,26 @@ source "$SCRIPT_DIR/lib/lock.sh"
 DEPLOY_STAGING=true
 DEPLOY_PRODUCTION=true
 SKIP_E2E=false
+DEPLOYER_HEALTH_URL="http://127.0.0.1:5095/health"
+
+deployer_busy_summary() {
+    local health_json build_id deployment_id
+
+    health_json=$(curl -sf "$DEPLOYER_HEALTH_URL" 2>/dev/null || true)
+    if [[ -z "$health_json" ]]; then
+        return 1
+    fi
+
+    build_id=$(printf '%s' "$health_json" | jq -r '.worker.current_build_id // empty' 2>/dev/null || true)
+    deployment_id=$(printf '%s' "$health_json" | jq -r '.worker.current_deployment_id // empty' 2>/dev/null || true)
+
+    if [[ -n "$build_id" || -n "$deployment_id" ]]; then
+        printf 'deployer busy (build=%s deployment=%s)\n' "$build_id" "$deployment_id"
+        return 0
+    fi
+
+    return 1
+}
 
 # =============================================================================
 # Parse Arguments
@@ -84,11 +104,29 @@ else
     TARGET_DISPLAY="production"
 fi
 
+if deployer_summary=$(deployer_busy_summary); then
+    log_error "$deployer_summary"
+    exit 1
+fi
+
 # =============================================================================
 # Acquire Lock (includes orphan cleanup if stale lock detected)
 # =============================================================================
 if ! lock_acquire "$TARGET"; then
     exit 1
+fi
+
+SMOKE_HOLD_SECONDS="${ALIVE_DEPLOY_SMOKE_HOLD_LOCK_SECONDS:-0}"
+if [[ "$SMOKE_HOLD_SECONDS" != "0" ]]; then
+    if ! [[ "$SMOKE_HOLD_SECONDS" =~ ^[0-9]+$ ]]; then
+        log_error "ALIVE_DEPLOY_SMOKE_HOLD_LOCK_SECONDS must be an integer"
+        exit 1
+    fi
+    lock_update_phase "smoke-hold"
+    log_info "Smoke mode: holding deploy lock for ${SMOKE_HOLD_SECONDS}s without starting a deployment"
+    sleep "$SMOKE_HOLD_SECONDS"
+    log_success "Smoke mode complete"
+    exit 0
 fi
 
 # =============================================================================

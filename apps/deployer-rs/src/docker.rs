@@ -13,6 +13,14 @@ use crate::constants::{
 use crate::logging::{append_log, run_logged_command};
 use crate::types::RollbackContainer;
 
+fn command_stderr(output: &std::process::Output) -> Result<String> {
+    String::from_utf8(output.stderr.clone()).context("command stderr was not valid UTF-8")
+}
+
+fn docker_missing_resource(stderr: &str, missing_phrase: &str) -> bool {
+    stderr.contains(missing_phrase)
+}
+
 pub(crate) async fn resolve_local_artifact_digest(
     image_ref: &str,
     log_path: &Path,
@@ -61,32 +69,38 @@ pub(crate) async fn stop_and_disable_systemd_unit(unit: &str, log_path: &Path) -
         .arg("is-active")
         .arg("--quiet")
         .arg(unit)
-        .status()
+        .output()
         .await
         .context("failed to check systemd unit status")?;
 
-    if !is_active.success() {
+    if is_active.status.success() {
+        append_log(log_path, &format!("stopping systemd unit {}\n", unit)).await?;
+
+        let stop_output = Command::new("systemctl")
+            .arg("stop")
+            .arg(unit)
+            .output()
+            .await
+            .context("failed to stop systemd unit")?;
+
+        if !stop_output.status.success() {
+            let stderr = command_stderr(&stop_output)?;
+            append_log(log_path, &format!("systemctl stop stderr: {}\n", stderr)).await?;
+            return Err(anyhow!("failed to stop systemd unit {}: {}", unit, stderr));
+        }
+    } else if is_active.status.code() == Some(3) {
         append_log(
             log_path,
-            &format!("systemd unit {} is not active, skipping\n", unit),
+            &format!("systemd unit {} is not active, skipping stop\n", unit),
         )
         .await?;
-        return Ok(());
-    }
-
-    append_log(log_path, &format!("stopping systemd unit {}\n", unit)).await?;
-
-    let stop_output = Command::new("systemctl")
-        .arg("stop")
-        .arg(unit)
-        .output()
-        .await
-        .context("failed to stop systemd unit")?;
-
-    if !stop_output.status.success() {
-        let stderr = String::from_utf8_lossy(&stop_output.stderr);
-        append_log(log_path, &format!("systemctl stop stderr: {}\n", stderr)).await?;
-        return Err(anyhow!("failed to stop systemd unit {}: {}", unit, stderr));
+    } else {
+        let stderr = command_stderr(&is_active)?;
+        return Err(anyhow!(
+            "failed to determine whether systemd unit {} is active: {}",
+            unit,
+            stderr.trim()
+        ));
     }
 
     let disable_output = Command::new("systemctl")
@@ -97,7 +111,7 @@ pub(crate) async fn stop_and_disable_systemd_unit(unit: &str, log_path: &Path) -
         .context("failed to disable systemd unit")?;
 
     if !disable_output.status.success() {
-        let stderr = String::from_utf8_lossy(&disable_output.stderr);
+        let stderr = command_stderr(&disable_output)?;
         append_log(log_path, &format!("systemctl disable stderr: {}\n", stderr)).await?;
         // Not fatal — the unit is already stopped
     }
@@ -105,6 +119,43 @@ pub(crate) async fn stop_and_disable_systemd_unit(unit: &str, log_path: &Path) -
     append_log(
         log_path,
         &format!("systemd unit {} stopped and disabled\n", unit),
+    )
+    .await?;
+    Ok(())
+}
+
+pub(crate) async fn start_and_enable_systemd_unit(unit: &str, log_path: &Path) -> Result<()> {
+    let enable_output = Command::new("systemctl")
+        .arg("enable")
+        .arg(unit)
+        .output()
+        .await
+        .context("failed to enable systemd unit")?;
+    if !enable_output.status.success() {
+        let stderr = command_stderr(&enable_output)?;
+        append_log(log_path, &format!("systemctl enable stderr: {}\n", stderr)).await?;
+        return Err(anyhow!(
+            "failed to enable systemd unit {}: {}",
+            unit,
+            stderr
+        ));
+    }
+
+    let start_output = Command::new("systemctl")
+        .arg("start")
+        .arg(unit)
+        .output()
+        .await
+        .context("failed to start systemd unit")?;
+    if !start_output.status.success() {
+        let stderr = command_stderr(&start_output)?;
+        append_log(log_path, &format!("systemctl start stderr: {}\n", stderr)).await?;
+        return Err(anyhow!("failed to start systemd unit {}: {}", unit, stderr));
+    }
+
+    append_log(
+        log_path,
+        &format!("systemd unit {} enabled and started\n", unit),
     )
     .await?;
     Ok(())
@@ -118,7 +169,20 @@ pub(crate) async fn image_exists_locally(image_ref: &str) -> Result<bool> {
         .output()
         .await
         .context("failed to inspect docker image")?;
-    Ok(output.status.success())
+    if output.status.success() {
+        return Ok(true);
+    }
+
+    let stderr = command_stderr(&output)?;
+    if docker_missing_resource(&stderr, "No such image") {
+        return Ok(false);
+    }
+
+    Err(anyhow!(
+        "docker image inspect {} failed: {}",
+        image_ref,
+        stderr
+    ))
 }
 
 pub(crate) fn deployment_container_name(application_slug: &str, environment_name: &str) -> String {
@@ -168,7 +232,20 @@ pub(crate) async fn container_exists(container_name: &str) -> Result<bool> {
         .output()
         .await
         .context("failed to inspect docker container")?;
-    Ok(output.status.success())
+    if output.status.success() {
+        return Ok(true);
+    }
+
+    let stderr = command_stderr(&output)?;
+    if docker_missing_resource(&stderr, "No such container") {
+        return Ok(false);
+    }
+
+    Err(anyhow!(
+        "docker container inspect {} failed: {}",
+        container_name,
+        stderr
+    ))
 }
 
 pub(crate) async fn rename_container(
@@ -479,10 +556,20 @@ pub(crate) async fn container_is_running(container_name: &str) -> Result<bool> {
         .await
         .context("failed to inspect docker container state")?;
 
-    if !output.status.success() {
+    if output.status.success() {
+        let value =
+            String::from_utf8(output.stdout).context("docker inspect output was not UTF-8")?;
+        return Ok(value.trim() == "true");
+    }
+
+    let stderr = command_stderr(&output)?;
+    if docker_missing_resource(&stderr, "No such container") {
         return Ok(false);
     }
 
-    let value = String::from_utf8(output.stdout).context("docker inspect output was not UTF-8")?;
-    Ok(value.trim() == "true")
+    Err(anyhow!(
+        "docker container inspect {} failed: {}",
+        container_name,
+        stderr
+    ))
 }

@@ -61,7 +61,7 @@ function statusVariant(status: DeployTaskStatus | null): BadgeVariant {
 }
 
 function deploymentButtonLabel(name: DeployEnvironment["name"]): string {
-  return name === DEPLOY_ENVIRONMENT_PRODUCTION ? "Promote to production" : "Promote to staging"
+  return name === DEPLOY_ENVIRONMENT_PRODUCTION ? "Promote to production" : "Deploy to staging"
 }
 
 function deploymentButtonAction(name: DeployEnvironment["name"]): DeployDeploymentAction {
@@ -358,25 +358,26 @@ export function DeploysPage() {
     setLogError(null)
     setLogContent("")
 
-    const loader =
-      logModal.kind === "build" ? deploysApi.getBuildLog(logModal.id) : deploysApi.getDeploymentLog(logModal.id)
+    void (async () => {
+      try {
+        const content =
+          logModal.kind === "build"
+            ? await deploysApi.getBuildLog(logModal.id)
+            : await deploysApi.getDeploymentLog(logModal.id)
 
-    loader
-      .then(content => {
         if (!cancelled) {
           setLogContent(content)
         }
-      })
-      .catch(fetchError => {
+      } catch (fetchError) {
         if (!cancelled) {
           setLogError(fetchError instanceof Error ? fetchError.message : "Failed to load log")
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setLogLoading(false)
         }
-      })
+      }
+    })()
 
     return () => {
       cancelled = true

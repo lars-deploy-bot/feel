@@ -36,7 +36,14 @@ import {
   unshareConversation as syncUnshareConversation,
 } from "./conversationSync"
 import { extractTitle, toDbMessage, toDbMessageContent } from "./messageAdapters"
-import { CURRENT_MESSAGE_VERSION, type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
+import {
+  CURRENT_MESSAGE_VERSION,
+  type DbConversation,
+  type DbMessage,
+  type DbTab,
+  getMessageDb,
+  type TabDraft,
+} from "./messageDb"
 import { safeDb } from "./safeDb"
 
 // =============================================================================
@@ -133,6 +140,10 @@ interface DexieMessageStoreActions {
   removeTab: (tabId: string) => Promise<void>
   reopenTab: (tabId: string) => Promise<void>
   renameTab: (tabId: string, name: string) => Promise<void>
+
+  // Tab draft (auto-saved like Gmail drafts, synced to Supabase)
+  saveDraft: (tabId: string, draft: TabDraft) => Promise<void>
+  loadDraft: (tabId: string) => Promise<TabDraft | undefined>
 
   // Sync
   syncFromServer: (workspace: string) => Promise<void>
@@ -816,6 +827,36 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
 
     await safeDb(() => db.tabs.update(tabId, { name: name.trim() || "Untitled", pendingSync: true }))
     queueSync(tab.conversationId, session.userId)
+  },
+
+  saveDraft: async (tabId, draft) => {
+    const { session } = get()
+    if (!session) return
+
+    const db = getMessageDb(session.userId)
+    const tab = await db.tabs.get(tabId)
+    if (!tab) return
+
+    // Clear draft if empty, otherwise persist + mark for sync
+    const hasContent = (draft.text && draft.text.length > 0) || (draft.attachments && draft.attachments.length > 0)
+    await safeDb(() =>
+      db.tabs.update(tabId, {
+        draft: hasContent ? draft : undefined,
+        pendingSync: true,
+      }),
+    )
+    if (hasContent) {
+      queueSync(tab.conversationId, session.userId)
+    }
+  },
+
+  loadDraft: async tabId => {
+    const { session } = get()
+    if (!session) return undefined
+
+    const db = getMessageDb(session.userId)
+    const tab = await safeDb(() => db.tabs.get(tabId))
+    return tab?.draft
   },
 
   syncFromServer: async workspace => {

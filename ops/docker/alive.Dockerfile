@@ -18,6 +18,10 @@ RUN bun run build:libs
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
+ARG ALIVE_BUILD_COMMIT=unknown
+ARG ALIVE_BUILD_BRANCH=unknown
+ARG ALIVE_BUILD_TIME=unknown
+
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
@@ -28,7 +32,7 @@ RUN mkdir -p /app/apps/web/public
 
 RUN --mount=type=secret,id=build_env,target=/run/secrets/build_env \
     --mount=type=secret,id=server_config,target=/run/secrets/server_config \
-    sh -lc 'set -a && . /run/secrets/build_env && set +a && export SERVER_CONFIG_PATH=/run/secrets/server_config && cd apps/web && NODE_OPTIONS="--max-old-space-size=4096" ../../node_modules/.bin/next build'
+    sh -lc 'set -a && . /run/secrets/build_env && set +a && export SERVER_CONFIG_PATH=/run/secrets/server_config && export ALIVE_BUILD_COMMIT ALIVE_BUILD_BRANCH ALIVE_BUILD_TIME && cd apps/web && NODE_OPTIONS="--max-old-space-size=4096" ../../node_modules/.bin/next build'
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app

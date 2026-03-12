@@ -42,6 +42,7 @@ const resolveDomainRuntimeMock = vi.fn<
     hostname: string
     port: number
     is_test_env: boolean
+    test_run_id: string | null
     execution_mode: "e2b"
     sandbox_id: string | null
     sandbox_status: null
@@ -51,6 +52,7 @@ const resolveDomainRuntimeMock = vi.fn<
   hostname,
   port: 3701,
   is_test_env: false,
+  test_run_id: null,
   execution_mode: "e2b",
   sandbox_id: null,
   sandbox_status: null,
@@ -131,6 +133,9 @@ const { DomainRegistrationError } = await import("../domain-registry")
 
 describe("runStrictDeployment", () => {
   beforeEach(() => {
+    delete process.env.SERVER_CONFIG_PATH
+    delete process.env.STREAM_ENV
+
     callOrder.length = 0
 
     pathExists.mockReset()
@@ -185,6 +190,7 @@ describe("runStrictDeployment", () => {
       hostname,
       port: 3701,
       is_test_env: false,
+      test_run_id: null,
       execution_mode: "e2b",
       sandbox_id: null,
       sandbox_status: null,
@@ -194,10 +200,14 @@ describe("runStrictDeployment", () => {
   })
 
   afterEach(() => {
+    delete process.env.SERVER_CONFIG_PATH
+    delete process.env.STREAM_ENV
     vi.restoreAllMocks()
   })
 
   it("executes a single strict flow: deploy -> register -> caddy", async () => {
+    pathExists.mockImplementation(filePath => filePath === PATHS.CADDYFILE_SITES)
+
     const result = await runStrictDeployment({
       domain: "TestSite.Alive.Best",
       email: "owner@example.com",
@@ -260,8 +270,8 @@ describe("runStrictDeployment", () => {
     })
   })
 
-  it("verifies routing after caddy reload when a verification file exists", async () => {
-    pathExists.mockReturnValue(true)
+  it("verifies routing against the generated sites file when it exists", async () => {
+    pathExists.mockImplementation(filePath => filePath === PATHS.CADDYFILE_PATH || filePath === PATHS.CADDYFILE_SITES)
 
     await runStrictDeployment({
       domain: "testsite.alive.best",
@@ -269,7 +279,48 @@ describe("runStrictDeployment", () => {
       templatePath: "/srv/webalive/templates/blank.alive.best",
     })
 
-    expect(checkDomainInCaddyMock).toHaveBeenCalledTimes(1)
+    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", PATHS.CADDYFILE_SITES)
+  })
+
+  it("falls back to the main Caddyfile when generated routing is not configured", async () => {
+    process.env.STREAM_ENV = "staging"
+    pathExists.mockImplementation(filePath => filePath === PATHS.CADDYFILE_PATH)
+    const originalGeneratedSitesPath = PATHS.CADDYFILE_SITES
+    Object.defineProperty(PATHS, "CADDYFILE_SITES", { configurable: true, value: "" })
+
+    try {
+      await runStrictDeployment({
+        domain: "testsite.alive.best",
+        email: "owner@example.com",
+        templatePath: "/srv/webalive/templates/blank.alive.best",
+      })
+
+      expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", PATHS.CADDYFILE_PATH)
+    } finally {
+      Object.defineProperty(PATHS, "CADDYFILE_SITES", { configurable: true, value: originalGeneratedSitesPath })
+    }
+  })
+
+  it("fails when generated routing is configured but missing after reload", async () => {
+    pathExists.mockImplementation(filePath => filePath === PATHS.CADDYFILE_PATH)
+    isDomainRegisteredMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+
+    await expect(
+      runStrictDeployment({
+        domain: "testsite.alive.best",
+        email: "owner@example.com",
+        templatePath: "/srv/webalive/templates/blank.alive.best",
+      }),
+    ).rejects.toMatchObject({
+      errorCode: ErrorCodes.DEPLOYMENT_FAILED,
+      message: "Generated Caddyfile.sites is missing after reload",
+    })
+
+    expect(unregisterDomainMock).toHaveBeenCalledWith("testsite.alive.best")
+    expect(teardownMock).toHaveBeenCalledWith("testsite.alive.best", {
+      removeFiles: true,
+      removeUser: true,
+    })
   })
 
   it("rolls back infrastructure when registerDomain fails for a new deployment", async () => {

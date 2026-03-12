@@ -1,6 +1,7 @@
 import { expect, type Page, type TestInfo } from "@playwright/test"
 import { parseWorkspaceStorageValue, TEST_CONFIG, WORKSPACE_STORAGE } from "@webalive/shared"
 import {
+  BootstrapTenantRequestSchema,
   BootstrapTenantResponseSchema,
   TestE2BDomainResponseSchema,
   type TestE2BDomainUpdateBody,
@@ -43,16 +44,17 @@ export async function getLiveStagingUser(
 ): Promise<Pick<TestTenant, "email" | "workspace" | "orgId"> & { password: string }> {
   const runId = getRunId()
   const { email, workspace, normalizedWorkerIndex } = getWorkerTenantAddress(workerIndex)
+  const bootstrapBody = BootstrapTenantRequestSchema.parse({
+    runId,
+    workerIndex: normalizedWorkerIndex,
+    email,
+    workspace,
+  })
 
   const response = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
     method: "POST",
     headers: buildE2ETestHeaders(true),
-    body: JSON.stringify({
-      runId,
-      workerIndex: normalizedWorkerIndex,
-      email,
-      workspace,
-    }),
+    body: JSON.stringify(bootstrapBody),
   })
 
   if (!response.ok) {

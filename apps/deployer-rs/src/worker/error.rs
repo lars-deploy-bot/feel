@@ -3,11 +3,6 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub(crate) enum TaskExecutionError {
-    #[error("source resolution failed")]
-    SourceResolution {
-        #[source]
-        source: AnyhowError,
-    },
     #[error("source snapshot failed")]
     SourceSnapshot {
         #[source]
@@ -91,12 +86,6 @@ pub(crate) enum TaskExecutionError {
 }
 
 impl TaskExecutionError {
-    pub(crate) fn source_resolution(source: impl Into<AnyhowError>) -> Self {
-        Self::SourceResolution {
-            source: source.into(),
-        }
-    }
-
     pub(crate) fn source_snapshot(source: impl Into<AnyhowError>) -> Self {
         Self::SourceSnapshot {
             source: source.into(),

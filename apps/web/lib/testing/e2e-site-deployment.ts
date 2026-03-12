@@ -1,4 +1,63 @@
+import { readFile } from "node:fs/promises"
 import { z } from "zod"
+import { extractSlugFromDomain } from "@/lib/config"
+
+export const REUSABLE_LIVE_DEPLOY_SLUG_PREFIX = "dl"
+
+export function isReusableLiveDeploySlug(slug: string): boolean {
+  return slug.startsWith(REUSABLE_LIVE_DEPLOY_SLUG_PREFIX) && /^[a-z0-9-]+$/.test(slug)
+}
+
+export function isReusableLiveDeployDomain(domain: string): boolean {
+  const slug = extractSlugFromDomain(domain)
+  return slug !== null && isReusableLiveDeploySlug(slug)
+}
+
+export function extractReusableLiveDeploySlugsFromCaddy(rawCaddyfile: string, wildcardDomain: string): string[] {
+  const suffix = `.${wildcardDomain}`
+  const slugs = new Set<string>()
+
+  for (const line of rawCaddyfile.split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed.endsWith(" {")) {
+      continue
+    }
+
+    const hostname = trimmed.slice(0, -2).trim().toLowerCase()
+    if (!hostname.endsWith(suffix)) {
+      continue
+    }
+
+    const slug = hostname.slice(0, -suffix.length)
+    if (isReusableLiveDeploySlug(slug)) {
+      slugs.add(slug)
+    }
+  }
+
+  return [...slugs].sort()
+}
+
+function isNodeErrorWithCode(error: unknown, code: string): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === code
+}
+
+export async function readReusableLiveDeploySlugsFromCaddyFile(
+  caddyfilePath: string,
+  wildcardDomain: string,
+): Promise<string[]> {
+  try {
+    const raw = await readFile(caddyfilePath, "utf8")
+    return extractReusableLiveDeploySlugsFromCaddy(raw, wildcardDomain)
+  } catch (error) {
+    if (isNodeErrorWithCode(error, "ENOENT")) {
+      return []
+    }
+
+    throw new Error(
+      `Failed to read generated Caddy routing from ${caddyfilePath}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+}
 
 export const CleanupDeployedSiteRequestSchema = z.object({
   domain: z

@@ -22,12 +22,49 @@ source "$SCRIPT_DIR/lib/common.sh"
 
 LOCAL_CARGO_HOME="$PROJECT_ROOT/.cargo"
 LOCAL_RUSTUP_HOME="$PROJECT_ROOT/.rustup"
+SERVICE_READY_TIMEOUT_SECONDS=10
+SERVICE_READY_POLL_INTERVAL_SECONDS=1
+DEPLOYER_HEALTH_URL="http://127.0.0.1:5095/health"
 
 if ! command -v cargo >/dev/null 2>&1 && [ -x "$LOCAL_CARGO_HOME/bin/cargo" ]; then
     export CARGO_HOME="$LOCAL_CARGO_HOME"
     export RUSTUP_HOME="$LOCAL_RUSTUP_HOME"
     export PATH="$CARGO_HOME/bin:$PATH"
 fi
+
+wait_for_service_active() {
+    local service_name="$1"
+    local timeout_seconds="$2"
+    local poll_interval_seconds="$3"
+    local elapsed=0
+
+    while [ "$elapsed" -lt "$timeout_seconds" ]; do
+        if systemctl is-active --quiet "$service_name"; then
+            return 0
+        fi
+        sleep "$poll_interval_seconds"
+        elapsed=$((elapsed + poll_interval_seconds))
+    done
+
+    return 1
+}
+
+wait_for_http_health() {
+    local health_url="$1"
+    local timeout_seconds="$2"
+    local poll_interval_seconds="$3"
+    local elapsed=0
+
+    while [ "$elapsed" -lt "$timeout_seconds" ]; do
+        if curl -sf "$health_url" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep "$poll_interval_seconds"
+        elapsed=$((elapsed + poll_interval_seconds))
+    done
+
+    return 1
+}
 
 # =============================================================================
 # Parse Arguments
@@ -88,9 +125,8 @@ if [ "$DEPLOY_API" = true ]; then
     log_info "Restarting alive-api..."
     systemctl daemon-reload
     systemctl enable --now alive-api
-    sleep 1
 
-    if systemctl is-active --quiet alive-api; then
+    if wait_for_service_active "alive-api" "$SERVICE_READY_TIMEOUT_SECONDS" "$SERVICE_READY_POLL_INTERVAL_SECONDS"; then
         log_success "alive-api running on port 5080"
     else
         log_error "alive-api failed to start"
@@ -114,9 +150,8 @@ if [ "$DEPLOY_MANAGER" = true ]; then
 
     log_info "Restarting alive-manager..."
     systemctl restart alive-manager
-    sleep 1
 
-    if systemctl is-active --quiet alive-manager; then
+    if wait_for_service_active "alive-manager" "$SERVICE_READY_TIMEOUT_SECONDS" "$SERVICE_READY_POLL_INTERVAL_SECONDS"; then
         log_success "alive-manager running on port 5090"
     else
         log_error "alive-manager failed to start"
@@ -150,10 +185,13 @@ if [ "$DEPLOY_DEPLOYER" = true ]; then
     log_info "Restarting alive-deployer..."
     systemctl daemon-reload
     systemctl enable --now alive-deployer
-    sleep 1
 
-    if systemctl is-active --quiet alive-deployer; then
-        log_success "alive-deployer running on localhost:5095"
+    if wait_for_service_active "alive-deployer" "$SERVICE_READY_TIMEOUT_SECONDS" "$SERVICE_READY_POLL_INTERVAL_SECONDS"; then
+        if wait_for_http_health "$DEPLOYER_HEALTH_URL" "$SERVICE_READY_TIMEOUT_SECONDS" "$SERVICE_READY_POLL_INTERVAL_SECONDS"; then
+            log_success "alive-deployer running and healthy on localhost:5095"
+        else
+            log_warn "alive-deployer running but health endpoint not responding yet"
+        fi
     else
         log_error "alive-deployer failed to start"
         log_step "Check logs: journalctl -u alive-deployer -n 50"
