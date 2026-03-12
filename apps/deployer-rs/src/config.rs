@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
@@ -411,6 +412,67 @@ pub(crate) fn resolve_bind_mount_source(
         "bind mount for target {} must set source or source_env",
         bind_mount.target
     ))
+}
+
+pub(crate) fn prepare_runtime_bind_mount_source(
+    source: &Path,
+    bind_mount: &BindMount,
+    staged_root: &Path,
+) -> Result<PathBuf> {
+    let metadata = fs::metadata(source)
+        .with_context(|| format!("failed to stat bind mount source {}", source.display()))?;
+
+    if metadata.is_dir() {
+        return Ok(source.to_path_buf());
+    }
+
+    if !metadata.is_file() {
+        return Err(anyhow!(
+            "bind mount source {} is neither a file nor a directory",
+            source.display()
+        ));
+    }
+
+    let relative_target = bind_mount.target.trim_start_matches('/');
+    if relative_target.is_empty() {
+        return Err(anyhow!(
+            "bind mount target {} must include a file path",
+            bind_mount.target
+        ));
+    }
+
+    let staged_source = staged_root.join(relative_target);
+    let parent = staged_source.parent().ok_or_else(|| {
+        anyhow!(
+            "failed to determine staged parent directory for bind mount target {}",
+            bind_mount.target
+        )
+    })?;
+    fs::create_dir_all(parent)
+        .with_context(|| format!("failed to create {}", parent.display()))?;
+    fs::copy(source, &staged_source).with_context(|| {
+        format!(
+            "failed to copy bind mount source {} to {}",
+            source.display(),
+            staged_source.display()
+        )
+    })?;
+    fs::set_permissions(&staged_source, fs::Permissions::from_mode(0o644))
+        .with_context(|| format!("failed to chmod {}", staged_source.display()))?;
+
+    Ok(staged_source)
+}
+
+pub(crate) async fn prepare_runtime_bind_mount_source_async(
+    source: &Path,
+    bind_mount: BindMount,
+    staged_root: &Path,
+) -> Result<PathBuf> {
+    let source = source.to_path_buf();
+    let staged_root = staged_root.to_path_buf();
+    spawn_blocking(move || prepare_runtime_bind_mount_source(&source, &bind_mount, &staged_root))
+        .await
+        .context("prepare runtime bind mount source join failed")?
 }
 
 pub(crate) fn resolve_database_url(database_url: &str, password: Option<String>) -> Result<String> {
