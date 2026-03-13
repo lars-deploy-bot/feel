@@ -83,6 +83,12 @@ sql_escape() {
 
 phase_start "Preflight" "$_TOTAL_PHASES"
 
+if ! "$PROJECT_ROOT/ops/scripts/pre-deployment-check.sh" "$ENVIRONMENT" >/tmp/alive-predeploy-"$ENVIRONMENT".log 2>&1; then
+    tail -n 50 /tmp/alive-predeploy-"$ENVIRONMENT".log || true
+    phase_end error "pre-deployment checks failed"
+    exit 1
+fi
+
 HEALTH_OK=$(curl -sf "$DEPLOYER_HEALTH/health" 2>/dev/null | jq -r '.ok // false' 2>/dev/null || echo "false")
 if [[ "$HEALTH_OK" != "true" ]]; then
     phase_end error "deployer-rs is not healthy ($DEPLOYER_HEALTH/health)"
