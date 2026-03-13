@@ -59,10 +59,12 @@ COPY --from=build /app/apps/web/public ./apps/web/public
 
 # Worker pool runs as a separate Node.js process (worker-entry.mjs) with imports not
 # traced by Next.js standalone. Copy the full node_modules and packages from the build
-# stage into /app/worker-deps/, then set NODE_PATH so the worker can resolve them.
-# This avoids conflicts with the standalone output's own node_modules.
+# stage into /app/worker-deps/.
+# NODE_PATH doesn't work for ESM (Node ignores it for import resolution), so we also
+# symlink from the worker's parent directory so Node's upward node_modules walk finds them.
 COPY --from=build /app/node_modules /app/worker-deps/node_modules
 COPY --from=build /app/packages /app/worker-deps/packages
+RUN ln -s /app/worker-deps/node_modules /app/packages/worker-pool/node_modules
 
 ENV NODE_PATH=/app/worker-deps/node_modules
 
