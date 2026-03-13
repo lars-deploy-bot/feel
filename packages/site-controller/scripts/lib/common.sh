@@ -1,6 +1,12 @@
 #!/bin/bash
 # Common functions for site controller scripts
 
+# In Docker, bun lives in /root/.bun/bin which isn't in the default PATH
+# and /root is 700 so site users can't traverse it. Copy to /usr/local/bin.
+if [[ -f /.dockerenv ]] && [[ -x /root/.bun/bin/bun ]] && [[ ! -x /usr/local/bin/bun ]]; then
+    cp /root/.bun/bin/bun /usr/local/bin/bun
+fi
+
 # Color codes for output
 readonly COLOR_RESET='\033[0m'
 readonly COLOR_INFO='\033[0;36m'
@@ -54,9 +60,19 @@ command_exists() {
     command -v "$1" &>/dev/null
 }
 
-# Check if user exists
+# Run a command on the host when inside Docker (via nsenter into PID 1's mount namespace).
+# On bare metal, runs the command directly.
+host_run() {
+    if [[ -f /.dockerenv ]]; then
+        nsenter --target 1 --mount -- "$@"
+    else
+        "$@"
+    fi
+}
+
+# Check if user exists (on the host)
 user_exists() {
-    id -u "$1" &>/dev/null
+    host_run id -u "$1" &>/dev/null
 }
 
 # Check if systemd service exists
@@ -64,9 +80,16 @@ service_exists() {
     systemctl list-unit-files | grep -q "^$1"
 }
 
-# Check if port is in use
+# Check if port is in use (works in Docker where netstat may not exist)
 port_in_use() {
-    netstat -tuln | grep -q ":$1 "
+    if command_exists ss; then
+        ss -tlnH | grep -q ":$1 "
+    elif command_exists netstat; then
+        netstat -tuln | grep -q ":$1 "
+    else
+        # Last resort: try to connect
+        (echo >/dev/tcp/127.0.0.1/"$1") 2>/dev/null
+    fi
 }
 
 # Wait for condition with timeout

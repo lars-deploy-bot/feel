@@ -130,7 +130,12 @@ if [[ "$REMOVE_USER" == "true" ]]; then
         log_info "Removing user: $SITE_USER"
         stop_lingering_user_processes "$SITE_USER" || die "Failed to stop processes for $SITE_USER"
 
-        if userdel "$SITE_USER"; then
+        if host_run userdel "$SITE_USER"; then
+            # Sync host user database into container after removal
+            if [[ -f /.dockerenv ]]; then
+                nsenter --target 1 --mount -- cat /etc/passwd > /etc/passwd
+                nsenter --target 1 --mount -- cat /etc/group > /etc/group
+            fi
             log_success "User removed"
         else
             die "Failed to remove user: $SITE_USER"

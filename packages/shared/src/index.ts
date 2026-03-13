@@ -19,6 +19,7 @@ export {
   type AutomationTriggerResponse,
   AutomationTriggerResponseSchema,
 } from "./automation-schemas.js"
+export { caddySitesFilteredPath, caddySitesPath, requireStreamEnv } from "./caddy-paths.js"
 export {
   assertValidServerId,
   CONFIG_PATH,

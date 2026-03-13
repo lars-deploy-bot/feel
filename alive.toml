@@ -75,16 +75,22 @@ source = "/root/.claude.json"
 target = "/root/.claude.json"
 read_only = true
 
-# System user/group databases (workspace users created on host)
+# System user/group databases (useradd runs inside container for site deploys)
 [[runtime.bind_mounts]]
 source = "/etc/passwd"
 target = "/etc/passwd"
-read_only = true
+read_only = false
 
 [[runtime.bind_mounts]]
 source = "/etc/group"
 target = "/etc/group"
-read_only = true
+read_only = false
+
+# Site environment files (systemd reads these on the host)
+[[runtime.bind_mounts]]
+source = "/etc/sites"
+target = "/etc/sites"
+read_only = false
 
 # Claude CLI binary (SDK spawns it as a subprocess)
 [[runtime.bind_mounts]]
