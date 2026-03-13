@@ -50,10 +50,15 @@ COPY --from=build /app/apps/web/public ./apps/web/public
 
 # Worker pool runs as a separate Node.js process (worker-entry.mjs) with imports
 # not traced by Next.js standalone (@sentry/node, @anthropic-ai/claude-agent-sdk,
-# @webalive/shared, etc.). Copy the full node_modules to cover all worker deps.
-# Also copy packages/ for workspace-internal imports (worker-pool, shared, etc.).
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/packages ./packages
+# @webalive/shared, etc.). Copy specific missing deps that the standalone trace misses.
+COPY --from=build /app/packages/worker-pool ./packages/worker-pool
+COPY --from=build /app/packages/shared ./packages/shared
+COPY --from=build /app/node_modules/@anthropic-ai ./node_modules/@anthropic-ai
+COPY --from=build /app/node_modules/@sentry/node ./node_modules/@sentry/node
+COPY --from=build /app/node_modules/@sentry/core ./node_modules/@sentry/core
+COPY --from=build /app/node_modules/@sentry/opentelemetry ./node_modules/@sentry/opentelemetry
+COPY --from=build /app/node_modules/@opentelemetry ./node_modules/@opentelemetry
+COPY --from=build /app/node_modules/import-in-the-middle ./node_modules/import-in-the-middle
 
 EXPOSE 3000
 
