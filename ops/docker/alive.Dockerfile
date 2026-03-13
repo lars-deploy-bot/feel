@@ -38,12 +38,14 @@ FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends procps \
+    && apt-get install --yes --no-install-recommends \
+       procps jq curl git systemd rsync sudo dbus \
     && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+ENV PATH="/root/.bun/bin:/root/.local/bin:${PATH}"
 
 # The app needs direct access to host-mounted systemd workspaces under /srv/webalive/sites.
 # Those directories are owned by per-site Linux users with 750 permissions, so the runtime

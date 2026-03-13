@@ -118,6 +118,10 @@ pub(crate) struct RuntimeConfig {
     #[serde(default)]
     pub(crate) network_mode: Option<RuntimeNetworkMode>,
     #[serde(default)]
+    pub(crate) privileged: bool,
+    #[serde(default)]
+    pub(crate) pid_mode: Option<String>,
+    #[serde(default)]
     pub(crate) bind_mounts: Vec<BindMount>,
 }
 

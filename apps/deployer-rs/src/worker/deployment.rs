@@ -399,6 +399,14 @@ pub(super) async fn process_deployment(
                 .arg("--label")
                 .arg(format!("alive.release_id={}", release.release_id));
 
+            if config.runtime.privileged {
+                command.arg("--privileged");
+            }
+
+            if let Some(ref pid_mode) = config.runtime.pid_mode {
+                command.arg("--pid").arg(pid_mode);
+            }
+
             match network_mode {
                 RuntimeNetworkMode::Bridge => {
                     command.arg("--publish").arg(format!(
