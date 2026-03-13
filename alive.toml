@@ -67,6 +67,18 @@ source = "/root/.claude"
 target = "/root/.claude"
 read_only = false
 
+# Claude CLI binary (SDK spawns it as a subprocess)
+[[runtime.bind_mounts]]
+source = "/root/.local"
+target = "/root/.local"
+read_only = true
+
+# Claude SDK session storage (persistent across restarts)
+[[runtime.bind_mounts]]
+source = "/var/lib/claude-sessions"
+target = "/var/lib/claude-sessions"
+read_only = false
+
 [[build_secrets]]
 id = "build_env"
 path = "apps/web/.env.production"
@@ -91,9 +103,9 @@ blocked_env_keys = [
   "MAILGUN_API_KEY",
   "MAILJET_API_KEY",
 ]
-forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0" }
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin" }
 
 [policies.production]
 allow_email = true
 blocked_env_keys = []
-forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0" }
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin" }
