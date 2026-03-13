@@ -52,6 +52,16 @@ source_server_path = "sites_root"
 target_server_path = "sites_root"
 read_only = false
 
+[[runtime.bind_mounts]]
+source = "/srv/webalive/templates"
+target = "/srv/webalive/templates"
+read_only = true
+
+[[runtime.bind_mounts]]
+source = "/srv/webalive/storage"
+target = "/srv/webalive/storage"
+read_only = false
+
 [[build_secrets]]
 id = "build_env"
 path = "apps/web/.env.production"
