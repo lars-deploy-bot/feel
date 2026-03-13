@@ -487,11 +487,10 @@ pub(crate) fn prepare_runtime_bind_mount_source(
         return Ok(source.to_path_buf());
     }
 
+    // Unix sockets, symlinks, and other special files: pass through as-is
+    // (e.g. /run/dbus/system_bus_socket for systemctl D-Bus communication)
     if !metadata.is_file() {
-        return Err(anyhow!(
-            "bind mount source {} is neither a file nor a directory",
-            source.display()
-        ));
+        return Ok(source.to_path_buf());
     }
 
     let target = bind_mount
