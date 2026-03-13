@@ -520,7 +520,9 @@ pub(crate) fn prepare_runtime_bind_mount_source(
             staged_source.display()
         )
     })?;
-    fs::set_permissions(&staged_source, fs::Permissions::from_mode(0o644))
+    // Preserve the original file's permissions (e.g. executables like /usr/bin/caddy)
+    let original_mode = metadata.permissions().mode();
+    fs::set_permissions(&staged_source, fs::Permissions::from_mode(original_mode))
         .with_context(|| format!("failed to chmod {}", staged_source.display()))?;
 
     Ok(staged_source)
