@@ -67,6 +67,23 @@ source = "/root/.claude"
 target = "/root/.claude"
 read_only = false
 
+# Claude CLI config file
+[[runtime.bind_mounts]]
+source = "/root/.claude.json"
+target = "/root/.claude.json"
+read_only = true
+
+# System user/group databases (workspace users created on host)
+[[runtime.bind_mounts]]
+source = "/etc/passwd"
+target = "/etc/passwd"
+read_only = true
+
+[[runtime.bind_mounts]]
+source = "/etc/group"
+target = "/etc/group"
+read_only = true
+
 # Claude CLI binary (SDK spawns it as a subprocess)
 [[runtime.bind_mounts]]
 source = "/root/.local"
