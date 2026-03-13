@@ -37,6 +37,10 @@ RUN --mount=type=secret,id=build_env,target=/run/secrets/build_env \
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends procps \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
@@ -48,17 +52,14 @@ COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /app/apps/web/public ./apps/web/public
 
-# Worker pool runs as a separate Node.js process (worker-entry.mjs) with imports
-# not traced by Next.js standalone (@sentry/node, @anthropic-ai/claude-agent-sdk,
-# @webalive/shared, etc.). Copy specific missing deps that the standalone trace misses.
-COPY --from=build /app/packages/worker-pool ./packages/worker-pool
-COPY --from=build /app/packages/shared ./packages/shared
-COPY --from=build /app/node_modules/@anthropic-ai ./node_modules/@anthropic-ai
-COPY --from=build /app/node_modules/@sentry/node ./node_modules/@sentry/node
-COPY --from=build /app/node_modules/@sentry/core ./node_modules/@sentry/core
-COPY --from=build /app/node_modules/@sentry/opentelemetry ./node_modules/@sentry/opentelemetry
-COPY --from=build /app/node_modules/@opentelemetry ./node_modules/@opentelemetry
-COPY --from=build /app/node_modules/import-in-the-middle ./node_modules/import-in-the-middle
+# Worker pool runs as a separate Node.js process (worker-entry.mjs) with imports not
+# traced by Next.js standalone. Copy the full node_modules and packages from the build
+# stage into /app/worker-deps/, then set NODE_PATH so the worker can resolve them.
+# This avoids conflicts with the standalone output's own node_modules.
+COPY --from=build /app/node_modules /app/worker-deps/node_modules
+COPY --from=build /app/packages /app/worker-deps/packages
+
+ENV NODE_PATH=/app/worker-deps/node_modules
 
 EXPOSE 3000
 
