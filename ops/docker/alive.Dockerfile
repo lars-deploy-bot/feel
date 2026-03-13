@@ -48,6 +48,13 @@ COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /app/apps/web/public ./apps/web/public
 
+# Worker pool runs as a separate Node.js process (worker-entry.mjs) with imports
+# not traced by Next.js standalone (@sentry/node, @anthropic-ai/claude-agent-sdk,
+# @webalive/shared, etc.). Copy the full node_modules to cover all worker deps.
+# Also copy packages/ for workspace-internal imports (worker-pool, shared, etc.).
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages ./packages
+
 EXPOSE 3000
 
 CMD ["node", "apps/web/server.js"]
