@@ -46,6 +46,9 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV PATH="/root/.bun/bin:/root/.local/bin:${PATH}"
+# systemctl inside Docker detects "chroot" and no-ops all commands.
+# With --privileged + D-Bus mount we want it to talk to the real host systemd.
+ENV SYSTEMD_IGNORE_CHROOT=1
 
 # The app needs direct access to host-mounted systemd workspaces under /srv/webalive/sites.
 # Those directories are owned by per-site Linux users with 750 permissions, so the runtime
