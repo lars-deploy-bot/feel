@@ -140,6 +140,12 @@ source = "/usr/bin/caddy"
 target = "/usr/bin/caddy"
 read_only = true
 
+# Alive repo (site-controller needs scripts, .env.production, templates)
+[[runtime.bind_mounts]]
+source_server_path = "alive_root"
+target_server_path = "alive_root"
+read_only = true
+
 [[build_secrets]]
 id = "build_env"
 path = "apps/web/.env.production"
