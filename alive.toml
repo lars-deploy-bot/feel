@@ -62,6 +62,11 @@ source = "/srv/webalive/storage"
 target = "/srv/webalive/storage"
 read_only = false
 
+[[runtime.bind_mounts]]
+source = "/root/.claude"
+target = "/root/.claude"
+read_only = false
+
 [[build_secrets]]
 id = "build_env"
 path = "apps/web/.env.production"
