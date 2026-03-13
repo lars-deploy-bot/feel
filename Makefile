@@ -143,18 +143,18 @@ status:
 	@echo ""
 	@echo "$(GREEN)Services:$(NC)"
 	@systemctl is-active alive-dev >/dev/null 2>&1 && echo "  Dev (8997):        $(GREEN)running$(NC)" || echo "  Dev (8997):        $(RED)stopped$(NC)"
-	@systemctl is-active alive-staging >/dev/null 2>&1 && echo "  Staging (8998):    $(GREEN)running$(NC)" || echo "  Staging (8998):    $(RED)stopped$(NC)"
-	@systemctl is-active alive-production >/dev/null 2>&1 && echo "  Production (9000): $(GREEN)running$(NC)" || echo "  Production (9000): $(RED)stopped$(NC)"
+	@./scripts/deployment/show-runtime-status.sh staging
+	@./scripts/deployment/show-runtime-status.sh production
 	@systemctl is-active preview-proxy >/dev/null 2>&1 && echo "  Preview proxy (5055): $(GREEN)running$(NC)" || echo "  Preview proxy (5055): $(RED)stopped$(NC)"
 	@echo ""
 	@echo "$(GREEN)Deployment Lock:$(NC)"
 	@./scripts/deployment/ship.sh --status || true
 
 logs-staging:
-	@journalctl -u alive-staging -f
+	@./scripts/deployment/follow-runtime-logs.sh staging
 
 logs-production:
-	@journalctl -u alive-production -f
+	@./scripts/deployment/follow-runtime-logs.sh production
 
 logs-dev:
 	@journalctl -u alive-dev -f

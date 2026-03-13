@@ -95,6 +95,10 @@ log_info "Using generator mode for Caddy configuration..."
 
 cd "$STREAM_ROOT"
 if bun run --cwd packages/site-controller routing:generate; then
+    if ! bun "$STREAM_ROOT/scripts/sync-generated-caddy.ts"; then
+        die "Failed to sync filtered Caddy configuration"
+    fi
+
     log_info "Validating Caddy configuration..."
     if caddy validate --config /etc/caddy/Caddyfile 2>/dev/null; then
         log_info "Reloading Caddy..."
