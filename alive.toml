@@ -41,6 +41,8 @@ env_file = "apps/web/.env.production"
 container_port = 3000
 healthcheck_path = "/api/health"
 network_mode = "host"
+privileged = true
+pid_mode = "host"
 
 [[runtime.bind_mounts]]
 source_env = "SERVER_CONFIG_PATH"
@@ -95,6 +97,48 @@ read_only = true
 source = "/var/lib/claude-sessions"
 target = "/var/lib/claude-sessions"
 read_only = false
+
+# D-Bus socket (systemctl needs to talk to host systemd)
+[[runtime.bind_mounts]]
+source = "/run/dbus/system_bus_socket"
+target = "/run/dbus/system_bus_socket"
+read_only = false
+
+# Systemd runtime (needed for systemctl to manage host services)
+[[runtime.bind_mounts]]
+source = "/run/systemd"
+target = "/run/systemd"
+read_only = false
+
+# Systemd unit files (site@.service, template@.service live here)
+[[runtime.bind_mounts]]
+source = "/etc/systemd"
+target = "/etc/systemd"
+read_only = false
+
+# Generated Caddy config and alive state
+[[runtime.bind_mounts]]
+source = "/var/lib/alive"
+target = "/var/lib/alive"
+read_only = false
+
+# Caddy config for routing regeneration
+[[runtime.bind_mounts]]
+source = "/etc/caddy"
+target = "/etc/caddy"
+read_only = false
+
+# Bun runtime (needed for site deployments)
+[[runtime.bind_mounts]]
+source = "/root/.bun"
+target = "/root/.bun"
+read_only = true
+
+# Caddy binary (needed for caddy validate in site-controller)
+[[runtime.bind_mounts]]
+source = "/usr/bin/caddy"
+target = "/usr/bin/caddy"
+read_only = true
 
 [[build_secrets]]
 id = "build_env"
