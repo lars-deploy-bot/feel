@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs"
 import { rm } from "node:fs/promises"
+import { resolve } from "node:path"
 import type { ExecutionMode } from "@webalive/database"
 import { DEFAULTS, PATHS, PORTS } from "@webalive/shared"
 import { checkDomainInCaddy, configureCaddy, regeneratePortMap, SiteOrchestrator } from "@webalive/site-controller"
@@ -118,6 +119,11 @@ function validatePort(domain: string, port: number): number {
 }
 
 function getRoutingVerificationPath(preferredPath: string): string | null {
+  const activeFilteredPath = resolve(PATHS.ALIVE_ROOT, "ops/caddy/generated/Caddyfile.sites")
+  if (existsSync(activeFilteredPath)) {
+    return activeFilteredPath
+  }
+
   if (PATHS.CADDYFILE_SITES) {
     if (!existsSync(PATHS.CADDYFILE_SITES)) {
       throw new DomainRegistrationError(

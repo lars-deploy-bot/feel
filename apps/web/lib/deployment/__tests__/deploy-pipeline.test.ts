@@ -323,6 +323,21 @@ describe("runStrictDeployment", () => {
     })
   })
 
+  it("verifies the active filtered Caddyfile when it exists", async () => {
+    pathExists.mockImplementation(filePath => filePath === `${PATHS.ALIVE_ROOT}/ops/caddy/generated/Caddyfile.sites`)
+
+    await runStrictDeployment({
+      domain: "testsite.alive.best",
+      email: "owner@example.com",
+      templatePath: "/srv/webalive/templates/blank.alive.best",
+    })
+
+    expect(checkDomainInCaddyMock).toHaveBeenCalledWith(
+      "testsite.alive.best",
+      `${PATHS.ALIVE_ROOT}/ops/caddy/generated/Caddyfile.sites`,
+    )
+  })
+
   it("rolls back infrastructure when registerDomain fails for a new deployment", async () => {
     isDomainRegisteredMock.mockResolvedValueOnce(false).mockResolvedValueOnce(false)
     registerDomainMock.mockRejectedValueOnce(
