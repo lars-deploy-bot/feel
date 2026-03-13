@@ -167,14 +167,8 @@ if [ "$DEPLOY_PRODUCTION" = true ]; then
     log_info "Deploying to production..."
     lock_update_phase "production"
 
-    if [ "$DEPLOY_STAGING" = true ]; then
-        # Staging already validated: promote its build, skip checks and E2E
-        PROMOTE_FROM=staging SKIP_E2E=1 \
-            "$SCRIPT_DIR/build-and-serve.sh" production
-    else
-        # Production-only deploy: always skip E2E (E2E runs against staging, not production)
-        SKIP_E2E=1 "$SCRIPT_DIR/build-and-serve.sh" production
-    fi
+    # Production deploys via deployer-rs (Docker), same as staging
+    SKIP_E2E=1 "$SCRIPT_DIR/deploy-via-deployer.sh" production
 
     log_success "Production deployed"
     echo ""
