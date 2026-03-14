@@ -14,6 +14,7 @@ import {
   CalendarDays,
   ChevronDown,
   CreditCard,
+  Globe,
   Layout,
   LayoutList,
   Loader2,
@@ -27,6 +28,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useAdminUser } from "@/hooks/use-superadmin"
 import { AutomationConfigPreview } from "./previews/AutomationConfigPreview"
+import { BuiltWithAliveBadgePreview } from "./previews/BuiltWithAliveBadgePreview"
 import { CalendarEventDeletePreview } from "./previews/CalendarEventDeletePreview"
 import { CalendarEventDraftPreview } from "./previews/CalendarEventDraftPreview"
 import { ClarificationQuestionsPreview } from "./previews/ClarificationQuestionsPreview"
@@ -145,6 +147,14 @@ const CATEGORIES = {
     components: {
       customers: { id: "customers", name: "Customers", component: StripeCustomersPreview },
       account: { id: "account", name: "Account", component: StripeAccountPreview },
+    },
+  },
+  widget: {
+    id: "widget",
+    name: "Widget",
+    icon: Globe,
+    components: {
+      aliveBadge: { id: "aliveBadge", name: "Built with Alive Badge", component: BuiltWithAliveBadgePreview },
     },
   },
 } as const
