@@ -51,6 +51,7 @@ const validBody = {
 describe("POST /api/outlook/send", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
 
     vi.mocked(getSessionUser).mockResolvedValue(MOCK_SESSION_USER)
     mockGetAccessToken.mockResolvedValue("access-token-1")
@@ -68,6 +69,30 @@ describe("POST /api/outlook/send", () => {
       }
       return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve("Not found") })
     })
+  })
+
+  it("returns 403 when email delivery is disabled in staging (NODE_ENV)", async () => {
+    vi.stubEnv("NODE_ENV", "staging")
+    const res = await POST(createRequest(validBody))
+    expect(res.status).toBe(403)
+    const data = await res.json()
+    expect(data.ok).toBe(false)
+    expect(data.error).toBe("INTEGRATION_ERROR")
+    expect(data.reason).toContain("disabled in staging")
+    expect(mockGetAccessToken).not.toHaveBeenCalled()
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it("returns 403 when email delivery is disabled in staging (STREAM_ENV)", async () => {
+    vi.stubEnv("STREAM_ENV", "staging")
+    const res = await POST(createRequest(validBody))
+    expect(res.status).toBe(403)
+    const data = await res.json()
+    expect(data.ok).toBe(false)
+    expect(data.error).toBe("INTEGRATION_ERROR")
+    expect(data.reason).toContain("disabled in staging")
+    expect(mockGetAccessToken).not.toHaveBeenCalled()
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   // --- Auth ---

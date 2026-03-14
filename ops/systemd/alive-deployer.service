@@ -1,0 +1,33 @@
+[Unit]
+Description=Alive Docker Deployer Control Plane
+After=network.target network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=__ALIVE_ROOT__
+EnvironmentFile=__ALIVE_ROOT__/apps/web/.env.production
+Environment=DOCKER_BUILDKIT=1
+Environment=BUILDX_CONFIG=/var/lib/alive/deployer/buildx-config
+
+ExecStart=__ALIVE_ROOT__/apps/deployer-rs/target/release/alive-deployer-rs
+
+Restart=always
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=5
+
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=alive-deployer
+
+MemoryMax=2G
+TasksMax=200
+
+[Install]
+WantedBy=multi-user.target

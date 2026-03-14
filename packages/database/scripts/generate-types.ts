@@ -16,32 +16,43 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 
-// Load environment variables from apps/web/.env
-const scriptDir = dirname(new URL(import.meta.url).pathname)
-const envPath = resolve(scriptDir, "../../../apps/web/.env")
-if (existsSync(envPath)) {
-  const envContent = readFileSync(envPath, "utf-8")
+function loadEnvFile(filePath: string) {
+  if (!existsSync(filePath)) {
+    return
+  }
+
+  const envContent = readFileSync(filePath, "utf-8")
   envContent.split("\n").forEach(line => {
     const match = line.match(/^([^#=]+)=(.*)$/)
-    if (match) {
-      const key = match[1].trim()
-      const value = match[2].trim().replace(/^["']|["']$/g, "")
-      if (!process.env[key]) {
-        process.env[key] = value
-      }
+    if (!match) {
+      return
+    }
+
+    const key = match[1].trim()
+    const value = match[2].trim().replace(/^["']|["']$/g, "")
+    if (!process.env[key]) {
+      process.env[key] = value
     }
   })
 }
 
-// Require SUPABASE_PROJECT_ID to be explicitly set - no fallback to prevent wrong DB types
+// Load environment variables from apps/web/.env and .env.production
+const scriptDir = dirname(new URL(import.meta.url).pathname)
+loadEnvFile(resolve(scriptDir, "../../../apps/web/.env"))
+loadEnvFile(resolve(scriptDir, "../../../apps/web/.env.production"))
+
 const projectId = process.env.SUPABASE_PROJECT_ID
-if (!projectId) {
-  console.error("❌ Error: SUPABASE_PROJECT_ID environment variable is required")
+const databaseUrl = process.env.DATABASE_URL
+const databasePassword = process.env.DATABASE_PASSWORD
+
+if (projectId === undefined && databaseUrl === undefined) {
+  console.error("❌ Error: SUPABASE_PROJECT_ID or DATABASE_URL is required")
   console.error("")
-  console.error("Please set SUPABASE_PROJECT_ID in your .env file or environment:")
+  console.error("Set one of the existing deploy credentials in your environment:")
   console.error("  export SUPABASE_PROJECT_ID=your_project_id")
+  console.error("  export DATABASE_URL=postgresql://...")
   console.error("")
-  console.error("This prevents accidentally generating types from the wrong database.")
+  console.error("The generator refuses to guess a database target.")
   process.exit(1)
 }
 
@@ -53,12 +64,21 @@ const supabaseCliPath = (() => {
   }
 })()
 
+const bunxPath = (() => {
+  try {
+    return typeof Bun !== "undefined" && typeof Bun.which === "function" ? (Bun.which("bunx") ?? null) : null
+  } catch {
+    return null
+  }
+})()
+
 const outputDir = resolve(scriptDir, "../src")
 const tempDir = resolve(scriptDir, "../.tmp")
 
 async function generateTypes() {
   console.log("Generating database schema types...")
-  console.log(`Project ID: ${projectId}`)
+  console.log(projectId !== undefined ? `Project ID: ${projectId}` : "Project ID: <not set>")
+  console.log(databaseUrl !== undefined ? "Type source: DATABASE_URL" : "Type source: SUPABASE_PROJECT_ID")
 
   // Ensure temp directory exists
   if (!existsSync(tempDir)) {
@@ -67,34 +87,72 @@ async function generateTypes() {
 
   try {
     // Generate types for all schemas
-    const schemas = ["lockbox", "integrations", "iam", "public", "app"]
+    const schemas = ["lockbox", "integrations", "iam", "public", "app", "deploy"]
     const generatedSchemas: string[] = []
+
+    const runSupabaseGen = async (schema: string) => {
+      const preferredMode = databaseUrl !== undefined ? "db-url" : "project-id"
+      const modes = preferredMode === "db-url" ? ["db-url", "project-id"] : ["project-id", "db-url"]
+
+      for (const mode of modes) {
+        if (mode === "project-id" && projectId === undefined) {
+          continue
+        }
+        if (mode === "db-url" && databaseUrl === undefined) {
+          continue
+        }
+
+        const baseArgs =
+          mode === "db-url"
+            ? ["gen", "types", "typescript", "--db-url", databaseUrl, "--schema", schema]
+            : ["gen", "types", "typescript", "--project-id", projectId, "--schema", schema]
+
+        const command = supabaseCliPath ?? bunxPath ?? "bunx"
+        const args = supabaseCliPath ? baseArgs : ["supabase@latest", ...baseArgs]
+
+        const proc = Bun.spawn([command, ...args], {
+          stdout: "pipe",
+          stderr: "pipe",
+          env: {
+            ...process.env,
+            ...(databasePassword !== undefined ? { PGPASSWORD: databasePassword } : {}),
+            TMPDIR: tempDir,
+            TEMP: tempDir,
+            TMP: tempDir,
+            BUN_INSTALL_CACHE: tempDir,
+            BUN_INSTALL_TMPDIR: tempDir,
+            XDG_CACHE_HOME: tempDir,
+          },
+        })
+
+        const stdout = await new Response(proc.stdout).text()
+        const stderr = proc.stderr ? await new Response(proc.stderr).text() : ""
+        const exitCode = await proc.exited
+
+        if (exitCode === 0) {
+          return { stdout, stderr, mode }
+        }
+
+        const combined = `${stderr}\n${stdout}`
+        const canRetryWithNextMode =
+          mode === "project-id" &&
+          databaseUrl !== undefined &&
+          (combined.includes("Unauthorized") || combined.includes("failed to retrieve generated types"))
+
+        if (!canRetryWithNextMode) {
+          return { stdout, stderr, mode, exitCode }
+        }
+
+        console.warn(`  ${schema}: project-id generation unauthorized, retrying with DATABASE_URL`)
+      }
+
+      return { stdout: "", stderr: "No supported type generation mode available", mode: "none", exitCode: 1 }
+    }
 
     for (const schema of schemas) {
       console.log(`  Generating types for ${schema} schema...`)
 
-      // Use either installed CLI or bun x to run latest version
-      const baseArgs = ["gen", "types", "typescript", "--project-id", projectId, "--schema", schema]
-      const command = supabaseCliPath ?? "bun"
-      const args = supabaseCliPath ? baseArgs : ["x", "supabase@latest", ...baseArgs]
-
-      const proc = Bun.spawn([command, ...args], {
-        stdout: "pipe",
-        stderr: "pipe",
-        env: {
-          ...process.env,
-          TMPDIR: tempDir,
-          TEMP: tempDir,
-          TMP: tempDir,
-          BUN_INSTALL_CACHE: tempDir,
-          BUN_INSTALL_TMPDIR: tempDir,
-          XDG_CACHE_HOME: tempDir,
-        },
-      })
-
-      const stdout = await new Response(proc.stdout).text()
-      const stderr = proc.stderr ? await new Response(proc.stderr).text() : ""
-      const exitCode = await proc.exited
+      const { stdout, stderr, exitCode } = await runSupabaseGen(schema)
 
       if (exitCode !== 0) {
         // If schema doesn't exist, continue with others
@@ -124,7 +182,7 @@ async function generateTypes() {
 // DO NOT EDIT MANUALLY - Run 'bun run gen:types' to regenerate
 //
 // Schema: ${schema}
-// Project: ${projectId}
+// Project: ${projectId ?? "DATABASE_URL"}
 
 ${processedOutput}
 `
@@ -136,48 +194,78 @@ ${processedOutput}
 
     // Create the main index.ts file that imports and re-exports
     // (NO TIMESTAMP to avoid noisy diffs)
+    const generatedTypeImports = generatedSchemas
+      .map(schema => {
+        const capitalized = schema.charAt(0).toUpperCase() + schema.slice(1)
+        return `import type { Database as ${capitalized}Database } from "./${schema}.generated"`
+      })
+      .join("\n")
+
+    const generatedTypeExports = generatedSchemas
+      .map(schema => {
+        const capitalized = schema.charAt(0).toUpperCase() + schema.slice(1)
+        return `export type { ${capitalized}Database }`
+      })
+      .join("\n")
+
     const mainTypesContent = `// Main database types file
 // Imports and re-exports generated schema types
 // DO NOT EDIT MANUALLY - Run 'bun run gen:types' to regenerate
+
+// Import Database types for renaming
+${generatedTypeImports}
+
+// Export generated constants (runtime enum values derived from DB)
+${generatedSchemas.includes("app") ? `export { Constants as AppConstants } from "./app.generated"` : "// App constants unavailable"}
+
+// Export automation enum types, guards, and runtime sets
+export {
+  ACTION_TYPES,
+  type ActionType,
+  EXECUTION_MODES,
+  type ExecutionMode,
+  isActionType,
+  isExecutionMode,
+  isJobStatus,
+  isRunStatus,
+  isSandboxStatus,
+  isTriggerType,
+  JOB_STATUSES,
+  type JobStatus,
+  RUN_STATUSES,
+  type RunStatus,
+  SANDBOX_STATUSES,
+  type SandboxStatus,
+  type TerminalRunStatus,
+  TRIGGER_TYPES,
+  type TriggerType,
+} from "./automation-enums"
 
 // Export common types from public schema (if available) or lockbox as fallback
 ${
   generatedSchemas.includes("public")
     ? `export {
+  CompositeTypes,
+  Enums,
   Json,
   Tables,
   TablesInsert,
   TablesUpdate,
-  Enums,
-  CompositeTypes,
 } from "./public.generated"`
     : generatedSchemas.includes("lockbox")
       ? `export {
+  CompositeTypes,
+  Enums,
   Json,
   Tables,
   TablesInsert,
   TablesUpdate,
-  Enums,
-  CompositeTypes,
 } from "./lockbox.generated"`
       : "// No common types to export"
 }
 
-// Import Database types for renaming
-${generatedSchemas
-  .map(schema => {
-    const capitalized = schema.charAt(0).toUpperCase() + schema.slice(1)
-    return `import type { Database as ${capitalized}Database } from "./${schema}.generated"`
-  })
-  .join("\n")}
-
 // Re-export with schema-specific names
-${generatedSchemas
-  .map(schema => {
-    const capitalized = schema.charAt(0).toUpperCase() + schema.slice(1)
-    return `export type { ${capitalized}Database }`
-  })
-  .join("\n")}
+${generatedTypeExports}
 
 // Re-export the main Database type for backward compatibility
 ${
@@ -190,6 +278,15 @@ export type Database = never`
 
 // Export database client creators
 export * from "./client"
+
+// Export startup verification (schema + server identity)
+export {
+  checkSchema,
+  ensureServerRow,
+  formatSchemaFailure,
+  formatServerCheckFailure,
+  type ServerIdentity,
+} from "./seed-check"
 `
 
     const mainTypesPath = resolve(outputDir, "index.ts")

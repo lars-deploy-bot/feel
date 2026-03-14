@@ -2,11 +2,15 @@ import { STREAM_TYPES } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createConfig, DEFAULT_CONFIG } from "../src/config"
 import {
+  createWorkerPidsPressureDiagnostics,
   evaluatePidsPressure,
+  getWorkerBootFailurePhase,
   getWorkerPool,
+  getWorkerStderrExcerpt,
   parseCgroupPathFromProcSelfCgroup,
   parsePidsMaxValue,
   resetWorkerPool,
+  resolveWorkerProcessExecutable,
   WorkerPoolManager,
 } from "../src/manager"
 
@@ -191,6 +195,63 @@ describe("createConfig overrides", () => {
     expect(config.maxWorkers).toBe(50)
     expect(config.inactivityTimeoutMs).toBe(DEFAULT_CONFIG.inactivityTimeoutMs)
     expect(config.maxAgeMs).toBe(DEFAULT_CONFIG.maxAgeMs)
+  })
+})
+
+describe("resolveWorkerProcessExecutable", () => {
+  it("switches Bun parents to Node workers", () => {
+    expect(resolveWorkerProcessExecutable("/root/.bun/bin/bun")).toBe("node")
+    expect(resolveWorkerProcessExecutable("C:\\bun\\bun.exe")).toBe("node")
+  })
+
+  it("keeps non-Bun runtimes unchanged", () => {
+    expect(resolveWorkerProcessExecutable("/usr/bin/node")).toBe("/usr/bin/node")
+  })
+})
+
+describe("worker boot diagnostics helpers", () => {
+  it("classifies module resolution crashes from stderr", () => {
+    const stderr = [
+      "node:internal/modules/esm/resolve:275",
+      "Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/app/x'",
+    ].join("\n")
+
+    expect(getWorkerBootFailurePhase(stderr)).toBe("module_resolution")
+  })
+
+  it("falls back to startup for non-module stderr", () => {
+    expect(getWorkerBootFailurePhase("FATAL: privilege drop failed")).toBe("startup")
+    expect(getWorkerBootFailurePhase(undefined)).toBe("startup")
+  })
+
+  it("builds a concise stderr excerpt", () => {
+    const stderr = ["line1", "", "line2", "line3", "line4"].join("\n")
+    expect(getWorkerStderrExcerpt(stderr, 2)).toBe("line1\nline2")
+  })
+
+  it("normalizes PID pressure diagnostics for surfacing", () => {
+    expect(
+      createWorkerPidsPressureDiagnostics({
+        source: "cgroup_pids",
+        checkedAt: "2026-03-14T00:00:00.000Z",
+        pid: 123,
+        cgroupPath: "/system.slice/example.service",
+        current: 91,
+        max: 100,
+        headroom: 9,
+        usageRatio: 0.91,
+        usagePercent: 91.234,
+        thresholdRatio: 0.9,
+        thresholdHeadroom: 10,
+      }),
+    ).toEqual({
+      current: 91,
+      max: 100,
+      headroom: 9,
+      usagePercent: 91.2,
+      cgroupPath: "/system.slice/example.service",
+      pid: 123,
+    })
   })
 })
 

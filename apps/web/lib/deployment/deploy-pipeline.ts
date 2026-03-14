@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { rm } from "node:fs/promises"
 import type { ExecutionMode } from "@webalive/database"
-import { DEFAULTS, PATHS, PORTS } from "@webalive/shared"
+import { caddySitesFilteredPath, DEFAULTS, PATHS, PORTS, requireStreamEnv } from "@webalive/shared"
 import { checkDomainInCaddy, configureCaddy, regeneratePortMap, SiteOrchestrator } from "@webalive/site-controller"
 import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
 import { resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
@@ -117,27 +117,16 @@ function validatePort(domain: string, port: number): number {
   return port
 }
 
-function getRoutingVerificationPath(preferredPath: string): string | null {
-  if (PATHS.CADDYFILE_SITES) {
-    if (!existsSync(PATHS.CADDYFILE_SITES)) {
-      throw new DomainRegistrationError(
-        ErrorCodes.DEPLOYMENT_FAILED,
-        "Generated Caddyfile.sites is missing after reload",
-        { caddyfile: PATHS.CADDYFILE_SITES },
-      )
-    }
-    return PATHS.CADDYFILE_SITES
+function getRoutingVerificationPath(): string | null {
+  const filteredPath = caddySitesFilteredPath(PATHS.CADDYFILE_SITES, requireStreamEnv())
+  if (existsSync(filteredPath)) {
+    return filteredPath
   }
-
-  if (existsSync(preferredPath)) {
-    return preferredPath
-  }
-
   return null
 }
 
-async function verifyRouting(domain: string, preferredPath: string): Promise<void> {
-  const verificationPath = getRoutingVerificationPath(preferredPath)
+async function verifyRouting(domain: string): Promise<void> {
+  const verificationPath = getRoutingVerificationPath()
   if (!verificationPath) {
     return
   }
@@ -300,8 +289,8 @@ async function runStrictDeploymentLocked(
     })
 
     // Regenerate port-map.json from canonical (production) DB.
-    const isProduction = process.env.STREAM_ENV === "production"
-    await regeneratePortMap(isProduction ? validated.domain : undefined)
+    const streamEnv = requireStreamEnv()
+    await regeneratePortMap(streamEnv === "production" ? validated.domain : undefined)
 
     await configureCaddy({
       domain: validated.domain,
@@ -311,7 +300,7 @@ async function runStrictDeploymentLocked(
       flockTimeout: DEFAULTS.FLOCK_TIMEOUT,
     })
 
-    await verifyRouting(validated.domain, PATHS.CADDYFILE_PATH)
+    await verifyRouting(validated.domain)
 
     return {
       domain: validated.domain,
@@ -320,6 +309,11 @@ async function runStrictDeploymentLocked(
       executionMode: "systemd",
     }
   } catch (error) {
+    console.error(
+      `[Deploy Pipeline] Post-deploy failed for ${validated.domain}:`,
+      error instanceof Error ? error.message : error,
+    )
+    console.error("[Deploy Pipeline] Stack:", error instanceof Error ? error.stack : "no stack")
     await rollbackAfterPipelineFailure({
       domain: validated.domain,
       siteExistedBefore,

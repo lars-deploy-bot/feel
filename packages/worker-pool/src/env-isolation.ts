@@ -53,6 +53,9 @@ const WORKER_SPAWN_ALLOWED_ENV_KEYS = [
   // Bun runtime — needed for bun to find its install and modules
   "BUN_INSTALL",
 
+  // Node module resolution — Docker uses NODE_PATH for worker-deps
+  "NODE_PATH",
+
   // Claude SDK config — needed for SDK to find credentials/config
   "CLAUDE_CONFIG_DIR",
   "CLAUDECODE",
