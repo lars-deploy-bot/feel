@@ -704,9 +704,9 @@ export class OAuthManager {
    */
   async setUserEnvKey(userId: string, keyName: string, keyValue: string): Promise<void> {
     // Validate key name format (alphanumeric + underscores, must start with letter)
-    if (!/^[A-Z][A-Z0-9_]*$/.test(keyName)) {
+    if (!/^[A-Z][A-Z0-9_]{0,127}$/.test(keyName)) {
       throw new Error(
-        `Invalid key name '${keyName}'. Must be uppercase, start with a letter, and contain only letters, numbers, and underscores.`,
+        `Invalid key name '${keyName}'. Must be uppercase, start with a letter, contain only letters, numbers, and underscores, and be at most 128 characters.`,
       )
     }
 
