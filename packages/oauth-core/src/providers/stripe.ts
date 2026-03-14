@@ -205,8 +205,7 @@ export class StripeProvider implements OAuthProviderCore, OAuthRefreshable, OAut
       typeof providerMetadata?.stripe_user_id === "string" ? providerMetadata.stripe_user_id : undefined
 
     if (!stripeUserId) {
-      console.warn("[Stripe OAuth] No stripe_user_id provided for revocation, skipping API call")
-      return
+      throw new Error("Stripe revocation requires provider_metadata.stripe_user_id")
     }
 
     const params = new URLSearchParams({

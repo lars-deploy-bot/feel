@@ -6,11 +6,15 @@ import {
 } from "@webalive/runtime-auth"
 import type { SessionUser } from "@/features/auth/lib/auth"
 
-function buildRuntimeDecision(user: SessionUser, workspace: string): RuntimeAccessDecision {
+function buildRuntimeDecision(
+  user: SessionUser,
+  workspace: string,
+  hasWorkspaceAccess: boolean,
+): RuntimeAccessDecision {
   return authorizeRuntimeAccess({
     userId: user.id,
     workspace,
-    hasWorkspaceAccess: true,
+    hasWorkspaceAccess,
     isAdmin: user.isAdmin,
     isSuperadmin: user.isSuperadmin,
     canWriteFiles: true,
@@ -20,11 +24,20 @@ function buildRuntimeDecision(user: SessionUser, workspace: string): RuntimeAcce
   })
 }
 
-export function getRuntimeAccessDecision(user: SessionUser, workspace: string): RuntimeAccessDecision {
-  return buildRuntimeDecision(user, workspace)
+export function getRuntimeAccessDecision(
+  user: SessionUser,
+  workspace: string,
+  hasWorkspaceAccess: boolean,
+): RuntimeAccessDecision {
+  return buildRuntimeDecision(user, workspace, hasWorkspaceAccess)
 }
 
-export function requireWorkspaceRuntimeScope(user: SessionUser, workspace: string, scope: RuntimeScope): void {
-  const decision = buildRuntimeDecision(user, workspace)
+export function requireWorkspaceRuntimeScope(
+  user: SessionUser,
+  workspace: string,
+  hasWorkspaceAccess: boolean,
+  scope: RuntimeScope,
+): void {
+  const decision = buildRuntimeDecision(user, workspace, hasWorkspaceAccess)
   requireRuntimeScope(decision.scopes, scope)
 }

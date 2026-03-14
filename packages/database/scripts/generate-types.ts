@@ -15,8 +15,9 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
-function loadEnvFile(filePath: string) {
+function loadEnvFile(filePath: string, override = false) {
   if (!existsSync(filePath)) {
     return
   }
@@ -30,16 +31,16 @@ function loadEnvFile(filePath: string) {
 
     const key = match[1].trim()
     const value = match[2].trim().replace(/^["']|["']$/g, "")
-    if (!process.env[key]) {
+    if (override || !process.env[key]) {
       process.env[key] = value
     }
   })
 }
 
-// Load environment variables from apps/web/.env and .env.production
-const scriptDir = dirname(new URL(import.meta.url).pathname)
+// Load environment variables from apps/web/.env then .env.production (production overrides .env)
+const scriptDir = dirname(fileURLToPath(import.meta.url))
 loadEnvFile(resolve(scriptDir, "../../../apps/web/.env"))
-loadEnvFile(resolve(scriptDir, "../../../apps/web/.env.production"))
+loadEnvFile(resolve(scriptDir, "../../../apps/web/.env.production"), true)
 
 const projectId = process.env.SUPABASE_PROJECT_ID
 const databaseUrl = process.env.DATABASE_URL

@@ -184,7 +184,7 @@ phase_start "Requesting build"
 
 BUILD_ID=$(db_query "
 INSERT INTO deploy.builds (application_id, server_id, git_ref, git_sha, commit_message, status)
-VALUES ('$APPLICATION_ID', '$CURRENT_SERVER_ID', '$GIT_REF', '$GIT_SHA', '$(sql_escape "$COMMIT_MSG")', 'pending')
+VALUES ('$APPLICATION_ID', '$CURRENT_SERVER_ID', '$GIT_SHA', '$GIT_SHA', '$(sql_escape "$COMMIT_MSG")', 'pending')
 RETURNING build_id;
 ")
 
@@ -194,7 +194,7 @@ if [[ -z "$BUILD_ID" ]]; then
 fi
 
 log_step "Build: $BUILD_ID"
-log_step "Ref: $GIT_REF (${GIT_SHA:0:12})"
+log_step "Branch: $GIT_REF (pinned to ${GIT_SHA:0:12})"
 
 # Wait for build
 BUILD_TIMEOUT="$BUILD_TIMEOUT_SECONDS"

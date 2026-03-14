@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
-import { RuntimePathValidationError } from "@webalive/sandbox"
+import { RuntimePathValidationError, SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -202,6 +202,11 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleE2bRead(domain: ResolvedDomain, filePath: string, requestId: string): Promise<NextResponse> {
+  const resolvedPath = path.resolve(SANDBOX_WORKSPACE_ROOT, filePath)
+  if (!isPathWithinWorkspace(resolvedPath, SANDBOX_WORKSPACE_ROOT)) {
+    return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, { status: 403, details: { requestId } })
+  }
+
   try {
     const content = await readE2bTextFile(domain, filePath)
 
