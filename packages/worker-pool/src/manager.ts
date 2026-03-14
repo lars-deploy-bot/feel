@@ -173,12 +173,12 @@ export function evaluatePidsPressure(
  *
  * Keep the worker entry itself unchanged; only its host runtime changes.
  */
-export function resolveWorkerProcessExecutable(currentExecPath: string): string {
+export function resolveWorkerProcessExecutable(currentExecPath: string, nodeExecutablePath: string): string {
   const execName = (
     currentExecPath.includes("\\") ? path.win32.basename(currentExecPath) : path.basename(currentExecPath)
   ).toLowerCase()
   if (execName === "bun" || execName === "bun.exe") {
-    return "node"
+    return nodeExecutablePath
   }
   return currentExecPath
 }
@@ -1231,7 +1231,7 @@ export class WorkerPoolManager extends EventEmitter {
 
     let child: ChildProcess
     try {
-      const workerExecutable = resolveWorkerProcessExecutable(process.execPath)
+      const workerExecutable = resolveWorkerProcessExecutable(process.execPath, this.config.nodeExecutablePath)
 
       // SECURITY: Allowlist env vars for worker subprocess.
       // The parent process has secrets (SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, JWT_SECRET, etc.)

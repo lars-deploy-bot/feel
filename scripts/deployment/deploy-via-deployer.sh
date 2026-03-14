@@ -55,7 +55,7 @@ DEPLOY_TIMEOUT_SECONDS=300
 STATUS_POLL_INTERVAL_SECONDS=3
 
 _CURRENT_PHASE=0
-_TOTAL_PHASES=7
+_TOTAL_PHASES=8
 
 # =============================================================================
 # Helpers
@@ -119,7 +119,35 @@ fi
 phase_end ok "deployer-rs healthy, environment $ENVIRONMENT_ID"
 
 # =============================================================================
-# 2. Sync ops timers
+# 2. Database lifecycle (migrations → drift check → seed)
+# =============================================================================
+
+phase_start "Running database lifecycle"
+
+PREVIOUS_DEPLOY_GIT_SHA=$(db_query "
+SELECT r.git_sha
+FROM deploy.deployments d
+JOIN deploy.releases r ON r.release_id = d.release_id
+WHERE d.environment_id = '$ENVIRONMENT_ID'
+  AND d.status = 'succeeded'
+ORDER BY d.created_at DESC
+LIMIT 1;
+")
+
+db_lifecycle_exit=0
+"$SCRIPT_DIR/run-db-lifecycle.sh" "$ENVIRONMENT" "$PREVIOUS_DEPLOY_GIT_SHA" || db_lifecycle_exit=$?
+
+if [[ $db_lifecycle_exit -eq 0 ]]; then
+    phase_end ok "Database lifecycle complete"
+elif [[ $db_lifecycle_exit -eq 2 ]]; then
+    phase_end warn "Database lifecycle complete (drift detected)"
+else
+    phase_end error "Database lifecycle failed"
+    exit 1
+fi
+
+# =============================================================================
+# 3. Sync ops timers
 # =============================================================================
 
 phase_start "Syncing ops timers"
@@ -131,7 +159,7 @@ fi
 phase_end ok "Ops timers synced"
 
 # =============================================================================
-# 3. Deploy preview-proxy + services
+# 4. Deploy preview-proxy + services
 # =============================================================================
 
 phase_start "Deploying services"
@@ -149,7 +177,7 @@ rm -f "$PREVIEW_PROXY_LOG"
 phase_end ok "Services deployed"
 
 # =============================================================================
-# 4. Request build
+# 5. Request build
 # =============================================================================
 
 phase_start "Requesting build"
@@ -203,7 +231,7 @@ if [[ $ELAPSED -ge $BUILD_TIMEOUT ]]; then
 fi
 
 # =============================================================================
-# 5. Resolve release
+# 6. Resolve release
 # =============================================================================
 
 phase_start "Resolving release"
@@ -218,7 +246,7 @@ fi
 phase_end ok "Release $RELEASE_ID"
 
 # =============================================================================
-# 6. Deploy
+# 7. Deploy
 # =============================================================================
 
 phase_start "Deploying to $ENVIRONMENT"
@@ -277,7 +305,7 @@ if [[ $ELAPSED -ge $DEPLOY_TIMEOUT ]]; then
 fi
 
 # =============================================================================
-# 7. E2E tests
+# 8. E2E tests
 # =============================================================================
 
 phase_start "Post-deploy checks"
