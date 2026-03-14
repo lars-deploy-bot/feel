@@ -46,6 +46,8 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV PATH="/root/.bun/bin:/root/.local/bin:${PATH}"
+# Claude Agent SDK needs CLAUDECODE=1 to locate the CLI binary
+ENV CLAUDECODE=1
 # systemctl inside Docker detects "chroot" and no-ops all commands.
 # With --privileged + D-Bus mount we want it to talk to the real host systemd.
 ENV SYSTEMD_IGNORE_CHROOT=1
