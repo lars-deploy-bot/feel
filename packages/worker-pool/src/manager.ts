@@ -1186,10 +1186,7 @@ export class WorkerPoolManager extends EventEmitter {
         WORKER_WORKSPACE_KEY: workspaceKey,
       })
 
-      // Always use bun for workers: worker-entry.mjs uses bun APIs, and tsc-compiled
-      // packages emit extensionless imports that Node ESM can't resolve.
-      // In Docker the server runs as node (Next.js standalone) but workers need bun.
-      child = spawn("bun", [this.config.workerEntryPath], {
+      child = spawn(process.execPath, [this.config.workerEntryPath], {
         env: workerEnv,
         stdio: ["ignore", "inherit", "pipe"],
         // Detached ensures each worker owns a process group so we can terminate the full tree with -pid.
