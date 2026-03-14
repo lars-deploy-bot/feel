@@ -92,11 +92,11 @@ source = "/etc/sites"
 target = "/etc/sites"
 read_only = false
 
-# Claude CLI binary (SDK spawns it as a subprocess)
+# Claude CLI binary + runtime state (SDK spawns it as a subprocess, CLI writes cache/locks)
 [[runtime.bind_mounts]]
 source = "/root/.local"
 target = "/root/.local"
-read_only = true
+read_only = false
 
 # Claude SDK session storage (persistent across restarts)
 [[runtime.bind_mounts]]
