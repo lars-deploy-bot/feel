@@ -176,9 +176,9 @@ blocked_env_keys = [
   "MAILGUN_API_KEY",
   "MAILJET_API_KEY",
 ]
-forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin", SYSTEMD_IGNORE_CHROOT = "1", CLAUDECODE = "1" }
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin", SYSTEMD_IGNORE_CHROOT = "1" }
 
 [policies.production]
 allow_email = true
 blocked_env_keys = []
-forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin", SYSTEMD_IGNORE_CHROOT = "1", CLAUDECODE = "1" }
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin", SYSTEMD_IGNORE_CHROOT = "1" }
