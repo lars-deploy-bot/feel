@@ -45,7 +45,9 @@ fi
 # via current_setting('seed.password', true).
 PSQL_OPTIONS=""
 if [[ -n "${SEED_PASSWORD:-}" ]]; then
-  PSQL_OPTIONS="-c seed.password=${SEED_PASSWORD}"
+  # Quote the value and escape single quotes (PostgreSQL GUC syntax)
+  ESCAPED_PASSWORD="${SEED_PASSWORD//\'/\'\'}"
+  PSQL_OPTIONS="-c seed.password='${ESCAPED_PASSWORD}'"
   echo "[seed] SEED_PASSWORD is set — staging users will be seeded"
 fi
 
