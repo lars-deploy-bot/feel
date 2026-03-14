@@ -14,7 +14,9 @@ set -euo pipefail
 # Seeds vs Fixtures:
 #   - Seeds (this script): Reference data the app NEEDS to boot (servers, alive domain)
 #   - Fixtures (E2E tests): Test data created on the fly, torn down after tests
-#   - NEVER put user accounts, passwords, or test data in seeds
+#
+# Optional env vars:
+#   SEED_PASSWORD  - Password for staging bootstrap users (003_staging_users.sql)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,11 +41,19 @@ if [[ ! -d "$SEEDS_DIR" ]]; then
   exit 1
 fi
 
+# Pass SEED_PASSWORD to psql as a custom GUC so SQL can read it
+# via current_setting('seed.password', true).
+PSQL_OPTIONS=""
+if [[ -n "${SEED_PASSWORD:-}" ]]; then
+  PSQL_OPTIONS="-c seed.password=${SEED_PASSWORD}"
+  echo "[seed] SEED_PASSWORD is set — staging users will be seeded"
+fi
+
 seed_count=0
 for seed in $(find "$SEEDS_DIR" -maxdepth 1 -type f -name '*.sql' | sort -V); do
   name=$(basename "$seed")
   echo "[seed] Applying $name"
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$seed" > /dev/null
+  PGOPTIONS="$PSQL_OPTIONS" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$seed" > /dev/null
   seed_count=$((seed_count + 1))
 done
 

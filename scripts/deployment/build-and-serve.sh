@@ -40,6 +40,7 @@ PORT=$(get_port "$ENV")
 SERVICE=$(get_service "$ENV")
 BUILDS_DIR="$PROJECT_ROOT/.builds/$ENV"
 MAX_WAIT=$( [ "$ENV" = "staging" ] && echo 60 || echo 30 )
+DEPLOY_METADATA_FILE=".alive-deploy-metadata.json"
 
 # PROMOTE_FROM: skip deps/static/build, promote artifact from another environment
 # When set, only 4 phases run: validate → promote → skills → deploy
@@ -241,6 +242,53 @@ rollback() {
     fi
 }
 
+read_previous_build_git_sha() {
+    [ -n "$PREVIOUS_BUILD" ] || return 0
+
+    local metadata_path="$BUILDS_DIR/$PREVIOUS_BUILD/$DEPLOY_METADATA_FILE"
+    [ -f "$metadata_path" ] || return 0
+
+    python3 - <<'PY' "$metadata_path"
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as handle:
+    data = json.load(handle)
+
+git_sha = data.get("gitSha")
+if isinstance(git_sha, str):
+    print(git_sha)
+PY
+}
+
+write_deploy_metadata() {
+    local build_dir="$1"
+    local git_sha
+    git_sha=$(git rev-parse HEAD)
+
+    python3 - <<'PY' "$build_dir/$DEPLOY_METADATA_FILE" "$git_sha"
+import json
+import sys
+from datetime import datetime, timezone
+
+path = sys.argv[1]
+git_sha = sys.argv[2]
+
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(
+        {
+            "gitSha": git_sha,
+            "writtenAt": datetime.now(timezone.utc).isoformat(),
+        },
+        handle,
+        indent=2,
+        sort_keys=True,
+    )
+    handle.write("\n")
+PY
+}
+
 # =============================================================================
 # Validate Environment
 # =============================================================================
@@ -286,6 +334,42 @@ if [ ${#_SERVICES_DOWN[@]} -gt 0 ]; then
 fi
 
 phase_end ok "Environment validated"
+
+# =============================================================================
+# Apply Pending Database Migrations
+# =============================================================================
+phase_start "Applying database migrations"
+
+PREVIOUS_DEPLOY_GIT_SHA="$(read_previous_build_git_sha)"
+if "$SCRIPT_DIR/apply-new-db-migrations.sh" "$ENV" "$PREVIOUS_DEPLOY_GIT_SHA"; then
+    phase_end ok "Database migrations synchronized"
+else
+    phase_end error "Failed to synchronize database migrations"
+    exit 1
+fi
+
+# =============================================================================
+# Verify Schema Drift
+# =============================================================================
+phase_start "Verifying database schema"
+
+if "$PROJECT_ROOT/scripts/database/check-schema-drift.sh" --target "$ENV"; then
+    phase_end ok "Database schema matches repo migrations"
+else
+    phase_end warn "Database schema drift detected (non-blocking)"
+fi
+
+# =============================================================================
+# Seed Required Database Data
+# =============================================================================
+phase_start "Seeding required database data"
+
+if "$SCRIPT_DIR/seed-required-db-data.sh" "$ENV"; then
+    phase_end ok "Required database data synchronized"
+else
+    phase_end error "Failed to synchronize required database data"
+    exit 1
+fi
 
 # =============================================================================
 # Install Dependencies & Static Analysis (skipped when promoting)
@@ -490,6 +574,8 @@ else
     log_step "New: $NEW_BUILD"
     phase_end ok "Build complete (log: $BUILD_LOG)"
 fi
+
+write_deploy_metadata "$BUILDS_DIR/$NEW_BUILD"
 
 # =============================================================================
 # Sync Skills

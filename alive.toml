@@ -92,10 +92,22 @@ source = "/etc/sites"
 target = "/etc/sites"
 read_only = false
 
-# Claude CLI binary + runtime state (SDK spawns it as a subprocess, CLI writes cache/locks)
+# Claude CLI launcher shims
 [[runtime.bind_mounts]]
-source = "/root/.local"
-target = "/root/.local"
+source = "/root/.local/bin"
+target = "/root/.local/bin"
+read_only = true
+
+# Claude CLI installation payload
+[[runtime.bind_mounts]]
+source = "/root/.local/share/claude"
+target = "/root/.local/share/claude"
+read_only = false
+
+# Claude CLI lock/state directories
+[[runtime.bind_mounts]]
+source = "/root/.local/state/claude"
+target = "/root/.local/state/claude"
 read_only = false
 
 # Claude SDK session storage (persistent across restarts)

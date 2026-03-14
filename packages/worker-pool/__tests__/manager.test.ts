@@ -200,12 +200,14 @@ describe("createConfig overrides", () => {
 
 describe("resolveWorkerProcessExecutable", () => {
   it("switches Bun parents to Node workers", () => {
-    expect(resolveWorkerProcessExecutable("/root/.bun/bin/bun")).toBe("node")
-    expect(resolveWorkerProcessExecutable("C:\\bun\\bun.exe")).toBe("node")
+    expect(resolveWorkerProcessExecutable("/root/.bun/bin/bun", "/usr/bin/node")).toBe("/usr/bin/node")
+    expect(resolveWorkerProcessExecutable("C:\\bun\\bun.exe", "C:\\Program Files\\nodejs\\node.exe")).toBe(
+      "C:\\Program Files\\nodejs\\node.exe",
+    )
   })
 
   it("keeps non-Bun runtimes unchanged", () => {
-    expect(resolveWorkerProcessExecutable("/usr/bin/node")).toBe("/usr/bin/node")
+    expect(resolveWorkerProcessExecutable("/usr/bin/node", "/usr/bin/node")).toBe("/usr/bin/node")
   })
 })
 
@@ -464,11 +466,17 @@ describe("createConfig validation", () => {
   describe("path strings", () => {
     it("should reject empty strings", () => {
       expect(() => createConfig({ workerEntryPath: "" })).toThrow("workerEntryPath must be a non-empty string")
+      expect(() => createConfig({ nodeExecutablePath: "" })).toThrow("nodeExecutablePath must be a non-empty string")
       expect(() => createConfig({ socketDir: "" })).toThrow("socketDir must be a non-empty string")
+    })
+
+    it("should reject non-absolute node executable paths", () => {
+      expect(() => createConfig({ nodeExecutablePath: "node" })).toThrow("nodeExecutablePath must be an absolute path")
     })
 
     it("should accept non-empty paths", () => {
       expect(() => createConfig({ workerEntryPath: "/path/to/worker.js" })).not.toThrow()
+      expect(() => createConfig({ nodeExecutablePath: "/usr/bin/node" })).not.toThrow()
       expect(() => createConfig({ socketDir: "/tmp/sockets" })).not.toThrow()
     })
   })

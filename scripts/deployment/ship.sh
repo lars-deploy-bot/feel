@@ -167,8 +167,8 @@ if [ "$DEPLOY_PRODUCTION" = true ]; then
     log_info "Deploying to production..."
     lock_update_phase "production"
 
-    # Production still uses systemd until Docker is validated on staging
-    SKIP_E2E=1 "$SCRIPT_DIR/build-and-serve.sh" production
+    # Production now uses the deployer-rs Docker path (E2E already passed on staging)
+    SKIP_E2E=1 "$SCRIPT_DIR/deploy-via-deployer.sh" production
 
     log_success "Production deployed"
     echo ""

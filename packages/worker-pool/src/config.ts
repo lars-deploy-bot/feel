@@ -4,7 +4,8 @@
  * Uses constants from @webalive/shared as single source of truth.
  */
 
-import { dirname, join } from "node:path"
+import { accessSync, constants } from "node:fs"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { WORKER_POOL } from "@webalive/shared"
 import type { WorkerPoolConfig } from "./types.js"
@@ -23,6 +24,27 @@ function resolveWorkerEntryPath(): string {
   return join(packageRoot, "src", "worker-entry.mjs")
 }
 
+function resolveNodeExecutablePath(currentExecPath: string): string {
+  const execName = basename(currentExecPath).toLowerCase()
+  const candidates = [
+    ...(execName === "node" || execName === "node.exe" ? [currentExecPath] : []),
+    "/usr/bin/node",
+    "/usr/local/bin/node",
+  ]
+
+  for (const candidate of candidates) {
+    if (!candidate.startsWith("/")) {
+      continue
+    }
+    try {
+      accessSync(candidate, constants.X_OK)
+      return candidate
+    } catch {}
+  }
+
+  throw new Error("Unable to resolve explicit node executable path for worker subprocesses")
+}
+
 /** Default configuration values from shared constants */
 export const DEFAULT_CONFIG: WorkerPoolConfig = {
   maxWorkers: WORKER_POOL.MAX_WORKERS,
@@ -30,6 +52,7 @@ export const DEFAULT_CONFIG: WorkerPoolConfig = {
   maxAgeMs: WORKER_POOL.MAX_AGE_MS,
   evictionStrategy: WORKER_POOL.EVICTION_STRATEGY,
   workerEntryPath: resolveWorkerEntryPath(),
+  nodeExecutablePath: resolveNodeExecutablePath(process.execPath),
   socketDir: WORKER_POOL.SOCKET_DIR,
   readyTimeoutMs: WORKER_POOL.READY_TIMEOUT_MS,
   shutdownTimeoutMs: WORKER_POOL.SHUTDOWN_TIMEOUT_MS,
@@ -144,6 +167,12 @@ export function createConfig(overrides?: Partial<WorkerPoolConfig>): WorkerPoolC
   // Validate paths are non-empty
   if (typeof config.workerEntryPath !== "string" || config.workerEntryPath.length === 0) {
     throw new Error("workerEntryPath must be a non-empty string")
+  }
+  if (typeof config.nodeExecutablePath !== "string" || config.nodeExecutablePath.length === 0) {
+    throw new Error("nodeExecutablePath must be a non-empty string")
+  }
+  if (!config.nodeExecutablePath.startsWith("/")) {
+    throw new Error("nodeExecutablePath must be an absolute path")
   }
   if (typeof config.socketDir !== "string" || config.socketDir.length === 0) {
     throw new Error("socketDir must be a non-empty string")
