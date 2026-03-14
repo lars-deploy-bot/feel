@@ -17,36 +17,36 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Skip if user already exists
-  IF EXISTS (SELECT 1 FROM iam.users WHERE email = 'lars@alive.best') THEN
-    -- Update password in case it changed
-    UPDATE iam.users
-    SET password_hash = crypt(v_password, gen_salt('bf', 12))
-    WHERE email = 'lars@alive.best';
-    RAISE NOTICE 'lars@alive.best already exists — updated password.';
-    RETURN;
-  END IF;
-
-  -- Create org
+  -- Upsert org (create or heal if deleted)
   INSERT INTO iam.orgs (org_id, name, credits)
   VALUES ('org_lars_staging', 'Lars Staging', 99999)
   ON CONFLICT (org_id) DO NOTHING;
 
-  -- Create user with bcrypt-hashed password
-  INSERT INTO iam.users (user_id, email, display_name, password_hash, email_verified, status)
-  VALUES (
-    'user_lars_staging',
-    'lars@alive.best',
-    'Lars',
-    crypt(v_password, gen_salt('bf', 12)),
-    true,
-    'active'
-  );
+  -- Upsert user with bcrypt-hashed password
+  IF EXISTS (SELECT 1 FROM iam.users WHERE email = 'lars@alive.best') THEN
+    UPDATE iam.users
+    SET password_hash = crypt(v_password, gen_salt('bf', 12)),
+        email_verified = true,
+        status = 'active'
+    WHERE email = 'lars@alive.best';
+    v_user_id := 'user_lars_staging';
+    RAISE NOTICE 'lars@alive.best already exists — updated password/status.';
+  ELSE
+    INSERT INTO iam.users (user_id, email, display_name, password_hash, email_verified, status)
+    VALUES (
+      'user_lars_staging',
+      'lars@alive.best',
+      'Lars',
+      crypt(v_password, gen_salt('bf', 12)),
+      true,
+      'active'
+    );
+    v_user_id := 'user_lars_staging';
+    RAISE NOTICE 'Created staging user lars@alive.best';
+  END IF;
 
-  -- Link user to org as owner
+  -- Upsert org membership (heal if deleted)
   INSERT INTO iam.org_memberships (org_id, user_id, role)
-  VALUES ('org_lars_staging', 'user_lars_staging', 'owner')
+  VALUES ('org_lars_staging', v_user_id, 'owner')
   ON CONFLICT (org_id, user_id) DO NOTHING;
-
-  RAISE NOTICE 'Created staging user lars@alive.best';
 END $$;

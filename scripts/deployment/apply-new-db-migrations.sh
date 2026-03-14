@@ -85,7 +85,11 @@ for relative_path in "${sorted_files[@]}"; do
     fi
 
     log "Applying $(basename "$relative_path")"
-    "$PROJECT_ROOT/scripts/database/sql.sh" --target "$ENVIRONMENT" --file "$absolute_path" --tx
+    sql_args=(--target "$ENVIRONMENT" --file "$absolute_path" --tx)
+    if [[ "$ENVIRONMENT" == "production" ]]; then
+        sql_args+=(--confirm-production-write)
+    fi
+    "$PROJECT_ROOT/scripts/database/sql.sh" "${sql_args[@]}"
 done
 
 log "All pending repo migrations applied to $ENVIRONMENT."

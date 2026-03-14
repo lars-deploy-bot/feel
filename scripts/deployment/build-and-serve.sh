@@ -318,6 +318,10 @@ phase_end ok "Environment validated"
 phase_start "Running database lifecycle"
 
 PREVIOUS_DEPLOY_GIT_SHA="$(read_previous_build_git_sha)"
+if [[ -n "$PREVIOUS_BUILD" && -z "$PREVIOUS_DEPLOY_GIT_SHA" ]]; then
+    phase_end error "Current build $PREVIOUS_BUILD has no $DEPLOY_METADATA_FILE; cannot safely determine pending migrations"
+    exit 1
+fi
 db_lifecycle_exit=0
 "$SCRIPT_DIR/run-db-lifecycle.sh" "$ENV" "$PREVIOUS_DEPLOY_GIT_SHA" || db_lifecycle_exit=$?
 
@@ -534,7 +538,11 @@ else
     phase_end ok "Build complete (log: $BUILD_LOG)"
 fi
 
-write_deploy_metadata "$BUILDS_DIR/$NEW_BUILD"
+# Promoted builds already carry valid metadata from the source environment.
+# Only write fresh metadata for new builds to avoid overwriting the original gitSha.
+if [ -z "$PROMOTE_FROM" ]; then
+    write_deploy_metadata "$BUILDS_DIR/$NEW_BUILD"
+fi
 
 # =============================================================================
 # Sync Skills
