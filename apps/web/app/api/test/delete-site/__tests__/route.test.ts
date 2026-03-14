@@ -84,6 +84,14 @@ vi.mock("@/lib/deployment/site-occupancy", () => ({
   inspectSiteOccupancy: (slug: string) => mockInspectSiteOccupancy(slug),
 }))
 
+vi.mock("@/lib/config", () => ({
+  extractSlugFromDomain: (domain: string) => {
+    const suffix = ".alive.best"
+    if (domain.endsWith(suffix)) return domain.replace(suffix, "")
+    return null
+  },
+}))
+
 const { DELETE } = await import("../route")
 
 function makeRequest(body: unknown, secret?: string): NextRequest {
