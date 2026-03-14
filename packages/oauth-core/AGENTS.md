@@ -1,6 +1,6 @@
 # OAuth Core Agent Guide
 
-Package-specific instructions for `@webalive/oauth-core`. Read the repo root [`/root/alive/AGENTS.md`](/root/alive/AGENTS.md) first, then follow these rules for work in this package.
+Package-specific instructions for `@webalive/oauth-core`. Read the repo root [`AGENTS.md`](../../AGENTS.md) first, then follow these rules for work in this package.
 
 ## What This Package Owns
 
@@ -21,19 +21,19 @@ Package-specific instructions for `@webalive/oauth-core`. Read the repo root [`/
 
 ## Files That Matter
 
-- [`src/index.ts`](/root/alive/packages/oauth-core/src/index.ts): public API, OAuth manager, singleton compatibility layer.
-- [`src/storage.ts`](/root/alive/packages/oauth-core/src/storage.ts): lockbox RPC adapter. Schema assumptions live here.
-- [`src/types.ts`](/root/alive/packages/oauth-core/src/types.ts): namespaces, manager config, token types.
-- [`src/refresh-lock.ts`](/root/alive/packages/oauth-core/src/refresh-lock.ts): memory vs Redis refresh locking.
-- [`src/providers/base.ts`](/root/alive/packages/oauth-core/src/providers/base.ts): provider interfaces and capability guards.
-- [`src/providers/index.ts`](/root/alive/packages/oauth-core/src/providers/index.ts): built-in provider registry and aliases.
-- [`src/config.ts`](/root/alive/packages/oauth-core/src/config.ts): env validation. Reuse this, do not invent parallel config loaders.
+- [`src/index.ts`](src/index.ts): public API, OAuth manager, singleton compatibility layer.
+- [`src/storage.ts`](src/storage.ts): lockbox RPC adapter. Schema assumptions live here.
+- [`src/types.ts`](src/types.ts): namespaces, manager config, token types.
+- [`src/refresh-lock.ts`](src/refresh-lock.ts): memory vs Redis refresh locking.
+- [`src/providers/base.ts`](src/providers/base.ts): provider interfaces and capability guards.
+- [`src/providers/index.ts`](src/providers/index.ts): built-in provider registry and aliases.
+- [`src/config.ts`](src/config.ts): env validation. Reuse this, do not invent parallel config loaders.
 
 ## Provider Rules
 
 - New providers must implement the `OAuthProviderCore` contract, including `getAuthUrl()`.
 - Optional capabilities belong behind the existing guards: `isRefreshable()`, `isRevocable()`, `isUserInfoProvider()`, `isExternalIdentityProvider()`.
-- Register aliases in one place: [`src/providers/index.ts`](/root/alive/packages/oauth-core/src/providers/index.ts).
+- Register aliases in one place: [`src/providers/index.ts`](src/providers/index.ts).
 - Before adding new retry, locking, or OAuth-flow machinery, check whether the existing provider base, `fetch-with-retry`, or refresh-lock manager already solves it.
 
 ## Database And Schema Changes

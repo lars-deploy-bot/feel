@@ -1,6 +1,6 @@
 [Unit]
 Description=Alive Docker Deployer Control Plane
-After=network.target network-online.target docker.service
+After=network-online.target docker.service
 Wants=network-online.target
 Requires=docker.service
 

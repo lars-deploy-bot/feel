@@ -123,6 +123,23 @@ CHECK ((char_length(name) >= 1) AND (char_length(name) <= 128))
    - Owned by individual users
    - Isolated per user
 
+#### `user_env_keys` Security Considerations
+
+**Input Validation:**
+Key names must be validated before storage. Only alphanumeric characters, underscores, and hyphens should be accepted. Reject keys containing shell metacharacters, whitespace, or null bytes to prevent injection when keys are interpolated into environment blocks.
+
+**Format Validation:**
+Values are stored as opaque encrypted blobs, but key names must conform to environment variable naming conventions (e.g., `^[A-Z][A-Z0-9_]{0,127}$`). The 128-character `CHECK` constraint on `name` enforces an upper bound, but callers must also reject empty or malformed names before reaching the database.
+
+**Scope Limitation:**
+User env keys are injected into MCP server processes scoped to a single workspace session. They must never be propagated to other users, other workspaces, or persisted into build artifacts. The isolation boundary is the per-session process environment.
+
+**Revocation Complexity:**
+Unlike OAuth tokens, user env keys have no provider-side revocation. Deleting a key from the lockbox removes it from future sessions, but any running process that already received the key retains it until the process exits. Users should rotate keys at the upstream provider after deletion.
+
+**Exposure Risk:**
+User env keys bypass the OAuth token refresh lifecycle. A leaked key grants indefinite access until the user rotates it at the provider. Audit logging (when implemented) should track key reads, not just writes, to detect unauthorized access patterns.
+
 ### Access Control Matrix
 
 | Operation | Namespace | Who Can Access | Key Required |

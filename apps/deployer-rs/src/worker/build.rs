@@ -442,7 +442,11 @@ pub(super) async fn process_build(
                 )
                 .await
                 .map_err(TaskExecutionError::db_transition)?;
-                pipeline
+
+                // Build is now marked succeeded in DB. All subsequent writes are
+                // best-effort telemetry — never propagate errors that would flip
+                // the build back to failed.
+                if let Err(error) = pipeline
                     .emit(
                         TaskEventType::Succeeded,
                         json!({
@@ -451,13 +455,27 @@ pub(super) async fn process_build(
                             "build_fingerprint": build_fingerprint,
                         }),
                     )
-                    .await?;
-                reuse_release_stage
+                    .await
+                {
+                    tracing::warn!(
+                        message = "post-success telemetry failed: emit succeeded event",
+                        build_id = %build.build_id,
+                        error = %format!("{:#}", error),
+                    );
+                }
+                if let Err(error) = reuse_release_stage
                     .finish_ok(&format!(
                         "reused artifact from {} into {}",
                         existing_release.release_id, release_id
                     ))
-                    .await?;
+                    .await
+                {
+                    tracing::warn!(
+                        message = "post-success telemetry failed: finish reuse stage",
+                        build_id = %build.build_id,
+                        error = %format!("{:#}", error),
+                    );
+                }
                 return Ok::<(), anyhow::Error>(());
             }
         }
@@ -646,18 +664,42 @@ pub(super) async fn process_build(
         .await
         .map_err(TaskExecutionError::db_transition)?;
 
-        pipeline
+        // Build is now marked succeeded in DB. All subsequent writes are
+        // best-effort telemetry — never propagate errors that would flip
+        // the build back to failed.
+        if let Err(error) = pipeline
             .append_summary(&format!("release recorded: {}\n", release_id))
-            .await?;
-        pipeline
+            .await
+        {
+            tracing::warn!(
+                message = "post-success telemetry failed: append summary",
+                build_id = %build.build_id,
+                error = %format!("{:#}", error),
+            );
+        }
+        if let Err(error) = pipeline
             .emit(
                 TaskEventType::Succeeded,
                 json!({ "release_id": release_id, "build_fingerprint": build_fingerprint }),
             )
-            .await?;
-        record_release_stage
+            .await
+        {
+            tracing::warn!(
+                message = "post-success telemetry failed: emit succeeded event",
+                build_id = %build.build_id,
+                error = %format!("{:#}", error),
+            );
+        }
+        if let Err(error) = record_release_stage
             .finish_ok(&format!("release {}", release_id))
-            .await?;
+            .await
+        {
+            tracing::warn!(
+                message = "post-success telemetry failed: finish record release stage",
+                build_id = %build.build_id,
+                error = %format!("{:#}", error),
+            );
+        }
 
         Ok::<(), anyhow::Error>(())
         },

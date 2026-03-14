@@ -12,6 +12,20 @@ const TEST_ISSUER = "alive-web"
 const TEST_AUDIENCE = "runtime-isolation-gateway"
 const TEST_NOW = new Date("2026-01-01T00:00:00.000Z")
 
+async function mintTestToken(overrides: { ttlSeconds?: number; now?: Date } = {}): Promise<string> {
+  return mintRuntimeCapability({
+    secret: TEST_SECRET,
+    issuer: TEST_ISSUER,
+    audience: TEST_AUDIENCE,
+    subject: "user-test",
+    workspace: "example.alive.best",
+    role: RuntimeRoleSchema.enum.user,
+    scopes: [RuntimeScopeSchema.enum["files:read"]],
+    ttlSeconds: overrides.ttlSeconds ?? 60,
+    now: overrides.now ?? TEST_NOW,
+  })
+}
+
 describe("runtime capability", () => {
   it("round-trips through mint and verify", async () => {
     const token = await mintRuntimeCapability({
@@ -98,5 +112,84 @@ describe("runtime capability", () => {
         scope: RuntimeScopeSchema.enum["files:read"],
       }),
     ).toThrow(RuntimeCapabilityError)
+  })
+
+  it("rejects expired tokens", async () => {
+    const token = await mintTestToken({ ttlSeconds: 10, now: TEST_NOW })
+
+    // Verify at 60 seconds after issuance — well past the 10-second TTL
+    const futureDate = new Date(TEST_NOW.getTime() + 60_000)
+
+    await expect(
+      verifyRuntimeCapability({
+        secret: TEST_SECRET,
+        issuer: TEST_ISSUER,
+        audience: TEST_AUDIENCE,
+        token,
+        currentDate: futureDate,
+      }),
+    ).rejects.toThrow(/timestamp check failed|"exp" claim/)
+  })
+
+  it("rejects tampered tokens", async () => {
+    const token = await mintTestToken()
+
+    // Flip a character in the signature portion (last segment)
+    const parts = token.split(".")
+    const sig = parts[2]
+    const flipped = sig[0] === "A" ? `B${sig.slice(1)}` : `A${sig.slice(1)}`
+    const tampered = `${parts[0]}.${parts[1]}.${flipped}`
+
+    await expect(
+      verifyRuntimeCapability({
+        secret: TEST_SECRET,
+        issuer: TEST_ISSUER,
+        audience: TEST_AUDIENCE,
+        token: tampered,
+        currentDate: TEST_NOW,
+      }),
+    ).rejects.toThrow(/signature/)
+  })
+
+  it("rejects tokens with wrong audience", async () => {
+    const token = await mintTestToken()
+
+    await expect(
+      verifyRuntimeCapability({
+        secret: TEST_SECRET,
+        issuer: TEST_ISSUER,
+        audience: "wrong-audience",
+        token,
+        currentDate: TEST_NOW,
+      }),
+    ).rejects.toThrow(/aud/)
+  })
+
+  it("rejects tokens with wrong issuer", async () => {
+    const token = await mintTestToken()
+
+    await expect(
+      verifyRuntimeCapability({
+        secret: TEST_SECRET,
+        issuer: "wrong-issuer",
+        audience: TEST_AUDIENCE,
+        token,
+        currentDate: TEST_NOW,
+      }),
+    ).rejects.toThrow(/iss/)
+  })
+
+  it("rejects tokens signed with a different secret", async () => {
+    const token = await mintTestToken()
+
+    await expect(
+      verifyRuntimeCapability({
+        secret: "completely-different-secret-key-x",
+        issuer: TEST_ISSUER,
+        audience: TEST_AUDIENCE,
+        token,
+        currentDate: TEST_NOW,
+      }),
+    ).rejects.toThrow(/signature/)
   })
 })

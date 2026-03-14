@@ -647,7 +647,7 @@ export async function POST(req: NextRequest) {
       let firstMessageReceived = false
       childStream = new ReadableStream<Uint8Array>({
         async start(controller) {
-          const runtimeAccess = getRuntimeAccessDecision(user, resolvedWorkspaceName)
+          const runtimeAccess = getRuntimeAccessDecision(user, resolvedWorkspaceName, true)
 
           // Helper to run query with given resume session and optional message position
           const runQuery = async (resumeId: string | undefined, resumeAtMessage: string | undefined) => {
