@@ -10,17 +10,16 @@ MIGRATIONS_DIR="${MIGRATIONS_DIR:-packages/database/migrations}"
 PREREQUISITES_DIR="${PREREQUISITES_DIR:-packages/database/prerequisites}"
 OUTPUT_DIR="${OUTPUT_DIR:-.artifacts/schema-drift}"
 SCHEMAS="${SCHEMAS:-app iam lockbox integrations}"
-TARGET="${TARGET:-staging}"
+TARGET="${TARGET:-}"
 TARGET_DATABASE_URL="${TARGET_DATABASE_URL:-}"
 
 usage() {
   cat <<'EOF'
 Usage:
-  check-schema-drift.sh [--target staging|production] [--strict]
+  check-schema-drift.sh --target staging|production [--strict]
 
 Environment:
   ENV_FILE             Env file used to resolve DATABASE_URL / STAGING_DATABASE_URL
-  TARGET               Target database (default: staging)
   TARGET_DATABASE_URL  Optional explicit database URL override
   STRICT=1             Exit non-zero when drift is found
 EOF
@@ -52,6 +51,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "$TARGET" ]]; then
+  echo "ERROR: --target is required (staging or production)" >&2
+  usage
+  exit 1
+fi
 if [[ "$TARGET" != "staging" && "$TARGET" != "production" ]]; then
   echo "TARGET must be staging or production" >&2
   exit 1
