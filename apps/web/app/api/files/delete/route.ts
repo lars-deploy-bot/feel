@@ -2,7 +2,7 @@ import type { Stats } from "node:fs"
 import { lstat, readdir, readlink, realpath, rm, unlink } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
-import { RuntimePathValidationError } from "@webalive/sandbox"
+import { RuntimePathValidationError, resolveSandboxWorkspacePath } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -324,6 +324,15 @@ async function handleE2bDelete(
   recursive: boolean,
   requestId: string,
 ): Promise<NextResponse> {
+  try {
+    resolveSandboxWorkspacePath(targetPath, { allowWorkspaceRoot: false })
+  } catch (err) {
+    if (err instanceof RuntimePathValidationError) {
+      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, { status: 403, details: { requestId } })
+    }
+    throw err
+  }
+
   try {
     const entryKind = await getE2bFileEntryKind(domain, targetPath)
     const isDir = entryKind === "directory"
