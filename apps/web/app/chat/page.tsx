@@ -1,4 +1,5 @@
 "use client"
+import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { AnimatePresence, motion } from "framer-motion"
 import { useQueryState } from "nuqs"
@@ -56,6 +57,7 @@ import {
 } from "@/lib/db/dexieMessageStore"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useSessionHeartbeat } from "@/lib/hooks/useSessionHeartbeat"
+import { useAllWorkspacesQuery, type WorkspaceInfo } from "@/lib/hooks/useSettingsQueries"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useDebugVisible, useWorkbench, useWorkbenchFullscreen } from "@/lib/stores/debug-store"
@@ -63,7 +65,8 @@ import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 import { useLastSeenStreamSeq, useStreamingActions } from "@/lib/stores/streamingStore"
 import { useTabActions, useTabDataStore } from "@/lib/stores/tabStore"
-import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
+import { useSelectedOrgId, useWorkspaceActions, useWorkspaceStoreBase } from "@/lib/stores/workspaceStore"
+import { queryKeys } from "@/lib/tanstack/queryKeys"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 // Local components
 import { AgentManagerIndicator, ChatEmptyState, Nav, OfflineBanner, TabBar } from "./components"
@@ -77,6 +80,22 @@ import {
   useTabIsolatedMessages,
   useTabsManagement,
 } from "./hooks"
+
+/** Synchronously resolve orgId for a workspace from local caches (store + TanStack). */
+function resolveOrgForWorkspace(domain: string, queryClient: QueryClient): string | null {
+  // Source 1: recentWorkspaces in workspace store (sync, fast)
+  const recent = useWorkspaceStoreBase.getState().recentWorkspaces.find(r => r.domain === domain)
+  if (recent) return recent.orgId
+
+  // Source 2: TanStack cache for all-workspaces (already fetched by useOrganizationsQuery)
+  const cached = queryClient.getQueryData<Record<string, WorkspaceInfo[]>>(queryKeys.workspaces.allForUser())
+  if (cached) {
+    for (const [orgId, workspaces] of Object.entries(cached)) {
+      if (workspaces.some(w => w.hostname === domain)) return orgId
+    }
+  }
+  return null
+}
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
@@ -168,15 +187,29 @@ function ChatPageContent() {
   const worktreesEnabled = useFeatureFlag("WORKTREES")
   const requestWorktree = worktreesEnabled ? worktree : null
   const wkConsumedRef = useRef(false)
+  const queryClient = useQueryClient()
+  const { setSelectedOrg, setDeepLinkPending } = useWorkspaceActions()
   useEffect(() => {
     if (!mounted || !wkParam || wkConsumedRef.current) return
     wkConsumedRef.current = true
     if (wkParam !== workspace) {
       console.log("[ChatPage] Setting workspace from URL param:", wkParam)
-      setWorkspace(wkParam)
+
+      // Resolve orgId for this workspace so the org picker updates correctly
+      const resolvedOrgId = resolveOrgForWorkspace(wkParam, queryClient)
+
+      if (resolvedOrgId) {
+        setSelectedOrg(resolvedOrgId)
+        setWorkspace(wkParam, resolvedOrgId)
+      } else {
+        // Set workspace immediately, protect from validateWorkspaceAvailability,
+        // defer org resolution until all-workspaces data arrives.
+        setWorkspace(wkParam)
+        setDeepLinkPending(wkParam)
+      }
     }
     void setWkParam(null, { shallow: true })
-  }, [mounted, wkParam, workspace, setWorkspace, setWkParam])
+  }, [mounted, wkParam, workspace, setWorkspace, setWkParam, queryClient, setSelectedOrg, setDeepLinkPending])
 
   // Bidirectional sync between ?wt= URL param and worktree store.
   // Refs track previous values so each effect only reacts to its own source changing,
@@ -229,11 +262,14 @@ function ChatPageContent() {
   const { setActiveTab: setStoreActiveTab } = useTabActions()
   const initialTabRestored = useRef(false)
   const previousWorkspaceKeyRef = useRef<string | null>(null)
+  const [tabRestoreTimedOut, setTabRestoreTimedOut] = useState(false)
+  const TAB_RESTORE_TIMEOUT_MS = 5000
 
   useEffect(() => {
     if (!mounted) return
     if (previousWorkspaceKeyRef.current && previousWorkspaceKeyRef.current !== tabWorkspace) {
       initialTabRestored.current = false
+      setTabRestoreTimedOut(false)
       if (tabParam) {
         void setTabParam(null, { shallow: true })
       }
@@ -241,12 +277,27 @@ function ChatPageContent() {
     previousWorkspaceKeyRef.current = tabWorkspace ?? null
   }, [mounted, tabWorkspace, tabParam, setTabParam])
 
-  // On mount: if URL has a tab param, restore it (ONCE only)
+  // Guaranteed timeout for tab restore — fires regardless of whether the
+  // main effect's dependencies change, so we never get stuck waiting forever.
+  useEffect(() => {
+    if (!mounted || !tabParam || initialTabRestored.current) return
+    const timer = setTimeout(() => {
+      if (!initialTabRestored.current) {
+        console.warn("[ChatPage] Tab restore timed out, tab not found:", tabParam)
+        initialTabRestored.current = true
+        setTabRestoreTimedOut(true)
+      }
+    }, TAB_RESTORE_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [mounted, tabParam])
+
+  // On mount: if URL has a tab param, restore it.
+  // Waits for syncFromServer to populate stores — the timeout effect above
+  // guarantees we give up after TAB_RESTORE_TIMEOUT_MS even if deps stop changing.
   // Checks both open and closed tabs — reopens closed tabs so shared URLs always work.
   useEffect(() => {
-    if (!mounted || !tabWorkspace || !dexieSession || initialTabRestored.current) return
+    if (!mounted || !tabWorkspace || !dexieSession || initialTabRestored.current || tabRestoreTimedOut) return
     if (!tabParam) {
-      // No tab param in URL - mark as restored so we don't try again
       initialTabRestored.current = true
       return
     }
@@ -269,16 +320,18 @@ function ChatPageContent() {
         reopenTab(tabWorkspace, tabParam)
         void dexieReopenTab(tabParam)
         setStoreActiveTab(tabWorkspace, tabParam)
+        initialTabRestored.current = true
+        return
       }
     }
-
-    // Mark as restored whether we found the tab or not
-    initialTabRestored.current = true
+    // Tab not found yet — syncFromServer may still be populating stores.
+    // Effect re-runs when workspaceTabs changes; timeout effect handles the give-up.
   }, [
     mounted,
     tabWorkspace,
     dexieSession,
     tabParam,
+    tabRestoreTimedOut,
     workspaceTabs,
     sessionTabId,
     setStoreActiveTab,
@@ -369,6 +422,11 @@ function ChatPageContent() {
   // Fetch organizations and auto-select if none selected
   const { organizations, currentUserId, loading: organizationsLoading } = useOrganizations()
 
+  // Fetch all workspaces — used for deferred deep link org resolution.
+  // Enabled only when orgs are loaded; shares cache with useOrganizationsQuery's fire-and-forget fetch.
+  const { data: allWorkspaces } = useAllWorkspacesQuery(organizations)
+  const deepLinkPending = useWorkspaceStoreBase(s => s.deepLinkPending)
+
   // Sync Dexie session once we have a user + org (required before storing messages)
   useEffect(() => {
     const resolvedUserId = user?.id ?? currentUserId
@@ -381,6 +439,24 @@ function ChatPageContent() {
 
     setDexieSession({ userId: resolvedUserId, orgId })
   }, [user?.id, currentUserId, selectedOrgId, organizations, dexieSession, setDexieSession])
+
+  // Deferred deep link org resolution: when ?wk= was consumed before org data was
+  // available, resolve the orgId once the all-workspaces query completes.
+  useEffect(() => {
+    if (!deepLinkPending || !allWorkspaces) return
+
+    for (const [orgId, workspaces] of Object.entries(allWorkspaces)) {
+      if (workspaces.some(w => w.hostname === deepLinkPending)) {
+        setSelectedOrg(orgId)
+        setWorkspace(deepLinkPending, orgId)
+        setDeepLinkPending(null)
+        return
+      }
+    }
+    // allWorkspaces loaded but workspace not found — workspace genuinely doesn't exist.
+    // Clear the pending flag so validateWorkspaceAvailability can clean up.
+    setDeepLinkPending(null)
+  }, [deepLinkPending, allWorkspaces, setSelectedOrg, setWorkspace, setDeepLinkPending])
 
   // Fetch conversations from server when workspace changes
   const { syncFromServer } = useDexieMessageActions()
