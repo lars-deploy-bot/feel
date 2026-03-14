@@ -137,6 +137,27 @@ export interface WorkerQueryFailureDiagnostics {
   originalErrorMessage: string
 }
 
+export interface WorkerPidsPressureDiagnostics {
+  current: number
+  max: number
+  headroom: number
+  usagePercent: number
+  cgroupPath: string
+  pid: number
+}
+
+/** Structured diagnostics attached to worker boot/startup failures. */
+export interface WorkerBootFailureDiagnostics {
+  failureType: "worker_boot_error"
+  phase: "startup" | "module_resolution" | "ready_timeout"
+  exitCode: number | null
+  signal: string | null
+  pid: number | undefined
+  stderrExcerpt: string
+  stderrLineCount: number
+  pids?: WorkerPidsPressureDiagnostics
+}
+
 /** Messages sent from worker to parent */
 export type WorkerToParentMessage =
   | { type: "ready" }
@@ -369,7 +390,7 @@ export interface WorkerPoolEvents {
     exitCode: number | null
     signal: string | null
     stderr?: string
-    diagnostics?: unknown
+    diagnostics?: WorkerBootFailureDiagnostics | { pids?: WorkerPidsPressureDiagnostics }
   }
   "worker:evicted": { workspaceKey: string; reason: string }
   "pool:at_capacity": { currentWorkers: number; maxWorkers: number }

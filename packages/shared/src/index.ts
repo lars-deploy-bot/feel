@@ -168,6 +168,7 @@ export {
   providerSupportsOAuth,
   providerSupportsPat,
 } from "./mcp-providers.js"
+export { type ReachableGlobalMcpServersResult, resolveReachableGlobalMcpServers } from "./mcp-runtime.js"
 export {
   ALL_CLAUDE_MODELS,
   // Claude models - SINGLE SOURCE OF TRUTH
