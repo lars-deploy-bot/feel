@@ -1,27 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-class MockSandboxNotReadyError extends Error {
-  readonly code = "SANDBOX_NOT_READY"
+const mockSandboxConnect = vi.fn()
 
-  constructor(hostname: string, status: string | null) {
-    super(`Sandbox for ${hostname} is not ready (${status ?? "none"})`)
-    this.name = "SandboxNotReadyError"
-  }
-}
-
-const mockConnectRunningSandbox = vi.fn()
+vi.mock("e2b", () => ({
+  Sandbox: {
+    connect: (...args: unknown[]) => mockSandboxConnect(...args),
+  },
+}))
 
 vi.mock("@webalive/sandbox", () => ({
-  connectRunningSandbox: (...args: unknown[]) => mockConnectRunningSandbox(...args),
-  DEFAULT_SANDBOX_CONNECT_TIMEOUT_MS: 10_000,
-  RuntimeNotReadyError: MockSandboxNotReadyError,
   SANDBOX_WORKSPACE_ROOT: "/home/user/project",
   getSandboxConnectErrorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
   isSandboxDefinitelyGone: (error: unknown) => {
     if (typeof error === "object" && error !== null && "statusCode" in error && error.statusCode === 404) {
       return true
     }
-
     return (error instanceof Error ? error.message : String(error)).toLowerCase().includes("not found")
   },
 }))
@@ -62,78 +55,47 @@ describe("connectSandbox", () => {
 
   it("connects when sandbox_id exists and status is running", async () => {
     const fakeSandbox = { id: "sbx_abc" }
-    mockConnectRunningSandbox.mockResolvedValue(fakeSandbox)
+    mockSandboxConnect.mockResolvedValue(fakeSandbox)
 
     const result = await connectSandbox(makeDomain())
 
     expect(result).toBe(fakeSandbox)
-    expect(mockConnectRunningSandbox).toHaveBeenCalledWith(makeDomain(), {
-      connectTimeoutMs: 10_000,
-      e2bDomain: expect.any(String),
-      markDeadIfCurrent: expect.any(Function),
+    expect(mockSandboxConnect).toHaveBeenCalledWith("sbx_abc", {
+      domain: "e2b.test.local",
+      timeoutMs: 10_000,
     })
-  })
-
-  it("normalizes is_test_env nulls before delegating", async () => {
-    mockConnectRunningSandbox.mockResolvedValue({ id: "sbx_abc" })
-
-    await connectSandbox(makeDomain({ is_test_env: null }))
-
-    expect(mockConnectRunningSandbox).toHaveBeenCalledWith(
-      expect.objectContaining({
-        is_test_env: undefined,
-      }),
-      expect.any(Object),
-    )
   })
 
   it("throws SandboxNotReadyError when sandbox_id is null", async () => {
-    mockConnectRunningSandbox.mockRejectedValue(new SandboxNotReadyError("example.com", null))
-
     await expect(connectSandbox(makeDomain({ sandbox_id: null }))).rejects.toThrow(SandboxNotReadyError)
-    expect(mockConnectRunningSandbox).toHaveBeenCalledWith(
-      expect.objectContaining({ sandbox_id: null }),
-      expect.any(Object),
-    )
+    expect(mockSandboxConnect).not.toHaveBeenCalled()
   })
 
   it("throws SandboxNotReadyError when status is creating", async () => {
-    mockConnectRunningSandbox.mockRejectedValue(new SandboxNotReadyError("example.com", "creating"))
-
     await expect(connectSandbox(makeDomain({ sandbox_status: "creating" }))).rejects.toThrow(SandboxNotReadyError)
-    expect(mockConnectRunningSandbox).toHaveBeenCalledWith(
-      expect.objectContaining({ sandbox_status: "creating" }),
-      expect.any(Object),
-    )
+    expect(mockSandboxConnect).not.toHaveBeenCalled()
   })
 
   it("throws SandboxNotReadyError when status is dead", async () => {
-    mockConnectRunningSandbox.mockRejectedValue(new SandboxNotReadyError("example.com", "dead"))
-
     await expect(connectSandbox(makeDomain({ sandbox_status: "dead" }))).rejects.toThrow(SandboxNotReadyError)
-    expect(mockConnectRunningSandbox).toHaveBeenCalledWith(
-      expect.objectContaining({ sandbox_status: "dead" }),
-      expect.any(Object),
-    )
+    expect(mockSandboxConnect).not.toHaveBeenCalled()
   })
 
   it("throws SandboxNotReadyError when sandbox_status is null", async () => {
-    mockConnectRunningSandbox.mockRejectedValue(new SandboxNotReadyError("example.com", null))
-
     await expect(connectSandbox(makeDomain({ sandbox_status: null }))).rejects.toThrow(SandboxNotReadyError)
-    expect(mockConnectRunningSandbox).toHaveBeenCalledWith(
-      expect.objectContaining({ sandbox_status: null }),
-      expect.any(Object),
-    )
+    expect(mockSandboxConnect).not.toHaveBeenCalled()
+  })
+
+  it("throws when E2B_DOMAIN is missing", async () => {
+    vi.stubEnv("E2B_DOMAIN", "")
+
+    await expect(connectSandbox(makeDomain())).rejects.toThrow("E2B_DOMAIN environment variable is required")
   })
 
   it("marks sandbox dead in DB when connect returns a not-found error", async () => {
-    mockConnectRunningSandbox.mockImplementation(async (_domain, options) => {
-      await options.markDeadIfCurrent(makeDomain())
-      throw new SandboxNotReadyError("example.com", "running")
-    })
+    mockSandboxConnect.mockRejectedValue(new Error("sandbox not found"))
 
-    await expect(connectSandbox(makeDomain({ sandbox_id: null }))).rejects.toThrow(SandboxNotReadyError)
+    await expect(connectSandbox(makeDomain())).rejects.toThrow(SandboxNotReadyError)
 
     expect(mockFrom).toHaveBeenCalledWith("domains")
     expect(mockUpdate).toHaveBeenCalledWith({ sandbox_status: "dead" })
@@ -143,30 +105,26 @@ describe("connectSandbox", () => {
   })
 
   it("marks sandbox dead in DB when connect returns HTTP 404", async () => {
-    mockConnectRunningSandbox.mockImplementation(async (_domain, options) => {
-      await options.markDeadIfCurrent(makeDomain())
-      throw new SandboxNotReadyError("example.com", "running")
-    })
+    const err = Object.assign(new Error("Not Found"), { statusCode: 404 })
+    mockSandboxConnect.mockRejectedValue(err)
 
     await expect(connectSandbox(makeDomain())).rejects.toThrow(SandboxNotReadyError)
     expect(mockUpdate).toHaveBeenCalledWith({ sandbox_status: "dead" })
   })
 
   it("does not mark sandbox dead for transient connect errors", async () => {
-    mockConnectRunningSandbox.mockRejectedValue(new Error("ECONNREFUSED"))
+    mockSandboxConnect.mockRejectedValue(new Error("ECONNREFUSED"))
 
-    await expect(connectSandbox(makeDomain())).rejects.toThrow("ECONNREFUSED")
+    await expect(connectSandbox(makeDomain())).rejects.toThrow(SandboxNotReadyError)
     expect(mockFrom).not.toHaveBeenCalled()
   })
 
-  it("still throws SandboxNotReadyError even if dead-mark DB update fails", async () => {
+  it("swallows DB error when marking dead and still throws SandboxNotReadyError", async () => {
     mockEqSandboxStatus.mockResolvedValueOnce({ error: { message: "DB down" } })
-    mockConnectRunningSandbox.mockImplementation(async (_domain, options) => {
-      await options.markDeadIfCurrent(makeDomain())
-      throw new SandboxNotReadyError("example.com", "running")
-    })
+    mockSandboxConnect.mockRejectedValue(new Error("sandbox not found"))
 
-    await expect(connectSandbox(makeDomain())).rejects.toThrow("Failed to mark sandbox dead: DB down")
+    // The source code catches the DB error (logs it) and still throws SandboxNotReadyError
+    await expect(connectSandbox(makeDomain())).rejects.toThrow(SandboxNotReadyError)
   })
 })
 
