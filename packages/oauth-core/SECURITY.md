@@ -126,10 +126,10 @@ CHECK ((char_length(name) >= 1) AND (char_length(name) <= 128))
 #### `user_env_keys` Security Considerations
 
 **Input Validation:**
-Key names must be validated before storage. Only alphanumeric characters, underscores, and hyphens should be accepted. Reject keys containing shell metacharacters, whitespace, or null bytes to prevent injection when keys are interpolated into environment blocks.
+Key names must be validated before storage. Only uppercase alphanumeric characters and underscores are accepted (`^[A-Z][A-Z0-9_]{0,127}$`). Reject keys containing hyphens, shell metacharacters, whitespace, or null bytes to prevent injection when keys are interpolated into environment blocks.
 
 **Format Validation:**
-Values are stored as opaque encrypted blobs, but key names must conform to environment variable naming conventions (e.g., `^[A-Z][A-Z0-9_]{0,127}$`). The 128-character `CHECK` constraint on `name` enforces an upper bound, but callers must also reject empty or malformed names before reaching the database.
+Values are stored as opaque encrypted blobs, but key names must conform to environment variable naming conventions (`^[A-Z][A-Z0-9_]{0,127}$`). The 128-character `CHECK` constraint on `name` enforces an upper bound, but callers must also reject empty or malformed names before reaching the database.
 
 **Scope Limitation:**
 User env keys are injected into MCP server processes scoped to a single workspace session. They must never be propagated to other users, other workspaces, or persisted into build artifacts. The isolation boundary is the per-session process environment.
