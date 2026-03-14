@@ -24,6 +24,10 @@ interface WorkspaceState {
   selectedOrgId: string | null
   recentWorkspaces: RecentWorkspace[]
   currentWorktreeByWorkspace: Record<string, string | null>
+  /** Workspace domain set via deep link that hasn't been confirmed by
+   *  validateWorkspaceAvailability yet. Prevents the validator from clearing
+   *  the workspace before the all-workspaces fetch has completed. Not persisted. */
+  deepLinkPending: string | null
 }
 
 // Actions interface - grouped under stable object (Guide §14.3)
@@ -36,6 +40,8 @@ interface WorkspaceActions {
     autoSelectWorkspace: () => boolean // Returns true if a workspace was auto-selected
     validateAndCleanup: (organizations: Organization[]) => void
     validateWorkspaceAvailability: (availableWorkspaces: string[]) => void
+    setDeepLinkPending: (workspace: string | null) => void
+    setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
     clearRecentWorkspaces: () => void
   }
@@ -58,7 +64,10 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             if (workspace && nextWorktrees[workspace] === undefined) {
               nextWorktrees[workspace] = null
             }
-            return { currentWorkspace: workspace, currentWorktreeByWorkspace: nextWorktrees }
+            return {
+              currentWorkspace: workspace,
+              currentWorktreeByWorkspace: nextWorktrees,
+            }
           })
           // Also track in recent workspaces for history
           if (workspace && orgId) {
@@ -202,9 +211,18 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             const availableSet = new Set(availableWorkspaces)
             const updates: Partial<WorkspaceState> = {}
 
-            // Clear current workspace if not available on this server
             if (state.currentWorkspace && !availableSet.has(state.currentWorkspace)) {
-              updates.currentWorkspace = null
+              if (state.deepLinkPending === state.currentWorkspace) {
+                // Deep link workspace not yet in the available list — keep it.
+                // The pending flag stays so a timeout can clear it if it never appears.
+              } else {
+                updates.currentWorkspace = null
+              }
+            }
+
+            // Workspace confirmed available — clear pending flag
+            if (state.deepLinkPending && availableSet.has(state.deepLinkPending)) {
+              updates.deepLinkPending = null
             }
 
             // Filter recent workspaces to only include available ones
@@ -215,6 +233,15 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
 
             return Object.keys(updates).length > 0 ? updates : state
           })
+        },
+
+        setDeepLinkPending: (workspace: string | null) => {
+          set({ deepLinkPending: workspace })
+        },
+
+        setSelectedWorkspace: (workspace: string | null, orgId?: string) => {
+          // Backward compatibility: delegates to setCurrentWorkspace
+          actions.setCurrentWorkspace(workspace, orgId)
         },
 
         addRecentWorkspace: (domain: string, orgId: string) => {
@@ -256,6 +283,7 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
         selectedOrgId: null,
         recentWorkspaces: [],
         currentWorktreeByWorkspace: {},
+        deepLinkPending: null,
         actions,
       }
     },
@@ -292,6 +320,7 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             selectedOrgId: state.selectedOrgId ?? null,
             recentWorkspaces: state.recentWorkspaces ?? [],
             currentWorktreeByWorkspace: state.currentWorktreeByWorkspace ?? {},
+            deepLinkPending: null,
           }
         }
         return {
@@ -299,6 +328,7 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
           selectedOrgId: state.selectedOrgId ?? null,
           recentWorkspaces: state.recentWorkspaces ?? [],
           currentWorktreeByWorkspace: state.currentWorktreeByWorkspace ?? {},
+          deepLinkPending: null,
         }
       },
       onRehydrateStorage: () => (_state, error) => {
