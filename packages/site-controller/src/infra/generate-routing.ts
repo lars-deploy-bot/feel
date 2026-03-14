@@ -15,7 +15,14 @@ import { existsSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { createClient } from "@supabase/supabase-js"
-import { caddySitesPath, parseServerConfig, requireEnv, requireStreamEnv, type ServerConfig } from "@webalive/shared"
+import {
+  caddySitesPath,
+  isAliveWorkspace,
+  parseServerConfig,
+  requireEnv,
+  requireStreamEnv,
+  type ServerConfig,
+} from "@webalive/shared"
 import { assertNoDangerousCountDrop, readExistingGeneratedCaddyDomainCount } from "../generated-safety.js"
 import { loadCanonicalInfraEnv } from "../infra-env.js"
 
@@ -54,6 +61,7 @@ function filterReservedDomains(domains: DomainRow[], environments: EnvironmentCo
   const reservedDomains = new Set(environments.flatMap(e => [e.domain, e.previewBase]))
 
   return domains.filter(d => {
+    if (isAliveWorkspace(d.hostname)) return false
     if (reservedDomains.has(d.hostname)) return false
     return !environments.some(e => d.hostname.endsWith(`.${e.previewBase}`))
   })
@@ -187,7 +195,7 @@ async function queryEmbeddableTemplateHosts(): Promise<Set<string>> {
 // Renderers
 // =============================================================================
 
-function renderCaddySites(
+export function renderCaddySites(
   cfg: ServerConfig,
   environments: EnvironmentConfig[],
   _snippets: { common: string; image: string },

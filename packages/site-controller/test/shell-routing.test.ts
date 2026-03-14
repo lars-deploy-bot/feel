@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { renderCaddyShell } from "../src/infra/generate-routing.ts"
+import { renderCaddyShell, renderCaddySites } from "../src/infra/generate-routing.ts"
 
 type RenderShellInput = Parameters<typeof renderCaddyShell>[0]
 
@@ -64,5 +64,31 @@ describe("renderCaddyShell", () => {
     const output = renderCaddyShell(makeConfig({ e2bUpstream: "localhost:5075" }))
     expect(output).toContain("reverse_proxy localhost:5075")
     expect(output).toContain("reverse_proxy localhost:3888")
+  })
+})
+
+describe("renderCaddySites", () => {
+  it("excludes the internal alive workspace from public site routing", () => {
+    const output = renderCaddySites(
+      makeConfig(),
+      [
+        {
+          key: "production",
+          port: 9000,
+          domain: "app.example.com",
+          previewBase: "preview.app.example.com",
+        },
+      ],
+      { common: "", image: "" },
+      [
+        { hostname: "alive", port: 0 },
+        { hostname: "demo.example.com", port: 3333 },
+      ],
+      new Set(),
+      "production",
+    )
+
+    expect(output).not.toContain("alive {")
+    expect(output).toContain("demo.example.com {")
   })
 })

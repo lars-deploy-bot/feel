@@ -305,6 +305,8 @@ export interface WorkerPoolConfig {
   evictionStrategy: EvictionStrategy
   /** Path to worker entry script */
   workerEntryPath: string
+  /** Absolute path to the Node runtime used for worker subprocesses under Bun parents */
+  nodeExecutablePath: string
   /** Directory for Unix sockets */
   socketDir: string
   /** Timeout for worker to become ready (ms) */

@@ -45,6 +45,10 @@ async function readStdinJson() {
     }
 
     // Drop privileges BEFORE running command
+    if (process.getuid() === 0 && process.setgroups) {
+      process.setgroups([targetGid])
+      console.error(`[run-cmd] Reset supplementary groups to: ${targetGid}`)
+    }
     if (process.setgid) {
       process.setgid(targetGid)
       console.error(`[run-cmd] Dropped to GID: ${targetGid}`)
