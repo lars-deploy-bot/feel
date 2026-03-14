@@ -734,6 +734,12 @@ pub(super) async fn process_build(
         return Err(error);
     }
 
-    pipeline.finish_success("build succeeded").await?;
+    if let Err(error) = pipeline.finish_success("build succeeded").await {
+        tracing::warn!(
+            message = "post-success telemetry failed: finish pipeline",
+            build_id = %build.build_id,
+            error = %format!("{:#}", error),
+        );
+    }
     Ok(())
 }

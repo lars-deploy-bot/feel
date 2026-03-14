@@ -19,7 +19,7 @@ import type {
   ManagerDeployRelease,
 } from "./deploys.types"
 
-const DEPLOYER_DATA_DIR = process.env.ALIVE_DEPLOYER_DATA_DIR || "/var/lib/alive/deployer"
+const DEPLOYER_DATA_DIR = "/var/lib/alive/deployer"
 const LOG_TAIL_LINES = 400
 
 function mapBuild(build: deployRepo.DeployBuildRow): ManagerDeployBuild {

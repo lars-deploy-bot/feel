@@ -219,7 +219,7 @@ export class OAuthManager {
         config = {
           client_id: envClientId,
           client_secret: envClientSecret,
-          redirect_uri: envRedirectUri || undefined,
+          redirect_uri: typeof envRedirectUri === "string" && envRedirectUri.length > 0 ? envRedirectUri : undefined,
         }
       }
     }

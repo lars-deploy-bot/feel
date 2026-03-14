@@ -205,7 +205,9 @@ export class StripeProvider implements OAuthProviderCore, OAuthRefreshable, OAut
       typeof providerMetadata?.stripe_user_id === "string" ? providerMetadata.stripe_user_id : undefined
 
     if (!stripeUserId) {
-      throw new Error("Stripe revocation requires provider_metadata.stripe_user_id")
+      // Legacy connections may not have provider metadata.
+      // Skip remote deauthorize so caller can still remove local credentials.
+      return
     }
 
     const params = new URLSearchParams({
