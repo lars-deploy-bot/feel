@@ -93,6 +93,7 @@ vi.mock("@/lib/config", () => ({
 }))
 
 const { DELETE } = await import("../route")
+const { WILDCARD_DOMAIN } = await import("@/lib/config")
 
 function makeRequest(body: unknown, secret?: string): NextRequest {
   const headers = new Headers({ "Content-Type": "application/json" })
@@ -176,6 +177,7 @@ describe("DELETE /api/test/delete-site", () => {
   })
 
   it("cleans leaked reusable live deploy domains when db row is already gone", async () => {
+    const domain = `dl1.${WILDCARD_DOMAIN}`
     mockAppMaybeSingle.mockResolvedValue({
       data: null,
       error: null,
@@ -185,26 +187,27 @@ describe("DELETE /api/test/delete-site", () => {
       reason: "workspace directory exists",
     })
 
-    const res = await DELETE(makeRequest({ domain: "dl1.alive.best" }, "test-secret"))
+    const res = await DELETE(makeRequest({ domain }, "test-secret"))
     const payload = await res.json()
 
     expect(res.status).toBe(200)
-    expect(payload).toEqual({ ok: true, domain: "dl1.alive.best" })
+    expect(payload).toEqual({ ok: true, domain })
     expect(mockInspectSiteOccupancy).toHaveBeenCalledWith("dl1")
     expect(mockExecFile).toHaveBeenCalledWith(
       expect.stringContaining("/scripts/sites/delete-site.sh"),
-      ["dl1.alive.best", "--force"],
+      [domain, "--force"],
       expect.any(Function),
     )
   })
 
   it("keeps returning 404 for missing reusable live deploy domains without leaked occupancy", async () => {
+    const domain = `dl1.${WILDCARD_DOMAIN}`
     mockAppMaybeSingle.mockResolvedValue({
       data: null,
       error: null,
     })
 
-    const res = await DELETE(makeRequest({ domain: "dl1.alive.best" }, "test-secret"))
+    const res = await DELETE(makeRequest({ domain }, "test-secret"))
 
     expect(res.status).toBe(404)
     expect(mockInspectSiteOccupancy).toHaveBeenCalledWith("dl1")
