@@ -43,8 +43,15 @@ fi
 
 log "Phase 2/3: Verifying database schema for $ENVIRONMENT"
 
+DRIFT_OUTPUT_DIR=".artifacts/schema-drift"
 drift_exit=0
 if ! "$PROJECT_ROOT/scripts/database/check-schema-drift.sh" --target "$ENVIRONMENT"; then
+    log "FATAL: Schema drift check failed (operational error)"
+    exit 1
+fi
+# check-schema-drift.sh exits 0 in non-strict mode even when drift is found.
+# Parse the machine-readable status file for the actual drift signal.
+if grep -q '^SCHEMA_DRIFT=1$' "$DRIFT_OUTPUT_DIR/status.env" 2>/dev/null; then
     log "WARNING: Database schema drift detected (non-blocking)"
     drift_exit=2
 fi
