@@ -164,6 +164,13 @@ CREATE TABLE IF NOT EXISTS deploy.deployments (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Compatibility: CI reuses a persistent database, so this migration can rerun
+-- against an older deploy.builds shape from before builds became server-scoped.
+-- Ensure the column exists before the indexes below reference it. Migration 0021
+-- backfills live data and tightens the upgrade path for existing rows.
+ALTER TABLE deploy.builds
+  ADD COLUMN IF NOT EXISTS server_id text REFERENCES app.servers(server_id);
+
 CREATE UNIQUE INDEX IF NOT EXISTS deploy_environments_hostname_ci_uidx
   ON deploy.environments (lower(hostname));
 
