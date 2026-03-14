@@ -61,13 +61,15 @@ COPY --from=build /app/apps/web/public ./apps/web/public
 # traced by Next.js standalone. Copy the full node_modules and packages from the build
 # stage into /app/worker-deps/.
 # NODE_PATH doesn't work for ESM (Node ignores it for import resolution), so we also
-# symlink from the worker's parent directory so Node's upward node_modules walk finds them.
+# symlink at /app/packages/node_modules. That parent-level location covers worker-entry.mjs
+# itself and sibling workspace packages like @webalive/sandbox during Node's upward
+# node_modules resolution walk.
 COPY --from=build /app/node_modules /app/worker-deps/node_modules
 COPY --from=build /app/packages /app/worker-deps/packages
-RUN ln -s /app/worker-deps/node_modules /app/packages/worker-pool/node_modules
+RUN ln -s /app/worker-deps/node_modules /app/packages/node_modules
 
 ENV NODE_PATH=/app/worker-deps/node_modules
 
 EXPOSE 3000
 
-CMD ["node", "apps/web/server.js"]
+CMD ["bun", "apps/web/server.js"]
