@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 const getSessionUserMock = vi.fn()
 const validateUserOrgAccessMock = vi.fn()
@@ -85,6 +86,14 @@ vi.mock("@/lib/deployment/deploy-pipeline", () => ({
   runStrictDeployment: (...args: unknown[]) => runStrictDeploymentMock(...args),
 }))
 
+vi.mock("@/lib/deployment/site-occupancy", () => ({
+  inspectSiteOccupancy: vi.fn(() => ({ occupied: false })),
+}))
+
+vi.mock("@/lib/auth/cookies", () => ({
+  setSessionCookie: vi.fn(),
+}))
+
 vi.mock("@/lib/deployment/ssl-validation", () => ({
   validateSSLCertificate: vi.fn(() => Promise.resolve()),
 }))
@@ -118,6 +127,7 @@ vi.mock("@/lib/site-workspace-registry", () => ({
   getSiteWorkspaceRoot: vi.fn((domain: string, mode: string) =>
     mode === "e2b" ? `${MOCK_E2B_SCRATCH}/${domain}` : `${MOCK_WORKSPACE_BASE}/${domain}`,
   ),
+  getSiteWorkspaceCandidates: vi.fn(() => []),
 }))
 
 vi.mock("@webalive/shared", async importOriginal => {
@@ -160,11 +170,9 @@ describe("POST /api/import-repo", () => {
     runStrictDeploymentMock.mockReset()
     siteMetadataSetSiteMock.mockReset()
 
-    getSessionUserMock.mockResolvedValue({
-      id: "user-1",
-      email: "owner@example.com",
-      name: "Owner",
-    })
+    getSessionUserMock.mockResolvedValue(
+      createMockSessionUser({ id: "user-1", email: "owner@example.com", name: "Owner" }),
+    )
     validateUserOrgAccessMock.mockResolvedValue(true)
     getUserQuotaMock.mockResolvedValue({
       canCreateSite: true,
@@ -431,12 +439,9 @@ describe("POST /api/import-repo", () => {
   })
 
   it("allows superadmins to bypass site quota checks", async () => {
-    getSessionUserMock.mockResolvedValueOnce({
-      id: "user-1",
-      email: "owner@example.com",
-      name: "Owner",
-      isSuperadmin: true,
-    })
+    getSessionUserMock.mockResolvedValueOnce(
+      createMockSessionUser({ id: "user-1", email: "owner@example.com", name: "Owner", isSuperadmin: true }),
+    )
     getUserQuotaMock.mockResolvedValueOnce({
       canCreateSite: false,
       maxSites: 1,

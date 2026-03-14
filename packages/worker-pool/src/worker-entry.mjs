@@ -30,18 +30,18 @@ import { query } from "@anthropic-ai/claude-agent-sdk"
 // IMPORTANT: Import these BEFORE dropping privileges!
 // After privilege drop, the worker can't read /root/alive/node_modules/
 import * as Sentry from "@sentry/node"
-import { requireRuntimeScope } from "@webalive/runtime-auth"
 import {
   createE2bMcp,
   E2B_DEFAULT_TEMPLATE,
   E2B_DISABLED_SDK_TOOLS,
   E2B_MCP_TOOLS,
-  fetchDomainRuntimeByHostname,
+  EXECUTION_MODES,
+  SANDBOX_STATUSES,
   SANDBOX_WORKSPACE_ROOT,
   SandboxManager,
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, OAUTH_MCP_PROVIDERS, resolveStreamMode, SENTRY, STREAM_MODES, SUPERADMIN } from "@webalive/shared"
+import { createStreamToolContext, DEFAULTS, formatUncaughtError, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, OAUTH_MCP_PROVIDERS, resolveReachableGlobalMcpServers, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
 import {
   emailInternalMcp,
   sandboxedFsInternalMcp,
@@ -51,6 +51,7 @@ import {
 } from "@webalive/tools"
 import { resolveSandboxTemplate } from "../dist/e2b-template.js"
 import { E2B_INFRASTRUCTURE_ENV_KEYS, prepareRequestEnv } from "../dist/env-isolation.js"
+import { getMissingTerminalResultError } from "../dist/query-guard.js"
 
 // Initialize Sentry for error reporting in the worker process.
 // DSN comes from server-config.json via @webalive/shared.
@@ -123,64 +124,6 @@ function getSandboxManager(template = E2B_DEFAULT_TEMPLATE) {
   })
   sandboxManagers.set(template, manager)
   return manager
-}
-
-function getSupabasePersistenceConfig() {
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl) {
-    throw new Error("[worker] FATAL: SUPABASE_URL is required to resolve runtime state")
-  }
-  if (!serviceRoleKey) {
-    throw new Error("[worker] FATAL: SUPABASE_SERVICE_ROLE_KEY is required to resolve runtime state")
-  }
-
-  return { supabaseUrl, serviceRoleKey }
-}
-
-async function resolveWorkerDomainRuntime(workspace) {
-  const { supabaseUrl, serviceRoleKey } = getSupabasePersistenceConfig()
-  return fetchDomainRuntimeByHostname({
-    hostname: workspace,
-    supabaseUrl,
-    serviceRoleKey,
-  })
-}
-
-function removeTools(target, blocked) {
-  if (blocked.length === 0) {
-    return
-  }
-  for (let index = target.length - 1; index >= 0; index--) {
-    if (blocked.includes(target[index])) {
-      target.splice(index, 1)
-    }
-  }
-}
-
-function enforceRuntimeAccess(payload, allowedTools, disallowedTools, workspaceKey) {
-  const runtimeAccess = payload.runtimeAccess
-  if (!runtimeAccess || typeof runtimeAccess !== "object") {
-    throw new Error("[worker] runtimeAccess is required")
-  }
-  if (runtimeAccess.workspace !== workspaceKey) {
-    throw new Error(`[worker] runtimeAccess workspace mismatch: ${runtimeAccess.workspace} != ${workspaceKey}`)
-  }
-
-  requireRuntimeScope(runtimeAccess.scopes, "runtime:connect")
-
-  if (!runtimeAccess.scopes.includes("files:write")) {
-    removeTools(allowedTools, ["Write", "Edit", "NotebookEdit", "mcp__e2b__Write", "mcp__e2b__Edit"])
-    disallowedTools.push("Write", "Edit", "NotebookEdit", "mcp__e2b__Write", "mcp__e2b__Edit")
-  }
-
-  if (!runtimeAccess.scopes.includes("files:read")) {
-    removeTools(allowedTools, ["Read", "Glob", "Grep", "mcp__e2b__Read", "mcp__e2b__Glob", "mcp__e2b__Grep"])
-    disallowedTools.push("Read", "Glob", "Grep", "mcp__e2b__Read", "mcp__e2b__Glob", "mcp__e2b__Grep")
-  }
-
-  return runtimeAccess
 }
 
 // Global unhandled rejection handler - smart handling based on error type
@@ -639,8 +582,20 @@ function dropPrivileges() {
   }
 
   // Drop privileges with validation
-  // CRITICAL: Must drop GID before UID (can't setgid after dropping root UID)
+  // CRITICAL:
+  // 1. Reset supplementary groups BEFORE setgid/setuid. Otherwise the process
+  //    can retain root-era group state, and Claude SDK queries can silently
+  //    return 0 messages with no stderr after privilege drop.
+  // 2. Drop GID before UID (can't setgid after dropping root UID).
   try {
+    if (targetGid && process.getuid() === 0 && process.setgroups) {
+      process.setgroups([targetGid])
+      if (process.getgroups && !process.getgroups().includes(targetGid)) {
+        throw new Error(`Supplementary groups missing target GID ${targetGid} after reset`)
+      }
+      console.error(`[worker] Reset supplementary groups to: ${targetGid}`)
+    }
+
     if (targetGid && process.setgid) {
       process.setgid(targetGid)
       const actualGid = process.getgid()
@@ -799,21 +754,29 @@ async function handleQuery(ipc, requestId, payload) {
     }
   }
 
-  if (!payload.runtimeAccess || typeof payload.runtimeAccess !== "object") {
-    validationErrors.push("runtimeAccess is required and must be an object")
-  } else {
-    const runtimeAccess = payload.runtimeAccess
-    if (typeof runtimeAccess.userId !== "string" || runtimeAccess.userId.length === 0) {
-      validationErrors.push("runtimeAccess.userId must be a non-empty string")
-    }
-    if (typeof runtimeAccess.workspace !== "string" || runtimeAccess.workspace.length === 0) {
-      validationErrors.push("runtimeAccess.workspace must be a non-empty string")
-    }
-    if (!Array.isArray(runtimeAccess.scopes) || !runtimeAccess.scopes.every(scope => typeof scope === "string")) {
-      validationErrors.push("runtimeAccess.scopes must be an array of strings")
-    }
-    if (typeof runtimeAccess.role !== "string" || runtimeAccess.role.length === 0) {
-      validationErrors.push("runtimeAccess.role must be a non-empty string")
+  if (payload.executionMode !== undefined && !EXECUTION_MODES.has(payload.executionMode)) {
+    validationErrors.push("executionMode must be 'systemd' or 'e2b'")
+  }
+  if (payload.executionMode === "e2b") {
+    if (!payload.sandboxDomain || typeof payload.sandboxDomain !== "object") {
+      validationErrors.push("sandboxDomain is required when executionMode is 'e2b'")
+    } else {
+      const domain = payload.sandboxDomain
+      if (typeof domain.domain_id !== "string" || domain.domain_id.length === 0) {
+        validationErrors.push("sandboxDomain.domain_id must be a non-empty string")
+      }
+      if (typeof domain.hostname !== "string" || domain.hostname.length === 0) {
+        validationErrors.push("sandboxDomain.hostname must be a non-empty string")
+      }
+      if (domain.sandbox_id !== null && typeof domain.sandbox_id !== "string") {
+        validationErrors.push("sandboxDomain.sandbox_id must be string|null")
+      }
+      if (domain.sandbox_status !== null && !SANDBOX_STATUSES.has(domain.sandbox_status)) {
+        validationErrors.push("sandboxDomain.sandbox_status must be 'creating'|'running'|'dead'|null")
+      }
+      if (domain.is_test_env !== undefined && typeof domain.is_test_env !== "boolean") {
+        validationErrors.push("sandboxDomain.is_test_env must be boolean|undefined")
+      }
     }
   }
 
@@ -854,12 +817,6 @@ async function handleQuery(ipc, requestId, payload) {
   let initSessionId = null
   let connectedProviders = []
   let enabledMcpServerKeys = []
-  const workspaceKey = process.env.WORKER_WORKSPACE_KEY
-  if (!workspaceKey) {
-    ipc.send({ type: "error", requestId, error: "Missing WORKER_WORKSPACE_KEY in worker environment" })
-    clearQueryState()
-    return
-  }
 
   try {
     // SECURITY: Isolate process.env between requests to prevent credential leakage.
@@ -886,12 +843,6 @@ async function handleQuery(ipc, requestId, payload) {
           console.error(`[worker] Added ${config.knownTools.length} tools for OAuth provider: ${providerKey}`)
         }
       }
-    }
-
-    const runtimeAccess = enforceRuntimeAccess(payload, allowedTools, disallowedTools, workspaceKey)
-    let domainRuntime = null
-    if (runtimeAccess.workspace !== SUPERADMIN.WORKSPACE_NAME) {
-      domainRuntime = await resolveWorkerDomainRuntime(runtimeAccess.workspace)
     }
 
     console.error(`[worker] Allowed tools count: ${allowedTools.length}`)
@@ -934,14 +885,17 @@ async function handleQuery(ipc, requestId, payload) {
     // createSdkMcpServer returns function objects.
     // They must be imported and created locally in the worker.
 
-    // Build global HTTP MCP servers (always available, no auth required)
-    // These are defined in GLOBAL_MCP_PROVIDERS in @webalive/shared
-    const globalMcpServers = {}
-    for (const [providerKey, config] of Object.entries(GLOBAL_MCP_PROVIDERS)) {
-      globalMcpServers[providerKey] = {
-        type: "http",
-        url: config.url,
-      }
+    const {
+      filteredAllowedTools,
+      reachableServers: globalMcpServers,
+      skippedServers: skippedGlobalMcpServers,
+    } = modeConfig.mcpEnabled
+      ? await resolveReachableGlobalMcpServers(allowedTools)
+      : { filteredAllowedTools: allowedTools, reachableServers: {}, skippedServers: [] }
+    allowedTools.length = 0
+    allowedTools.push(...filteredAllowedTools)
+    if (skippedGlobalMcpServers.length > 0) {
+      console.error(`[worker] Skipping unreachable global MCP servers: ${skippedGlobalMcpServers.join(", ")}`)
     }
 
     // Optional MCP servers — only loaded when extraTools references them
@@ -980,36 +934,27 @@ async function handleQuery(ipc, requestId, payload) {
     // E2B sandbox routing: swap file/shell tools to remote sandbox.
     // The SDK cwd stays local (needed for subprocess), but Claude sees SANDBOX_WORKSPACE_ROOT
     // in the system prompt and all file ops go through the sandbox MCP.
-    if (domainRuntime?.execution_mode === "e2b") {
+    if (payload.executionMode === "e2b" && payload.sandboxDomain) {
       if (!modeConfig.mcpEnabled) {
         throw new Error(
-          `[worker] execution_mode=e2b requires MCP routing, but streamMode="${streamMode}" has mcpEnabled=false`,
+          `[worker] executionMode=e2b requires MCP routing, but streamMode="${streamMode}" has mcpEnabled=false`,
         )
       }
       try {
-        const template = resolveSandboxTemplate(domainRuntime.hostname)
+        const template = resolveSandboxTemplate(payload.sandboxDomain.hostname)
         const manager = getSandboxManager(template)
         const hostWorkspacePath = process.cwd()
-        const sandbox = await manager.getOrCreate(
-          {
-            domain_id: domainRuntime.domain_id,
-            hostname: domainRuntime.hostname,
-            sandbox_id: domainRuntime.sandbox_id,
-            sandbox_status: domainRuntime.sandbox_status,
-            is_test_env: domainRuntime.is_test_env ?? undefined,
-          },
-          hostWorkspacePath,
-        )
+        const sandbox = await manager.getOrCreate(payload.sandboxDomain, hostWorkspacePath)
         mcpServers.e2b = createE2bMcp(
           sandbox,
           (error, context) => {
             Sentry.captureException(error, {
-              tags: { component: "e2b", security: "path_traversal", domain: domainRuntime.hostname },
+              tags: { component: "e2b", security: "path_traversal", domain: payload.sandboxDomain.hostname },
               extra: context,
             })
           },
           {
-            hostname: domainRuntime.hostname,
+            hostname: payload.sandboxDomain.hostname,
             previewBase: DEFAULTS.PREVIEW_BASE,
           },
         )
@@ -1022,10 +967,10 @@ async function handleQuery(ipc, requestId, payload) {
           if (key !== "e2b") delete mcpServers[key]
         }
         console.error(
-          `[worker] E2B mode: template ${template}, sandbox ${sandbox.sandboxId} for ${domainRuntime.hostname}, workspace at ${SANDBOX_WORKSPACE_ROOT}`,
+          `[worker] E2B mode: template ${template}, sandbox ${sandbox.sandboxId} for ${payload.sandboxDomain.hostname}, workspace at ${SANDBOX_WORKSPACE_ROOT}`,
         )
       } catch (e2bError) {
-        const ctx = domainRuntime
+        const ctx = payload.sandboxDomain
         const wrapped = new Error(
           `[E2B] Sandbox setup failed for ${ctx.hostname} (domain_id=${ctx.domain_id}, sandbox_id=${ctx.sandbox_id}): ${e2bError instanceof Error ? e2bError.message : String(e2bError)}`,
         )
@@ -1070,6 +1015,8 @@ async function handleQuery(ipc, requestId, payload) {
       const isBunRuntime = typeof Bun !== "undefined"
       const claudeExecutable = isBunRuntime ? "bun" : "node"
       const claudeExecutableArgs = isBunRuntime ? ["--no-env-file"] : []
+      // Previously we passed executable:"bun" which tried to run the native
+      // binary as a JS file, causing silent failures in Docker.
 
       // SECURITY (defense-in-depth): Build explicit env for the Claude subprocess.
       // Even though createWorkerSpawnEnv() already strips secrets at spawn time,
@@ -1201,6 +1148,11 @@ async function handleQuery(ipc, requestId, payload) {
         })
       }
     })
+
+    const missingTerminalResultError = getMissingTerminalResultError(queryResult, messageCount, signal.aborted)
+    if (missingTerminalResultError) {
+      throw new Error(missingTerminalResultError)
+    }
 
     // Send completion (include cancelled flag if aborted)
     const wasCancelled = signal.aborted

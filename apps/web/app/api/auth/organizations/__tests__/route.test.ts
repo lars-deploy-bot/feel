@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", () => ({
   getSessionUser: vi.fn(),
@@ -18,15 +19,11 @@ const { GET } = await import("../route")
 const { getSessionUser } = await import("@/features/auth/lib/auth")
 const { createRLSIamClient, createRLSAppClient } = await import("@/lib/supabase/server-rls")
 
-const MOCK_USER = {
+const MOCK_USER = createMockSessionUser({
   id: "user-1",
   email: "user@example.com",
   name: "User",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
+})
 
 function makeGetRequest(): NextRequest {
   return new NextRequest("http://localhost/api/auth/organizations", {

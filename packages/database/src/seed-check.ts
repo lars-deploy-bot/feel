@@ -77,16 +77,46 @@ export async function checkSchema(supabaseUrl: string, supabaseKey: string): Pro
 }
 
 async function checkSchemaOnce(supabaseUrl: string, supabaseKey: string): Promise<SchemaCheckResult> {
-  const { createAppClient } = await import("./client")
+  const { createAppClient } = await import("./client.js")
   const app = createAppClient(supabaseUrl, supabaseKey)
   const missing: string[] = []
 
-  const requiredTables = ["servers", "domains"] as const
+  const requiredChecks = [
+    {
+      label: "app.servers.server_id/hostname/ip",
+      run: () => app.from("servers").select("server_id, hostname, ip", { count: "exact", head: true }).limit(0),
+    },
+    {
+      label: "app.domains.domain_id/hostname/org_id",
+      run: () => app.from("domains").select("domain_id, hostname, org_id", { count: "exact", head: true }).limit(0),
+    },
+    {
+      label: "app.conversations.source/source_metadata",
+      run: () =>
+        app
+          .from("conversations")
+          .select("conversation_id, source, source_metadata", { count: "exact", head: true })
+          .limit(0),
+    },
+    {
+      label: "app.conversation_tabs.closed_at/draft",
+      run: () =>
+        app.from("conversation_tabs").select("tab_id, closed_at, draft", { count: "exact", head: true }).limit(0),
+    },
+    {
+      label: "app.automation_runs.chat_conversation_id/chat_tab_id",
+      run: () =>
+        app
+          .from("automation_runs")
+          .select("id, chat_conversation_id, chat_tab_id", { count: "exact", head: true })
+          .limit(0),
+    },
+  ]
 
-  for (const table of requiredTables) {
-    const { error } = await app.from(table).select("*", { count: "exact", head: true }).limit(0)
+  for (const check of requiredChecks) {
+    const { error } = await check.run()
     if (error) {
-      missing.push(`app.${table} (${error.code}: ${error.message})`)
+      missing.push(`${check.label} (${error.code}: ${error.message})`)
     }
   }
 
@@ -172,7 +202,7 @@ async function ensureServerRowOnce(
   supabaseKey: string,
   server: ServerIdentity,
 ): Promise<ServerCheckResult> {
-  const { createAppClient } = await import("./client")
+  const { createAppClient } = await import("./client.js")
   const app = createAppClient(supabaseUrl, supabaseKey)
 
   // Try to read first (fast path — row usually exists)

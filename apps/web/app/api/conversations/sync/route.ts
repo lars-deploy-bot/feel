@@ -50,6 +50,7 @@ interface TabData {
   lastMessageAt: number | null
   createdAt: number
   closedAt: number | null
+  draft: Json | null
 }
 
 interface MessageData {
@@ -160,6 +161,9 @@ async function syncSingleConversation(
 
   if (convoError) {
     console.error("[sync] Failed to upsert conversation:", convoError)
+    Sentry.captureException(new Error(`Sync upsert conversation failed: ${convoError.message}`), {
+      tags: { conversationId: conversation.id },
+    })
     return { ok: false, error: `Conversation: ${convoError.message}`, tabCount: 0, messageCount: 0 }
   }
 
@@ -174,12 +178,16 @@ async function syncSingleConversation(
       last_message_at: tab.lastMessageAt ? new Date(tab.lastMessageAt).toISOString() : null,
       created_at: new Date(tab.createdAt).toISOString(),
       closed_at: tab.closedAt ? new Date(tab.closedAt).toISOString() : null,
+      draft: tab.draft,
     }))
 
     const { error: tabsError } = await supabase.from("conversation_tabs").upsert(tabRows, { onConflict: "tab_id" })
 
     if (tabsError) {
       console.error("[sync] Failed to upsert tabs:", tabsError)
+      Sentry.captureException(new Error(`Sync upsert tabs failed: ${tabsError.message}`), {
+        tags: { conversationId: conversation.id },
+      })
       return { ok: false, error: `Tabs: ${tabsError.message}`, tabCount: 0, messageCount: 0 }
     }
   }
@@ -204,6 +212,9 @@ async function syncSingleConversation(
 
     if (messagesError) {
       console.error("[sync] Failed to upsert messages:", messagesError)
+      Sentry.captureException(new Error(`Sync upsert messages failed: ${messagesError.message}`), {
+        tags: { conversationId: conversation.id },
+      })
       return { ok: false, error: `Messages: ${messagesError.message}`, tabCount: tabs.length, messageCount: 0 }
     }
   }

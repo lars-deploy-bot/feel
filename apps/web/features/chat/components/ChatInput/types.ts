@@ -191,6 +191,8 @@ export interface ChatInputProps extends ChatInputActions {
   /** Whether submitting is currently allowed (defaults to true) */
   isReady?: boolean
   config?: ChatInputConfig
+  /** Current tab ID — scopes attachments to this tab in the store */
+  tabId: string | null
   children?: ReactNode
   onOpenTemplates?: () => void
   hideToolbar?: boolean
@@ -205,8 +207,6 @@ export interface ChatInputHandle {
   /** Add a skill attachment */
   addSkill: AddSkillFn
   addFileForAnalysis: (file: File, workspace?: string, worktree?: string | null) => Promise<void>
-  getAttachments: () => Attachment[]
   clearLibraryImages: () => void
-  clearAllAttachments: () => void
   focus: () => void
 }

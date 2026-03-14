@@ -112,6 +112,7 @@ const TEST_TAB = {
   lastMessageAt: Date.now(),
   createdAt: Date.now() - 10000,
   closedAt: null,
+  draft: { text: "Draft reply", attachments: [] },
   syncedAt: null,
   pendingSync: true,
 }
@@ -383,6 +384,7 @@ describe("Conversation Sync Service", () => {
                     lastMessageAt: Date.now(),
                     createdAt: Date.now(),
                     closedAt: null,
+                    draft: { text: "Saved draft", attachments: [] },
                   },
                 ],
               },
@@ -402,7 +404,12 @@ describe("Conversation Sync Service", () => {
           syncedAt: expect.any(Number),
         }),
       )
-      expect(mockTabsPut).toHaveBeenCalled()
+      expect(mockTabsPut).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "tab-server-1",
+          draft: { text: "Saved draft", attachments: [] },
+        }),
+      )
     })
 
     it("should skip server update if local has pending changes", async () => {
@@ -422,6 +429,40 @@ describe("Conversation Sync Service", () => {
 
       // Should NOT overwrite local
       expect(mockConversationsPut).not.toHaveBeenCalled()
+    })
+
+    it("should preserve null tab drafts from server payloads", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            own: [
+              {
+                ...TEST_CONVERSATION,
+                tabs: [
+                  {
+                    ...TEST_TAB,
+                    id: "tab-server-2",
+                    conversationId: TEST_CONVERSATION.id,
+                    draft: null,
+                  },
+                ],
+              },
+            ],
+            shared: [],
+          }),
+      })
+
+      mockConversationsGet.mockResolvedValue(null)
+
+      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+
+      expect(mockTabsPut).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "tab-server-2",
+          draft: undefined,
+        }),
+      )
     })
   })
 

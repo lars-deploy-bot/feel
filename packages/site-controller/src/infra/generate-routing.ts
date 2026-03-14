@@ -15,7 +15,14 @@ import { existsSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { createClient } from "@supabase/supabase-js"
-import { parseServerConfig, requireEnv, type ServerConfig } from "@webalive/shared"
+import {
+  caddySitesPath,
+  isAliveWorkspace,
+  parseServerConfig,
+  requireEnv,
+  requireStreamEnv,
+  type ServerConfig,
+} from "@webalive/shared"
 import { assertNoDangerousCountDrop, readExistingGeneratedCaddyDomainCount } from "../generated-safety.js"
 import { loadCanonicalInfraEnv } from "../infra-env.js"
 
@@ -54,6 +61,7 @@ function filterReservedDomains(domains: DomainRow[], environments: EnvironmentCo
   const reservedDomains = new Set(environments.flatMap(e => [e.domain, e.previewBase]))
 
   return domains.filter(d => {
+    if (isAliveWorkspace(d.hostname)) return false
     if (reservedDomains.has(d.hostname)) return false
     return !environments.some(e => d.hostname.endsWith(`.${e.previewBase}`))
   })
@@ -187,12 +195,13 @@ async function queryEmbeddableTemplateHosts(): Promise<Set<string>> {
 // Renderers
 // =============================================================================
 
-function renderCaddySites(
+export function renderCaddySites(
   cfg: ServerConfig,
   environments: EnvironmentConfig[],
   _snippets: { common: string; image: string },
   domains: DomainRow[],
   embeddableHosts: Set<string>,
+  streamEnv: string,
 ): string {
   const filteredDomains = filterReservedDomains(domains, environments)
   const previewBase = cfg.domains.previewBase
@@ -258,13 +267,16 @@ function renderCaddySites(
     })
     .join("\n\n")
 
-  // Generate wildcard catch-all for preview subdomains (preview--{label}.{WILDCARD})
-  // Single-level pattern: covered by Cloudflare Universal SSL *.{WILDCARD}
-  // Routes to Go preview-proxy for native WebSocket support.
+  // Wildcard catch-all for preview subdomains (preview--{label}.{WILDCARD}).
+  // Only included in production — the wildcard is a server-wide catch-all,
+  // and having it in multiple env files causes a Caddy duplicate-hostname error.
   const wildcardDomain = cfg.domains.previewBase ?? cfg.domains.main
-  const wildcardBlock = wildcardDomain ? renderWildcardPreviewBlock(wildcardDomain, cfg.previewProxy?.port) : ""
+  const wildcardBlock =
+    streamEnv === "production" && wildcardDomain
+      ? renderWildcardPreviewBlock(wildcardDomain, cfg.previewProxy?.port)
+      : ""
 
-  return `${header}${siteBlocks}\n\n${wildcardBlock}`
+  return `${header}${siteBlocks}${wildcardBlock ? `\n\n${wildcardBlock}` : ""}`
 }
 
 function renderSiteTlsConfigLine(cfg: ServerConfig, hostname: string): string {
@@ -405,8 +417,11 @@ function renderNginxSniMap(cfg: ServerConfig): string {
 // =============================================================================
 
 async function run() {
+  const streamEnv = requireStreamEnv()
   console.log("Loading server config...")
   const cfg = await loadServerConfig()
+  cfg.generated.caddySites = caddySitesPath(cfg.generated.caddySites, streamEnv)
+  console.log(`  environment: ${streamEnv}`)
   console.log(`  serverId: ${cfg.serverId}`)
   console.log(`  aliveRoot: ${cfg.paths.aliveRoot}`)
   console.log(`  mainDomain: ${cfg.domains.main}`)
@@ -457,12 +472,16 @@ async function run() {
 
   console.log("\nGenerating files...")
 
-  assertNoDangerousCountDrop({
-    kind: "generated Caddy routing",
-    filePath: cfg.generated.caddySites,
-    existingCount: existingGeneratedDomainCount,
-    nextCount: filteredDomains.length,
-  })
+  // Safety check: prevent accidental mass deletion of production routing.
+  // Non-production environments start with 0 domains, so the check would always fail.
+  if (streamEnv === "production") {
+    assertNoDangerousCountDrop({
+      kind: "generated Caddy routing",
+      filePath: cfg.generated.caddySites,
+      existingCount: existingGeneratedDomainCount,
+      nextCount: filteredDomains.length,
+    })
+  }
 
   // Ensure output directory exists
   await mkdir(cfg.generated.dir, { recursive: true })
@@ -474,19 +493,22 @@ async function run() {
     { common: commonHeaders, image: imageServing },
     domains,
     embeddableHosts,
+    streamEnv,
   )
   await atomicWrite(cfg.generated.caddySites, sites)
   console.log(`  ${cfg.generated.caddySites}`)
 
-  // Generate Caddyfile.shell
-  const shell = renderCaddyShell(cfg)
-  await atomicWrite(cfg.generated.caddyShell, shell)
-  console.log(`  ${cfg.generated.caddyShell}`)
+  // Caddyfile.shell and nginx SNI map are server-wide shared artifacts.
+  // Only production generates them — staging sites don't need shell routing.
+  if (streamEnv === "production") {
+    const shell = renderCaddyShell(cfg)
+    await atomicWrite(cfg.generated.caddyShell, shell)
+    console.log(`  ${cfg.generated.caddyShell}`)
 
-  // Generate nginx SNI map
-  const nginxMap = renderNginxSniMap(cfg)
-  await atomicWrite(cfg.generated.nginxMap, nginxMap)
-  console.log(`  ${cfg.generated.nginxMap}`)
+    const nginxMap = renderNginxSniMap(cfg)
+    await atomicWrite(cfg.generated.nginxMap, nginxMap)
+    console.log(`  ${cfg.generated.nginxMap}`)
+  }
 
   console.log("\nDone!")
   console.log("\nNext steps:")
@@ -515,7 +537,9 @@ if (import.meta.main) {
       console.error("     Then edit with this server's configuration\n")
     } else if (msg.includes("SUPABASE_URL")) {
       console.error("\x1b[33mFix:\x1b[0m Ensure database credentials are set in infra-env.ts source")
-      console.error("     Credentials are loaded via loadCanonicalInfraEnv(), not environment variables")
+      console.error(
+        "     Credentials are loaded from .env.production (canonical file only), not runtime environment variables",
+      )
       console.error("     Check packages/site-controller/src/infra-env.ts for the canonical source\n")
     } else if (msg.includes("server_id")) {
       console.error("\x1b[33mFix:\x1b[0m Add server_id column to domains table:")

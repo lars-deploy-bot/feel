@@ -1,20 +1,19 @@
-import { connectRunningSandbox, DEFAULT_SANDBOX_CONNECT_TIMEOUT_MS, type SandboxDomain } from "@webalive/sandbox"
-import type { Sandbox } from "e2b"
+import { getSandboxConnectErrorMessage, isSandboxDefinitelyGone, SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
+import { Sandbox } from "e2b"
 import type { DomainRuntime } from "@/lib/domain/resolve-domain-runtime"
-import { getE2bDomain } from "@/lib/env"
 import { createAppClient } from "@/lib/supabase/app"
 
-export { RuntimeNotReadyError as SandboxNotReadyError, SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
+export { SANDBOX_WORKSPACE_ROOT }
 
-async function markSandboxDeadIfCurrent(domain: SandboxDomain): Promise<void> {
-  if (!domain.sandbox_id) return
+async function markSandboxDeadIfCurrent(runtime: DomainRuntime): Promise<void> {
+  if (!runtime.sandbox_id) return
 
   const app = await createAppClient("service")
   const { error } = await app
     .from("domains")
     .update({ sandbox_status: "dead" })
-    .eq("domain_id", domain.domain_id)
-    .eq("sandbox_id", domain.sandbox_id)
+    .eq("domain_id", runtime.domain_id)
+    .eq("sandbox_id", runtime.sandbox_id)
     .eq("sandbox_status", "running")
 
   if (error) {
@@ -32,15 +31,43 @@ async function markSandboxDeadIfCurrent(domain: SandboxDomain): Promise<void> {
  * @throws SandboxNotReadyError if sandbox doesn't exist or isn't running
  */
 export async function connectSandbox(runtime: DomainRuntime): Promise<Sandbox> {
-  return connectRunningSandbox(
-    {
-      ...runtime,
-      is_test_env: runtime.is_test_env ?? undefined,
-    },
-    {
-      e2bDomain: getE2bDomain(),
-      connectTimeoutMs: DEFAULT_SANDBOX_CONNECT_TIMEOUT_MS,
-      markDeadIfCurrent: markSandboxDeadIfCurrent,
-    },
-  )
+  if (!runtime.sandbox_id || runtime.sandbox_status !== "running") {
+    throw new SandboxNotReadyError(runtime.hostname, runtime.sandbox_status)
+  }
+
+  const e2bDomain = process.env.E2B_DOMAIN
+  if (!e2bDomain) {
+    throw new Error("E2B_DOMAIN environment variable is required")
+  }
+
+  try {
+    return await Sandbox.connect(runtime.sandbox_id, {
+      domain: e2bDomain,
+      timeoutMs: 10_000,
+    })
+  } catch (err) {
+    // Connect can fail for transient infra/network issues too.
+    // Only mark dead when we're confident the sandbox is actually gone.
+    console.error(
+      `[connect-sandbox] Connect failed for ${runtime.hostname} (${runtime.sandbox_id}): ${getSandboxConnectErrorMessage(err)}`,
+    )
+
+    if (isSandboxDefinitelyGone(err)) {
+      try {
+        await markSandboxDeadIfCurrent(runtime)
+      } catch (dbErr) {
+        console.error(`[connect-sandbox] Failed to mark sandbox dead for ${runtime.hostname}:`, dbErr)
+      }
+      throw new SandboxNotReadyError(runtime.hostname, "dead")
+    }
+
+    throw new SandboxNotReadyError(runtime.hostname, runtime.sandbox_status)
+  }
+}
+
+export class SandboxNotReadyError extends Error {
+  public readonly code = "SANDBOX_NOT_READY" as const
+  constructor(hostname: string, status: string | null) {
+    super(`Sandbox for ${hostname} is not ready (status: ${status ?? "none"}). Send a message first to initialize.`)
+  }
 }

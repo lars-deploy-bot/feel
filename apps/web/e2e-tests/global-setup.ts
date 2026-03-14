@@ -6,7 +6,7 @@
 
 import { chromium, type FullConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
-import { VerifyTenantResponseSchema } from "@/app/api/test/test-route-schemas"
+import { BootstrapTenantRequestSchema, VerifyTenantResponseSchema } from "@/app/api/test/test-route-schemas"
 import { requireProjectBaseUrl } from "./lib/base-url"
 import { seedTemplatesForE2E } from "./lib/seed-templates"
 import { TEST_ENV } from "./lib/test-env"
@@ -273,17 +273,18 @@ export default async function globalSetup(config: FullConfig) {
       Array.from({ length: workers }).map(async (_, i) => {
         const email = buildWorkerEmail(i)
         const workspace = `${TEST_CONFIG.WORKSPACE_PREFIX}${i}.${TEST_CONFIG.EMAIL_DOMAIN}`
+        const bootstrapBody = BootstrapTenantRequestSchema.parse({
+          runId,
+          workerIndex: i,
+          email,
+          workspace,
+          credits: TEST_CONFIG.DEFAULT_CREDITS,
+        })
 
         const res = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
           method: "POST",
           headers: bootstrapHeaders,
-          body: JSON.stringify({
-            runId,
-            workerIndex: i,
-            email,
-            workspace,
-            credits: TEST_CONFIG.DEFAULT_CREDITS,
-          }),
+          body: JSON.stringify(bootstrapBody),
         })
 
         // Check if response is JSON before parsing

@@ -1,4 +1,4 @@
-mod build;
+pub(crate) mod build;
 mod deployment;
 mod error;
 
@@ -37,7 +37,7 @@ pub async fn run() -> Result<()> {
     tracing_subscriber::fmt().json().with_target(false).init();
 
     let service_env = ServiceEnv::from_env()?;
-    let repo_root = env::current_dir().context("failed to determine current working directory")?;
+    let repo_root = service_env.alive_root.clone();
     let data_dir = resolve_data_dir()?;
     ensure_data_dirs(&data_dir).await?;
 
@@ -193,6 +193,7 @@ async fn health_handler(State(state): State<AppState>) -> Json<HealthResponse> {
 
 async fn health_details_handler(State(state): State<AppState>) -> Json<serde_json::Value> {
     let worker = state.health.read().await.clone();
+    let ok = worker.status != WorkerStatus::Error;
     let current_build = match worker.current_build_id.as_deref() {
         Some(build_id) => read_task_snapshot(&state.data_dir, TaskKind::Build, build_id)
             .await
@@ -209,7 +210,7 @@ async fn health_details_handler(State(state): State<AppState>) -> Json<serde_jso
     };
 
     Json(json!({
-        "ok": true,
+        "ok": ok,
         "worker": worker,
         "current_build": current_build,
         "current_deployment": current_deployment,
@@ -310,6 +311,7 @@ pub(super) async fn with_lease_heartbeat<T, F>(
     client: &Client,
     target: LeaseTarget,
     task_id: &str,
+    lease_token: &str,
     future: F,
 ) -> Result<T>
 where
@@ -320,7 +322,7 @@ where
         tokio::select! {
             result = &mut future => return result,
             _ = sleep(LEASE_RENEW_INTERVAL) => {
-                renew_lease(client, target, task_id).await?;
+                renew_lease(client, target, task_id, lease_token).await?;
             }
         }
     }

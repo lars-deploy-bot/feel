@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { createPreviewUrl, getAttachmentType, validateFile } from "@/features/chat/utils/file-validation"
+import { useAttachmentStore, useTabAttachments } from "@/lib/stores/attachmentStore"
 import { useImages } from "@/lib/stores/imageStore"
 import { hashFile } from "@/lib/utils/file-hash"
 import type {
@@ -10,10 +11,7 @@ import type {
   ChatInputConfig,
   FileUploadAttachment,
   LibraryImageAttachment,
-  SkillAttachment,
-  SuperTemplateAttachment,
   UploadedFileAttachment,
-  UserPromptAttachment,
 } from "../types"
 import {
   isFileUpload,
@@ -115,12 +113,48 @@ async function uploadToWorkspace(
   }
 }
 
-export function useAttachments(config: ChatInputConfig) {
-  const [attachments, setAttachments] = useState<Attachment[]>([])
+export function useAttachments(config: ChatInputConfig, tabId: string | null) {
+  const attachments = useTabAttachments(tabId)
   const images = useImages()
+
+  // Store reference for imperative access in callbacks (always fresh state)
+  const store = useAttachmentStore
+
+  // Load draft attachments from IndexedDB when tab becomes active
+  const loadedTabs = useRef(new Set<string>())
+  useEffect(() => {
+    if (!tabId) return
+    // Only load once per tab per mount (avoid re-loading after user edits)
+    if (loadedTabs.current.has(tabId)) return
+    loadedTabs.current.add(tabId)
+
+    // Skip if attachments already in memory (e.g. user just added them)
+    if (store.getState().get(tabId).length > 0) return
+
+    void store.getState().loadFromDexie(tabId)
+  }, [tabId, store])
+
+  /** Returns current attachments if the tab can accept more, null otherwise (shows error toast). */
+  const canAddAttachment = (): Attachment[] | null => {
+    if (!tabId) return null
+    const current = store.getState().get(tabId)
+    if (config.maxAttachments && current.length >= config.maxAttachments) {
+      config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
+      return null
+    }
+    return current
+  }
+
+  /** Append a single attachment to the current tab. */
+  const appendAttachment = (attachment: Attachment): void => {
+    if (!tabId) return
+    store.getState().update(tabId, prev => [...prev, attachment])
+  }
 
   const addAttachment = useCallback(
     async (file: File) => {
+      if (!tabId) return
+
       // Validate file
       const validation = validateFile(file, {
         maxFileSize: config.maxFileSize,
@@ -135,22 +169,19 @@ export function useAttachments(config: ChatInputConfig) {
       // Hash file first to check duplicates
       const hash = await hashFile(file)
 
+      const current = canAddAttachment()
+      if (!current) return
+
       // Check if same file already attached
-      if (attachments.some(a => isFileUpload(a) && a.file.name === file.name && a.file.size === file.size)) {
+      if (current.some(a => isFileUpload(a) && a.file.name === file.name && a.file.size === file.size)) {
         config.onMessage?.("File already attached", "error")
         return
       }
 
       // Check if this hash matches an already attached photobook image
       const existingImage = images.find(img => img.key.includes(hash))
-      if (existingImage && attachments.some(a => isLibraryImage(a) && a.photobookKey === existingImage.key)) {
+      if (existingImage && current.some(a => isLibraryImage(a) && a.photobookKey === existingImage.key)) {
         config.onMessage?.("Image already attached", "error")
-        return
-      }
-
-      // Check max attachments
-      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
-        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
         return
       }
 
@@ -164,20 +195,21 @@ export function useAttachments(config: ChatInputConfig) {
         uploadProgress: 0,
       }
 
-      setAttachments(prev => [...prev, attachment])
+      appendAttachment(attachment)
 
       // If already exists in imageStore, skip upload but convert to library-image
       if (existingImage) {
-        // Revoke blob URL before conversion (outside state updater for purity)
         revokeBlobUrl(attachment.preview)
 
-        setAttachments(prev =>
-          prev.map(a =>
-            a.id === attachment.id && isFileUpload(a)
-              ? convertToLibraryImage(a, existingImage.key, existingImage.variants.w640)
-              : a,
-          ),
-        )
+        store
+          .getState()
+          .update(tabId, prev =>
+            prev.map(a =>
+              a.id === attachment.id && isFileUpload(a)
+                ? convertToLibraryImage(a, existingImage.key, existingImage.variants.w640)
+                : a,
+            ),
+          )
         return
       }
 
@@ -186,7 +218,9 @@ export function useAttachments(config: ChatInputConfig) {
         try {
           // Progress callback updates attachment progress in real-time
           const onProgress = (progress: number) => {
-            setAttachments(prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: progress } : a)))
+            store
+              .getState()
+              .update(tabId, prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: progress } : a)))
           }
 
           const imageKey = await config.onAttachmentUpload(file, onProgress)
@@ -199,19 +233,20 @@ export function useAttachments(config: ChatInputConfig) {
           }
           const preview = `/_images/t/${domain}/o/${hash}/v/w640.webp`
 
-          // Revoke blob URL before conversion (outside state updater for purity)
           revokeBlobUrl(attachment.preview)
 
-          setAttachments(prev =>
-            prev.map(a =>
-              a.id === attachment.id && isFileUpload(a) ? convertToLibraryImage(a, imageKey, preview) : a,
-            ),
-          )
+          store
+            .getState()
+            .update(tabId, prev =>
+              prev.map(a =>
+                a.id === attachment.id && isFileUpload(a) ? convertToLibraryImage(a, imageKey, preview) : a,
+              ),
+            )
 
           config.onMessage?.(`Uploaded ${file.name}`, "success")
         } catch (error) {
           // Set error state on attachment
-          setAttachments(prev =>
+          store.getState().update(tabId, prev =>
             prev.map(a =>
               a.id === attachment.id
                 ? {
@@ -231,16 +266,20 @@ export function useAttachments(config: ChatInputConfig) {
         }
       } else {
         // No upload handler, mark as complete immediately
-        setAttachments(prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: 100 } : a)))
+        store
+          .getState()
+          .update(tabId, prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: 100 } : a)))
       }
     },
-    [attachments.length, config, images],
+    [tabId, config, images, store],
   )
 
   const addPhotobookImage = useCallback(
     (imageKey: string) => {
-      // Check if already attached
-      if (attachments.some(a => isLibraryImage(a) && a.photobookKey === imageKey)) {
+      const current = canAddAttachment()
+      if (!current) return
+
+      if (current.some(a => isLibraryImage(a) && a.photobookKey === imageKey)) {
         config.onMessage?.("Image already attached", "error")
         return
       }
@@ -251,72 +290,51 @@ export function useAttachments(config: ChatInputConfig) {
         return
       }
 
-      // Check max attachments
-      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
-        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
-        return
-      }
-
-      // Create attachment from photobook image
-      const attachment: LibraryImageAttachment = {
+      appendAttachment({
         kind: "library-image",
         id: crypto.randomUUID(),
         photobookKey: imageKey,
         preview: image.variants.w640,
         uploadProgress: 100,
-      }
-
-      setAttachments(prev => [...prev, attachment])
+      })
     },
-    [images, attachments, config],
+    [tabId, images, config, store],
   )
 
   const addSuperTemplateAttachment = useCallback(
     (templateId: string, name: string, preview: string) => {
-      // Check if already attached
-      if (attachments.some(a => isSuperTemplateAttachment(a) && a.templateId === templateId)) {
+      const current = canAddAttachment()
+      if (!current) return
+
+      if (current.some(a => isSuperTemplateAttachment(a) && a.templateId === templateId)) {
         config.onMessage?.("SuperTemplate already attached", "error")
         return
       }
 
-      // Check max attachments
-      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
-        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
-        return
-      }
-
-      // Create supertemplate attachment
-      const attachment: SuperTemplateAttachment = {
+      appendAttachment({
         kind: "supertemplate",
         id: crypto.randomUUID(),
         templateId,
         name,
         preview,
-        uploadProgress: 100, // SuperTemplates don't need uploading
-      }
-
-      setAttachments(prev => [...prev, attachment])
+        uploadProgress: 100,
+      })
     },
-    [attachments, config],
+    [tabId, config, store],
   )
 
   /** @deprecated Use addSkill instead */
   const addUserPrompt = useCallback(
     (promptType: string, data: string, displayName: string, userFacingDescription?: string) => {
-      // Check if same prompt type already attached
-      if (attachments.some(a => isUserPromptAttachment(a) && a.promptType === promptType)) {
+      const current = canAddAttachment()
+      if (!current) return
+
+      if (current.some(a => isUserPromptAttachment(a) && a.promptType === promptType)) {
         config.onMessage?.(`"${displayName}" already attached`, "error")
         return
       }
 
-      // Check max attachments
-      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
-        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
-        return
-      }
-
-      // Create user prompt attachment
-      const attachment: UserPromptAttachment = {
+      appendAttachment({
         kind: "user-prompt",
         id: crypto.randomUUID(),
         promptType,
@@ -324,29 +342,22 @@ export function useAttachments(config: ChatInputConfig) {
         displayName,
         userFacingDescription,
         uploadProgress: 100,
-      }
-
-      setAttachments(prev => [...prev, attachment])
+      })
     },
-    [attachments, config],
+    [tabId, config, store],
   )
 
   const addSkill: AddSkillFn = useCallback(
     (skillId, displayName, description, prompt, source) => {
-      // Check if same skill already attached
-      if (attachments.some(a => isSkillAttachment(a) && a.skillId === skillId)) {
+      const current = canAddAttachment()
+      if (!current) return
+
+      if (current.some(a => isSkillAttachment(a) && a.skillId === skillId)) {
         config.onMessage?.(`"${displayName}" already attached`, "error")
         return
       }
 
-      // Check max attachments
-      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
-        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
-        return
-      }
-
-      // Create skill attachment
-      const attachment: SkillAttachment = {
+      appendAttachment({
         kind: "skill",
         id: crypto.randomUUID(),
         skillId,
@@ -355,11 +366,9 @@ export function useAttachments(config: ChatInputConfig) {
         prompt,
         source,
         uploadProgress: 100,
-      }
-
-      setAttachments(prev => [...prev, attachment])
+      })
     },
-    [attachments, config],
+    [tabId, config, store],
   )
 
   /**
@@ -368,6 +377,8 @@ export function useAttachments(config: ChatInputConfig) {
    */
   const addFileForAnalysis = useCallback(
     async (file: File, workspace?: string, worktree?: string | null) => {
+      if (!tabId) return
+
       // Validate file (use same validation as regular attachments)
       const validation = validateFile(file, {
         maxFileSize: config.maxFileSize,
@@ -379,15 +390,12 @@ export function useAttachments(config: ChatInputConfig) {
         return
       }
 
-      // Check if same file already attached for analysis
-      if (attachments.some(a => isUploadedFile(a) && a.originalName === file.name && a.size === file.size)) {
-        config.onMessage?.("File already attached for analysis", "error")
-        return
-      }
+      const current = canAddAttachment()
+      if (!current) return
 
-      // Check max attachments
-      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
-        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
+      // Check if same file already attached for analysis
+      if (current.some(a => isUploadedFile(a) && a.originalName === file.name && a.size === file.size)) {
+        config.onMessage?.("File already attached for analysis", "error")
         return
       }
 
@@ -401,28 +409,32 @@ export function useAttachments(config: ChatInputConfig) {
         uploadProgress: 0,
       }
 
-      setAttachments(prev => [...prev, tempAttachment])
+      appendAttachment(tempAttachment)
 
       try {
         // Update progress to show upload started
-        setAttachments(prev => prev.map(a => (a.id === tempAttachment.id ? { ...a, uploadProgress: 50 } : a)))
+        store
+          .getState()
+          .update(tabId, prev => prev.map(a => (a.id === tempAttachment.id ? { ...a, uploadProgress: 50 } : a)))
 
         // Upload to workspace
         const result = await uploadToWorkspace(file, workspace ?? config.workspace, worktree ?? config.worktree)
 
         // Convert to uploaded-file attachment
-        setAttachments(prev =>
-          prev.map(a =>
-            a.id === tempAttachment.id && isFileUpload(a)
-              ? convertToUploadedFile(a, result.path, result.originalName, result.mimeType, result.size)
-              : a,
-          ),
-        )
+        store
+          .getState()
+          .update(tabId, prev =>
+            prev.map(a =>
+              a.id === tempAttachment.id && isFileUpload(a)
+                ? convertToUploadedFile(a, result.path, result.originalName, result.mimeType, result.size)
+                : a,
+            ),
+          )
 
         config.onMessage?.(`Uploaded ${file.name} for analysis`, "success")
       } catch (error) {
         // Set error state on attachment
-        setAttachments(prev =>
+        store.getState().update(tabId, prev =>
           prev.map(a =>
             a.id === tempAttachment.id
               ? {
@@ -437,47 +449,55 @@ export function useAttachments(config: ChatInputConfig) {
         config.onMessage?.(error instanceof Error ? error.message : "Upload failed", "error")
       }
     },
-    [attachments.length, config],
+    [tabId, config, store],
   )
 
   const removeAttachment = useCallback(
     (id: string) => {
-      // Find and revoke blob URL before updating state (outside state updater for purity)
-      const attachment = attachments.find(a => a.id === id)
+      if (!tabId) return
+      // Find and revoke blob URL before updating state
+      const current = store.getState().get(tabId)
+      const attachment = current.find(a => a.id === id)
       if (attachment && isFileUpload(attachment)) {
         revokeBlobUrl(attachment.preview)
       }
 
-      setAttachments(prev => prev.filter(a => a.id !== id))
+      store.getState().update(tabId, prev => prev.filter(a => a.id !== id))
     },
-    [attachments],
+    [tabId, store],
   )
 
   const clearAttachments = useCallback(() => {
-    // Revoke all blob URLs before clearing (outside state updater for purity)
-    attachments.forEach(attachment => {
+    if (!tabId) return
+    // Revoke all blob URLs before clearing
+    const current = store.getState().get(tabId)
+    for (const attachment of current) {
       if (isFileUpload(attachment)) {
         revokeBlobUrl(attachment.preview)
       }
-    })
+    }
 
-    setAttachments([])
-  }, [attachments])
+    store.getState().clear(tabId)
+  }, [tabId, store])
 
   /**
    * Toggle image mode between "website" (add to site) and "analyze" (Claude reads it)
    */
-  const toggleImageMode = useCallback((id: string) => {
-    setAttachments(prev =>
-      prev.map(a => {
-        if (a.id === id && isLibraryImage(a)) {
-          const currentMode = a.mode ?? "website"
-          return { ...a, mode: currentMode === "website" ? "analyze" : "website" }
-        }
-        return a
-      }),
-    )
-  }, [])
+  const toggleImageMode = useCallback(
+    (id: string) => {
+      if (!tabId) return
+      store.getState().update(tabId, prev =>
+        prev.map(a => {
+          if (a.id === id && isLibraryImage(a)) {
+            const currentMode = a.mode ?? "website"
+            return { ...a, mode: currentMode === "website" ? "analyze" : "website" }
+          }
+          return a
+        }),
+      )
+    },
+    [tabId, store],
+  )
 
   return {
     attachments,

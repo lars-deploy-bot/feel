@@ -32,6 +32,8 @@ export interface SessionUser {
   id: string
   email: string
   name: string | null
+  firstName: string | null
+  lastName: string | null
   /** Whether user can select any model without workspace-credit restrictions */
   canSelectAnyModel: boolean
   /** Whether user has admin privileges (can toggle feature flags, etc.) */
@@ -69,7 +71,18 @@ function isAdminUser(email: string): boolean {
  * Build a SessionUser from email + enabled models.
  * Single place that derives isAdmin, isSuperadmin, canSelectAnyModel.
  */
-function buildSessionUser(id: string, email: string, name: string | null, enabledModels: string[]): SessionUser {
+interface BuildUserOptions {
+  firstName?: string | null
+  lastName?: string | null
+}
+
+function buildSessionUser(
+  id: string,
+  email: string,
+  name: string | null,
+  enabledModels: string[],
+  opts?: BuildUserOptions,
+): SessionUser {
   const lower = email.toLowerCase()
   const isSuperadmin = superadminEmails.has(lower)
   const isAdmin = isSuperadmin || adminEmails.has(lower)
@@ -77,6 +90,8 @@ function buildSessionUser(id: string, email: string, name: string | null, enable
     id,
     email,
     name,
+    firstName: opts?.firstName ?? null,
+    lastName: opts?.lastName ?? null,
     isAdmin,
     isSuperadmin,
     canSelectAnyModel: true,
@@ -89,7 +104,13 @@ function buildSessionUser(id: string, email: string, name: string | null, enable
  * Avoids a DB round-trip on every getSessionUser() call.
  * TTL: 30 seconds — short enough to pick up admin changes quickly.
  */
-const enabledModelsCache = new Map<string, { models: string[]; expiry: number }>()
+interface UserDetailsCache {
+  models: string[]
+  firstName: string | null
+  lastName: string | null
+  expiry: number
+}
+const userDetailsCache = new Map<string, UserDetailsCache>()
 const ENABLED_MODELS_CACHE_TTL_MS = 30_000
 const AUTHZ_CACHE_TTL_MS = 5 * 60 * 1000
 
@@ -219,47 +240,57 @@ if (typeof setInterval !== "undefined" && typeof process !== "undefined" && !pro
           userOrgMembershipCache.delete(userId)
         }
       }
+      for (const [userId, entry] of userDetailsCache.entries()) {
+        if (entry.expiry <= now) {
+          userDetailsCache.delete(userId)
+        }
+      }
     },
     10 * 60 * 1000,
   )
 }
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
 /**
- * Fetch per-user enabled models from iam.users.metadata.
- * Returns empty array if no models are configured.
- * This allows admins to grant specific model access to individual users
- * without making them full admins.
- *
+ * Fetch per-user details from iam.users: enabled models + name fields.
  * Results are cached in-memory for 30 seconds to avoid a DB query on every request.
  */
-async function fetchEnabledModels(userId: string): Promise<string[]> {
-  const cached = enabledModelsCache.get(userId)
+async function fetchUserDetails(
+  userId: string,
+): Promise<{ models: string[]; firstName: string | null; lastName: string | null }> {
+  const cached = userDetailsCache.get(userId)
   if (cached && cached.expiry > Date.now()) {
-    return cached.models
+    return cached
   }
+
+  const empty = { models: [], firstName: null, lastName: null }
 
   try {
     const iam = await createIamClient("service")
-    const { data } = await iam.from("users").select("metadata").eq("user_id", userId).single()
+    const { data } = await iam.from("users").select("metadata, first_name, last_name").eq("user_id", userId).single()
 
-    if (!data?.metadata || typeof data.metadata !== "object") {
-      enabledModelsCache.set(userId, { models: [], expiry: Date.now() + ENABLED_MODELS_CACHE_TTL_MS })
-      return []
+    if (!data) {
+      userDetailsCache.set(userId, { ...empty, expiry: Date.now() + ENABLED_MODELS_CACHE_TTL_MS })
+      return empty
     }
 
-    const metadata = data.metadata as Record<string, unknown>
-    const models = metadata.enabled_models
-    if (!Array.isArray(models)) {
-      enabledModelsCache.set(userId, { models: [], expiry: Date.now() + ENABLED_MODELS_CACHE_TTL_MS })
-      return []
+    let models: string[] = []
+    if (isJsonObject(data.metadata) && Array.isArray(data.metadata.enabled_models)) {
+      models = data.metadata.enabled_models.filter((m): m is string => typeof m === "string")
     }
 
-    const result = models.filter((m): m is string => typeof m === "string")
-    enabledModelsCache.set(userId, { models: result, expiry: Date.now() + ENABLED_MODELS_CACHE_TTL_MS })
+    const result = {
+      models,
+      firstName: data.first_name ?? null,
+      lastName: data.last_name ?? null,
+    }
+    userDetailsCache.set(userId, { ...result, expiry: Date.now() + ENABLED_MODELS_CACHE_TTL_MS })
     return result
   } catch {
-    // Don't cache errors — retry on next call
-    return []
+    return empty
   }
 }
 
@@ -296,6 +327,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       id: STANDALONE.TEST_USER.ID,
       email: STANDALONE.TEST_USER.EMAIL,
       name: STANDALONE.TEST_USER.NAME,
+      firstName: "Test",
+      lastName: "User",
       canSelectAnyModel: true,
       isAdmin: true,
       isSuperadmin: false,
@@ -311,17 +344,16 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return user
   }
 
-  // Skip DB query for admins — they already get canSelectAnyModel: true
-  if (isAdminUser(payload.email)) {
-    const user = buildSessionUser(payload.userId, payload.email, payload.name, [])
-    Sentry.setUser({ id: user.id, email: user.email })
-    return user
-  }
+  // Fetch per-user details from DB (enabled models + name fields, cached 30s)
+  const details = await fetchUserDetails(payload.userId)
 
-  // Fetch per-user enabled models from DB (lightweight query, cached 30s)
-  const enabledModels = await fetchEnabledModels(payload.userId)
-
-  const user = buildSessionUser(payload.userId, payload.email, payload.name, enabledModels)
+  const user = buildSessionUser(
+    payload.userId,
+    payload.email,
+    payload.name,
+    isAdminUser(payload.email) ? [] : details.models,
+    { firstName: details.firstName, lastName: details.lastName },
+  )
   Sentry.setUser({ id: user.id, email: user.email })
   return user
 }

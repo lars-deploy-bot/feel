@@ -2,7 +2,7 @@
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { AnimatePresence, motion } from "framer-motion"
 import { useQueryState } from "nuqs"
-import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { GithubImportModal } from "@/components/modals/GithubImportModal"
@@ -103,7 +103,7 @@ function ChatPageContent() {
     },
     [dexieSession, ensureTabGroupWithTab],
   )
-  const { toggleSidebar } = useSidebarActions()
+  const { toggleSidebar, openSidebar } = useSidebarActions()
   const isSidebarOpen = useSidebarOpen()
   const isHydrated = useAppHydrated()
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
@@ -303,6 +303,16 @@ function ChatPageContent() {
   const streamingActions = useStreamingActions()
   const lastSeenStreamSeq = useLastSeenStreamSeq(sessionTabId)
   const { registerElementSelectHandler } = useWorkbenchContext()
+
+  // Context compaction state — tracks whether compaction is in progress
+  // by comparing positions of the last "compacting" vs "compact_boundary" messages.
+  // Handles multiple compaction cycles correctly (each cycle: compacting → compact_boundary).
+  const isCompactionInProgress = useMemo(() => {
+    const lastCompactingIdx = messages.findLastIndex(m => m.type === "compacting")
+    if (lastCompactingIdx < 0) return false
+    const lastBoundaryIdx = messages.findLastIndex(m => m.type === "compact_boundary")
+    return lastCompactingIdx > lastBoundaryIdx
+  }, [messages])
 
   // Custom hooks
   const statusText = useStatusText(busy, messages)
@@ -704,6 +714,15 @@ function ChatPageContent() {
 
   const settingsInitialTab = modals.settings?.initialTab
 
+  const handleNavSettingsClick = useCallback(() => {
+    if (modals.settings) {
+      modals.closeSettings()
+    } else {
+      openSidebar()
+      modals.openSettings()
+    }
+  }, [modals, openSidebar])
+
   const layout = (
     <div
       className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
@@ -728,6 +747,7 @@ function ChatPageContent() {
         onInvite={modals.openInvite}
         settingsMode={!!modals.settings}
         onToggleSettings={modals.toggleSettings}
+        onSettingsClick={handleNavSettingsClick}
         onFeedbackClick={modals.openFeedback}
         onTemplatesClick={modals.openTemplates}
         onPhotosClick={modals.togglePhotoMenu}
@@ -746,6 +766,8 @@ function ChatPageContent() {
           workspace={workspace}
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={toggleSidebar}
+          settingsMode={!!modals.settings}
+          onSettingsClick={handleNavSettingsClick}
         />
 
         {/* Content area: chat + workbench side by side (or settings content) */}
@@ -810,10 +832,12 @@ function ChatPageContent() {
                   )}
 
                   {(() => {
-                    const filteredMessages = messages.filter(message => {
-                      // Hide "compacting" indicator once compaction completes (compact_boundary exists)
-                      if (message.type === "compacting" && messages.some(m => m.type === "compact_boundary")) {
-                        return false
+                    const filteredMessages = messages.filter((message, idx) => {
+                      // Hide "compacting" spinner once its compaction cycle completes
+                      // (a compact_boundary exists AFTER this compacting message)
+                      if (message.type === "compacting") {
+                        const nextBoundary = messages.findIndex((m, i) => i > idx && m.type === "compact_boundary")
+                        if (nextBoundary >= 0) return false
                       }
                       return shouldRenderMessage(message, isDebugMode)
                     })
@@ -895,13 +919,7 @@ function ChatPageContent() {
                   })()}
 
                   {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
-                  {/* Suppress "thinking" during context compaction (compacting without compact_boundary) */}
-                  <PendingToolsIndicator
-                    tabId={sessionTabId}
-                    suppressThinking={
-                      messages.some(m => m.type === "compacting") && !messages.some(m => m.type === "compact_boundary")
-                    }
-                  />
+                  <PendingToolsIndicator tabId={sessionTabId} suppressThinking={isCompactionInProgress} />
 
                   {!isAutomationRun && (
                     <AgentManagerIndicator
@@ -959,6 +977,7 @@ function ChatPageContent() {
                     onSubmit={sendMessage}
                     onStop={stopStreaming}
                     onOpenTemplates={modals.openTemplates}
+                    tabId={tabId}
                     config={{
                       enableAttachments: true,
                       enableCamera: true,
@@ -1010,6 +1029,7 @@ function ChatPageContent() {
                   onSubmit={sendMessage}
                   onStop={stopStreaming}
                   hideToolbar
+                  tabId={tabId}
                   config={{
                     enableAttachments: true,
                     enableCamera: false,

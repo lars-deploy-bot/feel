@@ -1,6 +1,11 @@
 // DB enum types — canonical source is @webalive/database, re-exported for convenience
 export type { ExecutionMode, SandboxStatus } from "@webalive/database"
 export { EXECUTION_MODES, SANDBOX_STATUSES } from "@webalive/database"
+export {
+  getSandboxConnectErrorMessage,
+  getSandboxConnectErrorStatusCode,
+  isSandboxDefinitelyGone,
+} from "./connect-errors.js"
 export type { E2bTemplate } from "./constants.js"
 export { E2B_DEFAULT_TEMPLATE, E2B_DISABLED_SDK_TOOLS, E2B_MCP_TOOLS, E2B_TEMPLATES } from "./constants.js"
 export type { DomainRuntimeRecord, FetchDomainRuntimeByHostnameInput } from "./domain-runtime.js"

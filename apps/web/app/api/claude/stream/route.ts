@@ -726,6 +726,15 @@ export async function POST(req: NextRequest) {
 
               const diagnosticHints: string[] = []
               if (diagnostics && typeof diagnostics === "object") {
+                const failureType = getObjectProperty(diagnostics, "failureType")
+                const phase = getObjectProperty(diagnostics, "phase")
+                const stderrExcerpt = getObjectProperty(diagnostics, "stderrExcerpt")
+                if (typeof failureType === "string" && typeof phase === "string") {
+                  diagnosticHints.push(`${failureType}:${phase}`)
+                }
+                if (typeof stderrExcerpt === "string") {
+                  diagnosticHints.push(stderrExcerpt)
+                }
                 const surfacedErrorMessage = getObjectProperty(diagnostics, "surfacedErrorMessage")
                 if (typeof surfacedErrorMessage === "string") {
                   diagnosticHints.push(surfacedErrorMessage)

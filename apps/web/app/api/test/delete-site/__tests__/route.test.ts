@@ -10,6 +10,7 @@ const mockEnv = {
 const mockExecFile = vi.fn()
 const mockAppMaybeSingle = vi.fn()
 const mockOrgMaybeSingle = vi.fn()
+const mockInspectSiteOccupancy = vi.fn()
 
 vi.mock("node:child_process", () => ({
   execFile: (...args: unknown[]) => mockExecFile(...args),
@@ -79,6 +80,18 @@ vi.mock("@/lib/supabase/iam", () => ({
   })),
 }))
 
+vi.mock("@/lib/deployment/site-occupancy", () => ({
+  inspectSiteOccupancy: (slug: string) => mockInspectSiteOccupancy(slug),
+}))
+
+vi.mock("@/lib/config", () => ({
+  extractSlugFromDomain: (domain: string) => {
+    const suffix = ".alive.best"
+    if (domain.endsWith(suffix)) return domain.replace(suffix, "")
+    return null
+  },
+}))
+
 const { DELETE } = await import("../route")
 
 function makeRequest(body: unknown, secret?: string): NextRequest {
@@ -110,6 +123,7 @@ describe("DELETE /api/test/delete-site", () => {
       error: null,
     })
     mockExecFile.mockImplementation((_file: unknown, _args: unknown, cb: (err: Error | null) => void) => cb(null))
+    mockInspectSiteOccupancy.mockReturnValue({ occupied: false })
   })
 
   it("returns 404 without valid test secret outside test env", async () => {
@@ -159,5 +173,41 @@ describe("DELETE /api/test/delete-site", () => {
 
     const res = await DELETE(makeRequest({ domain: "e2e-site.alive.best" }, "test-secret"))
     expect(res.status).toBe(500)
+  })
+
+  it("cleans leaked reusable live deploy domains when db row is already gone", async () => {
+    mockAppMaybeSingle.mockResolvedValue({
+      data: null,
+      error: null,
+    })
+    mockInspectSiteOccupancy.mockReturnValue({
+      occupied: true,
+      reason: "workspace directory exists",
+    })
+
+    const res = await DELETE(makeRequest({ domain: "dl1.alive.best" }, "test-secret"))
+    const payload = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(payload).toEqual({ ok: true, domain: "dl1.alive.best" })
+    expect(mockInspectSiteOccupancy).toHaveBeenCalledWith("dl1")
+    expect(mockExecFile).toHaveBeenCalledWith(
+      expect.stringContaining("/scripts/sites/delete-site.sh"),
+      ["dl1.alive.best", "--force"],
+      expect.any(Function),
+    )
+  })
+
+  it("keeps returning 404 for missing reusable live deploy domains without leaked occupancy", async () => {
+    mockAppMaybeSingle.mockResolvedValue({
+      data: null,
+      error: null,
+    })
+
+    const res = await DELETE(makeRequest({ domain: "dl1.alive.best" }, "test-secret"))
+
+    expect(res.status).toBe(404)
+    expect(mockInspectSiteOccupancy).toHaveBeenCalledWith("dl1")
+    expect(mockExecFile).not.toHaveBeenCalled()
   })
 })

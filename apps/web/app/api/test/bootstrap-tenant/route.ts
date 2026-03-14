@@ -15,6 +15,11 @@ import { AppConstants, type ExecutionMode } from "@webalive/database"
 import { env } from "@webalive/env/server"
 import { PATHS, TEST_CONFIG } from "@webalive/shared"
 import { hash } from "bcrypt"
+import {
+  BootstrapTenantRequestSchema,
+  BootstrapTenantResponseSchema,
+  type TestTenant,
+} from "@/app/api/test/test-route-schemas"
 import { invalidateUserAuthzCache, invalidateWorkspaceAuthzCache } from "@/features/auth/lib/auth"
 import { invalidateSessionDomainCache } from "@/features/auth/lib/sessionStore"
 import { domainToSlug } from "@/features/manager/lib/domain-utils"
@@ -57,24 +62,6 @@ async function isDomainSafeForTestUpsert(
   if (data.is_test_env) return true
   // Production domain → NOT safe
   return false
-}
-
-interface BootstrapRequest {
-  runId: string
-  workerIndex: number
-  email: string
-  workspace: string
-  credits?: number
-}
-
-interface BootstrapTenant {
-  userId: string
-  email: string
-  orgId: string
-  orgName: string
-  workspace: string
-  siteId: string
-  workerIndex: number
 }
 
 interface PosixIds {
@@ -190,7 +177,7 @@ async function ensureWorkspaceFilesystem(workspace: string): Promise<void> {
 
 async function buildTenantResponse(
   app: Awaited<ReturnType<typeof createAppClient>>,
-  tenant: Omit<BootstrapTenant, "siteId">,
+  tenant: Omit<TestTenant, "siteId">,
 ): Promise<Response> {
   invalidateUserAuthzCache(tenant.userId)
   invalidateWorkspaceAuthzCache(tenant.workspace)
@@ -221,13 +208,15 @@ async function buildTenantResponse(
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
 
-  return Response.json({
+  const payload = BootstrapTenantResponseSchema.parse({
     ok: true,
     tenant: {
       ...tenant,
       siteId: domain.domain_id,
     },
   })
+
+  return Response.json(payload)
 }
 
 export async function POST(req: Request) {
@@ -243,12 +232,12 @@ export async function POST(req: Request) {
     return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 404 })
   }
 
-  const body = (await req.json()) as BootstrapRequest
-  const { runId, workerIndex, email, workspace, credits = TEST_CONFIG.DEFAULT_CREDITS } = body
-
-  if (!runId || workerIndex === undefined || !email || !workspace) {
+  const parsedBody = BootstrapTenantRequestSchema.safeParse(await req.json().catch(() => null))
+  if (!parsedBody.success) {
     return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 400 })
   }
+
+  const { runId, workerIndex, email, workspace, credits = TEST_CONFIG.DEFAULT_CREDITS } = parsedBody.data
 
   // Validate workerIndex against centralized config (single source of truth)
   if (workerIndex < 0 || workerIndex >= TEST_CONFIG.MAX_WORKERS) {
@@ -548,9 +537,8 @@ export async function POST(req: Request) {
 
     // Update test_run_id and password hash to ensure consistency across test runs
     // Use upsert for domain to handle case where domain was deleted but user still exists
-    let userUpdate: any, orgUpdate: any, domainUpsert: any
     try {
-      ;[userUpdate, orgUpdate, domainUpsert] = await Promise.all([
+      const [userUpdate, orgUpdate, domainUpsert] = await Promise.all([
         iam
           .from("users")
           .update({
@@ -581,6 +569,26 @@ export async function POST(req: Request) {
           },
         ),
       ])
+
+      // Check for Supabase operation errors
+      if (userUpdate.error || orgUpdate.error || domainUpsert.error) {
+        console.error("[Bootstrap] Failed to update existing tenant:", {
+          userUpdate: userUpdate.error,
+          orgUpdate: orgUpdate.error,
+          domainUpsert: domainUpsert.error,
+          context: {
+            runId,
+            userId: existingUser.user_id,
+            orgId: membership.org_id,
+            workspace,
+          },
+        })
+
+        // Note: Rollback is not performed here as these are updates to existing records
+        // and we don't have the previous values stored. In a production system, consider
+        // implementing a transaction log or using database transactions.
+        return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
+      }
     } catch (error) {
       console.error("[Bootstrap] Unexpected error during existing tenant update:", {
         error: error instanceof Error ? error.message : String(error),
@@ -591,26 +599,6 @@ export async function POST(req: Request) {
           workspace,
         },
       })
-      return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
-    }
-
-    // Check for Supabase operation errors
-    if (userUpdate.error || orgUpdate.error || domainUpsert.error) {
-      console.error("[Bootstrap] Failed to update existing tenant:", {
-        userUpdate: userUpdate.error,
-        orgUpdate: orgUpdate.error,
-        domainUpsert: domainUpsert.error,
-        context: {
-          runId,
-          userId: existingUser.user_id,
-          orgId: membership.org_id,
-          workspace,
-        },
-      })
-
-      // Note: Rollback is not performed here as these are updates to existing records
-      // and we don't have the previous values stored. In a production system, consider
-      // implementing a transaction log or using database transactions.
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
 

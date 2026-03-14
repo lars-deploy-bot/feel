@@ -206,6 +206,15 @@ vi.mock("@/lib/stores/streamingStore", () => ({
   clearAbortController: mocks.clearAbortController,
 }))
 
+vi.mock("@/lib/stores/attachmentStore", () => ({
+  useAttachmentStore: Object.assign(() => ({}), {
+    getState: () => ({
+      get: () => [],
+      clear: vi.fn(),
+    }),
+  }),
+}))
+
 type UseChatMessagingOptions = Parameters<typeof useChatMessaging>[0]
 
 function createAbortError(): DOMException {
@@ -215,8 +224,6 @@ function createAbortError(): DOMException {
 function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
   const addMessage = vi.fn().mockResolvedValue(undefined)
   const setMsg = vi.fn()
-  const clearAllAttachments = vi.fn()
-  const getAttachments = vi.fn(() => [])
   const forceScrollToBottom = vi.fn()
   const setShowCompletionDots = vi.fn()
 
@@ -233,8 +240,6 @@ function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
     addMessage,
     chatInputRef: {
       current: {
-        getAttachments,
-        clearAllAttachments,
         focus: vi.fn(),
       } as unknown as ChatInputHandle,
     } as React.RefObject<ChatInputHandle | null>,

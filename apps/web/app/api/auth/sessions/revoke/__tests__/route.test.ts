@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", () => ({
   requireAuthSession: vi.fn(),
@@ -19,21 +20,11 @@ const { POST } = await import("../route")
 const { requireAuthSession, AuthenticationError } = await import("@/features/auth/lib/auth")
 const { revokeSession } = await import("@/features/auth/sessions/session-service")
 
-const MOCK_USER = {
-  id: "user-123",
-  email: "test@example.com",
-  name: "Test User",
-  canSelectAnyModel: false,
-  isAdmin: false,
-  isSuperadmin: false,
-  enabledModels: [],
-}
-
 const CURRENT_SID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 const OTHER_SID = "11111111-2222-4333-8444-555555555555"
 
 const MOCK_AUTH_SESSION = {
-  user: MOCK_USER,
+  user: MOCK_SESSION_USER,
   payload: {
     role: "authenticated" as const,
     sub: "user-123",

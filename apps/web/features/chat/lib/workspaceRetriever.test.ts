@@ -310,6 +310,7 @@ describe("Workspace Resolution", () => {
         hostname: domain,
         port: 3333,
         is_test_env: true,
+        test_run_id: "run-123",
         sandbox_id: null,
         sandbox_status: null,
       })
@@ -342,6 +343,7 @@ describe("Workspace Resolution", () => {
         hostname: domain,
         port: 3334,
         is_test_env: true,
+        test_run_id: "run-123",
         sandbox_id: "sandbox_happy",
         sandbox_status: "running",
       })
@@ -384,6 +386,7 @@ describe("Workspace Resolution", () => {
         hostname: "systemd-site.alive.best",
         port: 3335,
         is_test_env: true,
+        test_run_id: "run-123",
         sandbox_id: null,
         sandbox_status: null,
       })

@@ -1,4 +1,4 @@
-import { PATHS } from "@webalive/shared"
+import { caddySitesFilteredPath, PATHS } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
 
@@ -42,6 +42,7 @@ const resolveDomainRuntimeMock = vi.fn<
     hostname: string
     port: number
     is_test_env: boolean
+    test_run_id: string | null
     execution_mode: "e2b"
     sandbox_id: string | null
     sandbox_status: null
@@ -51,6 +52,7 @@ const resolveDomainRuntimeMock = vi.fn<
   hostname,
   port: 3701,
   is_test_env: false,
+  test_run_id: null,
   execution_mode: "e2b",
   sandbox_id: null,
   sandbox_status: null,
@@ -131,6 +133,9 @@ const { DomainRegistrationError } = await import("../domain-registry")
 
 describe("runStrictDeployment", () => {
   beforeEach(() => {
+    delete process.env.SERVER_CONFIG_PATH
+    delete process.env.STREAM_ENV
+
     callOrder.length = 0
 
     pathExists.mockReset()
@@ -185,6 +190,7 @@ describe("runStrictDeployment", () => {
       hostname,
       port: 3701,
       is_test_env: false,
+      test_run_id: null,
       execution_mode: "e2b",
       sandbox_id: null,
       sandbox_status: null,
@@ -194,10 +200,15 @@ describe("runStrictDeployment", () => {
   })
 
   afterEach(() => {
+    delete process.env.SERVER_CONFIG_PATH
+    delete process.env.STREAM_ENV
     vi.restoreAllMocks()
   })
 
   it("executes a single strict flow: deploy -> register -> caddy", async () => {
+    process.env.STREAM_ENV = "production"
+    pathExists.mockReturnValue(false)
+
     const result = await runStrictDeployment({
       domain: "TestSite.Alive.Best",
       email: "owner@example.com",
@@ -260,8 +271,10 @@ describe("runStrictDeployment", () => {
     })
   })
 
-  it("verifies routing after caddy reload when a verification file exists", async () => {
-    pathExists.mockReturnValue(true)
+  it("verifies routing against the env-specific filtered file", async () => {
+    process.env.STREAM_ENV = "staging"
+    const filteredPath = caddySitesFilteredPath(PATHS.CADDYFILE_SITES, "staging")
+    pathExists.mockImplementation(filePath => filePath === filteredPath)
 
     await runStrictDeployment({
       domain: "testsite.alive.best",
@@ -269,7 +282,34 @@ describe("runStrictDeployment", () => {
       templatePath: "/srv/webalive/templates/blank.alive.best",
     })
 
-    expect(checkDomainInCaddyMock).toHaveBeenCalledTimes(1)
+    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", filteredPath)
+  })
+
+  it("skips routing verification when filtered file does not exist", async () => {
+    process.env.STREAM_ENV = "production"
+    pathExists.mockReturnValue(false)
+
+    await runStrictDeployment({
+      domain: "testsite.alive.best",
+      email: "owner@example.com",
+      templatePath: "/srv/webalive/templates/blank.alive.best",
+    })
+
+    expect(checkDomainInCaddyMock).not.toHaveBeenCalled()
+  })
+
+  it("verifies the active filtered Caddyfile when it exists", async () => {
+    process.env.STREAM_ENV = "production"
+    const filteredPath = caddySitesFilteredPath(PATHS.CADDYFILE_SITES, "production")
+    pathExists.mockImplementation(filePath => filePath === filteredPath)
+
+    await runStrictDeployment({
+      domain: "testsite.alive.best",
+      email: "owner@example.com",
+      templatePath: "/srv/webalive/templates/blank.alive.best",
+    })
+
+    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", filteredPath)
   })
 
   it("rolls back infrastructure when registerDomain fails for a new deployment", async () => {
@@ -298,6 +338,7 @@ describe("runStrictDeployment", () => {
   })
 
   it("unregisters domain and tears down infra when caddy step fails on new deployment", async () => {
+    process.env.STREAM_ENV = "production"
     isDomainRegisteredMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     configureCaddyMock.mockRejectedValueOnce(new Error("caddy reload failed"))
 
@@ -318,7 +359,9 @@ describe("runStrictDeployment", () => {
   })
 
   it("rolls back when routing verification fails after caddy reload", async () => {
-    pathExists.mockImplementation(filePath => filePath === PATHS.CADDYFILE_PATH)
+    process.env.STREAM_ENV = "production"
+    const filteredPath = caddySitesFilteredPath(PATHS.CADDYFILE_SITES, "production")
+    pathExists.mockImplementation(filePath => filePath === filteredPath)
     isDomainRegisteredMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     checkDomainInCaddyMock.mockResolvedValueOnce(false)
 
@@ -340,6 +383,7 @@ describe("runStrictDeployment", () => {
   })
 
   it("does not teardown pre-existing infrastructure on post-deploy failure", async () => {
+    process.env.STREAM_ENV = "production"
     pathExists.mockImplementation(filePath => filePath.includes(`${PATHS.SITES_ROOT}/existing.alive.best`))
     isDomainRegisteredMock.mockResolvedValueOnce(true)
     configureCaddyMock.mockRejectedValueOnce(new Error("reload failed"))

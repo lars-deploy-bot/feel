@@ -1,5 +1,5 @@
-import type { Database as DeployDatabase } from "./deploy.generated"
-import { Constants as DeployConstants } from "./deploy.generated"
+import type { Database as DeployDatabase } from "./deploy.generated.js"
+import { Constants as DeployConstants } from "./deploy.generated.js"
 
 export type DeployArtifactKind = DeployDatabase["deploy"]["Enums"]["artifact_kind"]
 export type DeployDeploymentAction = DeployDatabase["deploy"]["Enums"]["deployment_action"]

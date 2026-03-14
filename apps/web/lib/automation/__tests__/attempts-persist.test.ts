@@ -11,10 +11,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockPoolQuery = vi.fn()
 
 vi.mock("@webalive/worker-pool", async () => {
-  const actual = await vi.importActual<typeof import("@webalive/worker-pool")>("@webalive/worker-pool")
   return {
-    ...actual,
     getWorkerPool: () => ({ query: mockPoolQuery }),
+    isQueryResultCancelled: (result: { cancelled?: boolean } | null | undefined) => result?.cancelled === true,
   }
 })
 

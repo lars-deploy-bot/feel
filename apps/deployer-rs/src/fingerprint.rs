@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+use crate::source_contract::BuildInput;
 use crate::types::{AliveConfig, ResolvedBuildSecret};
 
 const BUILD_FINGERPRINT_VERSION: u8 = 1;
@@ -10,7 +11,10 @@ const BUILD_FINGERPRINT_VERSION: u8 = 1;
 struct BuildFingerprint<'a> {
     version: u8,
     deployer_version: &'static str,
-    git_sha: &'a str,
+    source_adapter: &'a str,
+    source_identity: &'a str,
+    build_context_fingerprint: &'a str,
+    policy_version: &'a str,
     config_path: &'a str,
     alive_toml_snapshot: &'a str,
     docker: BuildDockerFingerprint<'a>,
@@ -32,7 +36,7 @@ struct BuildSecretFingerprint {
 }
 
 pub(crate) async fn compute_build_fingerprint(
-    git_sha: &str,
+    build_input: &BuildInput,
     config_path: &str,
     alive_toml_snapshot: &str,
     alive_config: &AliveConfig,
@@ -53,7 +57,10 @@ pub(crate) async fn compute_build_fingerprint(
     let fingerprint = BuildFingerprint {
         version: BUILD_FINGERPRINT_VERSION,
         deployer_version: env!("CARGO_PKG_VERSION"),
-        git_sha,
+        source_adapter: build_input.source_kind.as_str(),
+        source_identity: &build_input.source_identity,
+        build_context_fingerprint: &build_input.build_context_fingerprint,
+        policy_version: build_input.policy_version.as_str(),
         config_path,
         alive_toml_snapshot,
         docker: BuildDockerFingerprint {

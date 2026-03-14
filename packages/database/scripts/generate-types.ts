@@ -41,11 +41,11 @@ const scriptDir = dirname(new URL(import.meta.url).pathname)
 loadEnvFile(resolve(scriptDir, "../../../apps/web/.env"))
 loadEnvFile(resolve(scriptDir, "../../../apps/web/.env.production"))
 
-const projectId = process.env.SUPABASE_PROJECT_ID ?? ""
-const databaseUrl = process.env.DATABASE_URL ?? ""
-const databasePassword = process.env.DATABASE_PASSWORD ?? ""
+const projectId = process.env.SUPABASE_PROJECT_ID
+const databaseUrl = process.env.DATABASE_URL
+const databasePassword = process.env.DATABASE_PASSWORD
 
-if (!projectId && !databaseUrl) {
+if (projectId === undefined && databaseUrl === undefined) {
   console.error("❌ Error: SUPABASE_PROJECT_ID or DATABASE_URL is required")
   console.error("")
   console.error("Set one of the existing deploy credentials in your environment:")
@@ -77,8 +77,8 @@ const tempDir = resolve(scriptDir, "../.tmp")
 
 async function generateTypes() {
   console.log("Generating database schema types...")
-  console.log(projectId ? `Project ID: ${projectId}` : "Project ID: <not set>")
-  console.log(databaseUrl ? "Type source: DATABASE_URL" : "Type source: SUPABASE_PROJECT_ID")
+  console.log(projectId !== undefined ? `Project ID: ${projectId}` : "Project ID: <not set>")
+  console.log(databaseUrl !== undefined ? "Type source: DATABASE_URL" : "Type source: SUPABASE_PROJECT_ID")
 
   // Ensure temp directory exists
   if (!existsSync(tempDir)) {
@@ -91,14 +91,14 @@ async function generateTypes() {
     const generatedSchemas: string[] = []
 
     const runSupabaseGen = async (schema: string) => {
-      const preferredMode = databaseUrl ? "db-url" : "project-id"
+      const preferredMode = databaseUrl !== undefined ? "db-url" : "project-id"
       const modes = preferredMode === "db-url" ? ["db-url", "project-id"] : ["project-id", "db-url"]
 
       for (const mode of modes) {
-        if (mode === "project-id" && !projectId) {
+        if (mode === "project-id" && projectId === undefined) {
           continue
         }
-        if (mode === "db-url" && !databaseUrl) {
+        if (mode === "db-url" && databaseUrl === undefined) {
           continue
         }
 
@@ -115,7 +115,7 @@ async function generateTypes() {
           stderr: "pipe",
           env: {
             ...process.env,
-            ...(databasePassword ? { PGPASSWORD: databasePassword } : {}),
+            ...(databasePassword !== undefined ? { PGPASSWORD: databasePassword } : {}),
             TMPDIR: tempDir,
             TEMP: tempDir,
             TMP: tempDir,
@@ -136,7 +136,7 @@ async function generateTypes() {
         const combined = `${stderr}\n${stdout}`
         const canRetryWithNextMode =
           mode === "project-id" &&
-          databaseUrl &&
+          databaseUrl !== undefined &&
           (combined.includes("Unauthorized") || combined.includes("failed to retrieve generated types"))
 
         if (!canRetryWithNextMode) {
@@ -182,7 +182,7 @@ async function generateTypes() {
 // DO NOT EDIT MANUALLY - Run 'bun run gen:types' to regenerate
 //
 // Schema: ${schema}
-// Project: ${projectId}
+// Project: ${projectId ?? "DATABASE_URL"}
 
 ${processedOutput}
 `

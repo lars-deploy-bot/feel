@@ -113,7 +113,13 @@ pub(crate) async fn claim_next_build(
                 updated_at = now()
             FROM candidate
             WHERE builds.build_id = candidate.build_id
-            RETURNING builds.build_id, builds.application_id, builds.git_ref
+            RETURNING
+              builds.build_id,
+              builds.application_id,
+              builds.git_ref,
+              COALESCE(builds.git_sha, ''),
+              COALESCE(builds.commit_message, ''),
+              builds.lease_token
             ",
             &[&server_id, &hostname, &lease_token, &LEASE_DURATION_SECONDS],
         )
@@ -124,6 +130,9 @@ pub(crate) async fn claim_next_build(
         build_id: value.get(0),
         application_id: value.get(1),
         git_ref: value.get(2),
+        git_sha: value.get(3),
+        commit_message: value.get(4),
+        lease_token: value.get(5),
     }))
 }
 
@@ -155,7 +164,7 @@ pub(crate) async fn claim_next_deployment(
                 updated_at = now()
             FROM candidate
             WHERE deployments.deployment_id = candidate.deployment_id
-            RETURNING deployments.deployment_id, deployments.environment_id, deployments.release_id
+            RETURNING deployments.deployment_id, deployments.environment_id, deployments.release_id, deployments.lease_token
             ",
             &[&server_id, &lease_token, &LEASE_DURATION_SECONDS],
         )
@@ -166,6 +175,7 @@ pub(crate) async fn claim_next_deployment(
         deployment_id: value.get(0),
         environment_id: value.get(1),
         release_id: value.get(2),
+        lease_token: value.get(3),
     }))
 }
 
@@ -202,9 +212,21 @@ pub(crate) async fn fetch_environment(
     let row = client
         .query_one(
             "
-            SELECT environment_id, application_id, server_id, name::text, hostname, port, healthcheck_path, allow_email, runtime_overrides::text
-            FROM deploy.environments
-            WHERE environment_id = $1
+            SELECT environments.environment_id,
+                   environments.application_id,
+                   environments.server_id,
+                   environments.domain_id,
+                   domains.org_id,
+                   environments.name::text,
+                   environments.hostname,
+                   environments.port,
+                   environments.healthcheck_path,
+                   environments.allow_email,
+                   environments.runtime_overrides::text
+            FROM deploy.environments AS environments
+            LEFT JOIN app.domains AS domains
+              ON domains.domain_id = environments.domain_id
+            WHERE environments.environment_id = $1
             ",
             &[&environment_id],
         )
@@ -215,13 +237,15 @@ pub(crate) async fn fetch_environment(
         environment_id: row.get(0),
         application_id: row.get(1),
         server_id: row.get(2),
-        name: row.get(3),
-        hostname: row.get(4),
-        port: row.get(5),
-        healthcheck_path: row.get(6),
-        allow_email: row.get(7),
+        domain_id: row.get(3),
+        org_id: row.get(4),
+        name: row.get(5),
+        hostname: row.get(6),
+        port: row.get(7),
+        healthcheck_path: row.get(8),
+        allow_email: row.get(9),
         runtime_overrides: serde_json::from_str::<EnvironmentRuntimeOverrides>(
-            &row.get::<_, String>(8),
+            &row.get::<_, String>(10),
         )
         .context("failed to parse deploy environment runtime overrides")?,
     })
@@ -276,6 +300,7 @@ pub(crate) async fn find_reusable_release(
             WHERE releases.application_id = $1
               AND releases.metadata->>'build_fingerprint' = $2
               AND builds.server_id = $3
+              AND builds.status = 'succeeded'::deploy.task_status
             ORDER BY releases.created_at DESC
             LIMIT 1
             ",
@@ -304,6 +329,7 @@ pub(crate) async fn find_reusable_release(
 pub(crate) async fn mark_build_succeeded(
     client: &Client,
     build_id: &str,
+    lease_token: &str,
     git_sha: &str,
     commit_message: &str,
     alive_toml_snapshot: &str,
@@ -327,6 +353,7 @@ pub(crate) async fn mark_build_succeeded(
                 updated_at = now()
             WHERE build_id = $1
               AND status = 'running'::deploy.task_status
+              AND lease_token = $8
             ",
             &[
                 &build_id,
@@ -336,6 +363,7 @@ pub(crate) async fn mark_build_succeeded(
                 &artifact_ref,
                 &artifact_digest,
                 &path_to_string(log_path),
+                &lease_token,
             ],
         )
         .await
@@ -353,6 +381,7 @@ pub(crate) async fn mark_build_succeeded(
 pub(crate) async fn mark_build_failed(
     client: &Client,
     build_id: &str,
+    lease_token: &str,
     error_message: &str,
     log_path: &Path,
 ) -> Result<()> {
@@ -367,8 +396,14 @@ pub(crate) async fn mark_build_failed(
                 updated_at = now()
             WHERE build_id = $1
               AND status = 'running'::deploy.task_status
+              AND lease_token = $4
             ",
-            &[&build_id, &error_message, &path_to_string(log_path)],
+            &[
+                &build_id,
+                &error_message,
+                &path_to_string(log_path),
+                &lease_token,
+            ],
         )
         .await
         .with_context(|| format!("failed to mark build {} as failed", build_id))?;
@@ -385,6 +420,7 @@ pub(crate) async fn mark_build_failed(
 pub(crate) async fn mark_deployment_succeeded(
     client: &Client,
     deployment_id: &str,
+    lease_token: &str,
     healthcheck_status: i32,
     log_path: &Path,
 ) -> Result<()> {
@@ -401,11 +437,13 @@ pub(crate) async fn mark_deployment_succeeded(
                 updated_at = now()
             WHERE deployment_id = $1
               AND status = 'running'::deploy.task_status
+              AND lease_token = $4
             ",
             &[
                 &deployment_id,
                 &path_to_string(log_path),
                 &healthcheck_status,
+                &lease_token,
             ],
         )
         .await
@@ -423,6 +461,7 @@ pub(crate) async fn mark_deployment_succeeded(
 pub(crate) async fn mark_deployment_failed(
     client: &Client,
     deployment_id: &str,
+    lease_token: &str,
     error_message: &str,
     healthcheck_status: Option<i32>,
     log_path: &Path,
@@ -443,12 +482,14 @@ pub(crate) async fn mark_deployment_failed(
                 updated_at = now()
             WHERE deployment_id = $1
               AND status = 'running'::deploy.task_status
+              AND lease_token = $5
             ",
             &[
                 &deployment_id,
                 &path_to_string(log_path),
                 &error_message,
                 &healthcheck_status,
+                &lease_token,
             ],
         )
         .await
@@ -518,29 +559,36 @@ pub(crate) async fn record_release(
     Ok(row.get(0))
 }
 
-pub(crate) async fn renew_lease(client: &Client, target: LeaseTarget, task_id: &str) -> Result<()> {
+pub(crate) async fn renew_lease(
+    client: &Client,
+    target: LeaseTarget,
+    task_id: &str,
+    lease_token: &str,
+) -> Result<()> {
     let query = match target {
         LeaseTarget::Build => {
             "
             UPDATE deploy.builds
-            SET lease_expires_at = now() + make_interval(secs => $2::integer),
+            SET lease_expires_at = now() + make_interval(secs => $3::integer),
                 updated_at = now()
             WHERE build_id = $1
               AND status = 'running'::deploy.task_status
+              AND lease_token = $2
             "
         }
         LeaseTarget::Deployment => {
             "
             UPDATE deploy.deployments
-            SET lease_expires_at = now() + make_interval(secs => $2::integer),
+            SET lease_expires_at = now() + make_interval(secs => $3::integer),
                 updated_at = now()
             WHERE deployment_id = $1
               AND status = 'running'::deploy.task_status
+              AND lease_token = $2
             "
         }
     };
     let renewed_rows = client
-        .execute(query, &[&task_id, &LEASE_DURATION_SECONDS])
+        .execute(query, &[&task_id, &lease_token, &LEASE_DURATION_SECONDS])
         .await
         .with_context(|| format!("failed to renew lease for {}", task_id))?;
     if renewed_rows == 0 {

@@ -83,3 +83,34 @@ export interface BrowserActionResult {
   message?: string
   url?: string
 }
+
+// ============================================================
+// Route Handler Types
+// ============================================================
+
+/** Successful route result — sends 200 with JSON data. */
+export interface RouteSuccess {
+  ok: true
+  data: Record<string, unknown>
+}
+
+/** Client error — sends the given status code with an error message. */
+export interface RouteError {
+  ok: false
+  status: number
+  error: string
+}
+
+export type RouteResult = RouteSuccess | RouteError
+
+/**
+ * Typed route handler. The dispatcher enforces:
+ * 1. Body parsing (handler receives parsed body, not raw req)
+ * 2. Abort signal creation (handler MUST accept it — can't forget)
+ * 3. Abort check before sending response (handler can't send to dead connections)
+ * 4. Error wrapping (uncaught errors become 500s)
+ *
+ * Handlers that need to bail early on abort should check `signal.aborted`
+ * between expensive async operations.
+ */
+export type RouteHandler = (body: Record<string, unknown>, signal: AbortSignal) => Promise<RouteResult>

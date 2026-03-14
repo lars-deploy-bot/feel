@@ -10,21 +10,22 @@
       "import": "./dist/index.js"
     },
     "./schema": {
-      "types": "./src/schema/index.ts",
-      "import": "./src/schema/index.ts"
+      "types": "./dist/schema/index.d.ts",
+      "import": "./dist/schema/index.js"
     },
     "./drizzle": {
-      "types": "./src/drizzle-client.ts",
-      "import": "./src/drizzle-client.ts"
+      "types": "./dist/drizzle-client.d.ts",
+      "import": "./dist/drizzle-client.js"
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && bun run verify:node-entrypoints",
     "dev": "tsc --watch",
     "type-check": "tsgo --noEmit",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "ci": "biome ci .",
+    "ci": "biome ci . && bun run verify:node-entrypoints",
+    "verify:node-entrypoints": "node ./scripts/verify-node-entrypoints.mjs",
     "gen:types": "bun run scripts/generate-types.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
