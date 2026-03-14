@@ -53,7 +53,7 @@ export {
   userProfile,
   userQuotas,
   userQuotasRelations,
-} from "./app"
+} from "./app.js"
 // ============================================================================
 // IAM Schema - Identity & Access Management
 // ============================================================================
@@ -83,7 +83,7 @@ export {
   users,
   // Relations
   usersRelations,
-} from "./iam"
+} from "./iam.js"
 
 // ============================================================================
 // Integrations Schema - OAuth & External Services
@@ -97,7 +97,7 @@ export {
   providers,
   // Relations
   providersRelations,
-} from "./integrations"
+} from "./integrations.js"
 
 // ============================================================================
 // Lockbox Schema - Encrypted Secrets
@@ -111,4 +111,4 @@ export {
   userSecrets,
   // Relations
   userSecretsRelations,
-} from "./lockbox"
+} from "./lockbox.js"

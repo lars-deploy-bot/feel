@@ -8,7 +8,7 @@ use super::error::TaskExecutionError;
 use super::with_lease_heartbeat;
 use crate::config::{
     parse_alive_toml, policy_for_environment, prepare_runtime_bind_mount_source_async,
-    resolve_bind_mount_source, resolve_runtime_env_file_async, runtime_network_mode,
+    resolve_bind_mount_source, resolve_bind_mount_target, resolve_runtime_env_file_async, runtime_network_mode,
     validate_runtime_policy, write_sanitized_env_file_async,
 };
 use crate::constants::LOCAL_BIND_IP;
@@ -18,17 +18,20 @@ use crate::db::{
 use crate::docker::{
     append_container_logs, container_is_running, deployment_container_name,
     discard_rollback_container, image_exists_locally, prepare_rollback_container,
-    remove_container_if_exists, restore_rollback_container, stop_and_disable_systemd_unit,
-    wait_for_container_stability, wait_for_health, wait_for_public_health,
+    remove_container_if_exists, restore_rollback_container, start_and_enable_systemd_unit,
+    stop_and_disable_systemd_unit, wait_for_container_stability, wait_for_health,
+    wait_for_public_health,
 };
 use crate::logging::{
     append_log, append_task_event, deployment_event_path, deployment_log_path, prepare_log,
     TaskPipeline,
 };
+use crate::runtime_adapter::{ResolvedRuntimeAdapter, RuntimeAdapter};
 use crate::types::{
     ClaimedDeployment, LeaseTarget, RuntimeNetworkMode, ServiceContext, TaskEventType, TaskKind,
     TaskStage,
 };
+use crate::workspace_contract::{DeployRequest, WorkspaceScope};
 
 pub(super) async fn reconcile_running_deployments(
     client: &Client,
@@ -37,7 +40,7 @@ pub(super) async fn reconcile_running_deployments(
     let rows = client
         .query(
             "
-            SELECT deployments.deployment_id, deployments.environment_id, deployments.release_id
+            SELECT deployments.deployment_id, deployments.environment_id, deployments.release_id, deployments.lease_token
             FROM deploy.deployments AS deployments
             INNER JOIN deploy.environments AS environments
               ON environments.environment_id = deployments.environment_id
@@ -53,6 +56,7 @@ pub(super) async fn reconcile_running_deployments(
             deployment_id: row.get(0),
             environment_id: row.get(1),
             release_id: row.get(2),
+            lease_token: row.get(3),
         };
         let environment = fetch_environment(client, &deployment.environment_id).await?;
         let release = fetch_release(client, &deployment.release_id).await?;
@@ -94,6 +98,7 @@ pub(super) async fn reconcile_running_deployments(
         mark_deployment_failed(
             client,
             &deployment.deployment_id,
+            &deployment.lease_token,
             &format!(
                 "reconciliation failed deployment because container {} was not running",
                 container_name
@@ -141,6 +146,7 @@ pub(super) async fn process_deployment(
         mark_deployment_failed(
             client,
             &deployment.deployment_id,
+            &deployment.lease_token,
             &typed_error.display_full(),
             None,
             &log_path,
@@ -166,6 +172,7 @@ pub(super) async fn process_deployment(
         mark_deployment_failed(
             client,
             &deployment.deployment_id,
+            &deployment.lease_token,
             &typed_error.display_full(),
             None,
             &log_path,
@@ -184,6 +191,32 @@ pub(super) async fn process_deployment(
 
     let config = parse_alive_toml(&release.alive_toml_snapshot)
         .map_err(TaskExecutionError::deployment_validation)?;
+    let runtime_adapter = ResolvedRuntimeAdapter::from_config(config.runtime.kind)
+        .map_err(TaskExecutionError::deployment_validation)?;
+    let workspace_scope = WorkspaceScope::from_environment(&environment)
+        .map_err(TaskExecutionError::deployment_validation)?;
+    let runtime_target = runtime_adapter
+        .target_for_environment(&environment)
+        .map_err(TaskExecutionError::deployment_validation)?;
+    let deploy_request =
+        DeployRequest::from_release(workspace_scope.clone(), &release, runtime_target.clone())
+            .map_err(TaskExecutionError::deployment_validation)?;
+    pipeline
+        .emit(
+            TaskEventType::DeployRequestPrepared,
+            json!({
+                "organization_id": deploy_request.desired_snapshot.scope.organization_id.as_str(),
+                "workspace_id": deploy_request.desired_snapshot.scope.workspace_id.as_str(),
+                "snapshot_id": deploy_request.desired_snapshot.snapshot_id.as_str(),
+                "policy_version": deploy_request.desired_snapshot.policy_version.as_str(),
+                "runtime": deploy_request.runtime_target.runtime,
+                "server_id": deploy_request.runtime_target.server_id,
+                "environment": deploy_request.runtime_target.environment,
+                "hostname": deploy_request.runtime_target.hostname,
+                "port": deploy_request.runtime_target.port,
+            }),
+        )
+        .await?;
     let policy = policy_for_environment(&config, &environment.name)
         .map_err(TaskExecutionError::runtime_preparation)?;
     validate_runtime_policy(&environment.name, policy)
@@ -201,16 +234,18 @@ pub(super) async fn process_deployment(
         .map_err(|error| TaskExecutionError::deployment_validation(anyhow!(error)))?;
     let network_mode =
         runtime_network_mode(&config.runtime).map_err(TaskExecutionError::runtime_preparation)?;
-    let runtime_port = match network_mode {
-        RuntimeNetworkMode::Bridge => config.runtime.container_port,
-        RuntimeNetworkMode::Host => host_port,
-    };
+    let runtime_port = runtime_adapter
+        .runtime_port(&environment, &config.runtime, network_mode)
+        .map_err(TaskExecutionError::runtime_preparation)?;
     let mut rollback_container = None;
+    let systemd_unit = format!("alive-{}.service", environment.name);
+    let mut legacy_systemd_stopped = false;
 
     let deploy_result = with_lease_heartbeat(
         client,
         LeaseTarget::Deployment,
         &deployment.deployment_id,
+        &deployment.lease_token,
         async {
             pipeline
                 .append_summary(&format!(
@@ -301,13 +336,6 @@ pub(super) async fn process_deployment(
                     "reserving previous container for rollback",
                 )
                 .await?;
-            // Stop the systemd service that previously owned this port.
-            // The deployer-rs Docker container is the new owner.
-            let systemd_unit = format!("alive-{}.service", environment.name);
-            stop_and_disable_systemd_unit(&systemd_unit, reserve_rollback_stage.debug_path())
-                .await
-                .map_err(TaskExecutionError::rollback_preparation)?;
-
             rollback_container = match prepare_rollback_container(
                 &container_name,
                 &deployment.deployment_id,
@@ -324,6 +352,12 @@ pub(super) async fn process_deployment(
                     return Err(typed_error.into());
                 }
             };
+
+            // Stop the legacy systemd service only after rollback reservation is known.
+            stop_and_disable_systemd_unit(&systemd_unit, reserve_rollback_stage.debug_path())
+                .await
+                .map_err(TaskExecutionError::rollback_preparation)?;
+            legacy_systemd_stopped = true;
             pipeline
                 .emit(
                     TaskEventType::RollbackReserved,
@@ -365,6 +399,14 @@ pub(super) async fn process_deployment(
                 .arg("--label")
                 .arg(format!("alive.release_id={}", release.release_id));
 
+            if config.runtime.privileged {
+                command.arg("--privileged");
+            }
+
+            if let Some(ref pid_mode) = config.runtime.pid_mode {
+                command.arg("--pid").arg(pid_mode);
+            }
+
             match network_mode {
                 RuntimeNetworkMode::Bridge => {
                     command.arg("--publish").arg(format!(
@@ -384,6 +426,8 @@ pub(super) async fn process_deployment(
             for bind_mount in &config.runtime.bind_mounts {
                 let original_source = resolve_bind_mount_source(bind_mount, context)
                     .map_err(TaskExecutionError::runtime_preparation)?;
+                let target = resolve_bind_mount_target(bind_mount, context)
+                    .map_err(TaskExecutionError::runtime_preparation)?;
                 let source = prepare_runtime_bind_mount_source_async(
                     &original_source,
                     bind_mount.clone(),
@@ -392,9 +436,9 @@ pub(super) async fn process_deployment(
                 .await
                 .map_err(TaskExecutionError::runtime_preparation)?;
                 let mount_spec = if bind_mount.read_only {
-                    format!("{}:{}:ro", source.display(), bind_mount.target)
+                    format!("{}:{}:ro", source.display(), target)
                 } else {
-                    format!("{}:{}", source.display(), bind_mount.target)
+                    format!("{}:{}", source.display(), target)
                 };
                 command.arg("--volume").arg(mount_spec);
             }
@@ -519,22 +563,47 @@ pub(super) async fn process_deployment(
             mark_deployment_succeeded(
                 client,
                 &deployment.deployment_id,
+                &deployment.lease_token,
                 stabilized_status.as_u16().into(),
                 &log_path,
             )
             .await
             .map_err(TaskExecutionError::db_transition)?;
-            pipeline
+            if let Err(error) = pipeline
                 .emit(
                     TaskEventType::Succeeded,
                     json!({ "status_code": stabilized_status.as_u16() }),
                 )
-                .await?;
+                .await
+            {
+                let _ = append_log(
+                    &log_path,
+                    &format!("warning: failed to emit success event: {:#}\n", error),
+                )
+                .await;
+            }
 
             Ok::<(), anyhow::Error>(())
         },
     )
     .await;
+
+    if tokio_fs::try_exists(&sanitized_env_file)
+        .await
+        .unwrap_or(false)
+    {
+        if let Err(error) = tokio_fs::remove_file(&sanitized_env_file).await {
+            append_log(
+                &log_path,
+                &format!(
+                    "runtime env cleanup warning for {}: {}\n",
+                    sanitized_env_file.display(),
+                    error
+                ),
+            )
+            .await?;
+        }
+    }
 
     if let Err(error) = deploy_result {
         let rollback_stage = pipeline
@@ -546,14 +615,15 @@ pub(super) async fn process_deployment(
             .await?;
         let _ = append_container_logs(&container_name, rollback_stage.debug_path()).await;
         let _ = remove_container_if_exists(&container_name, rollback_stage.debug_path()).await;
-        let mut failure_message = format!("{:#}", error);
+        let mut failure_error = error;
         if let Some(previous_container) = rollback_container.as_ref() {
             if let Err(restore_error) =
                 restore_rollback_container(previous_container, rollback_stage.debug_path()).await
             {
                 let typed_error = TaskExecutionError::rollback(restore_error);
-                failure_message = format!("{}; {}", failure_message, typed_error);
-                rollback_stage.finish_error(&failure_message).await?;
+                failure_error = failure_error.context(typed_error.display_full());
+                let rollback_message = format!("{:#}", failure_error);
+                rollback_stage.finish_error(&rollback_message).await?;
             } else {
                 pipeline
                     .emit(
@@ -566,13 +636,26 @@ pub(super) async fn process_deployment(
                     .await?;
             }
         } else {
+            let rollback_debug_path = rollback_stage.debug_path().to_path_buf();
+            if legacy_systemd_stopped {
+                if let Err(restore_systemd_error) =
+                    start_and_enable_systemd_unit(&systemd_unit, &rollback_debug_path).await
+                {
+                    failure_error = failure_error.context(format!(
+                        "failed to restore legacy systemd unit {}: {:#}",
+                        systemd_unit, restore_systemd_error
+                    ));
+                }
+            }
             rollback_stage
                 .finish_ok("cleaned failed deployment; no previous container to restore")
                 .await?;
         }
+        let failure_message = format!("{:#}", failure_error);
         mark_deployment_failed(
             client,
             &deployment.deployment_id,
+            &deployment.lease_token,
             &failure_message,
             None,
             &log_path,
@@ -583,7 +666,7 @@ pub(super) async fn process_deployment(
         pipeline
             .emit(TaskEventType::Failed, json!({ "error": failure_message }))
             .await?;
-        return Err(TaskExecutionError::rollback(anyhow!(failure_message)).into());
+        return Err(failure_error);
     }
 
     if let Some(previous_container) = rollback_container.as_ref() {

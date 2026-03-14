@@ -1,12 +1,21 @@
 import { AppConstants } from "@webalive/database"
 import { z } from "zod"
 
+export const BootstrapTenantRequestSchema = z.object({
+  runId: z.string().min(1),
+  workerIndex: z.number().int().min(0),
+  email: z.string().email(),
+  workspace: z.string().min(1),
+  credits: z.number().int().min(0).optional(),
+})
+
 export const TestTenantSchema = z.object({
   userId: z.string(),
   email: z.string(),
   orgId: z.string(),
   orgName: z.string(),
   workspace: z.string(),
+  siteId: z.string(),
   workerIndex: z.number().int(),
 })
 
@@ -80,6 +89,7 @@ export const TestE2BDomainResponseSchema = z.object({
 })
 
 export type TestTenant = z.infer<typeof TestTenantSchema>
+export type BootstrapTenantRequest = z.infer<typeof BootstrapTenantRequestSchema>
 export type BootstrapTenantResponse = z.infer<typeof BootstrapTenantResponseSchema>
 export type VerifyTenantResponse = z.infer<typeof VerifyTenantResponseSchema>
 export type VerifyTenantSandbox = z.infer<typeof VerifyTenantSandboxSchema>

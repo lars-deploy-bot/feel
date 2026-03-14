@@ -33,6 +33,15 @@ async function readStdinJson() {
   return JSON.parse(Buffer.concat(chunks).toString("utf-8"))
 }
 
+function getMissingTerminalResultError(queryResult, messageCount) {
+  if (queryResult !== null) {
+    return null
+  }
+
+  const messageLabel = messageCount === 1 ? "message" : "messages"
+  return `Claude query ended without a result after ${messageCount} ${messageLabel}`
+}
+
 ;(async () => {
   try {
     const targetUid = process.env.TARGET_UID && Number(process.env.TARGET_UID)
@@ -67,6 +76,10 @@ async function readStdinJson() {
     if (targetUid === 0 && targetGid === 0) {
       console.error("[runner] 🔓 SUPERADMIN MODE: Skipping privilege drop (running as root)")
     } else {
+      if (targetGid && process.getuid() === 0 && process.setgroups) {
+        process.setgroups([targetGid])
+        console.error(`[runner] Reset supplementary groups to: ${targetGid}`)
+      }
       if (targetGid && process.setgid) {
         process.setgid(targetGid)
         console.error(`[runner] Dropped to GID: ${targetGid}`)
@@ -301,6 +314,11 @@ async function readStdinJson() {
         )
       }
     })
+
+    const missingTerminalResultError = getMissingTerminalResultError(queryResult, messageCount)
+    if (missingTerminalResultError) {
+      throw new Error(missingTerminalResultError)
+    }
 
     process.stdout.write(
       `${JSON.stringify({

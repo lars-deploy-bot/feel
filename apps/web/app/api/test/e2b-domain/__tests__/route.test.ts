@@ -31,11 +31,15 @@ vi.mock("@/lib/sandbox/e2b-workspace", () => ({
 const mockWriteFile = vi.fn(async (_path: string, _content: string) => {})
 const mockMkdir = vi.fn(async (_path: string, _opts?: Record<string, unknown>) => {})
 const mockUnlink = vi.fn(async (_path: string) => {})
+const mockStat = vi.fn<(_path: string) => Promise<{ isDirectory: () => boolean }>>(async () => ({
+  isDirectory: () => true,
+}))
 
 vi.mock("node:fs/promises", () => ({
   writeFile: (p: string, c: string) => mockWriteFile(p, c),
   mkdir: (p: string, o?: Record<string, unknown>) => mockMkdir(p, o),
   unlink: (p: string) => mockUnlink(p),
+  stat: (p: string) => mockStat(p),
 }))
 
 vi.mock("@webalive/shared", () => ({
@@ -256,6 +260,7 @@ describe("POST /api/test/e2b-domain", () => {
     mockSandboxConnect.mockResolvedValue({ kill: mockSandboxKill })
     mockGetWorkerInfo.mockReturnValue([])
     mockShutdownWorker.mockResolvedValue(undefined)
+    mockStat.mockResolvedValue({ isDirectory: () => true })
   })
 
   afterEach(() => {
@@ -435,6 +440,40 @@ describe("POST /api/test/e2b-domain", () => {
     expect(res.status).toBe(200)
     expect(mockResetE2bScratchUserWorkspace).not.toHaveBeenCalled()
     expect(json.scratchWorkspace).toBeNull()
+  })
+
+  it("prepares an empty E2B scratch workspace when the host workspace is missing", async () => {
+    const missingWorkspaceError = new Error("ENOENT")
+    Object.assign(missingWorkspaceError, { code: "ENOENT" })
+    mockStat.mockRejectedValueOnce(missingWorkspaceError)
+
+    const res = await POST(
+      makePostRequest({
+        workspace: "e2e-w0.alive.local",
+        executionMode: "e2b",
+      }),
+    )
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(mockResetE2bScratchUserWorkspace).toHaveBeenCalledWith("e2e-w0.alive.local", undefined)
+    expect(json.scratchWorkspace).toBe("/tmp/e2b/user")
+  })
+
+  it("treats a non-directory host workspace as absent when preparing scratch state", async () => {
+    mockStat.mockResolvedValueOnce({ isDirectory: () => false })
+
+    const res = await POST(
+      makePostRequest({
+        workspace: "e2e-w0.alive.local",
+        executionMode: "e2b",
+      }),
+    )
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(mockResetE2bScratchUserWorkspace).toHaveBeenCalledWith("e2e-w0.alive.local", undefined)
+    expect(json.scratchWorkspace).toBe("/tmp/e2b/user")
   })
 
   it("blocks path traversal in seedHostFiles", async () => {

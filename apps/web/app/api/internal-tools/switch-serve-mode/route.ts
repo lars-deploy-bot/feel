@@ -202,10 +202,21 @@ export async function POST(req: Request) {
             ? `/bin/sh -c 'exec /usr/local/bin/bun run dev --port \${PORT:-3333} --host 0.0.0.0'`
             : `/bin/sh -c 'exec /usr/local/bin/bun run preview --port \${PORT:-3333} --host 0.0.0.0'`
 
+        // Preserve existing resource limit overrides (LimitNPROC, MemoryMax, etc.)
+        let existingLimits = ""
+        if (existsSync(overrideConf)) {
+          const existing = readFileSync(overrideConf, "utf-8")
+          const preserveKeys = ["LimitNPROC", "MemoryMax", "CPUQuota", "LimitNOFILE"]
+          const preserved = existing.split("\n").filter(line => preserveKeys.some(key => line.startsWith(`${key}=`)))
+          if (preserved.length > 0) {
+            existingLimits = `${preserved.join("\n")}\n`
+          }
+        }
+
         const overrideContent = `[Service]
 ExecStart=
 ExecStart=${execStart}
-`
+${existingLimits}`
 
         // Ensure override directory exists
         if (!existsSync(overrideDir)) {
@@ -225,7 +236,7 @@ ExecStart=${execStart}
           console.warn(`[switch-serve-mode ${requestId}] Service crashed in build mode, reverting to dev mode`)
 
           const devExecStart = `/bin/sh -c 'exec /usr/local/bin/bun run dev --port \${PORT:-3333} --host 0.0.0.0'`
-          const devOverride = `[Service]\nExecStart=\nExecStart=${devExecStart}\n`
+          const devOverride = `[Service]\nExecStart=\nExecStart=${devExecStart}\n${existingLimits}`
           writeFileSync(overrideConf, devOverride, { encoding: "utf-8" })
           execSync("systemctl daemon-reload", { encoding: "utf-8", timeout: 10000 })
 

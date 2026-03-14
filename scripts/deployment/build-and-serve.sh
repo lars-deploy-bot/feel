@@ -40,6 +40,7 @@ PORT=$(get_port "$ENV")
 SERVICE=$(get_service "$ENV")
 BUILDS_DIR="$PROJECT_ROOT/.builds/$ENV"
 MAX_WAIT=$( [ "$ENV" = "staging" ] && echo 60 || echo 30 )
+DEPLOY_METADATA_FILE=".alive-deploy-metadata.json"
 
 # PROMOTE_FROM: skip deps/static/build, promote artifact from another environment
 # When set, only 4 phases run: validate → promote → skills → deploy
@@ -241,6 +242,30 @@ rollback() {
     fi
 }
 
+read_previous_build_git_sha() {
+    [ -n "$PREVIOUS_BUILD" ] || return 0
+
+    local metadata_path="$BUILDS_DIR/$PREVIOUS_BUILD/$DEPLOY_METADATA_FILE"
+    [ -f "$metadata_path" ] || return 0
+
+    node -e "
+      const data = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf-8'));
+      if (typeof data.gitSha === 'string') process.stdout.write(data.gitSha);
+    " "$metadata_path"
+}
+
+write_deploy_metadata() {
+    local build_dir="$1"
+    local git_sha
+    git_sha=$(git rev-parse HEAD)
+
+    node -e "
+      const fs = require('fs');
+      const data = { gitSha: process.argv[2], writtenAt: new Date().toISOString() };
+      fs.writeFileSync(process.argv[1], JSON.stringify(data, Object.keys(data).sort(), 2) + '\n');
+    " "$build_dir/$DEPLOY_METADATA_FILE" "$git_sha"
+}
+
 # =============================================================================
 # Validate Environment
 # =============================================================================
@@ -286,6 +311,28 @@ if [ ${#_SERVICES_DOWN[@]} -gt 0 ]; then
 fi
 
 phase_end ok "Environment validated"
+
+# =============================================================================
+# Database Lifecycle (migrations → drift check → seed)
+# =============================================================================
+phase_start "Running database lifecycle"
+
+PREVIOUS_DEPLOY_GIT_SHA="$(read_previous_build_git_sha)"
+if [[ -n "$PREVIOUS_BUILD" && -z "$PREVIOUS_DEPLOY_GIT_SHA" ]]; then
+    phase_end error "Current build $PREVIOUS_BUILD has no $DEPLOY_METADATA_FILE; cannot safely determine pending migrations"
+    exit 1
+fi
+db_lifecycle_exit=0
+"$SCRIPT_DIR/run-db-lifecycle.sh" "$ENV" "$PREVIOUS_DEPLOY_GIT_SHA" || db_lifecycle_exit=$?
+
+if [[ $db_lifecycle_exit -eq 0 ]]; then
+    phase_end ok "Database lifecycle complete"
+elif [[ $db_lifecycle_exit -eq 2 ]]; then
+    phase_end warn "Database lifecycle complete (drift detected)"
+else
+    phase_end error "Database lifecycle failed"
+    exit 1
+fi
 
 # =============================================================================
 # Install Dependencies & Static Analysis (skipped when promoting)
@@ -491,6 +538,12 @@ else
     phase_end ok "Build complete (log: $BUILD_LOG)"
 fi
 
+# Promoted builds already carry valid metadata from the source environment.
+# Only write fresh metadata for new builds to avoid overwriting the original gitSha.
+if [ -z "$PROMOTE_FROM" ]; then
+    write_deploy_metadata "$BUILDS_DIR/$NEW_BUILD"
+fi
+
 # =============================================================================
 # Sync Skills
 # =============================================================================
@@ -569,37 +622,23 @@ else
     fi
 
     E2E_PLAYWRIGHT_PATH="${PLAYWRIGHT_BROWSERS_PATH:-}"
-    if [ -z "$E2E_PLAYWRIGHT_PATH" ] || [ ! -d "$E2E_PLAYWRIGHT_PATH" ]; then
-        if [ -d "$HOME/.cache/ms-playwright" ]; then
-            E2E_PLAYWRIGHT_PATH="$HOME/.cache/ms-playwright"
-        elif [ -d "$XDG_CACHE_HOME/ms-playwright" ]; then
-            E2E_PLAYWRIGHT_PATH="$XDG_CACHE_HOME/ms-playwright"
-        fi
+    if [ -z "$E2E_PLAYWRIGHT_PATH" ]; then
+        phase_end error "PLAYWRIGHT_BROWSERS_PATH must be set explicitly for E2E. Refusing machine-local fallbacks."
+        exit 1
     fi
 
-    if [ -n "$E2E_PLAYWRIGHT_PATH" ]; then
-        log_step "Using Playwright browsers from: $E2E_PLAYWRIGHT_PATH"
-    fi
+    log_step "Using Playwright browsers from: $E2E_PLAYWRIGHT_PATH"
 
     run_web_e2e() {
         local script_name="$1"
         shift
-        if [ -n "$E2E_PLAYWRIGHT_PATH" ]; then
-            (
-                cd apps/web &&
-                ENV_FILE=".env.$ENV" \
-                E2E_TEST_SECRET="$E2E_SECRET" \
-                PLAYWRIGHT_BROWSERS_PATH="$E2E_PLAYWRIGHT_PATH" \
-                bun run "$script_name" "$@"
-            )
-        else
-            (
-                cd apps/web &&
-                ENV_FILE=".env.$ENV" \
-                E2E_TEST_SECRET="$E2E_SECRET" \
-                bun run "$script_name" "$@"
-            )
-        fi
+        (
+            cd apps/web &&
+            ENV_FILE=".env.$ENV" \
+            E2E_TEST_SECRET="$E2E_SECRET" \
+            PLAYWRIGHT_BROWSERS_PATH="$E2E_PLAYWRIGHT_PATH" \
+            bun run "$script_name" "$@"
+        )
     }
 
     log_step "Running standard E2E suite (against deployed $ENV build)"

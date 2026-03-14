@@ -9,7 +9,7 @@
 # and waits for that to succeed. Fails fast on any error.
 #
 # Environment: SKIP_E2E=1 to skip E2E tests
-# Requires: psql, curl, python3
+# Requires: psql, curl, jq
 # =============================================================================
 
 set -euo pipefail
@@ -31,7 +31,7 @@ fi
 # Load DB credentials
 source "$PROJECT_ROOT/apps/web/.env.production"
 export PGPASSWORD="$DATABASE_PASSWORD"
-DB_URL="postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres"
+DB_URL="${DATABASE_URL:?DATABASE_URL must be set in apps/web/.env.production}"
 SERVER_CONFIG_PATH="${SERVER_CONFIG_PATH:-/var/lib/alive/server-config.json}"
 
 if [[ ! -f "$SERVER_CONFIG_PATH" ]]; then
@@ -50,16 +50,31 @@ APPLICATION_ID="dep_app_bd57129d0218c50d"
 GIT_REF="$(git rev-parse --abbrev-ref HEAD)"
 GIT_SHA="$(git rev-parse HEAD)"
 COMMIT_MSG="$(git log -1 --format=%s)"
+BUILD_TIMEOUT_SECONDS=600
+DEPLOY_TIMEOUT_SECONDS=300
+STATUS_POLL_INTERVAL_SECONDS=3
 
 _CURRENT_PHASE=0
-_TOTAL_PHASES=7
+_TOTAL_PHASES=8
 
 # =============================================================================
 # Helpers
 # =============================================================================
 
 db_query() {
-    psql "$DB_URL" -t -A -c "$1" 2>/dev/null | { grep -v '^INSERT \|^UPDATE \|^DELETE ' || true; }
+    local sql="$1"
+    local output
+
+    if ! output=$(psql "$DB_URL" -v ON_ERROR_STOP=1 -t -A -c "$sql" 2>&1); then
+        log_error "Database query failed: $output"
+        return 1
+    fi
+
+    printf '%s\n' "$output" | { grep -v '^INSERT \|^UPDATE \|^DELETE ' || true; }
+}
+
+sql_escape() {
+    printf '%s' "$1" | sed -e "s/'/''/g" -e 's/\\/\\\\/g'
 }
 
 # =============================================================================
@@ -68,8 +83,22 @@ db_query() {
 
 phase_start "Preflight" "$_TOTAL_PHASES"
 
-HEALTH_OK=$(curl -sf "$DEPLOYER_HEALTH/health" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['ok'])" 2>/dev/null || echo "")
-if [[ "$HEALTH_OK" != "True" ]]; then
+if ! "$PROJECT_ROOT/ops/scripts/pre-deployment-check.sh" "$ENVIRONMENT" >/tmp/alive-predeploy-"$ENVIRONMENT".log 2>&1; then
+    tail -n 50 /tmp/alive-predeploy-"$ENVIRONMENT".log || true
+    phase_end error "pre-deployment checks failed"
+    exit 1
+fi
+
+if [[ "$SKIP_E2E" != "1" ]]; then
+    if ! ENV_FILE="$PROJECT_ROOT/apps/web/.env.$ENVIRONMENT" "$PROJECT_ROOT/scripts/playwright/verify-browsers.sh" >/tmp/alive-playwright-preflight-"$ENVIRONMENT".log 2>&1; then
+        tail -n 20 /tmp/alive-playwright-preflight-"$ENVIRONMENT".log || true
+        phase_end error "Playwright browser preflight failed"
+        exit 1
+    fi
+fi
+
+HEALTH_OK=$(curl -sf "$DEPLOYER_HEALTH/health" 2>/dev/null | jq -r '.ok // false' 2>/dev/null || echo "false")
+if [[ "$HEALTH_OK" != "true" ]]; then
     phase_end error "deployer-rs is not healthy ($DEPLOYER_HEALTH/health)"
     exit 1
 fi
@@ -80,10 +109,45 @@ if [[ -z "$ENVIRONMENT_ID" ]]; then
     exit 1
 fi
 
+ACTIVE_BUILD_ID=$(db_query "SELECT build_id FROM deploy.builds WHERE application_id = '$APPLICATION_ID' AND server_id = '$CURRENT_SERVER_ID' AND status IN ('pending', 'running') LIMIT 1;")
+ACTIVE_DEPLOYMENT_ID=$(db_query "SELECT deployment_id FROM deploy.deployments WHERE environment_id = '$ENVIRONMENT_ID' AND status IN ('pending', 'running') LIMIT 1;")
+if [[ -n "$ACTIVE_BUILD_ID" || -n "$ACTIVE_DEPLOYMENT_ID" ]]; then
+    phase_end error "Another deployment is already in progress (build=$ACTIVE_BUILD_ID deployment=$ACTIVE_DEPLOYMENT_ID)"
+    exit 1
+fi
+
 phase_end ok "deployer-rs healthy, environment $ENVIRONMENT_ID"
 
 # =============================================================================
-# 2. Sync ops timers
+# 2. Database lifecycle (migrations → drift check → seed)
+# =============================================================================
+
+phase_start "Running database lifecycle"
+
+PREVIOUS_DEPLOY_GIT_SHA=$(db_query "
+SELECT r.git_sha
+FROM deploy.deployments d
+JOIN deploy.releases r ON r.release_id = d.release_id
+WHERE d.environment_id = '$ENVIRONMENT_ID'
+  AND d.status = 'succeeded'
+ORDER BY d.created_at DESC
+LIMIT 1;
+")
+
+db_lifecycle_exit=0
+"$SCRIPT_DIR/run-db-lifecycle.sh" "$ENVIRONMENT" "$PREVIOUS_DEPLOY_GIT_SHA" || db_lifecycle_exit=$?
+
+if [[ $db_lifecycle_exit -eq 0 ]]; then
+    phase_end ok "Database lifecycle complete"
+elif [[ $db_lifecycle_exit -eq 2 ]]; then
+    phase_end warn "Database lifecycle complete (drift detected)"
+else
+    phase_end error "Database lifecycle failed"
+    exit 1
+fi
+
+# =============================================================================
+# 3. Sync ops timers
 # =============================================================================
 
 phase_start "Syncing ops timers"
@@ -95,23 +159,32 @@ fi
 phase_end ok "Ops timers synced"
 
 # =============================================================================
-# 3. Deploy preview-proxy + services
+# 4. Deploy preview-proxy + services
 # =============================================================================
 
 phase_start "Deploying services"
 
-"$SCRIPT_DIR/deploy-preview-proxy.sh" 2>&1 | tail -5
+PREVIEW_PROXY_LOG="$(mktemp /tmp/alive-preview-proxy.XXXXXX.log)"
+if "$SCRIPT_DIR/deploy-preview-proxy.sh" >"$PREVIEW_PROXY_LOG" 2>&1; then
+    tail -n 5 "$PREVIEW_PROXY_LOG" || true
+else
+    tail -n 50 "$PREVIEW_PROXY_LOG" || true
+    rm -f "$PREVIEW_PROXY_LOG"
+    phase_end error "Preview proxy deploy failed"
+    exit 1
+fi
+rm -f "$PREVIEW_PROXY_LOG"
 phase_end ok "Services deployed"
 
 # =============================================================================
-# 4. Request build
+# 5. Request build
 # =============================================================================
 
 phase_start "Requesting build"
 
 BUILD_ID=$(db_query "
 INSERT INTO deploy.builds (application_id, server_id, git_ref, git_sha, commit_message, status)
-VALUES ('$APPLICATION_ID', '$CURRENT_SERVER_ID', '$GIT_REF', '$GIT_SHA', '$(echo "$COMMIT_MSG" | sed "s/'/''/g")', 'pending')
+VALUES ('$APPLICATION_ID', '$CURRENT_SERVER_ID', '$GIT_REF', '$GIT_SHA', '$(sql_escape "$COMMIT_MSG")', 'pending')
 RETURNING build_id;
 ")
 
@@ -124,7 +197,7 @@ log_step "Build: $BUILD_ID"
 log_step "Ref: $GIT_REF (${GIT_SHA:0:12})"
 
 # Wait for build
-BUILD_TIMEOUT=600
+BUILD_TIMEOUT="$BUILD_TIMEOUT_SECONDS"
 ELAPSED=0
 while [[ $ELAPSED -lt $BUILD_TIMEOUT ]]; do
     BUILD_STATUS=$(db_query "SELECT status FROM deploy.builds WHERE build_id = '$BUILD_ID';")
@@ -142,8 +215,8 @@ while [[ $ELAPSED -lt $BUILD_TIMEOUT ]]; do
             exit 1
             ;;
         pending|running)
-            sleep 3
-            ELAPSED=$((ELAPSED + 3))
+            sleep "$STATUS_POLL_INTERVAL_SECONDS"
+            ELAPSED=$((ELAPSED + STATUS_POLL_INTERVAL_SECONDS))
             ;;
         *)
             phase_end error "Unexpected build status: $BUILD_STATUS"
@@ -158,7 +231,7 @@ if [[ $ELAPSED -ge $BUILD_TIMEOUT ]]; then
 fi
 
 # =============================================================================
-# 5. Resolve release
+# 6. Resolve release
 # =============================================================================
 
 phase_start "Resolving release"
@@ -173,7 +246,7 @@ fi
 phase_end ok "Release $RELEASE_ID"
 
 # =============================================================================
-# 6. Deploy
+# 7. Deploy
 # =============================================================================
 
 phase_start "Deploying to $ENVIRONMENT"
@@ -192,7 +265,7 @@ fi
 log_step "Deployment: $DEPLOYMENT_ID"
 
 # Wait for deployment
-DEPLOY_TIMEOUT=300
+DEPLOY_TIMEOUT="$DEPLOY_TIMEOUT_SECONDS"
 ELAPSED=0
 LAST_STAGE=""
 while [[ $ELAPSED -lt $DEPLOY_TIMEOUT ]]; do
@@ -211,19 +284,13 @@ while [[ $ELAPSED -lt $DEPLOY_TIMEOUT ]]; do
             exit 1
             ;;
         pending|running)
-            CURRENT_STAGE=$(curl -sf "$DEPLOYER_HEALTH/health/details" 2>/dev/null | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-dep=d.get('current_deployment')
-if dep and dep.get('current_stage'): print(dep['current_stage'])
-else: print('')
-" 2>/dev/null || echo "")
+            CURRENT_STAGE=$(curl -sf "$DEPLOYER_HEALTH/health/details" 2>/dev/null | jq -r '.current_deployment.current_stage // empty' 2>/dev/null || echo "")
             if [[ -n "$CURRENT_STAGE" && "$CURRENT_STAGE" != "$LAST_STAGE" ]]; then
                 log_step "$CURRENT_STAGE"
                 LAST_STAGE="$CURRENT_STAGE"
             fi
-            sleep 3
-            ELAPSED=$((ELAPSED + 3))
+            sleep "$STATUS_POLL_INTERVAL_SECONDS"
+            ELAPSED=$((ELAPSED + STATUS_POLL_INTERVAL_SECONDS))
             ;;
         *)
             phase_end error "Unexpected deployment status: $DEPLOY_STATUS"
@@ -238,7 +305,7 @@ if [[ $ELAPSED -ge $DEPLOY_TIMEOUT ]]; then
 fi
 
 # =============================================================================
-# 7. E2E tests
+# 8. E2E tests
 # =============================================================================
 
 phase_start "Post-deploy checks"

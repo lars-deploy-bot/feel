@@ -53,6 +53,9 @@ const WORKER_SPAWN_ALLOWED_ENV_KEYS = [
   // Bun runtime — needed for bun to find its install and modules
   "BUN_INSTALL",
 
+  // Node module resolution — Docker uses NODE_PATH for worker-deps
+  "NODE_PATH",
+
   // Claude SDK config — needed for SDK to find credentials/config
   "CLAUDE_CONFIG_DIR",
   "CLAUDECODE",
@@ -69,9 +72,6 @@ const WORKER_SPAWN_ALLOWED_ENV_KEYS = [
 
   // E2B sandbox — needed by SandboxManager, stripped from SDK subprocess env.
   ...E2B_INFRASTRUCTURE_ENV_KEYS,
-
-  // TLS override — needed when self-hosted E2B uses internal/self-signed certs
-  "NODE_TLS_REJECT_UNAUTHORIZED",
 ] as const
 
 /**

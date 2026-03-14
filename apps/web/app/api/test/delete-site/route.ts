@@ -2,10 +2,16 @@ import { execFile } from "node:child_process"
 import { env } from "@webalive/env/server"
 import { PATHS } from "@webalive/shared"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { extractSlugFromDomain } from "@/lib/config"
+import { inspectSiteOccupancy } from "@/lib/deployment/site-occupancy"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
-import { CleanupDeployedSiteRequestSchema, CleanupDeployedSiteResponseSchema } from "@/lib/testing/e2e-site-deployment"
+import {
+  CleanupDeployedSiteRequestSchema,
+  CleanupDeployedSiteResponseSchema,
+  isReusableLiveDeployDomain,
+} from "@/lib/testing/e2e-site-deployment"
 
 function runDeleteSiteScript(domain: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -53,6 +59,30 @@ export async function DELETE(req: Request) {
   }
 
   if (!domainRow) {
+    if (isReusableLiveDeployDomain(domain)) {
+      const slug = extractSlugFromDomain(domain)
+      if (slug) {
+        const occupancy = inspectSiteOccupancy(slug)
+        if (occupancy.occupied) {
+          try {
+            await runDeleteSiteScript(domain)
+          } catch (error) {
+            console.error("[test/delete-site] delete-site.sh failed during leaked reusable cleanup:", {
+              domain,
+              reason: occupancy.reason,
+              error: error instanceof Error ? error.message : String(error),
+            })
+            return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, {
+              status: 500,
+              details: { message: "delete-site.sh failed" },
+            })
+          }
+
+          return Response.json(CleanupDeployedSiteResponseSchema.parse({ ok: true, domain }))
+        }
+      }
+    }
+
     return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, {
       status: 404,
       details: { message: `Domain not found: ${domain}` },

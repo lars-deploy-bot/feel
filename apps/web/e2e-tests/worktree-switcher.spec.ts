@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto"
 import { test as base, expect, type Response } from "@playwright/test"
 import { COOKIE_NAMES, createTestStorageState, DOMAINS, TEST_CONFIG } from "@webalive/shared"
 import jwt from "jsonwebtoken"
-import { BootstrapTenantResponseSchema, type TestTenant } from "@/app/api/test/test-route-schemas"
+import {
+  BootstrapTenantRequestSchema,
+  BootstrapTenantResponseSchema,
+  type TestTenant,
+} from "@/app/api/test/test-route-schemas"
 import { DEFAULT_USER_SCOPES } from "@/features/auth/lib/jwt"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { gotoChatFast } from "./helpers/assertions"
@@ -51,11 +55,17 @@ const test = base.extend<
 
       const email = `${TEST_CONFIG.WORKER_EMAIL_PREFIX}${workerIndex}@${TEST_CONFIG.EMAIL_DOMAIN}`
       const workspace = `${TEST_CONFIG.WORKSPACE_PREFIX}${workerIndex}.${TEST_CONFIG.EMAIL_DOMAIN}`
+      const bootstrapBody = BootstrapTenantRequestSchema.parse({
+        runId,
+        workerIndex,
+        email,
+        workspace,
+      })
 
       const res = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
         method: "POST",
         headers: buildE2ETestHeaders(true),
-        body: JSON.stringify({ runId, workerIndex, email, workspace }),
+        body: JSON.stringify(bootstrapBody),
       })
       if (!res.ok) throw new Error(`Bootstrap failed: ${res.status}`)
       const data = BootstrapTenantResponseSchema.parse(await res.json())

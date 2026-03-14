@@ -28,8 +28,10 @@ export async function register() {
     try {
       const { getSuperadminEmails, getRedisUrl } = await import("@webalive/env/server")
       const { startOAuthRefreshHeartbeat } = await import("./lib/anthropic-oauth")
+      const { assertWorkspaceRuntimeContract } = await import("./lib/workspace-runtime-contract")
 
       // These will throw if not configured correctly in production/staging
+      assertWorkspaceRuntimeContract()
       const superadmins = getSuperadminEmails()
       const _redisUrl = getRedisUrl()
       startOAuthRefreshHeartbeat()

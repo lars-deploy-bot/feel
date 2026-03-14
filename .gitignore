@@ -57,6 +57,9 @@ pids
 *.pid.lock
 .rate-limit-state.json
 
+# Generated local diagnostics and CI artifacts
+.artifacts/
+
 # Testing
 coverage/
 *.lcov
@@ -141,6 +144,7 @@ public
 tmp/
 temp/
 .tmp/
+.artifacts/
 
 # Local development workspace
 .alive/

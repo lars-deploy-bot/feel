@@ -165,6 +165,8 @@ export const apiSchemas = {
         id: z.string(),
         email: z.string().email(),
         name: z.string().nullable(),
+        firstName: z.string().nullable(),
+        lastName: z.string().nullable(),
         canSelectAnyModel: z.boolean(),
         isAdmin: z.boolean(),
         isSuperadmin: z.boolean(),

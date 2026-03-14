@@ -1,0 +1,22 @@
+# Alive application-level run contract.
+# This file tells the deployment system how to build and run this site.
+# See docs/proposals/alive-toml-v1.md for the full spec.
+
+schema = 1
+
+[project]
+kind = "vite"
+root = "user"
+
+[setup]
+command = "bun install"
+
+[build]
+command = "bun run build"
+outputs = ["dist"]
+
+[run.development]
+command = "bun run dev"
+
+[run.production]
+command = "bun run preview"

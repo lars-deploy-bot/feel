@@ -47,18 +47,48 @@ pub(crate) struct ServiceEnv {
     pub(crate) server_config_path: PathBuf,
     pub(crate) server_id: String,
     pub(crate) alive_root: PathBuf,
+    pub(crate) sites_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub(crate) struct AliveConfig {
     pub(crate) schema: u32,
     pub(crate) project: ProjectConfig,
+    #[serde(default)]
+    pub(crate) source: SourceConfig,
     pub(crate) docker: DockerConfig,
     pub(crate) runtime: RuntimeConfig,
     #[serde(default)]
     pub(crate) build_secrets: Vec<BuildSecret>,
     #[serde(default)]
     pub(crate) policies: PolicyMap,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub(crate) struct SourceConfig {
+    pub(crate) adapter: SourceAdapter,
+    #[serde(default = "default_source_path")]
+    pub(crate) path: String,
+}
+
+impl Default for SourceConfig {
+    fn default() -> Self {
+        Self {
+            adapter: SourceAdapter::Git,
+            path: default_source_path(),
+        }
+    }
+}
+
+fn default_source_path() -> String {
+    ".".to_string()
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum SourceAdapter {
+    Git,
+    LocalFs,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -80,13 +110,28 @@ pub(crate) struct DockerConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub(crate) struct RuntimeConfig {
+    #[serde(default)]
+    pub(crate) kind: RuntimeKindConfig,
     pub(crate) env_file: String,
     pub(crate) container_port: u16,
     pub(crate) healthcheck_path: String,
     #[serde(default)]
-    pub(crate) network_mode: Option<String>,
+    pub(crate) network_mode: Option<RuntimeNetworkMode>,
+    #[serde(default)]
+    pub(crate) privileged: bool,
+    #[serde(default)]
+    pub(crate) pid_mode: Option<String>,
     #[serde(default)]
     pub(crate) bind_mounts: Vec<BindMount>,
+}
+
+#[derive(Debug, Default, Deserialize, Clone, Copy, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum RuntimeKindConfig {
+    #[default]
+    Host,
+    E2b,
+    Hetzner,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -100,9 +145,18 @@ pub(crate) struct BuildSecret {
 pub(crate) struct BindMount {
     pub(crate) source: Option<String>,
     pub(crate) source_env: Option<String>,
-    pub(crate) target: String,
+    pub(crate) source_server_path: Option<BindMountServerPath>,
+    pub(crate) target: Option<String>,
+    pub(crate) target_server_path: Option<BindMountServerPath>,
     #[serde(default)]
     pub(crate) read_only: bool,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum BindMountServerPath {
+    AliveRoot,
+    SitesRoot,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -125,6 +179,9 @@ pub(crate) struct ClaimedBuild {
     pub(crate) build_id: String,
     pub(crate) application_id: String,
     pub(crate) git_ref: String,
+    pub(crate) git_sha: String,
+    pub(crate) commit_message: String,
+    pub(crate) lease_token: String,
 }
 
 #[derive(Debug)]
@@ -132,6 +189,7 @@ pub(crate) struct ClaimedDeployment {
     pub(crate) deployment_id: String,
     pub(crate) environment_id: String,
     pub(crate) release_id: String,
+    pub(crate) lease_token: String,
 }
 
 #[derive(Debug)]
@@ -149,6 +207,8 @@ pub(crate) struct EnvironmentRow {
     pub(crate) environment_id: String,
     pub(crate) application_id: String,
     pub(crate) server_id: String,
+    pub(crate) domain_id: Option<String>,
+    pub(crate) org_id: Option<String>,
     pub(crate) name: String,
     pub(crate) hostname: String,
     pub(crate) port: i32,
@@ -196,6 +256,8 @@ pub(crate) struct ServerConfigIdentity {
 pub(crate) struct ServerConfigPaths {
     #[serde(rename = "aliveRoot")]
     pub(crate) alive_root: String,
+    #[serde(rename = "sitesRoot")]
+    pub(crate) sites_root: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -368,6 +430,7 @@ pub(crate) enum TaskEventType {
     Failed,
     Succeeded,
     CommitResolved,
+    DeployRequestPrepared,
     ReleaseReused,
     ArtifactPushed,
     RuntimeEnvPrepared,
@@ -398,7 +461,8 @@ pub(crate) struct HealthResponse {
     pub(crate) worker: HealthState,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum RuntimeNetworkMode {
     Bridge,
     Host,

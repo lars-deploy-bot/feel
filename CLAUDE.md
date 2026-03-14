@@ -24,6 +24,22 @@ Both servers run the same codebase. Server 1 is primary production, Server 2 is 
 
 **Quick Links:** [Getting Started](./docs/GETTING_STARTED.md) | [Architecture](./docs/architecture/README.md) | [Security](./docs/security/README.md) | [Testing](./docs/testing/README.md)
 
+## Deploy Control Plane
+
+Alive now has a deploy control plane in addition to the legacy `build-and-serve.sh` path.
+
+- **Service**: `apps/deployer-rs/` runs as `alive-deployer.service` and exposes a localhost health/control surface on port `5095`
+- **Database schema**: Deploy state lives in `deploy.*` tables (`deploy.builds`, `deploy.releases`, `deploy.deployments`, `deploy.environments`)
+- **Flow**: `scripts/deployment/deploy-via-deployer.sh` inserts a pending build, waits for the Rust worker to create a release, then inserts a deployment and tails status via `/health/details`
+- **Current rollout**: both staging and production use the deployer path (`deploy-via-deployer.sh`). The legacy `build-and-serve.sh` remains as a fallback.
+
+**Operational commands:**
+- `make deployer` - build and restart only `alive-deployer`
+- `systemctl status alive-deployer`
+- `journalctl -u alive-deployer -n 100`
+- `curl http://127.0.0.1:5095/health`
+- `curl http://127.0.0.1:5095/health/details`
+
 ## Project Management
 
 Use the `/roadmap` skill to manage issues, milestones, and the project board. This is the source of truth for what we're building and what's next.
@@ -64,7 +80,7 @@ Use the `/roadmap` skill to manage issues, milestones, and the project board. Th
     - **Runtime sets**: `RUN_STATUSES`, `TRIGGER_TYPES`, `ACTION_TYPES`, `JOB_STATUSES`
     - **Zod schemas**: Derive with `z.enum(AppConstants.app.Enums.<name>)`, never hand-write the values
     - Source file: `packages/database/src/automation-enums.ts`, derived from auto-generated `AppConstants`
-24. **`canUseTool` IS BROKEN IN THE SDK — DO NOT RELY ON IT** - The Claude Agent SDK's `canUseTool` callback is **NEVER CALLED** by the CLI subprocess. Tested empirically on SDK v0.2.41: regardless of `permissionMode` (`default`, `acceptEdits`, `dontAsk`), the CLI auto-approves all tools without sending `can_use_tool` control requests back via stdio. Even a callback that returns `{ behavior: "deny" }` for everything is silently ignored — tools run anyway. **Our ONLY enforceable security layers are:** (1) `allowedTools` / `disallowedTools` arrays passed to the SDK (CLI enforces these), (2) `cwd` workspace sandboxing (CLI restricts file tools to cwd), (3) MCP tool-level `validateWorkspacePath()`. The `canUseTool` code in `worker-entry.mjs` (path traversal checks, heavy-command blocking) is **dead code** that provides zero protection. Do not add security logic there — it will never execute. If Anthropic fixes this in a future SDK version, re-verify with the test script at `/tmp/test-permission-mode.mjs` before trusting it.
+24. **`canUseTool` IS BROKEN IN THE SDK — DO NOT RELY ON IT** - The Claude Agent SDK's `canUseTool` callback is **NEVER CALLED** by the CLI subprocess. Tested empirically on SDK v0.2.41: regardless of `permissionMode` (`default`, `acceptEdits`, `dontAsk`), the CLI auto-approves all tools without sending `can_use_tool` control requests back via stdio. Even a callback that returns `{ behavior: "deny" }` for everything is silently ignored — tools run anyway. **Our ONLY enforceable security layers are:** (1) `allowedTools` / `disallowedTools` arrays passed to the SDK (CLI enforces these), (2) `cwd` workspace sandboxing (CLI restricts file tools to cwd), (3) MCP tool-level `validateWorkspacePath()`. Do not put security logic in `canUseTool`; the CLI subprocess will not enforce it. If Anthropic fixes this in a future SDK version, re-verify with `scripts/verify-canUseTool-callback.mjs` before trusting it.
 
 ## E2B Sandbox Migration (ACTIVE)
 
@@ -280,22 +296,6 @@ See [docs/architecture/credits-and-tokens.md](./docs/architecture/credits-and-to
 
 ## Development Guidelines
 
-### File Structure Conventions
-
-```
-apps/web/
-├── app/
-│   ├── api/              # API routes (Next.js route handlers)
-│   │   ├── claude/       # Claude SDK integration (stream/, cancel/, reconnect/)
-│   │   ├── files/        # File operations
-│   │   └── ...           # 50+ route directories
-│   ├── chat/             # Chat UI
-│   └── globals.css       # Global styles
-├── features/             # Feature modules (auth, chat, workspace, settings, ...)
-├── components/           # Shared React components (ui/, workspace/, modals/, ...)
-└── lib/                  # Utility libraries (env, config, stream/, tools/, ...)
-```
-
 ### Security Guidelines
 
 **ALWAYS follow these security rules:**
@@ -343,30 +343,7 @@ apps/web/
 
 #### If Pre-Push Hook Fails
 
-**DO:**
-1. Read the error output carefully
-2. Fix the type errors, lint errors, or test failures
-3. Run `bun run static-check` locally to verify fixes
-4. Commit the fixes and push again
-
-**DON'T:**
-- Use `git push --no-verify` to bypass checks
-- Force push to circumvent quality gates
-- Ignore failing tests or type errors
-
-**Manual Testing:**
-```bash
-# Test what pre-push will run
-bun run static-check
-
-# Fast PR check path (affected workspaces only)
-bun run check:affected
-```
-
-**Common Issues:**
-- **"bun: command not found" in GUI clients**: See README.md Git Hooks Setup section
-- **Slow pre-push**: First run is slow; subsequent runs use Turbo cache and are fast
-- **Test failures**: Some tests may require environment setup (see Testing Guide)
+Fix the errors, run `bun run static-check` locally to verify, commit fixes, and push again. Never use `--no-verify`.
 
 ### Common Tasks
 
@@ -416,47 +393,10 @@ bun run check:affected
 
 **Site deployments use the `@webalive/site-controller` package with the Shell-Operator Pattern:**
 
-```bash
-# Via API (authenticated deployment - primary method)
-# POST /api/deploy-subdomain with { domain, email, password? }
-
-# Or programmatically:
-import { SiteOrchestrator } from '@webalive/site-controller'
-
-const result = await SiteOrchestrator.deploy({
-  domain: 'newsite.com',
-  slug: 'newsite-com',
-  templatePath: PATHS.TEMPLATE_PATH,
-  serverIp: DEFAULTS.SERVER_IP,
-  wildcardDomain: DEFAULTS.WILDCARD_DOMAIN,
-  rollbackOnFailure: true  // Automatic rollback on failure
-})
-
-if (result.success) {
-  console.log(`Deployed: ${result.domain} on port ${result.port}`)
-} else {
-  console.error(`Failed at phase: ${result.failedPhase}`)
-  // Infrastructure automatically rolled back
-}
-```
-
-**Creates:**
-- Systemd service: `site@newsite-com.service`
-- Dedicated user: `site-newsite-com`
-- Workspace: `/srv/webalive/sites/newsite.com/`
-- Port: Auto-assigned from registry (3333-3999 range)
-- Caddy configuration: Auto-updated with reverse proxy
-
-**Architecture**: Shell-Operator Pattern
-- **TypeScript**: Orchestration, error handling, state management
-- **Bash**: OS operations, filesystem, permissions, systemd
-- **Atomic scripts**: 7 deployment phases with automatic rollback
-- **Concurrent safety**: File locking prevents race conditions
-
-**Documentation**:
-- Package: `packages/site-controller/README.md`
-- Scripts: `packages/site-controller/scripts/*.sh`
-- Architecture: `docs/architecture/README.md`
+- **API**: `POST /api/deploy-subdomain` with `{ domain, email, password? }`, or use `SiteOrchestrator.deploy()` from `@webalive/site-controller`
+- **Creates**: systemd service (`site@slug.service`), dedicated user, workspace in `/srv/webalive/sites/`, auto-assigned port (3333-3999), Caddy config
+- **Architecture**: Shell-Operator Pattern — TS orchestrates, bash executes. 7 atomic phases with automatic rollback. File locking for concurrency.
+- **Docs**: `packages/site-controller/README.md`, `docs/architecture/README.md`
 
 #### Updating Caddy Configuration
 
@@ -600,7 +540,7 @@ make rollback    # Interactive rollback (if needed)
 
 ### Deploying from Chat
 
-See **Core Rules 12-14** at the top of this file. Summary: clean orphans, check `make deploy-status`, deploy with `nohup`.
+See **Core Rules 10-12** at the top of this file. Summary: deploy with `nohup`, check `make deploy-status`, then clean orphaned processes and locks before starting if needed.
 
 ### Site Deployment (Different)
 
@@ -616,90 +556,17 @@ curl -X POST https://terminal.alive.best/api/deploy-subdomain \
 **Package**: Site deployments are handled by `@webalive/site-controller` with atomic bash scripts and automatic rollback.
 
 
-## Key Dependencies & Versions
+## Key Dependencies
 
-### Core Stack
-- **Next.js**: 16.x (App Router, RSC)
-- **React**: 19.2.0 (Concurrent features)
-- **Claude Agent SDK**: ^0.2.34 (query, streaming, tools)
-- **Bun**: 1.2.22+ (runtime & package manager)
-- **TypeScript**: 5.x (strict mode)
-- **TailwindCSS**: 4.1.15 (utility-first CSS)
-
-### Infrastructure Packages
-- **@webalive/database**: Supabase schema types - `iam` schema (users, orgs, org_memberships, sessions), `app` schema (domains, user_quotas, feedback, templates)
-- **@webalive/site-controller**: Site deployment orchestration (Shell-Operator Pattern)
-- **@webalive/oauth-core**: Multi-tenant OAuth with AES-256-GCM encryption
-- **@webalive/redis**: Redis client with automatic retry and error handling
-- **@webalive/alrighty**: Typed API pattern with handleBody for request parsing and response validation
+Next.js 16 (App Router), React 19, Claude Agent SDK ^0.2.34, Bun 1.2.22+, TypeScript 5.x (strict), TailwindCSS 4.x. See `package.json` for exact versions.
 
 ## Common Issues & Solutions
 
-### Issue: Stream Buffering
-
-**Symptom**: Messages don't appear in real-time
-
-**Solution**: Ensure proxy layers don't buffer the NDJSON response. Set `X-Accel-Buffering: no` and `Cache-Control: no-cache, no-transform` on the `Response`.
-
-### Issue: Path Traversal Vulnerability
-
-**Symptom**: User can access files outside workspace
-
-**Solution**: Always use `isPathWithinWorkspace()`
-```typescript
-const resolvedPath = path.resolve(workspacePath, userProvidedPath)
-if (!isPathWithinWorkspace(resolvedPath, workspacePath)) {
-  throw new Error('Invalid path')
-}
-```
-
-### Issue: Session Not Persisting
-
-**Symptom**: Conversation context lost on refresh
-
-**Solution**: Check session key format and storage
-```typescript
-import { tabKey } from '@/features/auth/lib/sessionStore'
-const key = tabKey({ userId, workspace, tabId })
-const sessionId = await sessionStore.get(key)
-```
-
-### Issue: Systemd Site Not Starting
-
-**Symptom**: `systemctl status site@domain.service` shows failed
-
-**Solution**: Check logs and permissions
-```bash
-# View logs
-journalctl -u site@domain-com.service -n 50
-
-# Check file permissions
-ls -la /srv/webalive/sites/domain.com/
-
-# Verify user exists
-id site-domain-com
-
-# Test manual start
-sudo -u site-domain-com bun /srv/webalive/sites/domain.com/user/index.ts
-```
-
-### Issue: Race Condition in Credit Charging
-
-**Symptom**: Negative credit balances or billing leaks
-
-**Cause**: Concurrent requests use read-modify-write pattern
-
-**Solution**: Use atomic database operation (implemented in `atomic-credit-charging.md`)
-```typescript
-// ✅ Atomic deduction via RPC
-const { data } = await iam.rpc('deduct_credits', {
-  p_org_id: orgId,
-  p_amount: credits
-})
-// Returns new balance or null if insufficient
-```
-
-**Documentation**: `docs/architecture/atomic-credit-charging.md`
+- **Stream buffering**: Set `X-Accel-Buffering: no` and `Cache-Control: no-cache, no-transform` on Response
+- **Path traversal**: Always use `isPathWithinWorkspace()` before file ops
+- **Session not persisting**: Check session key format via `tabKey()` from `@/features/auth/lib/sessionStore`
+- **Systemd site not starting**: `journalctl -u site@domain-com.service -n 50`, check permissions, verify user exists
+- **Credit race condition**: Use `iam.rpc('deduct_credits', ...)` atomic operation (see `docs/architecture/atomic-credit-charging.md`)
 
 ### Template Sites Maintenance
 
@@ -754,17 +621,7 @@ bun run pull
 
 ## Local Open Source Services
 
-**Location**: `/opt/services/`
-
-Self-hosted open-source tools running on this server. Each service has its own directory with docker-compose or systemd configuration.
-
-```
-/opt/services/
-├── mailcow/            # Self-hosted email server
-└── supabase/           # Self-hosted Supabase instance
-```
-
-**Management**: Services typically run via Docker Compose or systemd. Check individual directories for their `docker-compose.yml` or service configuration.
+**Location**: `/opt/services/` (mailcow, supabase) — Docker Compose or systemd. Check individual dirs for config.
 
 ## Automation System
 
@@ -801,9 +658,4 @@ curl http://localhost:5070/health
 
 ## External Reference Repos
 
-**Location**: `/opt/third/`
-
-External codebases cloned for reference when stuck on frontend issues.
-
-Check these repos for working examples before reinventing.
-
+**Location**: `/opt/third/` — check for working examples before reinventing.

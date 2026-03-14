@@ -37,6 +37,11 @@ export interface DomainRegistration {
   credits?: number // Deprecated: Credits are now managed per-org, not per-domain
 }
 
+interface DomainTestContext {
+  isTestEnv: boolean
+  testRunId: string | null
+}
+
 /**
  * Get Supabase credentials from environment
  * Works in both Next.js and standalone script contexts
@@ -259,11 +264,15 @@ async function getOrCreateUserId(email: string, password?: string): Promise<stri
 }
 
 /**
- * Validate that a specific organization exists
+ * Resolve the domain test flags from its owning organization.
  */
-async function validateProvidedOrgId(orgId: string): Promise<void> {
+async function getOrganizationDomainContext(orgId: string): Promise<DomainTestContext> {
   const iam = await getIamClient()
-  const { data: orgExists, error: orgCheckError } = await iam.from("orgs").select("org_id").eq("org_id", orgId).single()
+  const { data: orgExists, error: orgCheckError } = await iam
+    .from("orgs")
+    .select("org_id, is_test_env, test_run_id")
+    .eq("org_id", orgId)
+    .single()
 
   if (orgCheckError?.code === "PGRST116") {
     throw new DomainRegistrationError(ErrorCodes.ORG_NOT_FOUND, `Organization "${orgId}" not found`, { orgId })
@@ -282,6 +291,19 @@ async function validateProvidedOrgId(orgId: string): Promise<void> {
       orgId,
     })
   }
+
+  if (orgExists.is_test_env === null) {
+    throw new DomainRegistrationError(
+      ErrorCodes.DEPLOYMENT_FAILED,
+      `Organization "${orgId}" is missing is_test_env state`,
+      { orgId },
+    )
+  }
+
+  return {
+    isTestEnv: orgExists.is_test_env,
+    testRunId: orgExists.test_run_id,
+  }
 }
 
 /**
@@ -292,6 +314,7 @@ async function createDomainEntry(
   port: number,
   orgId: string,
   executionMode: ExecutionMode,
+  testContext: DomainTestContext,
 ): Promise<void> {
   // Get server ID for multi-server isolation — validate format to catch placeholder values
   const serverId = getServerId()
@@ -312,7 +335,8 @@ async function createDomainEntry(
     org_id: orgId,
     execution_mode: executionMode,
     server_id: serverId,
-    is_test_env: false,
+    is_test_env: testContext.isTestEnv,
+    test_run_id: testContext.testRunId,
   })
 
   if (domainError) {
@@ -389,14 +413,11 @@ export async function registerDomain(config: DomainRegistration): Promise<boolea
     // Get or create user (validates password if provided)
     const userId = await getOrCreateUserId(email, password)
 
-    // Resolve organization: use provided orgId (validate exists) or upsert default for user
-    if (providedOrgId) {
-      await validateProvidedOrgId(providedOrgId)
-    }
     const orgId = providedOrgId || (await getUserDefaultOrgId(userId, email))
+    const testContext = await getOrganizationDomainContext(orgId)
 
     // Create domain entry
-    await createDomainEntry(hostname, port, orgId, executionMode)
+    await createDomainEntry(hostname, port, orgId, executionMode, testContext)
 
     return true
   } catch (error) {

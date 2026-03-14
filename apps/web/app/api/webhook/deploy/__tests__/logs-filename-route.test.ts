@@ -1,6 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSessionUser } from "@/lib/test-helpers/mock-session-user"
 
 vi.mock("@/features/auth/lib/auth", () => ({
   getSessionUser: vi.fn(),
@@ -13,15 +14,13 @@ const LOG_DIR = path.join(process.cwd(), "../../logs")
 const createdFiles: string[] = []
 
 function makeUser(isSuperadmin: boolean) {
-  return {
+  return createMockSessionUser({
     id: "user-1",
     email: "user@example.com",
     name: "User",
-    canSelectAnyModel: false,
     isAdmin: isSuperadmin,
     isSuperadmin,
-    enabledModels: [],
-  }
+  })
 }
 
 async function callGet(filename: string) {

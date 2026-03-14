@@ -7,7 +7,12 @@
 
 "use client"
 
-import { isValidOAuthMcpProviderKey, providerSupportsOAuth, providerSupportsPat } from "@webalive/shared"
+import {
+  getProviderInfo,
+  isValidOAuthMcpProviderKey,
+  providerSupportsOAuth,
+  providerSupportsPat,
+} from "@webalive/shared"
 import { AlertCircle, CheckCircle2, ExternalLink, Key, Loader2, RefreshCw } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
@@ -34,31 +39,6 @@ const VISIBILITY_STATUS = {
 const TOKEN_STATUS = {
   NEEDS_REAUTH: "needs_reauth",
 } as const
-
-/**
- * Pulsing status indicator dot
- */
-function StatusIndicator({ color }: { color: "orange" | "emerald" }) {
-  const colorClasses = {
-    orange: {
-      ping: "bg-orange-400",
-      dot: "bg-orange-500",
-    },
-    emerald: {
-      ping: "bg-emerald-400",
-      dot: "bg-emerald-500",
-    },
-  }
-
-  const classes = colorClasses[color]
-
-  return (
-    <span className="relative flex h-2 w-2">
-      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${classes.ping} opacity-75`} />
-      <span className={`relative inline-flex rounded-full h-2 w-2 ${classes.dot}`} />
-    </span>
-  )
-}
 
 /**
  * Early Access badge component
@@ -106,22 +86,20 @@ function ErrorAlert({ error, size = "default" }: { error: string; size?: "defaul
   )
 }
 
-/**
- * Get card container styles based on token status and connection state
- */
-function getCardStyles(tokenStatus: string | undefined, isConnected: boolean, layout: "grid" | "list") {
-  const baseStyles = "group relative rounded-xl border transition-all duration-300 overflow-hidden"
-  const hoverEffect = layout === "grid" ? "hover:shadow-xl" : "hover:shadow-lg"
+// Card styles only used for compact "list" layout in modals
+function getCompactCardStyles(tokenStatus: string | undefined, isConnected: boolean) {
+  const base =
+    "group relative rounded-xl border transition-colors duration-100 overflow-hidden bg-white dark:bg-zinc-900"
 
   if (tokenStatus === TOKEN_STATUS.NEEDS_REAUTH) {
-    return `${baseStyles} ${hoverEffect} border-orange-500/30 dark:border-orange-400/30 bg-gradient-to-br from-orange-50/${layout === "list" ? "50" : "30"} ${layout === "list" ? "to-orange-50/30 dark:from-orange-950/10 dark:to-orange-950/5" : "to-white dark:from-orange-950/10 dark:to-zinc-900"} hover:border-orange-500/50 ${layout === "list" ? "dark:hover:border-orange-400/50 hover:shadow-orange-500/5" : "hover:shadow-orange-500/10"}`
+    return `${base} border-orange-500/30 dark:border-orange-400/30`
   }
 
   if (isConnected) {
-    return `${baseStyles} ${hoverEffect} border-emerald-500/20 dark:border-emerald-400/20 bg-gradient-to-br from-emerald-50/${layout === "list" ? "50" : "30"} ${layout === "list" ? "to-green-50/30 dark:from-emerald-950/10 dark:to-green-950/5" : "to-white dark:from-emerald-950/10 dark:to-zinc-900"} hover:border-emerald-500/40 ${layout === "list" ? "dark:hover:border-emerald-400/40 hover:shadow-emerald-500/5" : "hover:shadow-emerald-500/10"}`
+    return `${base} border-emerald-500/20 dark:border-emerald-400/20`
   }
 
-  return `${baseStyles} ${hoverEffect} border-black/10 dark:border-white/10 ${layout === "list" ? "bg-white dark:bg-zinc-900/50" : "bg-white dark:bg-zinc-900"} hover:border-black/20 dark:hover:border-white/20 ${layout === "list" ? "hover:shadow-black/5 dark:hover:shadow-white/5" : ""}`
+  return `${base} border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20`
 }
 
 interface IntegrationsListProps {
@@ -244,27 +222,383 @@ export function IntegrationsList({ layout = "grid", filter }: IntegrationsListPr
     )
   }
 
+  // Compact list layout (for modals) — no split panel
+  if (layout === "list") {
+    return (
+      <div className="space-y-3">
+        {filteredIntegrations.map(integration => (
+          <IntegrationCard key={integration.provider_key} integration={integration} onUpdate={refetch} layout="list" />
+        ))}
+      </div>
+    )
+  }
+
+  // Master-detail split layout (settings page)
+  return <IntegrationsMasterDetail integrations={filteredIntegrations} onUpdate={refetch} />
+}
+
+type IntegrationData = {
+  provider_key: string
+  display_name: string
+  logo_path: string | null
+  is_connected: boolean
+  visibility_status: string
+  token_status?: "valid" | "expired" | "needs_reauth" | "not_connected"
+  status_message?: string
+}
+
+interface IntegrationCardProps {
+  integration: IntegrationData
+  onUpdate: () => void
+  layout?: "grid" | "list"
+}
+
+/**
+ * Capitalize first letter of a tool name
+ */
+function formatToolName(tool: string): string {
+  return tool.charAt(0).toUpperCase() + tool.slice(1)
+}
+
+/**
+ * Master-detail layout for the settings page — full width, expansive
+ */
+function IntegrationsMasterDetail({
+  integrations,
+  onUpdate,
+}: {
+  integrations: IntegrationData[]
+  onUpdate: () => void
+}) {
+  const [selectedKey, setSelectedKey] = useState<string | null>(integrations[0]?.provider_key ?? null)
+  const selected = integrations.find(i => i.provider_key === selectedKey)
+
   return (
-    <div className={layout === "grid" ? "grid gap-6 grid-cols-1 sm:grid-cols-2" : "space-y-3"}>
-      {filteredIntegrations.map(integration => (
-        <IntegrationCard key={integration.provider_key} integration={integration} onUpdate={refetch} layout={layout} />
-      ))}
+    <div className="flex min-h-[500px]">
+      {/* Left nav — slim, clean */}
+      <div className="w-[260px] flex-shrink-0 border-r border-black/[0.06] dark:border-white/[0.06] pr-5">
+        {/* Security info */}
+        <div className="mb-4 px-3 py-3 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04]">
+          <p className="text-[12px] leading-relaxed text-black/50 dark:text-white/50">
+            <span className="font-medium text-black/70 dark:text-white/70">Your tokens are private.</span> Encrypted at
+            rest with AES-256-GCM. Only you can access your connected accounts.
+          </p>
+        </div>
+
+        <div className="space-y-0.5">
+          {integrations.map(integration => {
+            const isSelected = integration.provider_key === selectedKey
+            return (
+              <button
+                key={integration.provider_key}
+                type="button"
+                onClick={() => setSelectedKey(integration.provider_key)}
+                className={`w-full text-left py-2.5 px-3 flex items-center gap-3 rounded-lg transition-colors duration-100 ${
+                  isSelected
+                    ? "bg-black/[0.04] dark:bg-white/[0.04]"
+                    : "hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                }`}
+              >
+                {integration.logo_path ? (
+                  <img src={integration.logo_path} alt="" className="h-7 w-7 object-contain flex-shrink-0" />
+                ) : (
+                  <div className="h-7 w-7 rounded-md bg-black/[0.04] dark:bg-white/[0.04] flex items-center justify-center flex-shrink-0">
+                    <span className="text-[10px] font-semibold text-black/40 dark:text-white/40">
+                      {integration.display_name.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <span
+                  className={`flex-1 text-[13px] truncate ${
+                    isSelected ? "font-medium text-black/90 dark:text-white/90" : "text-black/60 dark:text-white/60"
+                  }`}
+                >
+                  {integration.display_name}
+                </span>
+                {integration.is_connected && integration.token_status !== TOKEN_STATUS.NEEDS_REAUTH && (
+                  <span className="size-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                )}
+                {integration.token_status === TOKEN_STATUS.NEEDS_REAUTH && (
+                  <span className="size-1.5 rounded-full bg-orange-500 flex-shrink-0" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Right detail — expansive */}
+      <div className="flex-1 pl-8 overflow-y-auto">
+        {selected ? (
+          <IntegrationDetail integration={selected} onUpdate={onUpdate} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-[13px] text-black/30 dark:text-white/30">Select an integration</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-interface IntegrationCardProps {
-  integration: {
-    provider_key: string
-    display_name: string
-    logo_path: string | null
-    is_connected: boolean
-    visibility_status: string
-    token_status?: "valid" | "expired" | "needs_reauth" | "not_connected"
-    status_message?: string
+/**
+ * Detail panel for a selected integration — expansive and capability-focused
+ */
+function IntegrationDetail({ integration, onUpdate }: { integration: IntegrationData; onUpdate: () => void }) {
+  const { disconnect, disconnecting, error: disconnectError } = useDisconnectIntegration(integration.provider_key)
+  const {
+    connect,
+    connecting,
+    error: connectError,
+  } = useConnectIntegration(integration.provider_key, {
+    isReconnect: integration.token_status === TOKEN_STATUS.NEEDS_REAUTH,
+  })
+
+  const error = disconnectError || connectError
+  const supportsPat = providerSupportsPat(integration.provider_key)
+  const supportsOAuth = providerSupportsOAuth(integration.provider_key)
+  const supportsBoth = supportsPat && supportsOAuth
+  const providerInfo = getProviderInfo(integration.provider_key)
+  const isConnected = integration.is_connected && integration.token_status !== TOKEN_STATUS.NEEDS_REAUTH
+
+  const handleConnect = async () => {
+    const success = await connect()
+    if (success) {
+      trackIntegrationConnected(integration.provider_key)
+      toast.success(`${integration.display_name} connected`, {
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+      })
+      onUpdate()
+    }
   }
-  onUpdate: () => void
-  layout?: "grid" | "list"
+
+  const handleDisconnect = async () => {
+    try {
+      await disconnect()
+      trackIntegrationDisconnected(integration.provider_key)
+      toast.success(`${integration.display_name} disconnected`)
+      onUpdate()
+    } catch {
+      // Error handled by mutation's onError callback
+    }
+  }
+
+  return (
+    <div>
+      {/* Header — large, confident */}
+      <div className="flex items-start gap-5">
+        {integration.logo_path ? (
+          <img src={integration.logo_path} alt="" className="h-14 w-14 object-contain flex-shrink-0" />
+        ) : (
+          <div className="h-14 w-14 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] flex items-center justify-center flex-shrink-0">
+            <span className="text-base font-semibold text-black/40 dark:text-white/40">
+              {integration.display_name.slice(0, 2).toUpperCase()}
+            </span>
+          </div>
+        )}
+        <div className="flex-1 min-w-0 pt-0.5">
+          <h3 className="text-lg font-semibold text-black/90 dark:text-white/90">{integration.display_name}</h3>
+          {providerInfo?.description && (
+            <p className="text-[13px] text-black/50 dark:text-white/50 mt-1 leading-relaxed max-w-lg">
+              {providerInfo.description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Status + action — stacked */}
+      <div className="mt-5 pb-6 border-b border-black/[0.06] dark:border-white/[0.06]">
+        {integration.token_status === TOKEN_STATUS.NEEDS_REAUTH ? (
+          <p className="flex items-center gap-2 text-[13px] text-black/50 dark:text-white/50 mb-3">
+            <span className="size-2 rounded-full bg-orange-400 flex-shrink-0" />
+            <span>
+              <span className="font-medium text-black/70 dark:text-white/70">Expired</span> —{" "}
+              {integration.status_message || "reconnect to keep using this integration."}
+            </span>
+          </p>
+        ) : isConnected ? (
+          <span className="flex items-center gap-2 text-[13px] text-emerald-600 dark:text-emerald-400 mb-3">
+            <span className="size-2 rounded-full bg-emerald-500" />
+            Connected
+          </span>
+        ) : (
+          <span className="flex items-center gap-2 text-[13px] text-black/35 dark:text-white/35 mb-3">
+            <span className="size-2 rounded-full bg-black/10 dark:bg-white/10" />
+            Not connected
+          </span>
+        )}
+
+        {integration.token_status === TOKEN_STATUS.NEEDS_REAUTH ? (
+          <button
+            type="button"
+            onClick={handleConnect}
+            disabled={connecting}
+            className="px-4 py-2 text-[13px] font-medium rounded-lg border border-black/[0.08] dark:border-white/[0.08] text-black/70 dark:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {connecting ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Reconnecting...
+              </span>
+            ) : (
+              "Reconnect"
+            )}
+          </button>
+        ) : isConnected ? (
+          <button
+            type="button"
+            onClick={handleDisconnect}
+            disabled={disconnecting}
+            className="px-3.5 py-1.5 text-[13px] font-medium rounded-lg text-black/50 dark:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {disconnecting ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Disconnecting...
+              </span>
+            ) : (
+              "Disconnect"
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleConnect}
+            disabled={connecting}
+            className="px-4 py-2 text-[13px] font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {connecting ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Connecting...
+              </span>
+            ) : (
+              "Connect"
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Alternative connection method — only when not connected and supports PAT */}
+      {!isConnected && integration.token_status !== TOKEN_STATUS.NEEDS_REAUTH && (supportsPat || supportsBoth) && (
+        <DetailPatInput
+          providerKey={integration.provider_key}
+          displayName={integration.display_name}
+          onSuccess={onUpdate}
+        />
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="pt-4">
+          <ErrorAlert error={error} size="small" />
+        </div>
+      )}
+
+      {/* Tools — capability grid */}
+      {providerInfo && providerInfo.tools.length > 0 && (
+        <div className="pt-6">
+          <p className="text-[11px] font-medium text-black/40 dark:text-white/40 uppercase tracking-wider mb-4">
+            {providerInfo.tools.length} available tools
+          </p>
+          <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">
+            {providerInfo.tools.map(tool => (
+              <div
+                key={tool}
+                className={`px-3.5 py-2.5 text-[13px] rounded-lg transition-colors duration-100 ${
+                  isConnected
+                    ? "bg-black/[0.03] dark:bg-white/[0.03] text-black/80 dark:text-white/80"
+                    : "bg-black/[0.02] dark:bg-white/[0.02] text-black/25 dark:text-white/25"
+                }`}
+              >
+                {formatToolName(tool)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Integration UI component when connected */}
+      {renderIntegrationUI(integration, "grid")}
+    </div>
+  )
+}
+
+/**
+ * Collapsed PAT input for the detail panel — shows as a subtle link, expands on click
+ */
+function DetailPatInput({
+  providerKey,
+  displayName,
+  onSuccess,
+}: {
+  providerKey: string
+  displayName: string
+  onSuccess: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [token, setToken] = useState("")
+  const { connectWithPat, connecting, error, clearError } = useConnectWithPat(providerKey)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token.trim()) return
+    const result = await connectWithPat(token.trim())
+    if (result.success) {
+      toast.success(`Connected to ${displayName} as ${result.username}`, {
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+      })
+      setToken("")
+      setExpanded(false)
+      onSuccess()
+    }
+  }
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setExpanded(true)
+          clearError()
+        }}
+        className="mt-2 text-[12px] text-black/35 dark:text-white/35 hover:text-black/60 dark:hover:text-white/60 transition-colors duration-100"
+      >
+        Or connect with a personal access token
+      </button>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2">
+      <input
+        type="password"
+        value={token}
+        onChange={e => setToken(e.target.value)}
+        placeholder="Paste token..."
+        className="flex-1 max-w-xs px-3 py-1.5 text-[13px] rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-transparent text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-black/[0.08] dark:focus:ring-white/[0.08] transition-all duration-100"
+      />
+      <button
+        type="submit"
+        disabled={connecting || !token.trim()}
+        className="px-3 py-1.5 text-[13px] font-medium rounded-lg bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Connect"}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setExpanded(false)
+          setToken("")
+          clearError()
+        }}
+        className="px-3 py-1.5 text-[13px] text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 transition-colors duration-100"
+      >
+        Cancel
+      </button>
+      {error && <p className="text-[12px] text-red-600 dark:text-red-400 ml-1">{error}</p>}
+    </form>
+  )
 }
 
 /**
@@ -533,7 +867,10 @@ function DualConnectionOptions({
   )
 }
 
-function IntegrationCard({ integration, onUpdate, layout = "grid" }: IntegrationCardProps) {
+/**
+ * Compact integration card — used only in modal/sidebar "list" layout
+ */
+function IntegrationCard({ integration, onUpdate }: IntegrationCardProps) {
   const { disconnect, disconnecting, error: disconnectError } = useDisconnectIntegration(integration.provider_key)
   const {
     connect,
@@ -547,6 +884,7 @@ function IntegrationCard({ integration, onUpdate, layout = "grid" }: Integration
   const supportsPat = providerSupportsPat(integration.provider_key)
   const supportsOAuth = providerSupportsOAuth(integration.provider_key)
   const supportsBoth = supportsPat && supportsOAuth
+  const providerInfo = getProviderInfo(integration.provider_key)
 
   const handleConnect = async () => {
     const success = await connect()
@@ -555,282 +893,111 @@ function IntegrationCard({ integration, onUpdate, layout = "grid" }: Integration
       toast.success(`${integration.display_name} connected`, {
         icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
       })
-      onUpdate() // Refresh to show connected status
+      onUpdate()
     }
   }
 
   const handleDisconnect = async () => {
-    await disconnect()
-    trackIntegrationDisconnected(integration.provider_key)
-    toast.success(`${integration.display_name} disconnected`)
-    onUpdate() // Refresh the list
+    try {
+      await disconnect()
+      trackIntegrationDisconnected(integration.provider_key)
+      toast.success(`${integration.display_name} disconnected`)
+      onUpdate()
+    } catch {
+      // Error handled by mutation's onError callback
+    }
   }
 
-  // Logo with polished styling
-  const logoElement = integration.logo_path ? (
-    <div className="relative group/logo">
-      <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-black/10 dark:from-white/5 dark:to-white/10 rounded-lg blur group-hover/logo:blur-md transition-all" />
-      <img
-        src={integration.logo_path}
-        alt={`${integration.display_name} logo`}
-        className="relative h-10 w-10 rounded-lg object-contain p-1 bg-white dark:bg-black/20 border border-black/5 dark:border-white/10 shadow-sm"
+  const actionButton =
+    integration.token_status === TOKEN_STATUS.NEEDS_REAUTH ? (
+      <button
+        type="button"
+        onClick={handleConnect}
+        disabled={connecting}
+        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+      >
+        {connecting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reconnect"}
+      </button>
+    ) : integration.is_connected ? (
+      <button
+        type="button"
+        onClick={handleDisconnect}
+        disabled={disconnecting}
+        className="px-3 py-1.5 text-xs font-medium rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+      >
+        {disconnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Disconnect"}
+      </button>
+    ) : supportsBoth ? (
+      <DualConnectionOptions
+        providerKey={integration.provider_key}
+        displayName={integration.display_name}
+        onOAuthConnect={handleConnect}
+        onSuccess={onUpdate}
+        connecting={connecting}
+        size="small"
       />
-    </div>
-  ) : (
-    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-black/5 to-black/10 dark:from-white/5 dark:to-white/10 flex items-center justify-center border border-black/5 dark:border-white/10 flex-shrink-0">
-      <span className="text-sm font-semibold bg-gradient-to-br from-black/70 to-black/50 dark:from-white/70 dark:to-white/50 bg-clip-text text-transparent">
-        {integration.display_name.slice(0, 2).toUpperCase()}
-      </span>
-    </div>
-  )
-
-  // Compact list layout for modal
-  if (layout === "list") {
-    return (
-      <div className={getCardStyles(integration.token_status, integration.is_connected, layout)}>
-        <div className="p-4">
-          <div className="flex items-start gap-3">
-            {/* Logo */}
-            <div className="relative">
-              {logoElement}
-              {integration.is_connected && (
-                <div className="absolute -top-1 -right-1">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-emerald-500 rounded-full blur-sm animate-pulse" />
-                    <div className="relative w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-zinc-900 shadow-sm" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              {/* Title & Status */}
-              <div className="flex items-center gap-2 mb-1">
-                <h4 className="text-sm font-semibold text-black dark:text-white truncate">
-                  {integration.display_name}
-                </h4>
-                {/* Only show "Early Access" for beta - if you can see it, you have access */}
-                {integration.visibility_status === VISIBILITY_STATUS.BETA && <EarlyAccessBadge size="small" />}
-              </div>
-
-              {/* Status text */}
-              <p className="text-xs text-black/60 dark:text-white/60 mb-3">
-                {integration.token_status === TOKEN_STATUS.NEEDS_REAUTH ? (
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <StatusIndicator color="orange" />
-                    <span className="text-orange-700 dark:text-orange-400">
-                      {integration.status_message || "Reconnection required"}
-                    </span>
-                  </span>
-                ) : integration.is_connected ? (
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <StatusIndicator color="emerald" />
-                    <span className="text-emerald-700 dark:text-emerald-400">Connected and active</span>
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-1.5 h-1.5 bg-black/20 dark:bg-white/20 rounded-full" />
-                    Ready to connect
-                  </span>
-                )}
-              </p>
-
-              {/* Error alert - polished */}
-              {error && <ErrorAlert error={error} size="small" />}
-
-              {/* Action button */}
-              {integration.token_status === TOKEN_STATUS.NEEDS_REAUTH ? (
-                <button
-                  type="button"
-                  onClick={handleConnect}
-                  disabled={connecting}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-500 transition-all duration-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {connecting ? (
-                    <span className="flex items-center gap-1.5">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Reconnecting...
-                    </span>
-                  ) : (
-                    "Reconnect"
-                  )}
-                </button>
-              ) : integration.is_connected ? (
-                <button
-                  type="button"
-                  onClick={handleDisconnect}
-                  disabled={disconnecting}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-black/20 dark:border-white/20 text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {disconnecting ? (
-                    <span className="flex items-center gap-1.5">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Disconnecting...
-                    </span>
-                  ) : (
-                    "Disconnect"
-                  )}
-                </button>
-              ) : supportsBoth ? (
-                <DualConnectionOptions
-                  providerKey={integration.provider_key}
-                  displayName={integration.display_name}
-                  onOAuthConnect={handleConnect}
-                  onSuccess={onUpdate}
-                  connecting={connecting}
-                  size="small"
-                />
-              ) : supportsPat ? (
-                <PatInput
-                  providerKey={integration.provider_key}
-                  displayName={integration.display_name}
-                  onSuccess={onUpdate}
-                  size="small"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleConnect}
-                  disabled={connecting}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80 transition-all duration-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {connecting ? (
-                    <span className="flex items-center gap-1.5">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Connecting...
-                    </span>
-                  ) : (
-                    "Connect"
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Show integration UI component when connected */}
-          {renderIntegrationUI(integration, layout)}
-        </div>
-      </div>
+    ) : supportsPat ? (
+      <PatInput
+        providerKey={integration.provider_key}
+        displayName={integration.display_name}
+        onSuccess={onUpdate}
+        size="small"
+      />
+    ) : (
+      <button
+        type="button"
+        onClick={handleConnect}
+        disabled={connecting}
+        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+      >
+        {connecting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Connect"}
+      </button>
     )
-  }
 
-  // Standard grid layout for full page
+  const statusElement =
+    integration.token_status === TOKEN_STATUS.NEEDS_REAUTH ? (
+      <span className="text-[11px] text-zinc-400 dark:text-zinc-500">Expired</span>
+    ) : integration.is_connected ? (
+      <span className="flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+        <span className="size-1.5 rounded-full bg-emerald-500" />
+        Connected
+      </span>
+    ) : null
+
   return (
-    <div className={getCardStyles(integration.token_status, integration.is_connected, layout)}>
-      {/* Header */}
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-4">
-            {logoElement}
-            <div>
-              <h3 className="text-lg font-semibold text-black dark:text-white">{integration.display_name}</h3>
-              <p className="text-sm text-black/50 dark:text-white/50 font-mono">{integration.provider_key}</p>
+    <div className={getCompactCardStyles(integration.token_status, integration.is_connected)}>
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          {integration.logo_path ? (
+            <img src={integration.logo_path} alt="" className="h-8 w-8 object-contain flex-shrink-0 rounded-lg" />
+          ) : (
+            <div className="h-8 w-8 rounded-lg bg-zinc-100 dark:bg-white/5 flex items-center justify-center flex-shrink-0">
+              <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+                {integration.display_name.slice(0, 2).toUpperCase()}
+              </span>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {integration.token_status === TOKEN_STATUS.NEEDS_REAUTH ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 dark:bg-orange-400/10 border border-orange-500/20 dark:border-orange-400/20">
-                <StatusIndicator color="orange" />
-                <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">Reconnect</span>
-              </div>
-            ) : integration.is_connected ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-400/10 border border-emerald-500/20 dark:border-emerald-400/20">
-                <StatusIndicator color="emerald" />
-                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Connected</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
-                <span className="inline-block w-1.5 h-1.5 bg-black/20 dark:bg-white/20 rounded-full" />
-                <span className="text-xs font-medium text-black/60 dark:text-white/60">Not Connected</span>
-              </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h4 className="text-[13px] font-medium text-zinc-900 dark:text-white truncate">
+                {integration.display_name}
+              </h4>
+              {statusElement}
+              {integration.visibility_status === VISIBILITY_STATUS.BETA && <EarlyAccessBadge size="small" />}
+            </div>
+            {providerInfo?.description && (
+              <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5 truncate">{providerInfo.description}</p>
             )}
-            {integration.visibility_status === VISIBILITY_STATUS.BETA && <EarlyAccessBadge />}
           </div>
+          {actionButton}
         </div>
-
-        {/* Error - polished */}
-        {error && <ErrorAlert error={error} />}
-
-        {/* Description */}
-        <p className="text-sm text-black/70 dark:text-white/70 leading-relaxed">
-          {integration.token_status === TOKEN_STATUS.NEEDS_REAUTH
-            ? integration.status_message || `Your ${integration.display_name} connection has expired. Please reconnect.`
-            : integration.is_connected
-              ? `Your ${integration.display_name} account is connected and ready to use.`
-              : `Connect your ${integration.display_name} account to enable this integration.`}
-        </p>
-      </div>
-
-      {/* Footer with action */}
-      <div className="px-6 pb-6">
-        {integration.token_status === TOKEN_STATUS.NEEDS_REAUTH ? (
-          <button
-            type="button"
-            onClick={handleConnect}
-            disabled={connecting}
-            className="w-full px-4 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
-          >
-            {connecting ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Reconnecting...
-              </span>
-            ) : (
-              `Reconnect ${integration.display_name}`
-            )}
-          </button>
-        ) : integration.is_connected ? (
-          <button
-            type="button"
-            onClick={handleDisconnect}
-            disabled={disconnecting}
-            className="w-full px-4 py-2.5 text-sm font-medium rounded-lg border-2 border-black/10 dark:border-white/10 text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
-          >
-            {disconnecting ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Disconnecting...
-              </span>
-            ) : (
-              "Disconnect"
-            )}
-          </button>
-        ) : supportsBoth ? (
-          <DualConnectionOptions
-            providerKey={integration.provider_key}
-            displayName={integration.display_name}
-            onOAuthConnect={handleConnect}
-            onSuccess={onUpdate}
-            connecting={connecting}
-          />
-        ) : supportsPat ? (
-          <PatInput
-            providerKey={integration.provider_key}
-            displayName={integration.display_name}
-            onSuccess={onUpdate}
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={handleConnect}
-            disabled={connecting}
-            className="w-full px-4 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-black to-black/90 dark:from-white dark:to-white/90 text-white dark:text-black hover:shadow-lg hover:shadow-black/20 dark:hover:shadow-white/20 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
-          >
-            {connecting ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Connecting...
-              </span>
-            ) : (
-              `Connect ${integration.display_name}`
-            )}
-          </button>
+        {error && (
+          <div className="mt-3">
+            <ErrorAlert error={error} size="small" />
+          </div>
         )}
+        {renderIntegrationUI(integration, "list")}
       </div>
-
-      {/* Show integration UI component when connected */}
-      {renderIntegrationUI(integration, layout)}
     </div>
   )
 }

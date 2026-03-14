@@ -14,6 +14,18 @@ interface DeployDeploymentResponse {
   data: DeployDeployment
 }
 
+async function fetchLog(url: string): Promise<string> {
+  const response = await fetch(url, { credentials: "include" })
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ error: response.statusText }))
+    const message =
+      typeof body.error === "string" ? body.error : (body.error?.message ?? `Request failed: ${response.status}`)
+    throw new Error(message)
+  }
+
+  return response.text()
+}
+
 export const deploysApi = {
   list: () => api.get<DeploysListResponse>("/manager/deploys").then(response => response.data),
   build: (applicationId: string, gitRef?: string) =>
@@ -31,30 +43,6 @@ export const deploysApi = {
         action,
       })
       .then(response => response.data),
-  getBuildLog: (buildId: string) =>
-    fetch(`/api/manager/deploys/builds/${buildId}/log`, {
-      credentials: "include",
-    }).then(async response => {
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({ error: response.statusText }))
-        const message =
-          typeof body.error === "string" ? body.error : (body.error?.message ?? `Request failed: ${response.status}`)
-        throw new Error(message)
-      }
-
-      return response.text()
-    }),
-  getDeploymentLog: (deploymentId: string) =>
-    fetch(`/api/manager/deploys/deployments/${deploymentId}/log`, {
-      credentials: "include",
-    }).then(async response => {
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({ error: response.statusText }))
-        const message =
-          typeof body.error === "string" ? body.error : (body.error?.message ?? `Request failed: ${response.status}`)
-        throw new Error(message)
-      }
-
-      return response.text()
-    }),
+  getBuildLog: (buildId: string) => fetchLog(`/api/manager/deploys/builds/${buildId}/log`),
+  getDeploymentLog: (deploymentId: string) => fetchLog(`/api/manager/deploys/deployments/${deploymentId}/log`),
 }

@@ -13,8 +13,16 @@ import { assertServerOnly } from "./guards.js"
 // Prevent this package from being imported in browser environments
 assertServerOnly("@webalive/site-controller", "Use @webalive/shared for constants")
 
+// alive.toml contract
+export type { AliveToml } from "./alive-toml.js"
+export { getRunCommand, readAliveToml, resolveProjectRoot } from "./alive-toml.js"
+
 // Constants - re-exported from constants.ts for browser safety
 export { DEFAULTS, DOMAINS, PATHS, PORTS, SECURITY, TIMEOUTS } from "./constants.js"
+
+export type { DeploymentErrorCode } from "./errors.js"
+export { DeploymentError } from "./errors.js"
+
 export { buildSite } from "./executors/build.js"
 // Caddy types
 export type {
@@ -49,9 +57,3 @@ export type {
   RenameConfig,
   RenameResult,
 } from "./types.js"
-
-// Backup operations - NOT exported from main index due to Node.js dependencies
-// Import directly: import { backupWebsites } from '@webalive/site-controller/dist/backup'
-
-export type { DeploymentErrorCode } from "./errors.js"
-export { DeploymentError } from "./errors.js"

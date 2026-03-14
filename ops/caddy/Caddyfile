@@ -1,0 +1,2486 @@
+# WebAlive sites managed by Alive
+#
+# NOTE: Site routing is generated from the database and written to:
+#   /var/lib/alive/generated/Caddyfile.sites
+#
+# This file only defines shared snippets and imports the generated routing.
+# Any legacy/manual domains that are NOT in the database are preserved below.
+
+(disable_acme) {
+    tls {
+        issuer internal
+    }
+}
+
+# Shared snippets (common_headers, image_serving, preview_auth)
+import /root/webalive/alive/ops/caddy/Caddyfile.snippets
+
+# Generated site routing (database-driven, filtered for reserved domains)
+# Each environment generates its own file from its own DB.
+# Glob picks up all: Caddyfile.sites.filtered, Caddyfile.staging-sites.filtered, etc.
+import /var/lib/alive/generated/Caddyfile.*sites.filtered
+
+# Stealth scraping proxy
+scrape.alive.best {
+    tls force_automate
+    reverse_proxy localhost:1234
+}
+
+# scalotta.it: serve the site, scalotta.alive.best: redirect to it
+# Custom domain — scalotta.alive.best is in generated/Caddyfile.sites
+scalotta.it {
+    tls force_automate
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3687 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+# Legacy/manual domains not present in database (auto-preserved)
+shell.terminal.goalive.nl {
+    reverse_proxy localhost:3888
+}
+
+sk.goalive.nl {
+    reverse_proxy localhost:3888
+}
+
+dreammachinetest.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3354 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+sk-goalive-nl.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3888 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+dreammachinetest-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3354 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+djlarson-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3374 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+rmk2000test-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3375 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+tester-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3377 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+testkhalid-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3385 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test3-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3390 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-flow-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3398 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test123-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3400 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+api-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3407 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-hallohallo-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3409 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+verify-fix-test-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3410 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+deploy-1713-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3412 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-wrong-812-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3413 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+newtest-847-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3415 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test1-93-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3417 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test2-09-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3418 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+mp4-to-mp3-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3336 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-e2e-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3395 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-cli-e2e-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3482 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+asdf-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3485 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+asdfadsfadsf-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3510 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+testdeploy-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3589 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+rotatewheel.com {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3372 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+rmk2000test.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3375 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+tester.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3377 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+testkhalid.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3385 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test3.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3390 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-flow.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3398 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test123.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3400 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+api.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3407 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-hallohallo.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3409 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+verify-fix-test.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3410 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+deploy-1713.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3412 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-wrong-812.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3413 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+newtest-847.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3415 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test1-93.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3417 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test2-09.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3418 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+mp4-to-mp3.alive.best {
+    reverse_proxy localhost:3336
+}
+
+test-e2e.alive.best {
+    import common_headers
+    reverse_proxy localhost:3395 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-cli-e2e.alive.best {
+    import common_headers
+    reverse_proxy localhost:3482 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+asdf.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3485 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+asdfadsfadsf.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3510 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+testdeploy.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3589 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+migratetest2.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3600 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+migratetest2-alive-best.preview.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3600 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+sk-goalive-nl.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3888 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+dreammachinetest-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3354 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+djlarson-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3374 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+rmk2000test-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3375 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+tester-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3377 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+testkhalid-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3385 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test3-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3390 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-flow-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3398 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test123-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3400 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+api-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3407 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-hallohallo-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3409 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+verify-fix-test-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3410 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+deploy-1713-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3412 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-wrong-812-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3413 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+newtest-847-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3415 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test1-93-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3417 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test2-09-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3418 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+mp4-to-mp3-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3336 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-e2e-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3395 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-cli-e2e-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3482 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+asdf-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3485 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+asdfadsfadsf-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3510 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+testdeploy-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3589 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+migratetest2-alive-best.preview.staging.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3600 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to staging environment)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+sk-goalive-nl.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3888 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+dreammachinetest-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3354 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+djlarson-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3374 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+rmk2000test-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3375 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+tester-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3377 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+testkhalid-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3385 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test3-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3390 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-flow-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3398 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test123-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3400 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+api-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3407 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-hallohallo-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3409 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+verify-fix-test-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3410 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+deploy-1713-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3412 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-wrong-812-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3413 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+newtest-847-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3415 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test1-93-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3417 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test2-09-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3418 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+mp4-to-mp3-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3336 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-e2e-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3395 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+test-cli-e2e-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3482 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+asdf-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3485 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+asdfadsfadsf-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3510 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+testdeploy-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3589 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}
+
+migratetest2-alive-best.preview.dev.terminal.goalive.nl {
+    import disable_acme
+    import image_serving
+
+    reverse_proxy localhost:3600 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://terminal.goalive.nl https://staging.terminal.goalive.nl https://dev.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # SECURITY: Strip any client-supplied X-Preview-Set-Cookie header to prevent cookie injection
+    request_header -X-Preview-Set-Cookie
+
+    # Auth check via forward_auth (routes to dev environment)
+    forward_auth localhost:8997 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Map X-Preview-Set-Cookie from forward_auth to Set-Cookie response header
+    @has_preview_cookie header X-Preview-Set-Cookie *
+    header @has_preview_cookie +Set-Cookie "{http.request.header.X-Preview-Set-Cookie}"
+}

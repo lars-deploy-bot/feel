@@ -94,6 +94,60 @@ describe("deploysRoutes", () => {
     expect(queueDeployment).not.toHaveBeenCalled()
   })
 
+  it("queues a deployment with the default deploy action", async () => {
+    vi.mocked(queueDeployment).mockResolvedValueOnce({
+      deployment_id: "dep_deploy_123",
+      environment_id: "dep_env_123",
+      environment_name: "staging",
+      environment_hostname: "staging.alive.best",
+      environment_port: 8998,
+      release_id: "dep_rel_123",
+      action: "deploy",
+      status: "pending",
+      deployment_log_path: null,
+      error_message: null,
+      healthcheck_status: null,
+      started_at: null,
+      finished_at: null,
+      created_at: "2026-03-10T12:00:00.000Z",
+    })
+
+    const app = buildTestApp()
+    const response = await app.request("http://localhost/api/manager/deploys/deployments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        environment_id: "dep_env_123",
+        release_id: "dep_rel_123",
+      }),
+    })
+
+    expect(response.status).toBe(201)
+    expect(okSchema.parse(await response.json()).ok).toBe(true)
+    expect(queueDeployment).toHaveBeenCalledWith("dep_env_123", "dep_rel_123", "deploy")
+  })
+
+  it("requires auth on the fully wired manager route", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co"
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key"
+    process.env.ALIVE_PASSCODE = "test-passcode"
+    process.env.NODE_ENV = "development"
+    process.env.E2B_API_KEY = "e2b_test_key"
+    process.env.GROQ_API_SECRET = "groq-secret"
+    process.env.POSTHOG_API_KEY = "posthog-key"
+    process.env.POSTHOG_HOST = "https://posthog.example.com"
+    process.env.POSTHOG_PROJECT_ID = "2"
+    vi.resetModules()
+
+    const { createApp } = await import("../../../server/app")
+    const app = createApp()
+    const response = await app.request("http://localhost/api/manager/deploys")
+
+    expect(response.status).toBe(401)
+    expect(errorSchema.parse(await response.json()).error.code).toBe("UNAUTHORIZED")
+    expect(listDeployApplications).not.toHaveBeenCalled()
+  })
+
   it("returns plain text logs for builds and deployments", async () => {
     vi.mocked(readBuildLog).mockResolvedValueOnce("build log")
     vi.mocked(readDeploymentLog).mockResolvedValueOnce("deployment log")

@@ -16,7 +16,7 @@ import { errorResult, type ToolResult } from "../../lib/api-client.js"
 import { extractDomainFromWorkspace, validateWorkspacePath } from "../../lib/workspace-validator.js"
 
 const BROWSER_CONTROL_URL = "http://127.0.0.1:5061"
-const REQUEST_TIMEOUT_MS = 60_000
+const REQUEST_TIMEOUT_MS = 90_000
 
 /** Unique per worker process — isolates browser sessions between parallel chats. */
 const SESSION_ID = `worker-${process.pid}`
@@ -46,6 +46,7 @@ async function callBrowserService(
   endpoint: string,
   method: "GET" | "POST",
   body?: Record<string, unknown>,
+  cancelSignal?: AbortSignal,
 ): Promise<{ ok: boolean; status: number; data: Record<string, unknown> }> {
   const internalSecret = process.env.INTERNAL_TOOLS_SECRET
   if (!internalSecret) {
@@ -54,8 +55,15 @@ async function callBrowserService(
 
   return retryAsync(
     async () => {
+      // Combine timeout + external cancel signal: abort on whichever fires first
       const controller = new AbortController()
+      if (cancelSignal?.aborted) {
+        throw new Error("Browser request cancelled")
+      }
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+      const onCancel = () => controller.abort()
+      cancelSignal?.addEventListener("abort", onCancel, { once: true })
 
       try {
         const response = await fetch(`${BROWSER_CONTROL_URL}${endpoint}`, {
@@ -69,6 +77,7 @@ async function callBrowserService(
         })
 
         clearTimeout(timeoutId)
+        cancelSignal?.removeEventListener("abort", onCancel)
 
         const data: unknown = await response.json()
         if (typeof data !== "object" || data === null || Array.isArray(data)) {
@@ -77,10 +86,15 @@ async function callBrowserService(
         return { ok: response.ok, status: response.status, data: data as Record<string, unknown> }
       } catch (err) {
         clearTimeout(timeoutId)
+        cancelSignal?.removeEventListener("abort", onCancel)
         const message = err instanceof Error ? err.message : String(err)
 
         if (message.includes("aborted")) {
-          throw new Error("Browser request timed out after 60s")
+          // Distinguish user cancel from timeout
+          if (cancelSignal?.aborted) {
+            throw new Error("Browser request cancelled")
+          }
+          throw new Error("Browser request timed out after 90s")
         }
         // Bun uses "Unable to connect", Node uses "ECONNREFUSED", etc.
         if (
@@ -101,8 +115,9 @@ async function callBrowserService(
       minDelayMs: 500,
       shouldRetry: err => {
         const message = err instanceof Error ? err.message : String(err)
-        // Don't retry timeouts, connection refused (service down), or auth errors
-        if (message.includes("timed out") || message.includes("not running")) return false
+        // Don't retry timeouts, cancellations, connection refused, or auth errors
+        if (message.includes("timed out") || message.includes("cancelled") || message.includes("not running"))
+          return false
         // Retry transient network errors
         return true
       },
@@ -110,7 +125,7 @@ async function callBrowserService(
   )
 }
 
-export async function browserAction(params: BrowserParams): Promise<ToolResult> {
+export async function browserAction(params: BrowserParams, cancelSignal?: AbortSignal): Promise<ToolResult> {
   const workspaceRoot = process.cwd()
 
   try {
@@ -129,7 +144,7 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
   try {
     switch (params.action) {
       case "status": {
-        const { ok, data } = await callBrowserService(`/status/${domain}`, "GET")
+        const { ok, data } = await callBrowserService(`/status/${domain}`, "GET", undefined, cancelSignal)
         if (!ok) {
           return errorResult("Status check failed", String(data.error))
         }
@@ -140,11 +155,16 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       }
 
       case "open": {
-        const { ok, data } = await callBrowserService("/open", "POST", {
-          domain,
-          sessionId: SESSION_ID,
-          path: params.path ?? "/",
-        })
+        const { ok, data } = await callBrowserService(
+          "/open",
+          "POST",
+          {
+            domain,
+            sessionId: SESSION_ID,
+            path: params.path ?? "/",
+          },
+          cancelSignal,
+        )
         if (!ok) {
           return errorResult("Failed to open page", String(data.error))
         }
@@ -160,11 +180,16 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       }
 
       case "screenshot": {
-        const { ok, data } = await callBrowserService("/screenshot", "POST", {
-          domain,
-          sessionId: SESSION_ID,
-          fullPage: params.fullPage ?? true,
-        })
+        const { ok, data } = await callBrowserService(
+          "/screenshot",
+          "POST",
+          {
+            domain,
+            sessionId: SESSION_ID,
+            fullPage: params.fullPage ?? true,
+          },
+          cancelSignal,
+        )
         if (!ok) {
           return errorResult("Screenshot failed", String(data.error))
         }
@@ -188,11 +213,16 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       }
 
       case "snapshot": {
-        const { ok, data } = await callBrowserService("/snapshot", "POST", {
-          domain,
-          sessionId: SESSION_ID,
-          interactive: params.interactive ?? false,
-        })
+        const { ok, data } = await callBrowserService(
+          "/snapshot",
+          "POST",
+          {
+            domain,
+            sessionId: SESSION_ID,
+            interactive: params.interactive ?? false,
+          },
+          cancelSignal,
+        )
         if (!ok) {
           return errorResult("Snapshot failed", String(data.error))
         }
@@ -218,14 +248,19 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       case "click":
       case "fill":
       case "type": {
-        const { ok, data } = await callBrowserService("/act", "POST", {
-          domain,
-          sessionId: SESSION_ID,
-          action: params.action,
-          ref: params.ref,
-          value: params.value,
-          text: params.text,
-        })
+        const { ok, data } = await callBrowserService(
+          "/act",
+          "POST",
+          {
+            domain,
+            sessionId: SESSION_ID,
+            action: params.action,
+            ref: params.ref,
+            value: params.value,
+            text: params.text,
+          },
+          cancelSignal,
+        )
         if (!ok) {
           return errorResult("Action failed", String(data.error))
         }
@@ -236,11 +271,16 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       }
 
       case "console": {
-        const { ok, data } = await callBrowserService("/console", "POST", {
-          domain,
-          sessionId: SESSION_ID,
-          clear: params.clear ?? false,
-        })
+        const { ok, data } = await callBrowserService(
+          "/console",
+          "POST",
+          {
+            domain,
+            sessionId: SESSION_ID,
+            clear: params.clear ?? false,
+          },
+          cancelSignal,
+        )
         if (!ok) {
           return errorResult("Console read failed", String(data.error))
         }
@@ -306,7 +346,11 @@ export const browserTool = tool(
 **Workflow:** open -> snapshot -> (click/fill/type) -> screenshot to verify.
 **Refs:** After snapshot, use the ref IDs (e1, e2, ...) to target elements for click/fill.`,
   browserParamsSchema,
-  async args => {
-    return browserAction(args)
+  async (args, extra) => {
+    const signal =
+      extra && typeof extra === "object" && "signal" in extra && extra.signal instanceof AbortSignal
+        ? extra.signal
+        : undefined
+    return browserAction(args, signal)
   },
 )

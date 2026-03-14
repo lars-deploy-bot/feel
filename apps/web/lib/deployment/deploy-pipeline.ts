@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { rm } from "node:fs/promises"
 import type { ExecutionMode } from "@webalive/database"
-import { DEFAULTS, PATHS, PORTS } from "@webalive/shared"
+import { caddySitesFilteredPath, DEFAULTS, PATHS, PORTS, requireStreamEnv } from "@webalive/shared"
 import { checkDomainInCaddy, configureCaddy, regeneratePortMap, SiteOrchestrator } from "@webalive/site-controller"
 import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
 import { resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
@@ -118,17 +118,10 @@ function validatePort(domain: string, port: number): number {
 }
 
 function getRoutingVerificationPath(): string | null {
-  const serverConfigPath = process.env.SERVER_CONFIG_PATH
-  const generatorMode = !!serverConfigPath && existsSync(serverConfigPath)
-
-  if (generatorMode && PATHS.CADDYFILE_SITES && existsSync(PATHS.CADDYFILE_SITES)) {
-    return PATHS.CADDYFILE_SITES
+  const filteredPath = caddySitesFilteredPath(PATHS.CADDYFILE_SITES, requireStreamEnv())
+  if (existsSync(filteredPath)) {
+    return filteredPath
   }
-
-  if (PATHS.CADDYFILE_PATH && existsSync(PATHS.CADDYFILE_PATH)) {
-    return PATHS.CADDYFILE_PATH
-  }
-
   return null
 }
 
@@ -295,9 +288,9 @@ async function runStrictDeploymentLocked(
       orgId: validated.orgId,
     })
 
-    // Regenerate port-map.json and verify the domain is routable by preview-proxy.
-    // Awaited: a deployment without a working preview is not a deployment.
-    await regeneratePortMap(validated.domain)
+    // Regenerate port-map.json from canonical (production) DB.
+    const streamEnv = requireStreamEnv()
+    await regeneratePortMap(streamEnv === "production" ? validated.domain : undefined)
 
     await configureCaddy({
       domain: validated.domain,
@@ -316,6 +309,11 @@ async function runStrictDeploymentLocked(
       executionMode: "systemd",
     }
   } catch (error) {
+    console.error(
+      `[Deploy Pipeline] Post-deploy failed for ${validated.domain}:`,
+      error instanceof Error ? error.message : error,
+    )
+    console.error("[Deploy Pipeline] Stack:", error instanceof Error ? error.stack : "no stack")
     await rollbackAfterPipelineFailure({
       domain: validated.domain,
       siteExistedBefore,

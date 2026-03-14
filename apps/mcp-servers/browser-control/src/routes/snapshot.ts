@@ -1,7 +1,7 @@
-import type { IncomingMessage, ServerResponse } from "node:http"
 import { browserPool } from "../browser-pool.js"
-import { parseJsonBody, sendError, sendJson } from "../http.js"
+import { waitForPageStable } from "../page-wait.js"
 import { takeSnapshot } from "../snapshot-formatter.js"
+import type { RouteHandler } from "../types.js"
 
 /**
  * POST /snapshot
@@ -12,40 +12,33 @@ import { takeSnapshot } from "../snapshot-formatter.js"
  * Body: { domain: string, sessionId?: string, interactive?: boolean }
  * Returns: { tree, refs, stats, url, title }
  */
-export async function handleSnapshot(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  let body: Record<string, unknown>
-  try {
-    body = await parseJsonBody(req)
-  } catch (err) {
-    sendError(res, 400, err instanceof Error ? err.message : "Invalid request body")
-    return
-  }
-
+export const handleSnapshot: RouteHandler = async (body, signal) => {
   const domain = typeof body.domain === "string" ? body.domain : ""
   const sessionId = typeof body.sessionId === "string" ? body.sessionId : undefined
   const interactive = body.interactive === true
 
   if (!domain) {
-    sendError(res, 400, "domain is required")
-    return
+    return { ok: false, status: 400, error: "domain is required" }
   }
 
-  try {
-    const session = await browserPool.getSession(domain, sessionId)
-    const currentUrl = session.page.url()
+  const session = await browserPool.getSession(domain, sessionId)
+  const currentUrl = session.page.url()
 
-    if (currentUrl === "about:blank") {
-      sendError(res, 400, "No page loaded. Use the 'open' action first to navigate to your site.")
-      return
-    }
-
-    const result = await takeSnapshot(session.page, { interactive })
-
-    // Store refs on session so /act can resolve them without re-snapshotting
-    session.roleRefs = result.refs
-
-    sendJson(res, result)
-  } catch (err) {
-    sendError(res, 500, `Snapshot failed: ${String(err instanceof Error ? err.message : err)}`)
+  if (currentUrl === "about:blank") {
+    return { ok: false, status: 400, error: "No page loaded. Use the 'open' action first to navigate to your site." }
   }
+
+  // Ensure page is stable before snapshotting — incomplete DOM = incomplete AX tree
+  await waitForPageStable(session.page, { timeoutMs: 5_000 })
+
+  if (signal.aborted) throw new Error("aborted")
+
+  const result = await takeSnapshot(session.page, { interactive })
+
+  if (signal.aborted) throw new Error("aborted")
+
+  // Store refs on session so /act can resolve them without re-snapshotting
+  session.roleRefs = result.refs
+
+  return { ok: true, data: { ...result } }
 }

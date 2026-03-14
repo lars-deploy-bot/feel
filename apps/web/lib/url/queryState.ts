@@ -12,6 +12,7 @@ export const QUERY_KEYS = {
   chatTab: "tab",
   workspace: "wk",
   worktree: "wt",
+  settings: "settings",
   settingsTab: "settingsTab",
 } as const
 
