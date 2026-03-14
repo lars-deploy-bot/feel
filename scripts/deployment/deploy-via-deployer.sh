@@ -89,6 +89,14 @@ if ! "$PROJECT_ROOT/ops/scripts/pre-deployment-check.sh" "$ENVIRONMENT" >/tmp/al
     exit 1
 fi
 
+if [[ "$SKIP_E2E" != "1" ]]; then
+    if ! ENV_FILE="$PROJECT_ROOT/apps/web/.env.$ENVIRONMENT" "$PROJECT_ROOT/scripts/playwright/verify-browsers.sh" >/tmp/alive-playwright-preflight-"$ENVIRONMENT".log 2>&1; then
+        tail -n 20 /tmp/alive-playwright-preflight-"$ENVIRONMENT".log || true
+        phase_end error "Playwright browser preflight failed"
+        exit 1
+    fi
+fi
+
 HEALTH_OK=$(curl -sf "$DEPLOYER_HEALTH/health" 2>/dev/null | jq -r '.ok // false' 2>/dev/null || echo "false")
 if [[ "$HEALTH_OK" != "true" ]]; then
     phase_end error "deployer-rs is not healthy ($DEPLOYER_HEALTH/health)"
