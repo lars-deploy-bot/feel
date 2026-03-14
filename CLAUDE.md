@@ -31,7 +31,7 @@ Alive now has a deploy control plane in addition to the legacy `build-and-serve.
 - **Service**: `apps/deployer-rs/` runs as `alive-deployer.service` and exposes a localhost health/control surface on port `5095`
 - **Database schema**: Deploy state lives in `deploy.*` tables (`deploy.builds`, `deploy.releases`, `deploy.deployments`, `deploy.environments`)
 - **Flow**: `scripts/deployment/deploy-via-deployer.sh` inserts a pending build, waits for the Rust worker to create a release, then inserts a deployment and tails status via `/health/details`
-- **Current rollout**: staging uses the deployer path now; production still goes through `scripts/deployment/build-and-serve.sh` until the migration is complete
+- **Current rollout**: both staging and production use the deployer path (`deploy-via-deployer.sh`). The legacy `build-and-serve.sh` remains as a fallback.
 
 **Operational commands:**
 - `make deployer` - build and restart only `alive-deployer`

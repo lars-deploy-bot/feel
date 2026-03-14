@@ -24,7 +24,7 @@ import {
 } from "drizzle-orm/pg-core"
 
 // Import IAM schema for foreign keys
-import { orgs, users } from "./iam"
+import { orgs, users } from "./iam.js"
 
 // Define the App schema
 export const appSchema = pgSchema("app")
