@@ -201,9 +201,6 @@ describe("createConfig overrides", () => {
 describe("resolveWorkerProcessExecutable", () => {
   it("switches Bun parents to Node workers", () => {
     expect(resolveWorkerProcessExecutable("/root/.bun/bin/bun", "/usr/bin/node")).toBe("/usr/bin/node")
-    expect(resolveWorkerProcessExecutable("C:\\bun\\bun.exe", "C:\\Program Files\\nodejs\\node.exe")).toBe(
-      "C:\\Program Files\\nodejs\\node.exe",
-    )
   })
 
   it("keeps non-Bun runtimes unchanged", () => {

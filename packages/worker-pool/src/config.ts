@@ -4,6 +4,7 @@
  * Uses constants from @webalive/shared as single source of truth.
  */
 
+import { execSync } from "node:child_process"
 import { accessSync, constants } from "node:fs"
 import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -26,23 +27,27 @@ function resolveWorkerEntryPath(): string {
 
 function resolveNodeExecutablePath(currentExecPath: string): string {
   const execName = basename(currentExecPath).toLowerCase()
-  const candidates = [
-    ...(execName === "node" || execName === "node.exe" ? [currentExecPath] : []),
-    "/usr/bin/node",
-    "/usr/local/bin/node",
-  ]
 
-  for (const candidate of candidates) {
-    if (!candidate.startsWith("/")) {
-      continue
-    }
-    try {
-      accessSync(candidate, constants.X_OK)
-      return candidate
-    } catch {}
+  // If the parent process IS node, use it directly
+  if (execName === "node" || execName === "node.exe") {
+    return currentExecPath
   }
 
-  throw new Error("Unable to resolve explicit node executable path for worker subprocesses")
+  // Running under Bun (or another runtime) — require an explicit node binary.
+  // Look up `node` via PATH at startup; fail immediately if not found.
+  try {
+    const resolved = execSync("which node", { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim()
+    if (resolved.length === 0) {
+      throw new Error("empty result")
+    }
+    accessSync(resolved, constants.X_OK)
+    return resolved
+  } catch {
+    throw new Error(
+      "Worker subprocesses require Node but no 'node' binary was found in PATH. " +
+        "Install Node or set nodeExecutablePath explicitly.",
+    )
+  }
 }
 
 /** Default configuration values from shared constants */

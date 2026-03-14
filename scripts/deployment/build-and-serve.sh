@@ -248,18 +248,10 @@ read_previous_build_git_sha() {
     local metadata_path="$BUILDS_DIR/$PREVIOUS_BUILD/$DEPLOY_METADATA_FILE"
     [ -f "$metadata_path" ] || return 0
 
-    python3 - <<'PY' "$metadata_path"
-import json
-import sys
-
-path = sys.argv[1]
-with open(path, "r", encoding="utf-8") as handle:
-    data = json.load(handle)
-
-git_sha = data.get("gitSha")
-if isinstance(git_sha, str):
-    print(git_sha)
-PY
+    node -e "
+      const data = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf-8'));
+      if (typeof data.gitSha === 'string') process.stdout.write(data.gitSha);
+    " "$metadata_path"
 }
 
 write_deploy_metadata() {
@@ -267,26 +259,11 @@ write_deploy_metadata() {
     local git_sha
     git_sha=$(git rev-parse HEAD)
 
-    python3 - <<'PY' "$build_dir/$DEPLOY_METADATA_FILE" "$git_sha"
-import json
-import sys
-from datetime import datetime, timezone
-
-path = sys.argv[1]
-git_sha = sys.argv[2]
-
-with open(path, "w", encoding="utf-8") as handle:
-    json.dump(
-        {
-            "gitSha": git_sha,
-            "writtenAt": datetime.now(timezone.utc).isoformat(),
-        },
-        handle,
-        indent=2,
-        sort_keys=True,
-    )
-    handle.write("\n")
-PY
+    node -e "
+      const fs = require('fs');
+      const data = { gitSha: process.argv[2], writtenAt: new Date().toISOString() };
+      fs.writeFileSync(process.argv[1], JSON.stringify(data, Object.keys(data).sort(), 2) + '\n');
+    " "$build_dir/$DEPLOY_METADATA_FILE" "$git_sha"
 }
 
 # =============================================================================
@@ -336,38 +313,20 @@ fi
 phase_end ok "Environment validated"
 
 # =============================================================================
-# Apply Pending Database Migrations
+# Database Lifecycle (migrations → drift check → seed)
 # =============================================================================
-phase_start "Applying database migrations"
+phase_start "Running database lifecycle"
 
 PREVIOUS_DEPLOY_GIT_SHA="$(read_previous_build_git_sha)"
-if "$SCRIPT_DIR/apply-new-db-migrations.sh" "$ENV" "$PREVIOUS_DEPLOY_GIT_SHA"; then
-    phase_end ok "Database migrations synchronized"
+db_lifecycle_exit=0
+"$SCRIPT_DIR/run-db-lifecycle.sh" "$ENV" "$PREVIOUS_DEPLOY_GIT_SHA" || db_lifecycle_exit=$?
+
+if [[ $db_lifecycle_exit -eq 0 ]]; then
+    phase_end ok "Database lifecycle complete"
+elif [[ $db_lifecycle_exit -eq 2 ]]; then
+    phase_end warn "Database lifecycle complete (drift detected)"
 else
-    phase_end error "Failed to synchronize database migrations"
-    exit 1
-fi
-
-# =============================================================================
-# Verify Schema Drift
-# =============================================================================
-phase_start "Verifying database schema"
-
-if "$PROJECT_ROOT/scripts/database/check-schema-drift.sh" --target "$ENV"; then
-    phase_end ok "Database schema matches repo migrations"
-else
-    phase_end warn "Database schema drift detected (non-blocking)"
-fi
-
-# =============================================================================
-# Seed Required Database Data
-# =============================================================================
-phase_start "Seeding required database data"
-
-if "$SCRIPT_DIR/seed-required-db-data.sh" "$ENV"; then
-    phase_end ok "Required database data synchronized"
-else
-    phase_end error "Failed to synchronize required database data"
+    phase_end error "Database lifecycle failed"
     exit 1
 fi
 
