@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
-import { mkdirSync, statfsSync, unlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, statfsSync, unlinkSync, writeFileSync } from "node:fs"
 import path from "node:path"
+import { spawnSync } from "node:child_process"
 
 type Environment = "production" | "staging" | "dev"
 
@@ -19,6 +20,11 @@ interface Options {
   claudeRuntimeDir: string
 }
 
+interface OpsSecrets {
+  jwtSecret: string | null
+  redisPassword: string | null
+}
+
 const ENV_PORTS: Record<Environment, number> = {
   production: 9000,
   staging: 8998,
@@ -31,6 +37,43 @@ const DEFAULT_OPTS: Options = {
   minFreeGb: 15,
   minFreePercent: 10,
   claudeRuntimeDir: "/root/.claude",
+}
+
+function readEnvFileValue(filePath: string, key: string): string | null {
+  if (!existsSync(filePath)) {
+    return null
+  }
+
+  const prefix = `${key}=`
+  const line = readFileSync(filePath, "utf8")
+    .split("\n")
+    .find(entry => entry.startsWith(prefix))
+
+  if (!line) {
+    return null
+  }
+
+  return line.slice(prefix.length).trim()
+}
+
+function resolveEnvFilePath(env: Environment): string {
+  if (env === "staging") {
+    return path.join(process.cwd(), "apps/web/.env.staging")
+  }
+
+  return path.join(process.cwd(), "apps/web/.env.production")
+}
+
+function loadOpsSecrets(env: Environment): OpsSecrets {
+  const envFilePath = resolveEnvFilePath(env)
+  const redisUrl = readEnvFileValue(envFilePath, "REDIS_URL")
+  const jwtSecret = readEnvFileValue(envFilePath, "JWT_SECRET")
+  const redisPassword = redisUrl?.match(/^redis:\/\/:([^@]+)@/)?.[1] ?? null
+
+  return {
+    jwtSecret,
+    redisPassword,
+  }
 }
 
 function usage(): void {
@@ -172,6 +215,44 @@ function checkClaudeRuntimeWrite(claudeRuntimeDir: string): CheckResult {
   }
 }
 
+function checkRedisPersistence(redisPassword: string | null): CheckResult {
+  const serviceCheck = spawnSync("systemctl", ["is-active", "--quiet", "redis-server"], { encoding: "utf8" })
+  if (serviceCheck.status !== 0) {
+    return {
+      name: "redis:persistence",
+      ok: false,
+      details: "redis-server.service is not active",
+    }
+  }
+
+  const info = spawnSync("redis-cli", ["-h", "127.0.0.1", "-p", "6379", "INFO", "persistence"], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...(redisPassword ? { REDISCLI_AUTH: redisPassword } : {}),
+    },
+  })
+  if (info.status !== 0) {
+    const errorOutput = `${info.stderr}${info.stdout}`.trim()
+    return {
+      name: "redis:persistence",
+      ok: false,
+      details: errorOutput || "redis-cli INFO persistence failed",
+    }
+  }
+
+  const lines = info.stdout.split("\n")
+  const aofStatus = lines.find(line => line.startsWith("aof_last_write_status:"))?.split(":")[1]?.trim() ?? "unknown"
+  const rdbStatus = lines.find(line => line.startsWith("rdb_last_bgsave_status:"))?.split(":")[1]?.trim() ?? "unknown"
+  const ok = aofStatus === "ok" && rdbStatus === "ok"
+
+  return {
+    name: "redis:persistence",
+    ok,
+    details: `aof_last_write_status=${aofStatus}, rdb_last_bgsave_status=${rdbStatus}`,
+  }
+}
+
 function extractServiceStatus(payload: unknown, service: "redis" | "database"): string {
   if (typeof payload !== "object" || payload === null) {
     return "unknown"
@@ -191,14 +272,13 @@ function extractServiceStatus(payload: unknown, service: "redis" | "database"): 
   return typeof status === "string" ? status : "unknown"
 }
 
-async function checkApiHealth(env: Environment, timeoutMs: number): Promise<CheckResult> {
+async function checkApiHealth(env: Environment, timeoutMs: number, secrets: OpsSecrets): Promise<CheckResult> {
   const port = ENV_PORTS[env]
   const url = `http://127.0.0.1:${port}/api/health`
 
   const headers: Record<string, string> = {}
-  const jwtSecret = process.env.JWT_SECRET
-  if (jwtSecret) {
-    headers["X-Internal-Secret"] = jwtSecret
+  if (secrets.jwtSecret) {
+    headers["X-Internal-Secret"] = secrets.jwtSecret
   }
 
   try {
@@ -235,12 +315,16 @@ async function checkApiHealth(env: Environment, timeoutMs: number): Promise<Chec
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2))
+  const sharedRedisSecrets = loadOpsSecrets("production")
 
   const checkResults: CheckResult[] = []
   checkResults.push(checkDisk(options.minFreeGb, options.minFreePercent))
   checkResults.push(checkClaudeRuntimeWrite(options.claudeRuntimeDir))
+  checkResults.push(checkRedisPersistence(sharedRedisSecrets.redisPassword))
 
-  const apiChecks = await Promise.all(options.envs.map(env => checkApiHealth(env, options.timeoutMs)))
+  const apiChecks = await Promise.all(
+    options.envs.map(env => checkApiHealth(env, options.timeoutMs, loadOpsSecrets(env))),
+  )
   checkResults.push(...apiChecks)
 
   const failed = checkResults.filter(result => !result.ok)

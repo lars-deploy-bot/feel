@@ -7,6 +7,7 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import { assertEmailDeliveryAllowed } from "../delivery-policy"
 import {
   type EmailMessage,
   type EmailProvider,
@@ -65,6 +66,8 @@ function buildGraphMessage(message: EmailMessage) {
 
 export const outlookProvider: EmailProvider = {
   async sendEmail(userId: string, message: EmailMessage): Promise<SendEmailResult> {
+    assertEmailDeliveryAllowed("outlook.send")
+
     const accessToken = await getAccessToken(userId)
     await getSenderEmail(accessToken) // validate connection & sender
 

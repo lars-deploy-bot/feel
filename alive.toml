@@ -1,0 +1,184 @@
+schema = 1
+
+[project]
+slug = "alive"
+display_name = "Alive"
+kind = "turbo"
+root = "."
+workspace = "apps/web"
+repo_owner = "eenlars"
+repo_name = "alive"
+default_branch = "main"
+
+[setup]
+command = "bun install --frozen-lockfile"
+
+[build]
+command = "bun run build:libs && bun run --filter @webalive/web build"
+outputs = [
+  "apps/web/.next/standalone",
+  "apps/web/.next/static",
+  "apps/web/public",
+]
+environment = "build"
+
+[release]
+root = "apps/web/.next/standalone"
+
+[docker]
+context = "."
+dockerfile = "ops/docker/alive.Dockerfile"
+target = "runtime"
+image_repository = "alive-control/alive"
+
+[source]
+adapter = "local_fs"
+path = "."
+
+[runtime]
+kind = "host"
+env_file = "apps/web/.env.production"
+container_port = 3000
+healthcheck_path = "/api/health"
+network_mode = "host"
+privileged = true
+pid_mode = "host"
+
+[[runtime.bind_mounts]]
+source_env = "SERVER_CONFIG_PATH"
+target = "/var/lib/alive/server-config.json"
+read_only = true
+
+[[runtime.bind_mounts]]
+source_server_path = "sites_root"
+target_server_path = "sites_root"
+read_only = false
+
+[[runtime.bind_mounts]]
+source = "/srv/webalive/templates"
+target = "/srv/webalive/templates"
+read_only = true
+
+[[runtime.bind_mounts]]
+source = "/srv/webalive/storage"
+target = "/srv/webalive/storage"
+read_only = false
+
+[[runtime.bind_mounts]]
+source = "/root/.claude"
+target = "/root/.claude"
+read_only = false
+
+# Claude CLI config file
+[[runtime.bind_mounts]]
+source = "/root/.claude.json"
+target = "/root/.claude.json"
+read_only = true
+
+# System user/group databases (useradd runs inside container for site deploys)
+[[runtime.bind_mounts]]
+source = "/etc/passwd"
+target = "/etc/passwd"
+read_only = false
+
+[[runtime.bind_mounts]]
+source = "/etc/group"
+target = "/etc/group"
+read_only = false
+
+# Site environment files (systemd reads these on the host)
+[[runtime.bind_mounts]]
+source = "/etc/sites"
+target = "/etc/sites"
+read_only = false
+
+# Claude CLI binary + runtime state (SDK spawns it as a subprocess, CLI writes cache/locks)
+[[runtime.bind_mounts]]
+source = "/root/.local"
+target = "/root/.local"
+read_only = false
+
+# Claude SDK session storage (persistent across restarts)
+[[runtime.bind_mounts]]
+source = "/var/lib/claude-sessions"
+target = "/var/lib/claude-sessions"
+read_only = false
+
+# D-Bus socket (systemctl needs to talk to host systemd)
+[[runtime.bind_mounts]]
+source = "/run/dbus/system_bus_socket"
+target = "/run/dbus/system_bus_socket"
+read_only = false
+
+# Systemd runtime (needed for systemctl to manage host services)
+[[runtime.bind_mounts]]
+source = "/run/systemd"
+target = "/run/systemd"
+read_only = false
+
+# Systemd unit files (site@.service, template@.service live here)
+[[runtime.bind_mounts]]
+source = "/etc/systemd"
+target = "/etc/systemd"
+read_only = false
+
+# Generated Caddy config and alive state
+[[runtime.bind_mounts]]
+source = "/var/lib/alive"
+target = "/var/lib/alive"
+read_only = false
+
+# Caddy config for routing regeneration
+[[runtime.bind_mounts]]
+source = "/etc/caddy"
+target = "/etc/caddy"
+read_only = false
+
+# Bun runtime (needed for site deployments)
+[[runtime.bind_mounts]]
+source = "/root/.bun"
+target = "/root/.bun"
+read_only = true
+
+# Caddy binary (needed for caddy validate in site-controller)
+[[runtime.bind_mounts]]
+source = "/usr/bin/caddy"
+target = "/usr/bin/caddy"
+read_only = true
+
+# Alive repo (site-controller needs scripts, .env.production, templates)
+[[runtime.bind_mounts]]
+source_server_path = "alive_root"
+target_server_path = "alive_root"
+read_only = true
+
+[[build_secrets]]
+id = "build_env"
+path = "apps/web/.env.production"
+
+[[build_secrets]]
+id = "server_config"
+env = "SERVER_CONFIG_PATH"
+
+[policies.staging]
+allow_email = false
+blocked_env_keys = [
+  "BREVO_SECRET_KEY",
+  "LOOPS_API_KEY",
+  "RESEND_API_KEY",
+  "SENDGRID_API_KEY",
+  "POSTMARK_SERVER_TOKEN",
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "SMTP_USER",
+  "SMTP_PASS",
+  "SMTP_NOREPLY_PASSWORD",
+  "MAILGUN_API_KEY",
+  "MAILJET_API_KEY",
+]
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin", SYSTEMD_IGNORE_CHROOT = "1" }
+
+[policies.production]
+allow_email = true
+blocked_env_keys = []
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin", SYSTEMD_IGNORE_CHROOT = "1" }

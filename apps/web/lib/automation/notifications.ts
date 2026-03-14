@@ -8,6 +8,7 @@
 import type { RunContext } from "@webalive/automation-engine"
 import { DOMAINS, STREAM_ENV } from "@webalive/shared"
 import nodemailer from "nodemailer"
+import { isEmailDeliveryDisabled } from "@/lib/email/delivery-policy"
 import { createServiceIamClient } from "@/lib/supabase/service"
 
 const FROM_ADDRESS = `noreply@${DOMAINS.MAIN}`
@@ -60,6 +61,11 @@ function getTransporter(): nodemailer.Transporter {
  */
 export async function notifyJobDisabled(ctx: RunContext, error?: string): Promise<void> {
   try {
+    if (isEmailDeliveryDisabled()) {
+      console.warn(`[Notifications] Email delivery is disabled in staging, skipping notification for "${ctx.job.name}"`)
+      return
+    }
+
     const iam = createServiceIamClient()
     const { data: user, error: userError } = await iam.from("users").select("email").eq("id", ctx.job.user_id).single()
 

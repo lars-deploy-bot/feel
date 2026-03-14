@@ -1,13 +1,14 @@
 #!/usr/bin/env bun
 /**
- * Sync generated Caddyfile.sites → filtered copy in ops/caddy/generated/
+ * Sync generated Caddyfile.sites → filtered copy
  *
- * Self-contained: reads server-config.json directly (no workspace package deps)
- * so it can run from repo root scripts/ directory where bun workspace resolution
- * doesn't apply.
+ * Environment-aware: each STREAM_ENV generates its own filtered artifact.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
+import { caddySitesFilteredPath, caddySitesPath, requireStreamEnv } from "@webalive/shared"
+
+const streamEnv = requireStreamEnv()
 
 const serverConfigPath = process.env.SERVER_CONFIG_PATH
 if (!serverConfigPath) {
@@ -19,13 +20,13 @@ const aliveRoot: string = serverConfig.paths?.aliveRoot
 if (!aliveRoot) {
   throw new Error(`Missing paths.aliveRoot in ${serverConfigPath}`)
 }
-const caddySitesPath: string = serverConfig.generated?.caddySites
-if (!caddySitesPath) {
+const baseCaddySitesPath: string = serverConfig.generated?.caddySites
+if (!baseCaddySitesPath) {
   throw new Error(`Missing generated.caddySites in ${serverConfigPath}`)
 }
 
-const SRC = caddySitesPath
-const DEST = resolve(aliveRoot, "ops/caddy/generated/Caddyfile.sites")
+const SRC = caddySitesPath(baseCaddySitesPath, streamEnv)
+const DEST = caddySitesFilteredPath(baseCaddySitesPath, streamEnv)
 const ENV_PATH = resolve(aliveRoot, "packages/shared/environments.json")
 
 function sanitizeLabel(domain: string): string {

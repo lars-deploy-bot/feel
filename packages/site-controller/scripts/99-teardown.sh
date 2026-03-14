@@ -95,6 +95,10 @@ log_info "Using generator mode for Caddy configuration..."
 
 cd "$STREAM_ROOT"
 if bun run --cwd packages/site-controller routing:generate; then
+    if ! bun "$STREAM_ROOT/scripts/sync-generated-caddy.ts"; then
+        die "Failed to sync filtered Caddy configuration"
+    fi
+
     log_info "Validating Caddy configuration..."
     if caddy validate --config /etc/caddy/Caddyfile 2>/dev/null; then
         log_info "Reloading Caddy..."
@@ -126,7 +130,12 @@ if [[ "$REMOVE_USER" == "true" ]]; then
         log_info "Removing user: $SITE_USER"
         stop_lingering_user_processes "$SITE_USER" || die "Failed to stop processes for $SITE_USER"
 
-        if userdel "$SITE_USER"; then
+        if host_run userdel "$SITE_USER"; then
+            # Sync host user database into container after removal
+            if [[ -f /.dockerenv ]]; then
+                nsenter --target 1 --mount -- cat /etc/passwd > /etc/passwd
+                nsenter --target 1 --mount -- cat /etc/group > /etc/group
+            fi
             log_success "User removed"
         else
             die "Failed to remove user: $SITE_USER"

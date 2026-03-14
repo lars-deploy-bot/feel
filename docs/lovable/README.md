@@ -18,6 +18,8 @@ Findings from inspecting Lovable's sandbox from the inside. Raw observations, no
 | [unknowns.md](./unknowns.md) | What we still don't know |
 | [analysis.md](./analysis.md) | What's good, what's bad, non-obvious insights |
 
+| [architecture-summary.md](./architecture-summary.md) | One-page reference: system overview, lifecycle, deployment pipeline, implications for Alive |
+
 ## Architecture Diagram
 
 See [architecture.mermaid](./architecture.mermaid) for the full system diagram.

@@ -569,37 +569,23 @@ else
     fi
 
     E2E_PLAYWRIGHT_PATH="${PLAYWRIGHT_BROWSERS_PATH:-}"
-    if [ -z "$E2E_PLAYWRIGHT_PATH" ] || [ ! -d "$E2E_PLAYWRIGHT_PATH" ]; then
-        if [ -d "$HOME/.cache/ms-playwright" ]; then
-            E2E_PLAYWRIGHT_PATH="$HOME/.cache/ms-playwright"
-        elif [ -d "$XDG_CACHE_HOME/ms-playwright" ]; then
-            E2E_PLAYWRIGHT_PATH="$XDG_CACHE_HOME/ms-playwright"
-        fi
+    if [ -z "$E2E_PLAYWRIGHT_PATH" ]; then
+        phase_end error "PLAYWRIGHT_BROWSERS_PATH must be set explicitly for E2E. Refusing machine-local fallbacks."
+        exit 1
     fi
 
-    if [ -n "$E2E_PLAYWRIGHT_PATH" ]; then
-        log_step "Using Playwright browsers from: $E2E_PLAYWRIGHT_PATH"
-    fi
+    log_step "Using Playwright browsers from: $E2E_PLAYWRIGHT_PATH"
 
     run_web_e2e() {
         local script_name="$1"
         shift
-        if [ -n "$E2E_PLAYWRIGHT_PATH" ]; then
-            (
-                cd apps/web &&
-                ENV_FILE=".env.$ENV" \
-                E2E_TEST_SECRET="$E2E_SECRET" \
-                PLAYWRIGHT_BROWSERS_PATH="$E2E_PLAYWRIGHT_PATH" \
-                bun run "$script_name" "$@"
-            )
-        else
-            (
-                cd apps/web &&
-                ENV_FILE=".env.$ENV" \
-                E2E_TEST_SECRET="$E2E_SECRET" \
-                bun run "$script_name" "$@"
-            )
-        fi
+        (
+            cd apps/web &&
+            ENV_FILE=".env.$ENV" \
+            E2E_TEST_SECRET="$E2E_SECRET" \
+            PLAYWRIGHT_BROWSERS_PATH="$E2E_PLAYWRIGHT_PATH" \
+            bun run "$script_name" "$@"
+        )
     }
 
     log_step "Running standard E2E suite (against deployed $ENV build)"

@@ -1,53 +1,51 @@
 /**
  * Database Client Factory
  *
- * Centralized database client creation for all schemas
- * Handles both server (with cookies) and test environments properly
+ * Schema-specific helpers keep the Supabase schema key concrete so queries stay typed.
  */
 
 import { createClient } from "@supabase/supabase-js"
-import type { AppDatabase, IamDatabase, IntegrationsDatabase, LockboxDatabase, PublicDatabase } from "./index.js"
+import type {
+  AppDatabase,
+  DeployDatabase,
+  IamDatabase,
+  IntegrationsDatabase,
+  LockboxDatabase,
+  PublicDatabase,
+} from "./index.js"
 
-interface ClientConfig {
-  url: string
-  key: string
-  schema?: "public" | "iam" | "app" | "integrations" | "lockbox"
-}
-
-/**
- * Create a database client for a specific schema
- * Works in all environments including tests
- */
-export function createDatabaseClient<T = PublicDatabase>(config: ClientConfig) {
-  const { url, key, schema = "public" } = config
-
-  // Cast to any to avoid complex generic type issues with Supabase client
-  return createClient<T>(url, key, {
-    db: {
-      schema: schema as any,
-    },
+export function createPublicClient(url: string, key: string) {
+  return createClient<PublicDatabase, "public">(url, key, {
+    db: { schema: "public" },
   })
 }
 
-/**
- * Type-safe schema-specific client creators
- */
-export function createPublicClient(url: string, key: string) {
-  return createDatabaseClient<PublicDatabase>({ url, key, schema: "public" })
-}
-
 export function createIamClient(url: string, key: string) {
-  return createDatabaseClient<IamDatabase>({ url, key, schema: "iam" })
+  return createClient<IamDatabase, "iam">(url, key, {
+    db: { schema: "iam" },
+  })
 }
 
 export function createAppClient(url: string, key: string) {
-  return createDatabaseClient<AppDatabase>({ url, key, schema: "app" })
+  return createClient<AppDatabase, "app">(url, key, {
+    db: { schema: "app" },
+  })
+}
+
+export function createDeployClient(url: string, key: string) {
+  return createClient<DeployDatabase, "deploy">(url, key, {
+    db: { schema: "deploy" },
+  })
 }
 
 export function createIntegrationsClient(url: string, key: string) {
-  return createDatabaseClient<IntegrationsDatabase>({ url, key, schema: "integrations" })
+  return createClient<IntegrationsDatabase, "integrations">(url, key, {
+    db: { schema: "integrations" },
+  })
 }
 
 export function createLockboxClient(url: string, key: string) {
-  return createDatabaseClient<LockboxDatabase>({ url, key, schema: "lockbox" })
+  return createClient<LockboxDatabase, "lockbox">(url, key, {
+    db: { schema: "lockbox" },
+  })
 }

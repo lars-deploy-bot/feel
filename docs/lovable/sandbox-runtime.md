@@ -50,12 +50,29 @@ Full configuration hierarchy (from binary string extraction):
 
 Same listener as HTTP, max 4GB messages. Body limit 512MB for HTTP.
 
-- **Deployment**: `StartDeploymentRequest` (with `target_commit`, `push_on_deployment`, `skip_checks`, `force`, `initialize_only`, `skip_edge_function_checks`, `expect_head`), `DeploymentResult` (with `exit_code`, `output`, `package_lock_changed`, `success`, `error`).
+- **Deployment**: `StartDeploymentRequest` (with `target_commit`, `push_on_deployment`, `skip_checks`, `force`, `initialize_only`, `skip_edge_function_checks`, `expect_head`), `DeploymentResult` (with `exit_code`, `output`, `package_lock_changed`, `success`, `error`, `npm_install_performed`, `npm_install_skipped_reason`).
 - **File ops**: `GetFileContentRequest`, `FileReadRequest`.
 - **Env**: `SetEnvVarsRequest`.
 - **Daemon management**: `StartDaemonRequest`, `StopDaemonRequest`, `RestartDaemonRequest`, `ListDaemonsRequest`, `GetDaemonStatusRequest`, `SendSignalRequest`. `DaemonConfig` has `shutdown_timeout_seconds`, `max_restarts`, `restart_window_seconds`, `restart_policy`, `command`. This is a mini-systemd inside the sandbox.
 - **Command execution**: `StartRequest` (with `stdin`, `cwd`, `env`), `WaitRequest`, `ListCommandsRequest`, `GetLogsRequest`, `CheckResultRequest`.
 - **Tunneling**: `TunnelConnect` (with `target`, `connect_timeout_seconds`), `TunnelData`. Supports `TcpTarget` and `UnixTarget`. Enables external services to reach into the sandbox.
+
+### Daemon Management (mini-systemd)
+
+From `grpc/daemon.rs`: Full process supervisor inside the sandbox.
+- Working directory sandboxing: `"Working directory '' is outside the allowed project directory"` — rejects paths outside `/dev-server/`
+- Canonicalizes paths before use (prevents symlink escapes)
+- Tracks `restart_count` and `restart_bucket` per daemon
+- Sends signals to **process groups**, not individual PIDs
+- Captures stdout/stderr separately
+
+### Tunnel System
+
+From `grpc/tunnel.rs`: Bidirectional tunneling into the sandbox.
+- **TCP tunnels**: `"Opening TCP tunnel to (timeout: ..."` → `"TCP tunnel established to ..."` or `"Connection to timed out"` / `"Failed to connect to ..."`
+- **Unix socket tunnels**: `"Opening Unix socket tunnel to ..."` → `"Unix socket tunnel established to ..."`
+- Configurable `connect_timeout_seconds`
+- Enables external services (the platform orchestrator) to reach services inside the sandbox — e.g., connecting to the LSP bridge at `127.0.0.1:9999` or any daemon port
 
 ## Actor System
 
@@ -67,6 +84,13 @@ Built on **kameo** 0.17.2 (Rust actor framework, Tokio-based). Deployments run a
 - Terminal: `xterm-256color`, shell via `/usr/bin/env`.
 - Single PTY per WebSocket connection.
 - Protobuf messages: `PtyStart`, `PtyInput`, `PtyResize`.
+
+## WebSocket Code Channel
+
+The `/_sandbox/code/ws` endpoint multiplexes code editing and terminal:
+- **File watcher**: Monitors filesystem changes, sends events over WebSocket. `"File watcher task exited. Closing connection."`, `"File watcher error: ..."`
+- **File operations**: Send file content, receive edits. `"Failed to send file. Closing connection: ..."`, `"TODO: file removal not supported"` (file deletion not yet implemented over WebSocket)
+- **Init code**: Sends initial state on connect. `"Failed to send init code: ..."`
 
 ## Process Management
 
@@ -87,7 +111,21 @@ Built on **kameo** 0.17.2 (Rust actor framework, Tokio-based). Deployments run a
 - `shutdown_timeout = 360s` (6 min grace period), configurable `enable_shutdown`. Env var `SHUTDOWN_TIMEOUT=5m` (idle timeout). `ENABLE_SHUTDOWN=true`.
 - Status endpoint includes `shutdown_eta` field.
 - Pod uptime observed: ~44 min.
-- **Suspension/resume**: explicitly clears `.vite` cache (`node_modules/.vite`) after resume to prevent stale module state. Three states: removed, failed to remove, nothing to remove. Sets `RESUMED_FROM_SUSPENSION` env var.
+
+### Lifecycle Events (from binary strings)
+
+Full state machine: `startup` → `claimed` → active use → one of:
+- `idle_timeout_expired` — pod idle too long
+- `api_shutdown` — explicit API call from platform
+- `signal_shutdown` — OS signal (SIGTERM)
+- `expecting_suspend` — about to be frozen
+- `terminating` — final cleanup
+
+### Suspension Mechanism
+
+- **Freeze-in-place**: cgroup-based pause/unpause on Kubernetes (Fly.io). No snapshot/restore — filesystem persists, process is frozen.
+- **On resume**: clears `.vite` cache (`node_modules/.vite`) to prevent stale pre-bundled dependencies. Three code paths: removed, failed to remove, nothing to remove. Sets `RESUMED_FROM_SUSPENSION` env var.
+- **Triggers**: `idle_timeout_expired` (idle), `api_shutdown` (explicit), `signal_shutdown` (signal).
 
 ## Status Endpoint
 
