@@ -12,7 +12,6 @@ interface ModalState {
   invite: boolean
   settings: { initialTab?: SettingsTab } | null
   templates: boolean
-  photoMenu: boolean
   mobilePreview: boolean
 }
 
@@ -26,8 +25,6 @@ interface ModalActions {
   toggleSettings: () => void
   openTemplates: () => void
   closeTemplates: () => void
-  togglePhotoMenu: () => void
-  closePhotoMenu: () => void
   openMobilePreview: () => void
   closeMobilePreview: () => void
 }
@@ -50,7 +47,6 @@ export function useModals(): ModalState & ModalActions {
     feedback: false,
     invite: false,
     templates: false,
-    photoMenu: false,
     mobilePreview: false,
   })
 
@@ -84,9 +80,6 @@ export function useModals(): ModalState & ModalActions {
   const openTemplates = useCallback(() => setState(s => ({ ...s, templates: true })), [])
   const closeTemplates = useCallback(() => setState(s => ({ ...s, templates: false })), [])
 
-  const togglePhotoMenu = useCallback(() => setState(s => ({ ...s, photoMenu: !s.photoMenu })), [])
-  const closePhotoMenu = useCallback(() => setState(s => ({ ...s, photoMenu: false })), [])
-
   const openMobilePreview = useCallback(() => setState(s => ({ ...s, mobilePreview: true })), [])
   const closeMobilePreview = useCallback(() => setState(s => ({ ...s, mobilePreview: false })), [])
 
@@ -103,8 +96,6 @@ export function useModals(): ModalState & ModalActions {
       toggleSettings,
       openTemplates,
       closeTemplates,
-      togglePhotoMenu,
-      closePhotoMenu,
       openMobilePreview,
       closeMobilePreview,
     }),
@@ -120,8 +111,6 @@ export function useModals(): ModalState & ModalActions {
       toggleSettings,
       openTemplates,
       closeTemplates,
-      togglePhotoMenu,
-      closePhotoMenu,
       openMobilePreview,
       closeMobilePreview,
     ],

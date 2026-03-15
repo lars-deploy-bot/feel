@@ -1,4 +1,4 @@
-import type { AutomationJob, EnrichedJob } from "./agents-types"
+import type { EnrichedJob } from "./agents-types"
 
 export function relTime(d: string | null): string {
   if (!d) return "—"
@@ -30,7 +30,7 @@ export function dur(ms: number | null): string {
   return `${Math.floor(s / 60)}m ${Math.floor(s % 60)}s`
 }
 
-export function trigLabel(a: AutomationJob): string {
+export function trigLabel(a: Pick<EnrichedJob, "trigger_type" | "cron_schedule">): string {
   if (a.trigger_type === "email") return "On email"
   if (a.trigger_type === "webhook") return "On webhook"
   if (a.trigger_type === "one-time") return "One-time"

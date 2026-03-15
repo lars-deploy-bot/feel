@@ -83,7 +83,6 @@ function renderSidebar(settingsMode = false) {
       onSettingsClick={() => undefined}
       onFeedbackClick={() => undefined}
       onTemplatesClick={() => undefined}
-      onPhotosClick={() => undefined}
       settingsMode={settingsMode}
     />,
   )
@@ -103,7 +102,6 @@ describe("ConversationSidebar", () => {
     expect(screen.getAllByTestId("settings-button")).toHaveLength(2)
     expect(screen.getByRole("button", { name: "Feedback" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Components" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Photos" })).toBeTruthy()
   })
 
   it("switches both variants into settings navigation mode", () => {

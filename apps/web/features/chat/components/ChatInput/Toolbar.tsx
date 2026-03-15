@@ -16,7 +16,6 @@ import {
   trackSkillSelected,
   trackSkillsMenuOpened,
 } from "@/lib/analytics/events"
-import { useDexieSession } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
 import { useAllSkills, useSkillsLoading } from "@/lib/providers/SkillsStoreProvider"
 import { useWorkbench, useWorkbenchMinimized } from "@/lib/stores/debug-store"
@@ -54,8 +53,7 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
   const voice = useVoiceInput({ onTranscript: handleTranscript, onError: handleVoiceError })
   const skills = useAllSkills()
   const isLoading = useSkillsLoading()
-  const userId = useDexieSession()?.userId ?? null
-  const messages = useTabMessages(tabId, userId)
+  const messages = useTabMessages(tabId)
   const { activateSelector, selectorActive } = useWorkbenchContext()
   const isWorkbenchOpen = useWorkbench()
   const isWorkbenchMinimized = useWorkbenchMinimized()

@@ -48,8 +48,6 @@ async function insertMessages(messages: DbMessage[]): Promise<void> {
 function resetDexieStore(): void {
   useDexieMessageStore.setState({
     session: null,
-    currentTabGroupId: null,
-    currentTabId: null,
     currentWorkspace: null,
     isLoading: false,
     isSyncing: false,

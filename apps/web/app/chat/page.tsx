@@ -51,8 +51,6 @@ import {
   trackWorkspaceSelected,
 } from "@/lib/analytics/events"
 import {
-  useDexieCurrentConversationId,
-  useDexieCurrentTabId,
   useDexieMessageActions,
   useDexieSession,
 } from "@/lib/db/dexieMessageStore"
@@ -82,12 +80,9 @@ import {
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
-  const storeTabId = useDexieCurrentTabId()
-  const storeTabGroupId = useDexieCurrentConversationId()
   const {
     ensureTabGroupWithTab,
     addMessage,
-    switchTab: switchDexieTab,
     archiveConversation,
     unarchiveConversation,
     renameConversation,
@@ -127,7 +122,6 @@ function ChatPageContent() {
 
   // Tabs are on by default for all users
   const chatInputRef = useRef<ChatInputHandle | null>(null)
-  const photoButtonRef = useRef<HTMLButtonElement>(null)
   const workbenchPanelRef = useRef<PanelImperativeHandle>(null)
   const showWorkbenchRaw = useWorkbench()
   const isWorkbenchFullscreen = useWorkbenchFullscreen()
@@ -521,14 +515,6 @@ function ChatPageContent() {
   }, [messages, sendMessage, registerRetryHandler, isAutomationRun])
 
   // Tab management - combined switch handler for both conversation hooks
-  const handleSwitchConversationForTabs = useCallback(
-    (id: string) => {
-      switchTab(id)
-      switchDexieTab(id)
-    },
-    [switchTab, switchDexieTab],
-  )
-
   const {
     tabs,
     closedTabs,
@@ -543,31 +529,11 @@ function ChatPageContent() {
     workspace: tabWorkspace,
     tabGroupId,
     activeTabId: tabId,
-    onSwitchTab: handleSwitchConversationForTabs,
+    onSwitchTab: switchTab,
     onInitializeTab: initializeTab,
     currentInput: msg,
     onInputRestore: setMsg,
   })
-
-  // Ensure the session tab is mapped to Dexie (for message persistence)
-  // activeTab is now the single source of truth from useActiveSession
-  useEffect(() => {
-    if (!mounted || !tabWorkspace || !dexieSession || !activeTab) return
-
-    // Sync Dexie store if it doesn't match the active tab
-    // Tab.id IS the conversation key
-    if (storeTabId === activeTab.id && storeTabGroupId === activeTab.tabGroupId) return
-    void ensureTabGroupWithTab(tabWorkspace, activeTab.tabGroupId, activeTab.id)
-  }, [
-    mounted,
-    tabWorkspace,
-    dexieSession,
-    activeTab?.id,
-    activeTab?.tabGroupId,
-    ensureTabGroupWithTab,
-    storeTabId,
-    storeTabGroupId,
-  ])
 
   // Image upload handler
   const handleAttachmentUpload = useImageUpload({
@@ -772,7 +738,6 @@ function ChatPageContent() {
         onSettingsClick={handleNavSettingsClick}
         onFeedbackClick={modals.openFeedback}
         onTemplatesClick={modals.openTemplates}
-        onPhotosClick={modals.togglePhotoMenu}
       />
 
       {/* Main content column: nav + chat + workbench */}
@@ -780,11 +745,6 @@ function ChatPageContent() {
         <Nav
           onFeedbackClick={modals.openFeedback}
           onTemplatesClick={modals.openTemplates}
-          showPhotoMenu={modals.photoMenu}
-          onPhotoMenuToggle={modals.togglePhotoMenu}
-          onPhotoMenuClose={modals.closePhotoMenu}
-          photoButtonRef={photoButtonRef}
-          chatInputRef={chatInputRef}
           workspace={workspace}
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={toggleSidebar}

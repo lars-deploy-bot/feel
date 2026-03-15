@@ -1,156 +1,103 @@
 "use client"
 
+import { useMutation } from "@tanstack/react-query"
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { TranscribeResponse, VoiceState } from "../types/voice"
+import type { TranscribeResult } from "@/lib/api/types"
+import { transcribeAudio } from "@/lib/api/voice"
+import type { VoiceState } from "../types/voice"
 
 interface UseVoiceInputOptions {
   onTranscript: (text: string) => void
   onError: (message: string) => void
 }
 
+function pickMimeType(): string {
+  if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) return "audio/webm;codecs=opus"
+  if (MediaRecorder.isTypeSupported("audio/mp4")) return "audio/mp4"
+  return ""
+}
+
 /**
- * Self-contained voice input hook.
- *
- * Records audio from the microphone, sends it to /api/voice/transcribe,
- * and calls onTranscript with the result. No streaming — records full
- * utterance, then transcribes.
- *
- * Outputs webm/opus (Chrome/Firefox) or mp4 (Safari).
+ * Voice input: record → transcribe → callback.
+ * Uses TanStack mutation for the transcription fetch.
  */
 export function useVoiceInput({ onTranscript, onError }: UseVoiceInputOptions) {
-  const [state, setState] = useState<VoiceState>("idle")
-
-  // Synchronous lock — prevents race conditions from double-clicks
-  // and async gaps during getUserMedia. Updated immediately, not
-  // subject to React batching.
-  const phaseRef = useRef<VoiceState>("idle")
-
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+  const [recording, setRecording] = useState(false)
+  const lockRef = useRef(false) // sync guard for async getUserMedia gap
+  const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const mountedRef = useRef(true)
+  const chunksRef = useRef<Blob[]>([])
 
-  // Stable refs for callbacks — avoids useCallback cascade
-  const onTranscriptRef = useRef(onTranscript)
-  onTranscriptRef.current = onTranscript
-  const onErrorRef = useRef(onError)
-  onErrorRef.current = onError
+  // Stable callback refs
+  const cbRef = useRef({ onTranscript, onError })
+  cbRef.current = { onTranscript, onError }
 
-  const setPhase = useCallback((next: VoiceState) => {
-    phaseRef.current = next
-    setState(next)
-  }, [])
+  const mutation = useMutation<TranscribeResult, Error, Blob>({
+    mutationFn: transcribeAudio,
+    onSuccess: (data) => {
+      const text = data.text.trim()
+      if (text) cbRef.current.onTranscript(text)
+    },
+    onError: (err) => cbRef.current.onError(err.message),
+  })
 
-  const cleanup = useCallback(() => {
+  const releaseStream = useCallback(() => {
     if (streamRef.current) {
       for (const track of streamRef.current.getTracks()) track.stop()
       streamRef.current = null
     }
-    mediaRecorderRef.current = null
+    recorderRef.current = null
     chunksRef.current = []
   }, [])
 
-  // Cleanup on unmount — stop mic, prevent setState on unmounted
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false
-      cleanup()
+  // Release mic on unmount
+  useEffect(() => releaseStream, [releaseStream])
+
+  const toggle = useCallback(async () => {
+    // --- stop ---
+    if (recording) {
+      recorderRef.current?.stop()
+      setRecording(false)
+      lockRef.current = false
+      return
     }
-  }, [cleanup])
 
-  const transcribe = useCallback(
-    async (blob: Blob) => {
-      setPhase("transcribing")
-      try {
-        const ext = blob.type.includes("mp4") ? "m4a" : "webm"
-        const file = new File([blob], `voice.${ext}`, { type: blob.type })
+    // --- start ---
+    if (lockRef.current || mutation.isPending) return
+    lockRef.current = true
 
-        const form = new FormData()
-        form.append("file", file)
-
-        const res = await fetch("/api/voice/transcribe", { method: "POST", body: form })
-        const data: TranscribeResponse = await res.json()
-
-        if (!mountedRef.current) return
-
-        if (!res.ok || "error" in data) {
-          onErrorRef.current("error" in data ? data.error : `Transcription failed (${res.status})`)
-          return
-        }
-
-        const text = data.text.trim()
-        if (text) onTranscriptRef.current(text)
-      } catch {
-        if (!mountedRef.current) return
-        onErrorRef.current("Could not reach transcription service")
-      } finally {
-        if (mountedRef.current) setPhase("idle")
-      }
-    },
-    [setPhase],
-  )
-
-  const startRecording = useCallback(async () => {
-    // Synchronous guard — blocks before any async work
-    if (phaseRef.current !== "idle") return
-    phaseRef.current = "recording" // lock immediately
-
+    let stream: MediaStream
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
       })
-
-      // Check if unmounted or stopped during getUserMedia prompt
-      if (!mountedRef.current || phaseRef.current !== "recording") {
-        for (const track of stream.getTracks()) track.stop()
-        return
-      }
-
-      streamRef.current = stream
-
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/mp4")
-          ? "audio/mp4"
-          : ""
-
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
-      mediaRecorderRef.current = recorder
-      chunksRef.current = []
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
-      }
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
-        cleanup()
-        if (blob.size > 0 && mountedRef.current) transcribe(blob)
-        else if (mountedRef.current) setPhase("idle")
-      }
-
-      recorder.start()
-      setState("recording") // sync React state with lock
     } catch {
-      cleanup()
-      phaseRef.current = "idle"
-      if (mountedRef.current) {
-        setState("idle")
-        onErrorRef.current("Microphone access denied")
-      }
+      lockRef.current = false
+      cbRef.current.onError("Microphone access denied")
+      return
     }
-  }, [cleanup, transcribe, setPhase])
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop()
+    streamRef.current = stream
+    const mime = pickMimeType()
+    const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+    recorderRef.current = recorder
+    chunksRef.current = []
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data)
     }
-  }, [])
 
-  const toggle = useCallback(() => {
-    if (phaseRef.current === "idle") startRecording()
-    else if (phaseRef.current === "recording") stopRecording()
-  }, [startRecording, stopRecording])
+    recorder.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
+      releaseStream()
+      if (blob.size > 0) mutation.mutate(blob)
+    }
+
+    recorder.start()
+    setRecording(true)
+  }, [recording, mutation, releaseStream])
+
+  const state: VoiceState = mutation.isPending ? "transcribing" : recording ? "recording" : "idle"
 
   return { state, toggle } as const
 }

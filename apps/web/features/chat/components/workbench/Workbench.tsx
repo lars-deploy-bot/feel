@@ -1,6 +1,6 @@
 "use client"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
-import { Activity, Bot, ExternalLink, FolderOpen, Globe, Maximize2, Minimize2, Monitor, RotateCw, Settings, Smartphone, SquareTerminal, X } from "lucide-react"
+import { Activity, Bot, ExternalLink, FolderOpen, Globe, Image, Maximize2, Minimize2, Monitor, RotateCw, Settings, Smartphone, SquareTerminal, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useWorkbenchContext, type WorkbenchView } from "@/features/chat/lib/workbench-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
@@ -16,6 +16,7 @@ import { usePreviewEngine } from "./hooks/usePreviewEngine"
 import { WorkbenchCodeView } from "./WorkbenchCodeView"
 import { WorkbenchEvents } from "./WorkbenchEvents"
 import { WorkbenchHome } from "./WorkbenchHome"
+import { WorkbenchPhotos } from "./WorkbenchPhotos"
 import { WorkbenchTerminal } from "./WorkbenchTerminal"
 
 export function Workbench() {
@@ -81,6 +82,7 @@ export function Workbench() {
     opt("code", "Files", FolderOpen),
     opt("terminal", "Console", SquareTerminal),
     opt("agents", "Agents", Bot),
+    opt("photos", "Photos", Image),
     ...(isSuperadmin ? [opt("events", "Activity", Activity)] : []),
     opt("home", "Settings", Settings),
   ]
@@ -233,6 +235,8 @@ export function Workbench() {
           <WorkbenchTerminal workspace={workspace} />
         ) : workbench.view === "agents" ? (
           <WorkbenchAgents workspace={workspace} />
+        ) : workbench.view === "photos" ? (
+          <WorkbenchPhotos />
         ) : workbench.view === "events" ? (
           <WorkbenchEvents />
         ) : null}

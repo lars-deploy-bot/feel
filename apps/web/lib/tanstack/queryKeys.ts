@@ -70,6 +70,7 @@ export const queryKeys = {
         : filter?.orgId
           ? ([...queryKeys.automations.all, "list", "org", filter.orgId] as const)
           : ([...queryKeys.automations.all, "list"] as const),
+    enriched: (workspace: string) => [...queryKeys.automations.all, "enriched", workspace] as const,
     detail: (automationId: string) => [...queryKeys.automations.all, automationId] as const,
     runs: (automationId: string) => [...queryKeys.automations.all, automationId, "runs"] as const,
   },

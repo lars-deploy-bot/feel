@@ -149,17 +149,20 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
 
     const dexieState = useDexieMessageStore.getState()
     const userId = dexieState.session?.userId
-    const currentTabId = dexieState.currentTabId
-    if (!userId || !currentTabId) return
+    if (!userId) return
 
     // Dynamically import tab store to avoid circular deps
-    const { useTabActions: getTabActions } = await import("@/lib/stores/tabStore")
+    const { useTabActions: getTabActions, useTabViewStore: tabViewStoreHook } = await import("@/lib/stores/tabStore")
     const { useTabDataStore: tabDataStoreHook } = await import("@/lib/stores/tabDataStore")
 
     const tabActions = getTabActions()
     const tabDataStore = tabDataStoreHook.getState()
+    const tabViewStore = tabViewStoreHook.getState()
 
-    // Find the current tab's group
+    // Get active tab from tabStore (single source of truth)
+    const currentTabId = tabViewStore.activeTabByWorkspace[workspace]
+    if (!currentTabId) return
+
     const workspaceTabs = tabDataStore.tabsByWorkspace[workspace]
     if (!workspaceTabs) return
     const currentTab = Object.values(workspaceTabs)

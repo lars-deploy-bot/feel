@@ -31,10 +31,6 @@ export {
   useDexieConversation,
   // Re-exported hooks with Dexie prefix
   useDexieConversations,
-  useDexieCurrentConversationId,
-  useDexieCurrentConversationSafe,
-  useDexieCurrentTabGroupId,
-  useDexieCurrentTabId,
   useDexieCurrentWorkspace,
   useDexieIsLoading,
   useDexieIsSyncing,
@@ -81,7 +77,6 @@ export {
   useConversation,
   useConversationMessageCount,
   useConversations,
-  useCurrentConversationSafe,
   useHasPendingSyncs,
   useMessages,
   usePendingMessages,

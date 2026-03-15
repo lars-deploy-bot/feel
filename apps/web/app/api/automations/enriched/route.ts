@@ -3,85 +3,47 @@
  *
  * Server-to-server proxy to apps/api for enriched automation data
  * (includes recent_runs, run stats, cost estimates).
- *
- * Query params:
- * - workspace: Filter by hostname (optional)
+ * Superadmin-only.
  */
 
-import { getSessionUser } from "@/features/auth/lib/auth"
+import { protectedRoute } from "@/features/auth/lib/protectedRoute"
 import { apiClient } from "@/lib/api-client"
+import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty, handleQuery, isHandleBodyError } from "@/lib/api/server"
+import { ErrorCodes } from "@/lib/error-codes"
 
-interface EnrichedJob {
-  id: string
-  name: string
-  hostname: string
-  is_active: boolean
-  status: string
-  trigger_type: string
-  cron_schedule: string | null
-  cron_timezone: string | null
-  email_address: string | null
-  last_run_at: string | null
-  last_run_status: string | null
-  last_run_error: string | null
-  next_run_at: string | null
-  consecutive_failures: number | null
-  action_prompt: string | null
-  action_model: string | null
-  action_target_page: string | null
-  skills: string[] | null
-  runs_30d: number
-  success_runs_30d: number
-  failure_runs_30d: number
-  avg_duration_ms: number | null
-  estimated_weekly_cost_usd: number
-  recent_runs: {
-    id: string
-    status: string
-    started_at: string
-    completed_at: string | null
-    duration_ms: number | null
-    error: string | null
-    triggered_by: string | null
-  }[]
-}
-
-interface OrgSummary {
-  org_id: string
-  org_name: string
-  jobs: EnrichedJob[]
+interface ApiOrgSummary {
+  jobs: Record<string, unknown>[]
 }
 
 interface ApiResponse {
   ok: boolean
-  data: OrgSummary[]
+  data: ApiOrgSummary[]
 }
 
-export async function GET(req: Request) {
-  const user = await getSessionUser()
-  if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  // Only superadmins can access enriched automation data
+export const GET = protectedRoute(async ({ user, req }) => {
   if (!user.isSuperadmin) {
-    return Response.json({ error: "Forbidden" }, { status: 403 })
+    return structuredErrorResponse(ErrorCodes.FORBIDDEN, { status: 403 })
   }
 
-  const { searchParams } = new URL(req.url)
-  const workspace = searchParams.get("workspace")
+  const parsedQuery = await handleQuery("automations/enriched", req)
+  if (isHandleBodyError(parsedQuery)) return parsedQuery
+
+  const { workspace } = parsedQuery
 
   const data = await apiClient.get<ApiResponse>("/manager/automations")
   const summaries = data.data ?? []
 
   // Flatten and optionally filter by workspace
-  const jobs: EnrichedJob[] = []
+  const jobs: Record<string, unknown>[] = []
   for (const summary of summaries) {
     for (const job of summary.jobs) {
-      if (workspace && job.hostname !== workspace) continue
+      const hostname = job.hostname
+      if (workspace && hostname !== workspace) continue
       jobs.push(job)
     }
   }
 
-  return Response.json({ jobs })
-}
+  // alrighty validates the response shape against the schema (injects ok: true)
+  return alrighty("automations/enriched", { jobs })
+})

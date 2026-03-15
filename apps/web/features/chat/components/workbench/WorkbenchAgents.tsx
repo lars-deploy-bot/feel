@@ -1,66 +1,22 @@
 "use client"
 
 import { Bot, Loader2, RotateCw, TriangleAlert } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { AgentDetailView } from "./agents/AgentDetailView"
 import { AgentEditView } from "./agents/AgentEditView"
 import { AgentListView } from "./agents/AgentListView"
 import { AgentNav } from "./agents/AgentUI"
-import type { AgentView, EnrichedJob, EnrichedJobRaw } from "./agents/agents-types"
-
-function enrichJobs(raw: EnrichedJobRaw[]): EnrichedJob[] {
-  return raw.map(job => {
-    const rate = job.runs_30d > 0 ? Math.round((job.success_runs_30d / job.runs_30d) * 100) : 0
-    let streak = 0
-    for (const r of job.recent_runs) {
-      if (r.status === "success") streak++
-      else break
-    }
-    return { ...job, success_rate: rate, streak }
-  })
-}
+import type { AgentView } from "./agents/agents-types"
+import { useAgents } from "./agents/useAgents"
 
 export function WorkbenchAgents({ workspace }: { workspace: string }) {
-  const [jobs, setJobs] = useState<EnrichedJob[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { jobs, loading, error, refresh } = useAgents(workspace)
   const [view, setView] = useState<AgentView>({ kind: "list" })
-  const abortRef = useRef<AbortController | null>(null)
 
-  const refresh = useCallback(async () => {
-    // Abort any in-flight request
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-
-    try {
-      const res = await fetch(
-        `/api/automations/enriched?workspace=${encodeURIComponent(workspace)}`,
-        { credentials: "include", signal: controller.signal },
-      )
-      if (controller.signal.aborted) return
-      if (!res.ok) throw new Error("Failed to load agents")
-      const json = await res.json()
-      if (controller.signal.aborted) return
-      setJobs(enrichJobs(json.jobs ?? []))
-      setError(null)
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return
-      setError(e instanceof Error ? e.message : "Failed to load agents")
-    } finally {
-      if (!controller.signal.aborted) setLoading(false)
-    }
-  }, [workspace])
-
-  useEffect(() => {
-    refresh()
-    return () => abortRef.current?.abort()
-  }, [refresh])
-
-  // If selected job was deleted, go back to list
   const selectedId = view.kind !== "list" ? view.jobId : null
   const selectedJob = selectedId ? jobs.find(j => j.id === selectedId) : null
 
+  // If selected job was deleted, go back to list
   useEffect(() => {
     if (selectedId && jobs.length > 0 && !selectedJob) setView({ kind: "list" })
   }, [selectedId, selectedJob, jobs.length])

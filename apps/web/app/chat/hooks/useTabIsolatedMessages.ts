@@ -29,9 +29,8 @@ export function useTabIsolatedMessages({ workspace }: UseTabIsolatedMessagesOpti
   const userId = dexieSession?.userId ?? null
 
   // Messages are fetched for the active session's tabId.
-  // Returns undefined while Dexie query is resolving (loading),
-  // or TabMessage[] once resolved (possibly empty for new tabs).
-  const rawMessages = useTabMessages(session.tabId, userId)
+  // userId is sourced internally by useTabMessages from useDexieSession.
+  const rawMessages = useTabMessages(session.tabId)
 
   // Look up the current conversation for source detection
   const conversation = useDexieConversation(session.tabGroupId, userId)
