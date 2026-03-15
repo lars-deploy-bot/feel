@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -14,7 +14,7 @@ describe.sequential("sandboxed fs tools", () => {
   let workspaceRoot: string
 
   beforeEach(() => {
-    workspaceRoot = mkdtempSync(join(tmpdir(), "alive-sandboxed-fs-"))
+    workspaceRoot = realpathSync(mkdtempSync(join(tmpdir(), "alive-sandboxed-fs-")))
     process.chdir(workspaceRoot)
   })
 
