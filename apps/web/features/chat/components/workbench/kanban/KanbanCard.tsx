@@ -1,7 +1,7 @@
 "use client"
 import { CalendarBlank, Link, TextAlignLeft } from "@phosphor-icons/react"
-import type { KanbanCard as CardType, KanbanPriority } from "./types"
 import { useKanban } from "./KanbanProvider"
+import type { KanbanCard as CardType, KanbanPriority } from "./types"
 
 const PRIORITY_DOTS: Record<KanbanPriority, string | null> = {
   urgent: "#EF4444",

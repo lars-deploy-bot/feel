@@ -10,9 +10,9 @@
 
 import { type UseMutationOptions, useMutation, useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
+import { trackTeammateInvited } from "@/lib/analytics/events"
 import { type ApiError, delly, patchy, postty } from "@/lib/api/api-client"
 import { type Res, validateRequest } from "@/lib/api/schemas"
-import { trackTeammateInvited } from "@/lib/analytics/events"
 import { queryKeys } from "./queryKeys"
 
 // ============================================

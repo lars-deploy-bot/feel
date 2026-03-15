@@ -82,29 +82,92 @@ export function getLanguageDisplayName(lang: VoiceLanguage): string {
 }
 
 /**
- * Localized "thinking" phrases — shown while Claude is processing.
- * Casual, human, slightly playful.
+ * Localized "thinking" phrase pools — one is picked randomly each time.
+ * Casual, human, slightly playful. Languages without a pool fall back to English.
  */
-const THINKING_PHRASES: Record<VoiceLanguage, string> = {
-  en: "thinking",
-  nl: "even nadenken",
-  de: "denke nach",
-  fr: "je réfléchis",
-  es: "pensando",
-  pt: "pensando",
-  it: "sto pensando",
-  ja: "考え中",
-  zh: "思考中",
-  ko: "생각 중",
-  ar: "أفكر",
-  ru: "думаю",
-  pl: "myślę",
-  tr: "düşünüyorum",
-  sv: "tänker",
-  da: "tænker",
-  no: "tenker",
+const THINKING_POOLS: Partial<Record<VoiceLanguage, string[]>> = {
+  en: [
+    "thinking",
+    "hmm let me think",
+    "hold on, brainwaves incoming",
+    "buffering genius",
+    "consulting my inner wizard",
+    "neurons firing",
+    "one braincell working overtime",
+    "loading brilliance",
+    "almost had a thought",
+    "thinking very hard",
+    "mentally sprinting",
+    "cranking the think-machine",
+    "assembling brain juice",
+    "on it like a bonnet",
+    "processing at the speed of thought",
+    "doing brain things",
+    "just a sec, vibes loading",
+    "connecting braincells",
+    "deep in the sauce",
+    "give me a hot second",
+    "brain.exe is running",
+    "summoning the answer",
+    "my last braincell is trying",
+    "entering the think tank",
+    "mentally doing push-ups",
+    "downloading wisdom",
+    "rummaging through thoughts",
+    "shaking the magic 8 ball",
+    "warming up the brain oven",
+    "engaging turbo think",
+  ],
+  nl: [
+    "even nadenken",
+    "momentje hoor",
+    "ff m'n hersenen opstarten",
+    "aan het puzzelen",
+    "druk druk druk",
+    "effe dimmen, ik denk",
+    "hmm laat me even",
+    "bezig met briljant zijn",
+    "een momentje geduld aub",
+    "mijn hersencellen overleggen",
+    "ik ben er bijna",
+    "denk denk denk",
+    "even m'n beste beentje voorzetten",
+    "aan het toveren",
+    "wacht wacht ik heb het zo",
+    "even m'n koppie kraken",
+    "het kwartje valt bijna",
+    "ik ga los",
+    "concentratie modus aan",
+    "ff de boel op een rijtje zetten",
+  ],
+  de: [
+    "denke nach",
+    "Moment mal",
+    "Hirn wird hochgefahren",
+    "bin am grübeln",
+    "Sekündchen bitte",
+    "Zahnräder drehen sich",
+    "denke scharf nach",
+    "Gehirnschmalz wird aktiviert",
+    "fast hab ich's",
+    "hmm lass mich mal",
+    "bin voll dabei",
+    "Denkkappe ist auf",
+    "wird gleich genial",
+    "ich knobel noch",
+    "Kopf raucht schon",
+    "einen klitzekleinen Moment",
+    "Synapsen feuern",
+    "gleich hab ich's",
+    "Hirnzellen im Einsatz",
+    "Denkmodus aktiviert",
+  ],
 }
 
+const FALLBACK_POOL = THINKING_POOLS.en
+
 export function getThinkingPhrase(lang: VoiceLanguage): string {
-  return THINKING_PHRASES[lang]
+  const pool = THINKING_POOLS[lang] ?? FALLBACK_POOL
+  if (!pool) return "thinking"
+  return pool[Math.floor(Math.random() * pool.length)]
 }

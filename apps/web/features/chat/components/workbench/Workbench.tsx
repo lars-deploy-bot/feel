@@ -3,8 +3,8 @@ import {
   Browser,
   CaretDown,
   FolderSimple,
-  Info,
   ImageSquare,
+  Info,
   Kanban,
   Lightning,
   type Icon as PhosphorIcon,
@@ -48,7 +48,20 @@ const VIEW_REGISTRY: Record<WorkbenchView, ComponentType<WorkbenchViewProps>> = 
   kanban: WorkbenchKanban,
 }
 
-type ViewOption = { view: WorkbenchView; label: string; icon: PhosphorIcon; activeClass: string; inactiveClass: string }
+type ViewOption = {
+  view: WorkbenchView
+  label: string
+  icon: PhosphorIcon
+  activeClass: string
+  /** Inactive: monochrome text, colored icon keeps the color recognizable ("click the green one") */
+  inactiveIcon: string
+  inactiveHover: string
+}
+
+// Inactive pills: neutral text, but the icon retains its section color at low
+// opacity so users can still identify "the green one" / "the purple one" without
+// the full rainbow-toy effect of coloring every pill at rest.
+const INACTIVE_BASE = "text-black/40 dark:text-white/30"
 
 const STANDARD_VIEWS: ViewOption[] = [
   {
@@ -56,40 +69,44 @@ const STANDARD_VIEWS: ViewOption[] = [
     label: "Files",
     icon: FolderSimple,
     activeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    inactiveClass:
-      "bg-emerald-500/[0.04] text-emerald-700/30 dark:bg-emerald-500/[0.04] dark:text-emerald-400/25 hover:bg-emerald-500/[0.07] hover:text-emerald-700/50 dark:hover:bg-emerald-500/[0.07] dark:hover:text-emerald-400/40",
+    inactiveIcon: "text-emerald-600/40 dark:text-emerald-400/30",
+    inactiveHover:
+      "hover:bg-emerald-500/[0.06] hover:text-emerald-600/70 dark:hover:bg-emerald-500/[0.06] dark:hover:text-emerald-400/50",
   },
   {
     view: "agents",
     label: "Agents",
     icon: Sparkle,
     activeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-    inactiveClass:
-      "bg-violet-500/[0.04] text-violet-700/30 dark:bg-violet-500/[0.04] dark:text-violet-400/25 hover:bg-violet-500/[0.07] hover:text-violet-700/50 dark:hover:bg-violet-500/[0.07] dark:hover:text-violet-400/40",
+    inactiveIcon: "text-violet-600/40 dark:text-violet-400/30",
+    inactiveHover:
+      "hover:bg-violet-500/[0.06] hover:text-violet-600/70 dark:hover:bg-violet-500/[0.06] dark:hover:text-violet-400/50",
   },
   {
     view: "photos",
     label: "Photos",
     icon: ImageSquare,
     activeClass: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
-    inactiveClass:
-      "bg-pink-500/[0.04] text-pink-700/30 dark:bg-pink-500/[0.04] dark:text-pink-400/25 hover:bg-pink-500/[0.07] hover:text-pink-700/50 dark:hover:bg-pink-500/[0.07] dark:hover:text-pink-400/40",
+    inactiveIcon: "text-pink-600/40 dark:text-pink-400/30",
+    inactiveHover:
+      "hover:bg-pink-500/[0.06] hover:text-pink-600/70 dark:hover:bg-pink-500/[0.06] dark:hover:text-pink-400/50",
   },
   {
     view: "kanban",
     label: "Todos",
     icon: Kanban,
     activeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    inactiveClass:
-      "bg-amber-500/[0.04] text-amber-700/30 dark:bg-amber-500/[0.04] dark:text-amber-400/25 hover:bg-amber-500/[0.07] hover:text-amber-700/50 dark:hover:bg-amber-500/[0.07] dark:hover:text-amber-400/40",
+    inactiveIcon: "text-amber-600/40 dark:text-amber-400/30",
+    inactiveHover:
+      "hover:bg-amber-500/[0.06] hover:text-amber-600/70 dark:hover:bg-amber-500/[0.06] dark:hover:text-amber-400/50",
   },
   {
     view: "home",
     label: "Info",
     icon: Info,
     activeClass: "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white",
-    inactiveClass:
-      "bg-black/[0.02] text-black/30 dark:bg-white/[0.03] dark:text-white/25 hover:bg-black/[0.05] hover:text-black/50 dark:hover:bg-white/[0.06] dark:hover:text-white/40",
+    inactiveIcon: "text-black/35 dark:text-white/25",
+    inactiveHover: "hover:bg-black/[0.04] hover:text-black/60 dark:hover:bg-white/[0.05] dark:hover:text-white/45",
   },
 ]
 
@@ -98,8 +115,9 @@ const SITE_PREVIEW_VIEW: ViewOption = {
   label: "Preview",
   icon: Browser,
   activeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  inactiveClass:
-    "bg-blue-500/[0.04] text-blue-700/30 dark:bg-blue-500/[0.04] dark:text-blue-400/25 hover:bg-blue-500/[0.07] hover:text-blue-700/50 dark:hover:bg-blue-500/[0.07] dark:hover:text-blue-400/40",
+  inactiveIcon: "text-blue-600/40 dark:text-blue-400/30",
+  inactiveHover:
+    "hover:bg-blue-500/[0.06] hover:text-blue-600/70 dark:hover:bg-blue-500/[0.06] dark:hover:text-blue-400/50",
 }
 
 const SUPERADMIN_VIEWS: ViewOption[] = [
@@ -108,16 +126,18 @@ const SUPERADMIN_VIEWS: ViewOption[] = [
     label: "Activity",
     icon: Lightning,
     activeClass: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-    inactiveClass:
-      "bg-yellow-500/[0.04] text-yellow-700/30 dark:bg-yellow-500/[0.04] dark:text-yellow-400/25 hover:bg-yellow-500/[0.07] hover:text-yellow-700/50 dark:hover:bg-yellow-500/[0.07] dark:hover:text-yellow-400/40",
+    inactiveIcon: "text-yellow-600/40 dark:text-yellow-400/30",
+    inactiveHover:
+      "hover:bg-yellow-500/[0.06] hover:text-yellow-600/70 dark:hover:bg-yellow-500/[0.06] dark:hover:text-yellow-400/50",
   },
   {
     view: "terminal",
     label: "Console",
     icon: Terminal,
     activeClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
-    inactiveClass:
-      "bg-cyan-500/[0.04] text-cyan-700/30 dark:bg-cyan-500/[0.04] dark:text-cyan-400/25 hover:bg-cyan-500/[0.07] hover:text-cyan-700/50 dark:hover:bg-cyan-500/[0.07] dark:hover:text-cyan-400/40",
+    inactiveIcon: "text-cyan-600/40 dark:text-cyan-400/30",
+    inactiveHover:
+      "hover:bg-cyan-500/[0.06] hover:text-cyan-600/70 dark:hover:bg-cyan-500/[0.06] dark:hover:text-cyan-400/50",
   },
 ]
 
@@ -147,18 +167,22 @@ export function Workbench() {
     <div data-panel-role="workbench" className="relative bg-white dark:bg-[#0d0d0d] flex flex-col h-full w-full">
       {/* View switcher */}
       <div data-panel-role="workbench-view-switcher" className="h-11 px-2.5 flex items-center gap-1.5 shrink-0">
-        {viewOptions.map(({ view, label, icon: Icon, activeClass, inactiveClass }) => {
+        {viewOptions.map(({ view, label, icon: Icon, activeClass, inactiveIcon, inactiveHover }) => {
           const active = workbench.view === view
           return (
             <button
               key={view}
               type="button"
               onClick={() => handleSelectView(view)}
-              className={`flex items-center gap-2 h-8 px-3.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
-                active ? activeClass : inactiveClass
+              className={`group flex items-center gap-2 h-8 px-3.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
+                active ? activeClass : `${INACTIVE_BASE} ${inactiveHover}`
               }`}
             >
-              <Icon size={16} weight={active ? "fill" : "regular"} />
+              <Icon
+                size={16}
+                weight={active ? "fill" : "regular"}
+                className={active ? "" : `${inactiveIcon} transition-colors duration-200`}
+              />
               <span>{label}</span>
             </button>
           )
@@ -256,7 +280,7 @@ function SuperadminMenu({
         className={`flex items-center gap-1.5 h-8 px-3 rounded-full text-[13px] font-medium transition-all duration-200 ${
           isActive && activeView
             ? activeView.activeClass
-            : "bg-black/[0.02] text-black/30 dark:bg-white/[0.03] dark:text-white/25 hover:bg-black/[0.05] hover:text-black/50 dark:hover:bg-white/[0.06] dark:hover:text-white/40"
+            : `${INACTIVE_BASE} hover:bg-black/[0.04] hover:text-black/55 dark:hover:bg-white/[0.05] dark:hover:text-white/40`
         }`}
         aria-expanded={open}
         aria-haspopup="menu"

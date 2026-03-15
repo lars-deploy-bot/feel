@@ -1,10 +1,10 @@
 "use client"
 import { ArrowsDownUp } from "@phosphor-icons/react"
 import { X } from "lucide-react"
-import { useEffect, useRef, useState, type FormEvent } from "react"
-import type { KanbanAttachment, KanbanPriority, KanbanSortField } from "./types"
+import { type FormEvent, useEffect, useRef, useState } from "react"
 import { KanbanColumn } from "./KanbanColumn"
 import { useKanban } from "./KanbanProvider"
+import type { KanbanAttachment, KanbanPriority, KanbanSortField } from "./types"
 import { useKanbanKeyboard } from "./useKanbanKeyboard"
 
 // ── Main Board ──────────────────────────────────────────────────────────────
