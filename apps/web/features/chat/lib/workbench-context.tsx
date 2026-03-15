@@ -64,8 +64,6 @@ type ViewStateStorage = { [K in keyof ViewStateMap]?: ViewStateMap[K] }
 /** State for the workbench */
 export interface WorkbenchState {
   view: WorkbenchView
-  /** Current path in site preview (URL path) */
-  sitePath: string
   /** Currently open file path (for code view) */
   filePath: string | null
   /** Expanded folders in the file tree */
@@ -108,8 +106,6 @@ interface WorkbenchContextType {
   setTreeWidth: (width: number) => void
   /** Toggle tree sidebar collapsed */
   toggleTreeCollapsed: () => void
-  /** Set site preview path */
-  setSitePath: (path: string) => void
   /** Register keyboard shortcuts (returns cleanup function) */
   registerShortcuts: (shortcuts: WorkbenchShortcut[]) => () => void
   /** Typed view state storage — accessed via useViewState hook, not directly */
@@ -122,7 +118,6 @@ const DEFAULT_TREE_WIDTH = 200
 
 const DEFAULT_WORKBENCH_STATE: WorkbenchState = {
   view: "site",
-  sitePath: "/",
   filePath: null,
   expandedFolders: new Set<string>(),
   treeWidth: DEFAULT_TREE_WIDTH,
@@ -220,10 +215,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     setWorkbenchState(prev => ({ ...prev, treeCollapsed: !prev.treeCollapsed }))
   }, [])
 
-  const setSitePath = useCallback((sitePath: string) => {
-    setWorkbenchState(prev => ({ ...prev, sitePath }))
-  }, [])
-
   // ── Keyboard Shortcuts ──────────────────────────────────────────────────
   const shortcutsRef = useRef<Map<string, WorkbenchShortcut>>(new Map())
 
@@ -277,7 +268,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         toggleFolder,
         setTreeWidth,
         toggleTreeCollapsed,
-        setSitePath,
         registerShortcuts,
         viewStatesRef,
       }}

@@ -2,13 +2,11 @@
 
 import { FilePlus, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
-import { useWorkbenchContext } from "@/features/chat/lib/workbench-context"
+import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { CodeViewer } from "./CodeViewer"
-import { FileTree, invalidateFileCache } from "./FileTree"
+import { FileTree } from "./FileTree"
 import { useFileWatcher } from "./hooks/useFileWatcher"
 import { useWorkbenchShortcuts } from "./hooks/useWorkbenchShortcuts"
-import { getParentFilePath } from "./lib/file-paths"
 import { NewFileInput } from "./NewFileInput"
 import { PanelBar } from "./ui"
 
@@ -137,10 +135,9 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
               <NewFileInput
                 workspace={workspace}
                 worktree={worktree}
-                onCreated={filePath => {
+                onCreated={createdPath => {
                   setIsCreatingFile(false)
-                  invalidateFileCache(workspace, worktree, getParentFilePath(filePath))
-                  openFile(filePath)
+                  openFile(createdPath)
                 }}
                 onCancel={() => setIsCreatingFile(false)}
               />
@@ -150,8 +147,8 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
               worktree={worktree}
               activeFile={filePath}
               expandedFolders={expandedFolders}
-              toggleFolder={toggleFolder}
-              openFile={openFile}
+              onToggleFolder={toggleFolder}
+              onSelectFile={openFile}
               filter={fileFilter}
             />
           </div>

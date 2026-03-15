@@ -1,6 +1,6 @@
 /**
- * File API client for workbench views
- * Extracted to eliminate duplication between FilesView and CodeView
+ * File API client for workbench views.
+ * All functions throw on failure (fail fast). Callers catch for UI error display.
  */
 
 export interface FileInfo {
@@ -18,40 +18,56 @@ export interface FileContent {
   size: number
 }
 
-interface ApiResult<T> {
-  ok: true
-  data: T
+export interface SearchResult {
+  name: string
+  path: string
 }
 
-interface ApiError {
-  ok: false
-  error: string
+// Base shape every API route returns
+interface ApiEnvelope {
+  ok: boolean
+  error?: string
 }
 
-type ApiResponse<T> = ApiResult<T> | ApiError
+// Success response shapes (fields are required when ok=true)
+interface FileListPayload extends ApiEnvelope {
+  files: FileInfo[]
+}
 
-export async function listFiles(
-  workspace: string,
-  path: string,
-  worktree?: string | null,
-): Promise<ApiResponse<FileInfo[]>> {
-  try {
-    const response = await fetch("/api/files", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspace, path, worktree: worktree || undefined }),
-    })
+interface FileWritePayload extends ApiEnvelope {
+  path: string
+}
 
-    const data = await response.json()
+interface FileSearchPayload extends ApiEnvelope {
+  results: SearchResult[]
+}
 
-    if (!response.ok || !data.ok) {
-      return { ok: false, error: data.error || "Failed to load files" }
-    }
+interface FileReadPayload extends ApiEnvelope {
+  content: string
+  filename: string
+  language: string
+  size: number
+}
 
-    return { ok: true, data: data.files || [] }
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to load files" }
+async function post<T extends ApiEnvelope>(url: string, body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+
+  const data: T = await response.json()
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error ?? `${url} returned ${response.status}`)
   }
+
+  return data
+}
+
+export async function listFiles(workspace: string, path: string, worktree?: string | null): Promise<FileInfo[]> {
+  const data = await post<FileListPayload>("/api/files", { workspace, path, worktree: worktree || undefined })
+  return data.files
 }
 
 export async function writeFile(
@@ -59,83 +75,24 @@ export async function writeFile(
   path: string,
   content: string,
   worktree?: string | null,
-): Promise<ApiResponse<{ path: string }>> {
-  try {
-    const response = await fetch("/api/files/write", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspace, path, content, worktree: worktree || undefined }),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok || !data.ok) {
-      return { ok: false, error: data.error || "Failed to write file" }
-    }
-
-    return { ok: true, data: { path: data.path } }
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to write file" }
-  }
+): Promise<void> {
+  await post<FileWritePayload>("/api/files/write", { workspace, path, content, worktree: worktree || undefined })
 }
 
-export interface SearchResult {
-  name: string
-  path: string
+export async function searchFiles(workspace: string, query: string, worktree?: string | null): Promise<SearchResult[]> {
+  const data = await post<FileSearchPayload>("/api/files/search", {
+    workspace,
+    query,
+    worktree: worktree || undefined,
+  })
+  return data.results
 }
 
-export async function searchFiles(
-  workspace: string,
-  query: string,
-  worktree?: string | null,
-): Promise<ApiResponse<SearchResult[]>> {
-  try {
-    const response = await fetch("/api/files/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspace, query, worktree: worktree || undefined }),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok || !data.ok) {
-      return { ok: false, error: data.error || "Search failed" }
-    }
-
-    return { ok: true, data: data.results || [] }
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Search failed" }
-  }
-}
-
-export async function readFile(
-  workspace: string,
-  path: string,
-  worktree?: string | null,
-): Promise<ApiResponse<FileContent>> {
-  try {
-    const response = await fetch("/api/files/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspace, path, worktree: worktree || undefined }),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok || !data.ok) {
-      return { ok: false, error: data.error || "Failed to load file" }
-    }
-
-    return {
-      ok: true,
-      data: {
-        content: data.content,
-        filename: data.filename,
-        language: data.language,
-        size: data.size,
-      },
-    }
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to load file" }
-  }
+export async function readFile(workspace: string, path: string, worktree?: string | null): Promise<FileContent> {
+  const { content, filename, language, size } = await post<FileReadPayload>("/api/files/read", {
+    workspace,
+    path,
+    worktree: worktree || undefined,
+  })
+  return { content, filename, language, size }
 }

@@ -3,11 +3,10 @@
 import { Check, ChevronDown, ChevronUp, Code, Copy, Eye, Save, Search, X } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
-import { invalidateFileContentCache, useFileContent } from "./hooks/useFileContent"
+import { useFileContent } from "./hooks/useFileContent"
 import { useWorkbenchShortcuts } from "./hooks/useWorkbenchShortcuts"
-import { writeFile } from "./lib/file-api"
 import { getFileColor } from "./lib/file-colors"
-import { notifyFileChange } from "./lib/file-events"
+import { saveFile } from "./lib/file-ops"
 import { getFileName } from "./lib/file-path"
 import { ErrorMessage, LoadingSpinner, PanelBar } from "./ui"
 
@@ -133,13 +132,12 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
   const handleSave = useCallback(async () => {
     setSaving(true)
     setSaveError(null)
-    const result = await writeFile(workspace, filePath, editContent, worktree)
-    setSaving(false)
-    if (result.ok) {
-      invalidateFileContentCache(workspace, worktree, filePath)
-      notifyFileChange()
-    } else {
-      setSaveError(result.error)
+    try {
+      await saveFile(workspace, filePath, editContent, worktree)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Save failed")
+    } finally {
+      setSaving(false)
     }
   }, [workspace, filePath, editContent, worktree])
 

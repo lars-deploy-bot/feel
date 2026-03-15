@@ -1,6 +1,6 @@
 "use client"
 
-import { Calendar, Check, ChevronDown, Flame, Loader2, Mail, RotateCw, Webhook } from "lucide-react"
+import { Calendar, Check, Flame, Loader2, Mail, RotateCw, Webhook } from "lucide-react"
 import { useMemo } from "react"
 import type { AgentView, EnrichedJob, RecentRun } from "./agents-types"
 

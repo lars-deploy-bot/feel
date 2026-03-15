@@ -2,10 +2,10 @@
 
 import { Save } from "lucide-react"
 import { useState } from "react"
+import { ActionButton } from "./AgentUI"
 import { agentsApi } from "./agents-api"
 import { trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
-import { ActionButton } from "./AgentUI"
 
 function EditField({
   label,

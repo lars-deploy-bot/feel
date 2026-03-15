@@ -2,7 +2,9 @@
 
 import { ChevronRight, File, Folder } from "lucide-react"
 import { memo, useCallback, useEffect, useState } from "react"
-import { type FileInfo, listFiles, type SearchResult, searchFiles } from "./lib/file-api"
+import type { FileInfo, SearchResult } from "./lib/file-api"
+import { listFiles, searchFiles } from "./lib/file-api"
+import { cacheKey, getCachedList, hasCachedList, setCachedList } from "./lib/file-cache"
 import { getFileColor } from "./lib/file-colors"
 import { useFileChangeVersion } from "./lib/file-events"
 
@@ -14,14 +16,6 @@ interface FileTreeProps {
   onToggleFolder: (path: string) => void
   onSelectFile: (path: string) => void
   filter?: string
-}
-
-// Global cache for file listings - persists across re-renders
-const fileCache = new Map<string, FileInfo[]>()
-
-function getCacheKey(workspace: string, worktree: string | null | undefined, path: string): string {
-  const scope = worktree ? `wt/${worktree}` : "base"
-  return `${workspace}::${scope}::${path}`
 }
 
 export function FileTree({
@@ -87,10 +81,14 @@ function SearchResults({ workspace, worktree, query, activeFile, onSelectFile }:
     let mounted = true
     const timer = setTimeout(async () => {
       setLoading(true)
-      const res = await searchFiles(workspace, query, worktree)
-      if (!mounted) return
-      if (res.ok) setResults(res.data)
-      setLoading(false)
+      try {
+        const data = await searchFiles(workspace, query, worktree)
+        if (mounted) setResults(data)
+      } catch {
+        // Search errors are non-critical — silently handled
+      } finally {
+        if (mounted) setLoading(false)
+      }
     }, 150) // debounce
 
     return () => {
@@ -166,16 +164,16 @@ function TreeLevel({
   onToggleFolder,
   onSelectFile,
 }: TreeLevelProps) {
-  const cacheKey = getCacheKey(workspace, worktree, path)
-  const [files, setFiles] = useState<FileInfo[]>(() => fileCache.get(cacheKey) || [])
-  const [loading, setLoading] = useState(!fileCache.has(cacheKey))
+  const key = cacheKey(workspace, worktree, path)
+  const [files, setFiles] = useState<FileInfo[]>(() => getCachedList(key) || [])
+  const [loading, setLoading] = useState(!hasCachedList(key))
   const [error, setError] = useState<string | null>(null)
   const changeVersion = useFileChangeVersion()
 
   useEffect(() => {
     // Already cached - no need to fetch
-    if (fileCache.has(cacheKey)) {
-      setFiles(fileCache.get(cacheKey)!)
+    if (hasCachedList(key)) {
+      setFiles(getCachedList(key)!)
       setLoading(false)
       return
     }
@@ -185,29 +183,30 @@ function TreeLevel({
     async function load() {
       // Stale-while-revalidate: only show spinner on initial load, not revalidation
       if (files.length === 0) setLoading(true)
-      const result = await listFiles(workspace, path, worktree)
-      if (!mounted) return
-
-      if (result.ok) {
+      try {
+        const data = await listFiles(workspace, path, worktree)
+        if (!mounted) return
         // Sort: folders first, then files, alphabetically
-        const sorted = [...result.data].sort((a, b) => {
+        const sorted = [...data].sort((a, b) => {
           if (a.type !== b.type) return a.type === "directory" ? -1 : 1
           return a.name.localeCompare(b.name)
         })
-        fileCache.set(cacheKey, sorted)
+        setCachedList(key, sorted)
         setFiles(sorted)
         setError(null)
-      } else {
-        setError(result.error)
+      } catch (err) {
+        if (!mounted) return
+        setError(err instanceof Error ? err.message : "Failed to load files")
+      } finally {
+        if (mounted) setLoading(false)
       }
-      setLoading(false)
     }
 
     load()
     return () => {
       mounted = false
     }
-  }, [workspace, worktree, path, cacheKey, changeVersion])
+  }, [workspace, worktree, path, key, changeVersion])
 
   if (loading && depth === 0) {
     return <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">Loading...</div>
@@ -324,21 +323,3 @@ const TreeNode = memo(function TreeNode({
     </>
   )
 })
-
-// Export cache invalidation for manual refresh
-export function invalidateFileCache(workspace?: string, worktree?: string | null, path?: string): void {
-  if (workspace && path !== undefined) {
-    fileCache.delete(getCacheKey(workspace, worktree, path))
-    return
-  }
-  if (workspace) {
-    const scope = worktree ? `wt/${worktree}` : "base"
-    for (const key of fileCache.keys()) {
-      if (key.startsWith(`${workspace}::${scope}::`)) {
-        fileCache.delete(key)
-      }
-    }
-    return
-  }
-  fileCache.clear()
-}
