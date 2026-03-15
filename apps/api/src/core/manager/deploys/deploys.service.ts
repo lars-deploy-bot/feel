@@ -9,6 +9,7 @@ import {
   DEPLOY_ENVIRONMENT_STAGING,
   type DeployDeploymentAction,
 } from "@webalive/database"
+import { getServerId } from "@webalive/shared"
 import { deployRepo } from "../../../db/repos"
 import { ConflictError, NotFoundError } from "../../../infra/errors"
 import type {
@@ -242,9 +243,15 @@ export async function queueBuild(applicationId: string, gitRef?: string): Promis
     throw new ConflictError("A build is already running for this application")
   }
 
+  const serverId = getServerId()
+  if (!serverId) {
+    throw new Error("server_id is required to queue a build but serverId is not configured")
+  }
+
   const build = await deployRepo.createBuild({
     application_id: applicationId,
     git_ref: gitRef?.trim() || "HEAD",
+    server_id: serverId,
   })
 
   return mapBuild(build)

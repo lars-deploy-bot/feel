@@ -43,8 +43,24 @@ loadEnvFile(resolve(scriptDir, "../../../apps/web/.env"))
 loadEnvFile(resolve(scriptDir, "../../../apps/web/.env.production"), true)
 
 const projectId = process.env.SUPABASE_PROJECT_ID
-const databaseUrl = process.env.DATABASE_URL
 const databasePassword = process.env.DATABASE_PASSWORD
+
+// Inject password into DATABASE_URL if it's provided separately.
+// supabase gen types --db-url does NOT respect PGPASSWORD env var.
+const databaseUrl = (() => {
+  const raw = process.env.DATABASE_URL
+  if (!raw || !databasePassword) return raw
+  try {
+    const url = new URL(raw)
+    if (!url.password) {
+      url.password = databasePassword
+      return url.toString()
+    }
+  } catch {
+    // Not a valid URL, return as-is
+  }
+  return raw
+})()
 
 if (projectId === undefined && databaseUrl === undefined) {
   console.error("❌ Error: SUPABASE_PROJECT_ID or DATABASE_URL is required")
@@ -131,7 +147,7 @@ async function generateTypes() {
         const exitCode = await proc.exited
 
         if (exitCode === 0) {
-          return { stdout, stderr, mode }
+          return { stdout, stderr, mode, exitCode }
         }
 
         const combined = `${stderr}\n${stdout}`
@@ -198,7 +214,7 @@ ${processedOutput}
     const generatedTypeImports = generatedSchemas
       .map(schema => {
         const capitalized = schema.charAt(0).toUpperCase() + schema.slice(1)
-        return `import type { Database as ${capitalized}Database } from "./${schema}.generated"`
+        return `import type { Database as ${capitalized}Database } from "./${schema}.generated.js"`
       })
       .join("\n")
 
@@ -217,7 +233,7 @@ ${processedOutput}
 ${generatedTypeImports}
 
 // Export generated constants (runtime enum values derived from DB)
-${generatedSchemas.includes("app") ? `export { Constants as AppConstants } from "./app.generated"` : "// App constants unavailable"}
+${generatedSchemas.includes("app") ? `export { Constants as AppConstants } from "./app.generated.js"` : "// App constants unavailable"}
 
 // Export automation enum types, guards, and runtime sets
 export {
@@ -240,7 +256,45 @@ export {
   type TerminalRunStatus,
   TRIGGER_TYPES,
   type TriggerType,
-} from "./automation-enums"
+} from "./automation-enums.js"
+${
+  generatedSchemas.includes("deploy")
+    ? `export { Constants as DeployConstants } from "./deploy.generated.js"
+export {
+  DEPLOY_ARTIFACT_KIND_DOCKER_IMAGE,
+  DEPLOY_ARTIFACT_KINDS,
+  DEPLOY_DEPLOYMENT_ACTION_DEPLOY,
+  DEPLOY_DEPLOYMENT_ACTION_PROMOTE,
+  DEPLOY_DEPLOYMENT_ACTION_ROLLBACK,
+  DEPLOY_DEPLOYMENT_ACTIONS,
+  DEPLOY_ENVIRONMENT_NAMES,
+  DEPLOY_ENVIRONMENT_PRODUCTION,
+  DEPLOY_ENVIRONMENT_STAGING,
+  DEPLOY_EXECUTOR_BACKENDS,
+  DEPLOY_EXECUTOR_DOCKER,
+  DEPLOY_GIT_PROVIDER_GITHUB,
+  DEPLOY_GIT_PROVIDERS,
+  DEPLOY_TASK_STATUS_CANCELLED,
+  DEPLOY_TASK_STATUS_FAILED,
+  DEPLOY_TASK_STATUS_PENDING,
+  DEPLOY_TASK_STATUS_RUNNING,
+  DEPLOY_TASK_STATUS_SUCCEEDED,
+  DEPLOY_TASK_STATUSES,
+  type DeployArtifactKind,
+  type DeployDeploymentAction,
+  type DeployEnvironmentName,
+  type DeployExecutorBackend,
+  type DeployGitProvider,
+  type DeployTaskStatus,
+  isDeployArtifactKind,
+  isDeployDeploymentAction,
+  isDeployEnvironmentName,
+  isDeployExecutorBackend,
+  isDeployGitProvider,
+  isDeployTaskStatus,
+} from "./deploy-enums.js"`
+    : "// Deploy enums unavailable"
+}
 
 // Export common types from public schema (if available) or lockbox as fallback
 ${
@@ -252,7 +306,7 @@ ${
   Tables,
   TablesInsert,
   TablesUpdate,
-} from "./public.generated"`
+} from "./public.generated.js"`
     : generatedSchemas.includes("lockbox")
       ? `export {
   CompositeTypes,
@@ -261,7 +315,7 @@ ${
   Tables,
   TablesInsert,
   TablesUpdate,
-} from "./lockbox.generated"`
+} from "./lockbox.generated.js"`
       : "// No common types to export"
 }
 
@@ -278,7 +332,7 @@ export type Database = never`
 }
 
 // Export database client creators
-export * from "./client"
+export * from "./client.js"
 
 // Export startup verification (schema + server identity)
 export {
@@ -287,7 +341,7 @@ export {
   formatSchemaFailure,
   formatServerCheckFailure,
   type ServerIdentity,
-} from "./seed-check"
+} from "./seed-check.js"
 `
 
     const mainTypesPath = resolve(outputDir, "index.ts")

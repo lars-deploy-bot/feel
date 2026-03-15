@@ -206,6 +206,44 @@ export type Database = {
         }
         Relationships: []
       }
+      password_reset_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          issued_by: string
+          reset_token_id: string
+          token_hash: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          issued_by?: string
+          reset_token_id?: string
+          token_hash: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          issued_by?: string
+          reset_token_id?: string
+          token_hash?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "password_reset_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
           completed_at: string | null
@@ -404,6 +442,10 @@ export type Database = {
         Returns: number
       }
       cleanup_expired_auth_sessions: { Args: never; Returns: number }
+      consume_password_reset_token: {
+        Args: { p_new_password_hash: string; p_token_hash: string }
+        Returns: string
+      }
       current_clerk_id: { Args: never; Returns: string }
       deduct_credits: {
         Args: { p_amount: number; p_org_id: string }
@@ -416,6 +458,10 @@ export type Database = {
       }
       is_org_admin: { Args: { p_org_id: string }; Returns: boolean }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
+      issue_password_reset_token: {
+        Args: { p_expires_at: string; p_token_hash: string; p_user_id: string }
+        Returns: undefined
+      }
       revoke_auth_session: {
         Args: { p_revoked_by?: string; p_sid: string; p_user_id: string }
         Returns: boolean
