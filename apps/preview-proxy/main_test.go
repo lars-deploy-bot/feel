@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
 	"strings"
 	"testing"
-	"html"
 )
 
 // testRewrite exercises the same Rewrite function used in ServeHTTP.
