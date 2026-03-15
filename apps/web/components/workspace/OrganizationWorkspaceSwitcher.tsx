@@ -121,7 +121,7 @@ export function OrganizationWorkspaceSwitcher({
           ref={wsTriggerRef}
           type="button"
           onClick={() => setWsOpen(prev => !prev)}
-          className="text-[13px] font-semibold text-black/40 dark:text-white/30 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] px-2.5 py-1 rounded-lg transition-all select-none shrink-0"
+          className="text-[13px] font-semibold text-black/40 dark:text-white/30 hover:text-black/60 dark:hover:text-white/50 bg-white dark:bg-[#1a1a1a] border border-emerald-400/30 dark:border-emerald-500/20 ring-1 ring-emerald-400/10 dark:ring-emerald-500/10 px-3 py-1 rounded-full transition-all select-none shrink-0"
         >
           {wsInOrg ? deriveProjectName(wsInOrg) : "Select project"}
         </button>

@@ -7,6 +7,7 @@
  * PostHog autocapture handles basic clicks/pageviews automatically.
  * These are SEMANTIC events that capture user intent and funnel progression.
  */
+import type { VoiceLanguage } from "@webalive/shared"
 import posthog from "posthog-js"
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -542,7 +543,7 @@ export function trackThemeChanged(theme: string) {
 // ─── Language ────────────────────────────────────────────────────────────────
 
 /** User changes voice/response language in settings */
-export function trackLanguageChanged(language: string) {
+export function trackLanguageChanged(language: VoiceLanguage) {
   capture("language_changed", { language })
 }
 

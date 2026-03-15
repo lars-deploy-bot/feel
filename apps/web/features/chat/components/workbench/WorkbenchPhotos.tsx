@@ -1,9 +1,9 @@
 "use client"
 
-import { Check, Copy, Image, Plus, Trash2, Upload, X } from "lucide-react"
+import { Check, Copy, Image, MessageCircle, Plus, Trash2, Upload, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { DeleteModal } from "@/components/modals/DeleteModal"
-import type { WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
+import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useImageActions, useImages, useImagesLoading, useImagesUploading } from "@/lib/stores/imageStore"
 
@@ -17,6 +17,7 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
   const loading = useImagesLoading()
   const uploading = useImagesUploading()
   const { uploadImages, loadImages, deleteImage } = useImageActions()
+  const { addImageToChat } = useWorkbenchContext()
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [lightbox, setLightbox] = useState<string | null>(null)
@@ -182,8 +183,18 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
                     className="h-full overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900 cursor-pointer"
                     onClick={() => setLightbox(image.key)}
                     onKeyDown={e => e.key === "Enter" && setLightbox(image.key)}
+                    draggable
+                    onDragStart={e => {
+                      e.dataTransfer.effectAllowed = "copy"
+                      e.dataTransfer.setData("application/x-photobook-image", image.key)
+                    }}
                   >
-                    <img src={image.variants.w640} alt="" loading="lazy" className="h-full w-auto object-contain" />
+                    <img
+                      src={image.variants.w640}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-auto object-contain pointer-events-none"
+                    />
                   </div>
                   {/* Actions — frosted pill, top-right */}
                   <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
@@ -191,6 +202,23 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
                       className="flex items-center bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl
                       border border-black/[0.06] dark:border-white/[0.06] rounded-lg overflow-hidden"
                     >
+                      {addImageToChat && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation()
+                              addImageToChat(image.key)
+                            }}
+                            className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-100"
+                            aria-label="Add to message"
+                            title="Add to message"
+                          >
+                            <MessageCircle size={15} strokeWidth={1.5} />
+                          </button>
+                          <div className="w-px h-4 bg-black/[0.06] dark:bg-white/[0.06]" />
+                        </>
+                      )}
                       <button
                         type="button"
                         onClick={e => {

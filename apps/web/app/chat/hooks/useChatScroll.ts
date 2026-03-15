@@ -104,11 +104,7 @@ export function useChatScroll(options: UseChatScrollOptions = {}): UseChatScroll
         const [entry] = entries
         if (!entry) return
 
-        // If anchor is visible (or nearly visible), user is at bottom
-        // Using a rootMargin to give some buffer
         if (entry.isIntersecting) {
-          // User scrolled back to bottom - re-enable auto-scroll
-          // Use debounce to prevent flickering on mobile
           if (debounceTimer.current) {
             clearTimeout(debounceTimer.current)
           }
@@ -117,13 +113,9 @@ export function useChatScroll(options: UseChatScrollOptions = {}): UseChatScroll
             scrollUpCount.current = 0
           }, debounceMs)
         }
-        // Anchor not visible - but only set scrolled away if user actively scrolled up
-        // Don't set it just because content pushed anchor out of view
       },
       {
         root: container,
-        // Extend the intersection area by threshold pixels at the bottom
-        // This means we consider "at bottom" if within threshold px
         rootMargin: `0px 0px ${threshold}px 0px`,
         threshold: 0,
       },

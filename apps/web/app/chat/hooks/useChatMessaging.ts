@@ -154,7 +154,7 @@ export function useChatMessaging({
   const requestWorktree = worktreesEnabled ? worktree || undefined : undefined
 
   const createRequestBody = useCallback(
-    (message: string, analyzeImageUrls?: string[]) => {
+    (message: string, analyzeImageUrls?: string[], voiceUsed?: boolean) => {
       // Tab.id IS the conversation key - no separate sessionId
       if (!tabId || !tabGroupId) {
         throw new Error("[useChatMessaging] Cannot create request: tabId or tabGroupId is missing")
@@ -165,14 +165,12 @@ export function useChatMessaging({
       const resumeSessionAt = dexieState.resumeSessionAtByTab[tabId] || undefined
 
       const currentMode = getStreamModeState().mode
-      // Only include voiceLanguage when this message actually used voice input
-      const wasVoice = consumeVoiceUsed(tabId)
       const baseBody = {
         message,
         tabId,
         tabGroupId,
         model: userModel,
-        voiceLanguage: wasVoice && voiceLanguage !== DEFAULT_VOICE_LANGUAGE ? voiceLanguage : undefined,
+        voiceLanguage: voiceUsed && voiceLanguage !== DEFAULT_VOICE_LANGUAGE ? voiceLanguage : undefined,
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
         // Read stream mode directly from store to avoid stale closure
         streamMode: currentMode !== "default" ? currentMode : undefined, // Only send if non-default
@@ -381,7 +379,9 @@ export function useChatMessaging({
 
       try {
         const { prompt, analyzeImageUrls } = buildPromptForClaude(userMessage)
-        const requestBody = createRequestBody(prompt, analyzeImageUrls)
+        // Consume voice flag before building the body — side-effect-free createRequestBody
+        const voiceUsed = consumeVoiceUsed(targetTabId)
+        const requestBody = createRequestBody(prompt, analyzeImageUrls, voiceUsed)
 
         const abortController = new AbortController()
         abortControllerRef.current = abortController

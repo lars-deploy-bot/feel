@@ -1,3 +1,4 @@
+import { isValidVoiceLanguage } from "@webalive/shared"
 import { NextResponse } from "next/server"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import type { TranscribeResult } from "@/lib/api/types"
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
 
   const upstream = new FormData()
   upstream.append("file", file, file.name)
-  if (typeof language === "string" && language.length > 0) {
+  if (typeof language === "string" && isValidVoiceLanguage(language)) {
     upstream.append("language", language)
   }
 

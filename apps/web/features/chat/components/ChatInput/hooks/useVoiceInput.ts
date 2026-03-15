@@ -68,10 +68,19 @@ export function useVoiceInput({ onTranscript, onError, language }: UseVoiceInput
 
   const stopRecording = useCallback(() => {
     if (!recordingRef.current) return
-    recorderRef.current?.stop()
+    try {
+      if (recorderRef.current?.state === "recording") {
+        recorderRef.current.stop()
+      } else {
+        // Recorder already stopped/inactive — just clean up
+        releaseStream()
+      }
+    } catch {
+      releaseStream()
+    }
     setRecordingState(false)
     lockRef.current = false
-  }, [setRecordingState])
+  }, [setRecordingState, releaseStream])
 
   const startRecording = useCallback(async () => {
     if (recordingRef.current || lockRef.current || mutation.isPending) return
@@ -96,6 +105,13 @@ export function useVoiceInput({ onTranscript, onError, language }: UseVoiceInput
 
     recorder.ondataavailable = e => {
       if (e.data.size > 0) chunksRef.current.push(e.data)
+    }
+
+    recorder.onerror = () => {
+      releaseStream()
+      setRecordingState(false)
+      lockRef.current = false
+      cbRef.current.onError("Recording failed")
     }
 
     recorder.onstop = () => {

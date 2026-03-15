@@ -52,7 +52,7 @@ export function MessageWrapper({
   }, [copied])
 
   return (
-    <div className="group" ref={contentRef}>
+    <div className="group animate-message-in" ref={contentRef}>
       {children}
       {showActions && (
         <div
