@@ -9,50 +9,50 @@ import { buildNewSiteSuccessPayload } from "../new-site-lifecycle"
 describe("buildNewSiteSuccessPayload", () => {
   it("4.1 includes orgId in chatUrl when provided", () => {
     const payload = buildNewSiteSuccessPayload({
-      domain: "new.alive.best",
+      domain: "new.test.example",
       orgId: "org-B",
       executionMode: "systemd",
       message: "Site created",
     })
 
-    expect(payload.chatUrl).toContain("wk=new.alive.best")
+    expect(payload.chatUrl).toContain("wk=new.test.example")
     expect(payload.chatUrl).toContain("org=org-B")
-    expect(payload.chatUrl).toBe("/chat?wk=new.alive.best&org=org-B")
+    expect(payload.chatUrl).toBe("/chat?wk=new.test.example&org=org-B")
   })
 
   it("omits org param when orgId is undefined", () => {
     const payload = buildNewSiteSuccessPayload({
-      domain: "new.alive.best",
+      domain: "new.test.example",
       executionMode: "systemd",
       message: "Site created",
     })
 
-    expect(payload.chatUrl).toContain("wk=new.alive.best")
+    expect(payload.chatUrl).toContain("wk=new.test.example")
     expect(payload.chatUrl).not.toContain("org=")
-    expect(payload.chatUrl).toBe("/chat?wk=new.alive.best")
+    expect(payload.chatUrl).toBe("/chat?wk=new.test.example")
   })
 
   it("encodes special characters in domain and orgId", () => {
     const payload = buildNewSiteSuccessPayload({
-      domain: "my site.alive.best",
+      domain: "my site.test.example",
       orgId: "org with spaces",
       executionMode: "e2b",
       message: "Created",
     })
 
-    expect(payload.chatUrl).toContain("wk=my%20site.alive.best")
+    expect(payload.chatUrl).toContain("wk=my%20site.test.example")
     expect(payload.chatUrl).toContain("org=org%20with%20spaces")
   })
 
   it("preserves all payload fields", () => {
     const payload = buildNewSiteSuccessPayload({
-      domain: "test.alive.best",
+      domain: "test.test.example",
       orgId: "org-1",
       executionMode: "e2b",
       message: "Done",
     })
 
-    expect(payload.domain).toBe("test.alive.best")
+    expect(payload.domain).toBe("test.test.example")
     expect(payload.orgId).toBe("org-1")
     expect(payload.executionMode).toBe("e2b")
     expect(payload.message).toBe("Done")

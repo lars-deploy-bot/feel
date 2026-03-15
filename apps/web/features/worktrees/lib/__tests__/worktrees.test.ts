@@ -67,8 +67,8 @@ function setupRepo(): TestRepo {
     path.join(siteRoot, ".site-metadata.json"),
     JSON.stringify({
       slug: "test",
-      domain: "test.alive.best",
-      workspace: "test.alive.best",
+      domain: "test.test.example",
+      workspace: "test.test.example",
       email: "test@example.com",
       siteIdeas: "",
       createdAt: Date.now(),

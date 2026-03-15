@@ -99,7 +99,7 @@ describe("deploysRoutes", () => {
       deployment_id: "dep_deploy_123",
       environment_id: "dep_env_123",
       environment_name: "staging",
-      environment_hostname: "staging.alive.best",
+      environment_hostname: "staging.test.example",
       environment_port: 8998,
       release_id: "dep_rel_123",
       action: "deploy",

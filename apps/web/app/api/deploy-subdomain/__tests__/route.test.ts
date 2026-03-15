@@ -60,7 +60,7 @@ vi.mock("@/lib/api/responses", () => ({
 }))
 
 vi.mock("@/lib/config", () => ({
-  buildSubdomain: vi.fn((slug: string) => `${slug}.alive.best`),
+  buildSubdomain: vi.fn((slug: string) => `${slug}.test.example`),
   WORKSPACE_BASE: "/srv/webalive/sites",
 }))
 
@@ -182,9 +182,9 @@ describe("POST /api/deploy-subdomain", () => {
       },
     })
     runStrictDeploymentMock.mockResolvedValue({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       port: 3700,
-      serviceName: "site@testsite-alive-best.service",
+      serviceName: "site@testsite-test-example.service",
       executionMode: "systemd",
     })
   })
@@ -214,7 +214,7 @@ describe("POST /api/deploy-subdomain", () => {
     expect(response.status).toBe(200)
     expect(runStrictDeploymentMock).toHaveBeenCalledOnce()
     expect(runStrictDeploymentMock.mock.calls[0][0]).toMatchObject({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       email: "owner@example.com",
       orgId: "org-1",
       templatePath: "/srv/webalive/templates/blank.alive.best",
@@ -224,9 +224,9 @@ describe("POST /api/deploy-subdomain", () => {
 
   it("stores metadata in the e2b scratch root when sandbox mode is enabled", async () => {
     runStrictDeploymentMock.mockResolvedValueOnce({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       port: 3701,
-      serviceName: "e2b-site@testsite.alive.best",
+      serviceName: "e2b-site@testsite.test.example",
       executionMode: "e2b",
     })
 
@@ -243,9 +243,9 @@ describe("POST /api/deploy-subdomain", () => {
     expect(siteMetadataSetSiteMock).toHaveBeenCalledWith(
       "testsite",
       expect.objectContaining({
-        domain: "testsite.alive.best",
+        domain: "testsite.test.example",
       }),
-      { workspaceRoot: `${MOCK_E2B_SCRATCH}/testsite.alive.best` },
+      { workspaceRoot: `${MOCK_E2B_SCRATCH}/testsite.test.example` },
     )
 
     const payload = (await response.json()) as { executionMode: string }

@@ -46,7 +46,7 @@ describe("serverBeforeSend filter", () => {
       type: undefined,
       environment: "production",
       request: {
-        url: "https://app.alive.best/api/test",
+        url: "https://app.test.example/api/test",
         cookies: { session: "secret" },
         headers: {
           cookie: "session=secret",

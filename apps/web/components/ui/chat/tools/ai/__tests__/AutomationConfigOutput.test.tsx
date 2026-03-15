@@ -13,7 +13,7 @@ vi.mock("@webalive/shared", () => ({
   },
   DEFAULTS: {
     TEMPLATE_ID_PREFIX: "tmpl_",
-    WILDCARD_DOMAIN: "alive.best",
+    WILDCARD_DOMAIN: "test.example",
     SERVER_IP: "0.0.0.0",
   },
   ORG_ROLES: { OWNER: "owner", ADMIN: "admin", MEMBER: "member" },
@@ -41,7 +41,7 @@ const mockedPostty = vi.mocked(postty)
 
 const baseData = {
   type: "automation_config" as const,
-  sites: [{ id: "site-1", hostname: "example.alive.best" }],
+  sites: [{ id: "site-1", hostname: "example.test.example" }],
   defaultName: "Daily summary",
   defaultPrompt: "Review the website and summarize key updates for today.",
 }

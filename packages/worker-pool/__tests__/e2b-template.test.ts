@@ -9,12 +9,12 @@ describe("E2B template routing", () => {
   })
 
   it("rejects non-e2e hostnames", () => {
-    expect(isE2eWorkspaceHostname("app.alive.best")).toBe(false)
-    expect(isE2eWorkspaceHostname("customer.alive.best")).toBe(false)
+    expect(isE2eWorkspaceHostname("app.test.example")).toBe(false)
+    expect(isE2eWorkspaceHostname("customer.test.example")).toBe(false)
   })
 
   it("resolves all hostnames to the default template", () => {
     expect(resolveSandboxTemplate("e2e-w0.alive.local")).toBe(E2B_DEFAULT_TEMPLATE)
-    expect(resolveSandboxTemplate("app.alive.best")).toBe(E2B_DEFAULT_TEMPLATE)
+    expect(resolveSandboxTemplate("app.test.example")).toBe(E2B_DEFAULT_TEMPLATE)
   })
 })

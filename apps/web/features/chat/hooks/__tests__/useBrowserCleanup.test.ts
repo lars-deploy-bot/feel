@@ -10,7 +10,7 @@ describe("useBrowserCleanup", () => {
   const createOptions = (overrides: Partial<UseBrowserCleanupOptions> = {}): UseBrowserCleanupOptions => ({
     tabId: "11111111-1111-1111-1111-111111111111",
     tabGroupId: "22222222-2222-2222-2222-222222222222",
-    workspace: "test.alive.best",
+    workspace: "test.test.example",
     worktree: "feature-123",
     worktreesEnabled: true,
     lastSeenStreamSeq: 42,
@@ -99,7 +99,7 @@ describe("useBrowserCleanup", () => {
     expect(cancelPayload.clientStack).toContain(EXPLICIT_STOP_UNLOAD_BEACON_MARKER)
     expect(cancelPayload.tabId).toBe("11111111-1111-1111-1111-111111111111")
     expect(cancelPayload.tabGroupId).toBe("22222222-2222-2222-2222-222222222222")
-    expect(cancelPayload.workspace).toBe("test.alive.best")
+    expect(cancelPayload.workspace).toBe("test.test.example")
     expect(cancelPayload.worktree).toBe("feature-123")
   })
 
