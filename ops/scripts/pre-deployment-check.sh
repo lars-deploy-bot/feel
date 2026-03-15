@@ -45,8 +45,10 @@ if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
 fi
 
 redis_persistence_ok() {
-  if ! systemctl is-active --quiet redis-server; then
-    echo "redis-server.service is not active"
+  # Check if Redis is reachable (may run via systemd or Docker)
+  REDIS_PING=$(REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli -h 127.0.0.1 -p 6379 PING 2>/dev/null || true)
+  if [ "$REDIS_PING" != "PONG" ]; then
+    echo "Redis not reachable on 127.0.0.1:6379 (neither systemd nor Docker)"
     return 1
   fi
 
