@@ -5,16 +5,13 @@
  * Only accessible in test environments.
  */
 
-import { execFile } from "node:child_process"
 import { randomUUID } from "node:crypto"
-import { mkdir, rm, writeFile } from "node:fs/promises"
-import path from "node:path"
-import { promisify } from "node:util"
 import * as Sentry from "@sentry/nextjs"
 import { AppConstants, type ExecutionMode } from "@webalive/database"
 import { env } from "@webalive/env/server"
-import { PATHS, TEST_CONFIG } from "@webalive/shared"
+import { TEST_CONFIG } from "@webalive/shared"
 import { hash } from "bcrypt"
+import { ensureWorkspaceFilesystem } from "@/app/api/test/bootstrap-tenant/workspace-filesystem"
 import {
   BootstrapTenantRequestSchema,
   BootstrapTenantResponseSchema,
@@ -22,15 +19,11 @@ import {
 } from "@/app/api/test/test-route-schemas"
 import { invalidateUserAuthzCache, invalidateWorkspaceAuthzCache } from "@/features/auth/lib/auth"
 import { invalidateSessionDomainCache } from "@/features/auth/lib/sessionStore"
-import { domainToSlug } from "@/features/manager/lib/domain-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 import { invalidateDomainOrgCache } from "@/lib/tokens"
-
-const execFileAsync = promisify(execFile)
-const MAX_LINUX_USERNAME_LENGTH = 32
 
 function requireExecutionMode(mode: ExecutionMode): ExecutionMode {
   const matchedMode = AppConstants.app.Enums.execution_mode.find(value => value === mode)
@@ -62,117 +55,6 @@ async function isDomainSafeForTestUpsert(
   if (data.is_test_env) return true
   // Production domain → NOT safe
   return false
-}
-
-interface PosixIds {
-  uid: number
-  gid: number
-}
-
-function parseNumericId(value: string, source: string): number {
-  const parsed = Number.parseInt(value.trim(), 10)
-  if (Number.isNaN(parsed)) {
-    throw new Error(`Invalid numeric ID from ${source}: "${value}"`)
-  }
-  return parsed
-}
-
-async function readPosixIds(username: string): Promise<PosixIds | null> {
-  try {
-    const [{ stdout: uidStdout }, { stdout: gidStdout }] = await Promise.all([
-      execFileAsync("id", ["-u", username]),
-      execFileAsync("id", ["-g", username]),
-    ])
-
-    return {
-      uid: parseNumericId(uidStdout, `id -u ${username}`),
-      gid: parseNumericId(gidStdout, `id -g ${username}`),
-    }
-  } catch (_error) {
-    // User does not exist yet (or id command unavailable).
-    return null
-  }
-}
-
-async function ensureSystemUser(username: string): Promise<PosixIds> {
-  const existing = await readPosixIds(username)
-  if (existing) {
-    return existing
-  }
-
-  await execFileAsync("useradd", [
-    "--system",
-    "--user-group",
-    "--no-create-home",
-    "--shell",
-    "/usr/sbin/nologin",
-    username,
-  ])
-
-  const created = await readPosixIds(username)
-  if (!created) {
-    throw new Error(`Failed to resolve uid/gid for created user: ${username}`)
-  }
-
-  return created
-}
-
-async function ensureWorkspaceFilesystem(workspace: string): Promise<void> {
-  const slug = domainToSlug(workspace)
-  const linuxUser = `site-${slug}`
-
-  if (linuxUser.length > MAX_LINUX_USERNAME_LENGTH) {
-    throw new Error(`Workspace slug too long for linux user: ${linuxUser}`)
-  }
-
-  // SAFETY: Only wipe filesystem for test workspaces (*.alive.local / *.alive.test).
-  // Production workspaces (*.alive.best, custom domains) contain real user data.
-  const isTestWorkspace = workspace.endsWith(`.${TEST_CONFIG.EMAIL_DOMAIN}`) || workspace.endsWith(".alive.test")
-  if (!isTestWorkspace) {
-    console.warn("[Bootstrap] Skipping filesystem wipe for non-test workspace:", workspace)
-    return
-  }
-
-  const resolvedSitesRoot = path.resolve(PATHS.SITES_ROOT)
-  const resolvedWorkspaceRoot = path.resolve(path.join(PATHS.SITES_ROOT, workspace))
-  const relativeWorkspacePath = path.relative(resolvedSitesRoot, resolvedWorkspaceRoot)
-
-  if (
-    relativeWorkspacePath.length === 0 ||
-    relativeWorkspacePath.startsWith("..") ||
-    path.isAbsolute(relativeWorkspacePath)
-  ) {
-    throw new Error(`Workspace path escapes SITES_ROOT: ${workspace}`)
-  }
-
-  const workspaceUserDir = path.join(resolvedWorkspaceRoot, "user")
-
-  // Keep every run deterministic: clear stale files from previous E2E runs.
-  await rm(workspaceUserDir, { recursive: true, force: true })
-  await mkdir(workspaceUserDir, { recursive: true, mode: 0o750 })
-  await writeFile(
-    path.join(workspaceUserDir, "README.md"),
-    "# E2E Workspace\n\nThis workspace is provisioned for live staging E2E tests.\n",
-    "utf8",
-  )
-
-  const currentUid = typeof process.getuid === "function" ? process.getuid() : null
-  const currentGid = typeof process.getgid === "function" ? process.getgid() : null
-
-  if (currentUid === null || currentGid === null) {
-    throw new Error("Current process uid/gid is unavailable")
-  }
-
-  if (currentUid === 0) {
-    const { uid, gid } = await ensureSystemUser(linuxUser)
-    await execFileAsync("chown", ["-R", `${uid}:${gid}`, resolvedWorkspaceRoot])
-    return
-  }
-
-  // Non-root deployment: align ownership to the app process user.
-  await execFileAsync("chown", ["-R", `${currentUid}:${currentGid}`, resolvedWorkspaceRoot]).catch(() => {
-    // If chown is not permitted, the directory is already process-owned in non-root mode.
-  })
 }
 
 async function buildTenantResponse(
