@@ -194,25 +194,24 @@ export function useTab(tabId: string | null, userId: string | null): DbTab | nul
  * Uses composite index [tabId+seq] for reliable ordering by sequence number.
  * Filters out soft-deleted messages (those with deletedAt set).
  */
-export function useMessages(tabId: string | null, userId: string | null): DbMessage[] {
-  return (
-    useLiveQuery(
-      async () => {
-        if (!tabId || !userId) return []
+export function useMessages(tabId: string | null, userId: string | null): DbMessage[] | undefined {
+  return useLiveQuery(
+    async () => {
+      if (!tabId || !userId) return []
 
-        const db = getMessageDb(userId)
+      const db = getMessageDb(userId)
 
-        // Order by seq (sequence number) for reliable ordering
-        // Filter out soft-deleted messages
-        return db.messages
-          .where("[tabId+seq]")
-          .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
-          .and(m => !m.deletedAt) // Exclude deleted messages
-          .toArray()
-      },
-      [tabId, userId],
-      [],
-    ) ?? []
+      // Order by seq (sequence number) for reliable ordering
+      // Filter out soft-deleted messages
+      return db.messages
+        .where("[tabId+seq]")
+        .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
+        .and(m => !m.deletedAt) // Exclude deleted messages
+        .toArray()
+    },
+    [tabId, userId],
+    // No default — returns undefined while the async query resolves.
+    // This lets consumers distinguish "loading" from "genuinely empty".
   )
 }
 

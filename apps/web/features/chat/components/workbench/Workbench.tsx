@@ -1,16 +1,17 @@
 "use client"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
-import { Activity, Code, ExternalLink, Globe, Maximize2, Minimize2, RotateCw, Terminal, X } from "lucide-react"
-import { useCallback, useEffect, useRef } from "react"
+import { Activity, Bot, ExternalLink, FolderOpen, Globe, Maximize2, Minimize2, Monitor, RotateCw, Settings, Smartphone, SquareTerminal, X } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useWorkbenchContext, type WorkbenchView } from "@/features/chat/lib/workbench-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
+import { useSuperadmin } from "@/hooks/use-superadmin"
 import { trackWorkbenchViewChanged } from "@/lib/analytics/events"
-import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { getSiteUrl } from "@/lib/preview-utils"
-import { useDebugActions, useWorkbenchFullscreen, useWorkbenchWidth } from "@/lib/stores/debug-store"
+import { useDebugActions, useWorkbenchFullscreen } from "@/lib/stores/debug-store"
 import { PulsingDot } from "../ui/PulsingDot"
 // import { useFeatureFlag } from "@/lib/stores/featureFlagStore" -- will be needed when final home style is chosen
 import { DrivePanel } from "./drive/DrivePanel"
+import { WorkbenchAgents } from "./WorkbenchAgents"
 import { usePreviewEngine } from "./hooks/usePreviewEngine"
 import { WorkbenchCodeView } from "./WorkbenchCodeView"
 import { WorkbenchEvents } from "./WorkbenchEvents"
@@ -20,15 +21,19 @@ import { WorkbenchTerminal } from "./WorkbenchTerminal"
 export function Workbench() {
   const { workspace, worktree } = useWorkspace({ allowEmpty: true })
   const isSuperadminWorkspace = workspace === SUPERADMIN_WORKSPACE_NAME
+  const isSuperadmin = useSuperadmin()
   const { workbench, setView, openFile, closeFile, toggleFolder, setTreeWidth, toggleTreeCollapsed } =
     useWorkbenchContext()
-  const savedWidth = useWorkbenchWidth()
+
+  // Superadmin workspace has no site preview — default to code/files
+  useEffect(() => {
+    if (isSuperadminWorkspace && workbench.view === "site") {
+      setView("code")
+    }
+  }, [isSuperadminWorkspace, workbench.view, setView])
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop")
   const isFullscreen = useWorkbenchFullscreen()
-  const { setWorkbench, setWorkbenchWidth, toggleWorkbenchFullscreen } = useDebugActions()
-  const { width, setWidth, isResizing, handleMouseDown } = useResizablePanel({
-    defaultWidth: savedWidth ?? 600,
-    maxWidthPercent: 0.8,
-  })
+  const { setWorkbench, toggleWorkbenchFullscreen } = useDebugActions()
   const inputRef = useRef<HTMLInputElement>(null)
   // const driveEnabled = useFeatureFlag("DRIVE") -- will be needed when final home style is chosen
 
@@ -45,20 +50,6 @@ export function Workbench() {
     skipTokenFetch: isSuperadminWorkspace || !isPreviewActive,
     onNavigate: handleNavigate,
   })
-
-  useEffect(() => {
-    if (savedWidth === null) {
-      const halfViewport = Math.floor(window.innerWidth / 2)
-      setWidth(halfViewport)
-      setWorkbenchWidth(halfViewport)
-    }
-  }, [savedWidth, setWidth, setWorkbenchWidth])
-
-  useEffect(() => {
-    if (!isResizing && width !== savedWidth) {
-      setWorkbenchWidth(width)
-    }
-  }, [isResizing, width, savedWidth, setWorkbenchWidth])
 
   const handlePathSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputRef.current) {
@@ -83,49 +74,24 @@ export function Workbench() {
     setView(view)
   }
 
-  const isHome = workbench.view === "home"
-
   type ViewOption = { view: WorkbenchView; label: string; icon: typeof Globe }
   const opt = (view: WorkbenchView, label: string, icon: typeof Globe): ViewOption => ({ view, label, icon })
   const viewOptions: ViewOption[] = [
     ...(isSuperadminWorkspace ? [] : [opt("site", "Preview", Globe)]),
-    opt("code", "Code", Code),
-    opt("terminal", "Terminal", Terminal),
-    ...(isSuperadminWorkspace ? [opt("events", "Events", Activity)] : []),
+    opt("code", "Files", FolderOpen),
+    opt("terminal", "Console", SquareTerminal),
+    opt("agents", "Agents", Bot),
+    ...(isSuperadmin ? [opt("events", "Activity", Activity)] : []),
+    opt("home", "Settings", Settings),
   ]
 
   return (
     <div
-      className={`relative bg-white dark:bg-[#0d0d0d] flex flex-col border-l border-black/[0.08] dark:border-white/[0.04] h-full ${isFullscreen ? "flex-1" : ""} ${isResizing ? "select-none" : ""}`}
-      style={isFullscreen ? undefined : { width: `${width}px` }}
+      data-panel-role="workbench"
+      className="relative bg-white dark:bg-[#0d0d0d] flex flex-col h-full w-full"
     >
-      {/* Resize handle — hidden in fullscreen */}
-      {/* biome-ignore lint/a11y/useSemanticElements: div needed for child visual indicator */}
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize panel"
-        aria-valuenow={width}
-        tabIndex={0}
-        className={`absolute left-0 top-0 bottom-0 w-6 -ml-3 cursor-col-resize z-10 group flex items-center justify-center ${isFullscreen ? "hidden" : ""}`}
-        onMouseDown={handleMouseDown}
-        style={{ userSelect: "none" }}
-      >
-        <div
-          className={`w-0.5 h-8 rounded-full transition-all duration-150 ${
-            isResizing
-              ? "bg-neutral-400 dark:bg-neutral-500 h-12"
-              : "bg-neutral-300 dark:bg-neutral-800 group-hover:bg-neutral-400 dark:group-hover:bg-neutral-600 group-hover:h-12"
-          }`}
-        />
-      </div>
-
-      {/* Overlay during resize */}
-      {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
-
-      {/* View switcher — visible when not on home */}
-      {!isHome && (
-        <div className="h-9 px-2.5 flex items-center gap-1 shrink-0">
+      {/* View switcher */}
+      <div data-panel-role="workbench-view-switcher" className="h-11 px-2.5 flex items-center gap-1.5 shrink-0">
           {viewOptions.map(({ view, label, icon: Icon }) => {
             const active = workbench.view === view
             return (
@@ -133,13 +99,13 @@ export function Workbench() {
                 key={view}
                 type="button"
                 onClick={() => handleSelectView(view)}
-                className={`flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-medium transition-all duration-200 ${
+                className={`flex items-center gap-2 h-8 px-3.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
                   active
                     ? "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white"
                     : "text-black/30 dark:text-white/25 hover:text-black/50 dark:hover:text-white/40"
                 }`}
               >
-                <Icon size={12} strokeWidth={1.5} />
+                <Icon size={15} strokeWidth={1.5} />
                 <span>{label}</span>
               </button>
             )
@@ -148,57 +114,84 @@ export function Workbench() {
           <button
             type="button"
             onClick={toggleWorkbenchFullscreen}
-            className="p-1 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
+            className="p-1.5 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
+            data-panel-role="workbench-fullscreen-toggle"
             title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
           >
-            {isFullscreen ? <Minimize2 size={13} strokeWidth={1.5} /> : <Maximize2 size={13} strokeWidth={1.5} />}
+            {isFullscreen ? <Minimize2 size={15} strokeWidth={1.5} /> : <Maximize2 size={15} strokeWidth={1.5} />}
           </button>
           <button
             type="button"
             onClick={() => setWorkbench(false)}
-            className="xl:hidden p-1 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
+            className="xl:hidden p-1.5 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
+            data-panel-role="workbench-close"
             title="Close"
           >
-            <X size={13} strokeWidth={1.5} />
+            <X size={15} strokeWidth={1.5} />
           </button>
         </div>
-      )}
 
       {/* Context bar — view-specific controls */}
-      {!isHome && workbench.view === "site" && (
-        <div className="h-8 px-2.5 flex items-center border-b border-black/[0.06] dark:border-white/[0.04] shrink-0">
-          <div className="flex-1 h-6 flex items-center gap-1.5 bg-black/[0.03] dark:bg-white/[0.03] rounded px-2 min-w-0">
+      {workbench.view === "site" && (
+        <div className="h-10 px-2.5 flex items-center justify-center gap-2 border-b border-black/[0.06] dark:border-white/[0.04] shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setPreviewDevice("desktop")}
+              className={`p-1 rounded transition-colors ${
+                previewDevice === "desktop"
+                  ? "text-black/60 dark:text-white/60"
+                  : "text-black/20 dark:text-white/15 hover:text-black/40 dark:hover:text-white/30"
+              }`}
+              title="Desktop"
+            >
+              <Monitor size={14} strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewDevice("mobile")}
+              className={`p-1 rounded transition-colors ${
+                previewDevice === "mobile"
+                  ? "text-black/60 dark:text-white/60"
+                  : "text-black/20 dark:text-white/15 hover:text-black/40 dark:hover:text-white/30"
+              }`}
+              title="Mobile"
+            >
+              <Smartphone size={14} strokeWidth={1.5} />
+            </button>
+          </div>
+          <div className="h-7 flex items-center gap-2 bg-black/[0.03] dark:bg-white/[0.03] rounded-lg px-2.5 min-w-0 max-w-[320px] w-full">
             <button
               type="button"
               onClick={refresh}
               className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors shrink-0"
               title="Refresh"
             >
-              <RotateCw size={11} strokeWidth={1.5} />
+              <RotateCw size={13} strokeWidth={1.5} />
             </button>
             <input
               ref={inputRef}
               type="text"
               defaultValue={path}
               onKeyDown={handlePathSubmit}
-              className="flex-1 min-w-0 bg-transparent text-[12px] text-neutral-600 dark:text-neutral-400 outline-none placeholder:text-neutral-300 dark:placeholder:text-neutral-700"
+              className="flex-1 min-w-0 bg-transparent text-[13px] text-neutral-600 dark:text-neutral-400 outline-none placeholder:text-neutral-300 dark:placeholder:text-neutral-700"
               placeholder="/"
             />
-            <a
-              href={workspace ? getSiteUrl(workspace, path) : "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors shrink-0"
-              title="Open in new tab"
-            >
-              <ExternalLink size={11} strokeWidth={1.5} />
-            </a>
           </div>
+          <a
+            href={workspace ? getSiteUrl(workspace, path) : "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors shrink-0"
+            title="Open in new tab"
+          >
+            <ExternalLink size={14} strokeWidth={1.5} />
+          </a>
         </div>
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden relative">
+      <div data-panel-role="workbench-content" className="flex-1 overflow-hidden relative">
         {!workspace || (!workspace.includes(".") && !isSuperadminWorkspace) ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -207,15 +200,10 @@ export function Workbench() {
               </p>
             </div>
           </div>
-        ) : isHome ? (
+        ) : workbench.view === "home" ? (
           <WorkbenchHome onSelectView={handleSelectView} />
         ) : workbench.view === "site" ? (
-          <div className="h-full bg-white relative">
-            {(isLoading || !previewToken) && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white dark:bg-[#0d0d0d]">
-                <PulsingDot size="lg" />
-              </div>
-            )}
+          <PreviewViewport device={previewDevice} isLoading={isLoading || !previewToken}>
             {previewToken && (
               <iframe
                 ref={setIframeRef}
@@ -224,7 +212,7 @@ export function Workbench() {
                 referrerPolicy="no-referrer-when-downgrade"
               />
             )}
-          </div>
+          </PreviewViewport>
         ) : workbench.view === "code" ? (
           <WorkbenchCodeView
             workspace={workspace}
@@ -243,9 +231,53 @@ export function Workbench() {
           <DrivePanel workspace={workspace} worktree={worktree} />
         ) : workbench.view === "terminal" ? (
           <WorkbenchTerminal workspace={workspace} />
+        ) : workbench.view === "agents" ? (
+          <WorkbenchAgents workspace={workspace} />
         ) : workbench.view === "events" ? (
           <WorkbenchEvents />
         ) : null}
+      </div>
+    </div>
+  )
+}
+
+// ── Preview Viewport ──────────────────────────────────────────────────────────
+
+const DEVICE_WIDTHS = {
+  desktop: "100%",
+  mobile: "375px",
+} as const
+
+function PreviewViewport({
+  device,
+  isLoading,
+  children,
+}: {
+  device: "desktop" | "mobile"
+  isLoading: boolean
+  children: React.ReactNode
+}) {
+  const isMobile = device === "mobile"
+
+  return (
+    <div className="h-full bg-neutral-100 dark:bg-[#111] relative flex items-start justify-center">
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white dark:bg-[#0d0d0d]">
+          <PulsingDot size="lg" />
+        </div>
+      )}
+      <div
+        className={`h-full bg-white dark:bg-[#0d0d0d] transition-[width,box-shadow] duration-300 ease-out overflow-hidden ${
+          isMobile
+            ? "rounded-xl mt-3 mb-3 shadow-lg border border-black/[0.08] dark:border-white/[0.06]"
+            : ""
+        }`}
+        style={{
+          width: DEVICE_WIDTHS[device],
+          maxHeight: isMobile ? "calc(100% - 24px)" : "100%",
+        }}
+      >
+        {children}
       </div>
     </div>
   )

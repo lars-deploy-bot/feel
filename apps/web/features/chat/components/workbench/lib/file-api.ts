@@ -79,6 +79,35 @@ export async function writeFile(
   }
 }
 
+export interface SearchResult {
+  name: string
+  path: string
+}
+
+export async function searchFiles(
+  workspace: string,
+  query: string,
+  worktree?: string | null,
+): Promise<ApiResponse<SearchResult[]>> {
+  try {
+    const response = await fetch("/api/files/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspace, query, worktree: worktree || undefined }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.ok) {
+      return { ok: false, error: data.error || "Search failed" }
+    }
+
+    return { ok: true, data: data.results || [] }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Search failed" }
+  }
+}
+
 export async function readFile(
   workspace: string,
   path: string,

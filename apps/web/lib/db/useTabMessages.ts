@@ -60,12 +60,15 @@ export interface TabMessage extends UIMessage {
  * @param userId - The user ID (required for Dexie database access)
  * @returns Array of TabMessage objects ready for UI rendering
  */
-export function useTabMessages(tabId: string | null, userId: string | null): TabMessage[] {
+export function useTabMessages(tabId: string | null, userId: string | null): TabMessage[] | undefined {
   const dbMessages = useMessages(tabId, userId)
   const streamingBuffers = useDexieMessageStore(s => s.streamingBuffers)
 
   return useMemo(() => {
-    if (!dbMessages || dbMessages.length === 0) return []
+    // undefined = Dexie query hasn't resolved yet (loading)
+    // [] = query resolved with no messages (genuinely empty)
+    if (dbMessages === undefined) return undefined
+    if (dbMessages.length === 0) return []
 
     const now = Date.now()
 

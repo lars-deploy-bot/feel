@@ -614,7 +614,6 @@ export function createTestStorageState(options: TestStorageStateOptions): Storag
         isDebugView: options.debug?.isDebugView ?? false,
         showWorkbench: options.debug?.showWorkbench ?? false,
         isWorkbenchMinimized: false,
-        workbenchWidth: null,
       },
     }),
   })

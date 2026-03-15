@@ -2,7 +2,7 @@
 
 import { ChevronRight, File, Folder } from "lucide-react"
 import { memo, useCallback, useEffect, useState } from "react"
-import { type FileInfo, listFiles } from "./lib/file-api"
+import { type FileInfo, listFiles, type SearchResult, searchFiles } from "./lib/file-api"
 import { getFileColor } from "./lib/file-colors"
 import { useFileChangeVersion } from "./lib/file-events"
 
@@ -13,6 +13,7 @@ interface FileTreeProps {
   expandedFolders: Set<string>
   onToggleFolder: (path: string) => void
   onSelectFile: (path: string) => void
+  filter?: string
 }
 
 // Global cache for file listings - persists across re-renders
@@ -30,7 +31,23 @@ export function FileTree({
   expandedFolders,
   onToggleFolder,
   onSelectFile,
+  filter,
 }: FileTreeProps) {
+  const activeFilter = filter?.trim() || ""
+
+  // When filtering: show flat search results instead of the tree
+  if (activeFilter) {
+    return (
+      <SearchResults
+        workspace={workspace}
+        worktree={worktree}
+        query={activeFilter}
+        activeFile={activeFile}
+        onSelectFile={onSelectFile}
+      />
+    )
+  }
+
   return (
     <div className="h-full overflow-y-auto text-[13px] py-1">
       <TreeLevel
@@ -46,6 +63,87 @@ export function FileTree({
     </div>
   )
 }
+
+// --- Flat search results (replaces tree when filtering) ---
+
+interface SearchResultsProps {
+  workspace: string
+  worktree?: string | null
+  query: string
+  activeFile: string | null
+  onSelectFile: (path: string) => void
+}
+
+function SearchResults({ workspace, worktree, query, activeFile, onSelectFile }: SearchResultsProps) {
+  const [results, setResults] = useState<SearchResult[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!query) {
+      setResults([])
+      return
+    }
+
+    let mounted = true
+    const timer = setTimeout(async () => {
+      setLoading(true)
+      const res = await searchFiles(workspace, query, worktree)
+      if (!mounted) return
+      if (res.ok) setResults(res.data)
+      setLoading(false)
+    }, 150) // debounce
+
+    return () => {
+      mounted = false
+      clearTimeout(timer)
+    }
+  }, [workspace, worktree, query])
+
+  return (
+    <div className="h-full overflow-y-auto text-[13px] py-1">
+      {loading && results.length === 0 && (
+        <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">Searching...</div>
+      )}
+
+      {!loading && results.length === 0 && query && (
+        <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">No files found</div>
+      )}
+
+      {results.map(item => {
+        const isActive = activeFile === item.path
+        // Show parent directory for context
+        const dir = item.path.includes("/") ? item.path.substring(0, item.path.lastIndexOf("/")) : ""
+
+        return (
+          <button
+            key={item.path}
+            type="button"
+            onClick={() => onSelectFile(item.path)}
+            className={`w-full flex items-center gap-1.5 px-2 py-1 text-left transition-colors ${
+              isActive
+                ? "bg-black/[0.06] dark:bg-white/[0.08] text-black dark:text-white"
+                : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-neutral-800 dark:hover:text-neutral-300"
+            }`}
+          >
+            <File size={14} strokeWidth={1.5} className={`shrink-0 ${getFileColor(item.name)}`} />
+            <span className="truncate">
+              <span>{item.name}</span>
+              {dir && <span className="text-neutral-400 dark:text-neutral-600 ml-1.5 text-[11px]">{dir}</span>}
+            </span>
+          </button>
+        )
+      })}
+
+      {results.length > 0 && (
+        <div className="px-3 py-1.5 text-[11px] text-neutral-400 dark:text-neutral-600">
+          {results.length} {results.length === 1 ? "file" : "files"}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Normal tree (when not filtering) ---
 
 interface TreeLevelProps {
   workspace: string
@@ -194,7 +292,6 @@ const TreeNode = memo(function TreeNode({
         }`}
         style={{ paddingLeft }}
       >
-        {/* Chevron for folders */}
         {isFolder ? (
           <ChevronRight
             size={14}
@@ -204,19 +301,14 @@ const TreeNode = memo(function TreeNode({
         ) : (
           <span className="w-[14px] shrink-0" />
         )}
-
-        {/* Icon */}
         {isFolder ? (
           <Folder size={14} strokeWidth={1.5} className="shrink-0 text-amber-500/80" />
         ) : (
           <File size={14} strokeWidth={1.5} className={`shrink-0 ${getFileColor(item.name)}`} />
         )}
-
-        {/* Name */}
         <span className="truncate pr-2">{item.name}</span>
       </button>
 
-      {/* Children (if expanded folder) */}
       {isFolder && isExpanded && (
         <TreeLevel
           workspace={workspace}

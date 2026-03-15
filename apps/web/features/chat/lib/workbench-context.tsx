@@ -17,8 +17,8 @@ export interface ElementSelection {
   columnNumber?: number
 }
 
-/** View mode for the workbench (home picker, site preview, code editor, terminal, drive, events) */
-export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events"
+/** View mode for the workbench */
+export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events" | "agents"
 
 /** State for the workbench */
 export interface WorkbenchState {
@@ -76,7 +76,7 @@ const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefin
 const DEFAULT_TREE_WIDTH = 200
 
 const DEFAULT_WORKBENCH_STATE: WorkbenchState = {
-  view: "home",
+  view: "site",
   sitePath: "/",
   filePath: null,
   expandedFolders: new Set<string>(),
