@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest"
 import { DEFAULTS, PATHS } from "../src/constants"
 
-// GitHub Actions CI has no server-config.json — skip tests that need real config
-const isCI = process.env.CI === "true"
+// Skip tests that need real server-config.json (CI, local dev without config)
+const hasServerConfig = process.env.SERVER_CONFIG_PATH
+  ? require("node:fs").existsSync(process.env.SERVER_CONFIG_PATH)
+  : false
 
 describe("Configuration Constants", () => {
-  it.skipIf(isCI)("should have valid site root path", () => {
+  it.skipIf(!hasServerConfig)("should have valid site root path", () => {
     expect(PATHS.SITES_ROOT).toMatch(/^\//)
   })
 
@@ -32,11 +34,11 @@ describe("Port Range Validation", () => {
 })
 
 describe("Server Configuration", () => {
-  it.skipIf(isCI)("should have valid server IP", () => {
+  it.skipIf(!hasServerConfig)("should have valid server IP", () => {
     expect(DEFAULTS.SERVER_IP).toMatch(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)
   })
 
-  it.skipIf(isCI)("should have valid wildcard domain", () => {
+  it.skipIf(!hasServerConfig)("should have valid wildcard domain", () => {
     expect(DEFAULTS.WILDCARD_DOMAIN).toBeTruthy()
   })
 })
