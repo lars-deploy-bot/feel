@@ -93,10 +93,12 @@ function PendingToolItem({ tool }: { tool: PendingTool }) {
  */
 function ThinkingIndicator() {
   const lang = useVoiceLanguage()
+  // Pick one phrase when the indicator mounts — don't cycle on re-renders
+  const [phrase] = useState(() => getThinkingPhrase(lang))
   return (
     <div className={cn("flex items-center gap-1.5 mb-2 text-xs", mutedText)} data-testid="thinking-indicator">
       <PulsingDot size="sm" />
-      <span>{getThinkingPhrase(lang)}</span>
+      <span>{phrase}</span>
     </div>
   )
 }
