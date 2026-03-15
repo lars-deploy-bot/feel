@@ -23,7 +23,7 @@ function timeAgo(timestamp: number): string {
 
 // ─── Shared styles ───────────────────────────────────────────────────────────
 
-const ISLAND_BG = "bg-black/[0.025] dark:bg-white/[0.04] border border-black/[0.03] dark:border-white/[0.04]"
+const ISLAND_BG = "bg-white dark:bg-[#1a1a1a] border border-black/[0.06] dark:border-white/[0.06]"
 
 const ACTION_CIRCLE = `flex items-center justify-center size-8 rounded-full ${ISLAND_BG} transition-all duration-200`
 
@@ -370,61 +370,74 @@ export function TabBar({
   return (
     <div data-testid="tab-bar" className="flex-shrink-0 overflow-hidden">
       <div className="px-3 mx-auto w-full">
-        {/* Project name — left aligned */}
-        <div
-          className="flex items-center gap-2 mb-1"
-          style={{ height: SIDEBAR_RAIL.iconSize, marginTop: SIDEBAR_RAIL.paddingY }}
-        >
-          {/* Sidebar toggle — mobile only */}
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            className={`md:hidden inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-200 ease-in-out overflow-hidden ${
-              isSidebarOpen ? "w-0 opacity-0 pointer-events-none" : "w-8 opacity-100"
-            }`}
-            aria-label="Open sidebar"
-            tabIndex={isSidebarOpen ? -1 : 0}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.25"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="shrink-0"
+        {/* Single header row: project chooser | tabs (true center) | spacer */}
+        <div className="group/bar grid grid-cols-[auto_1fr_auto] items-center py-2">
+          {/* Left: sidebar toggle + project chooser */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className={`md:hidden inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-200 ease-in-out overflow-hidden ${
+                isSidebarOpen ? "w-0 opacity-0 pointer-events-none" : "w-8 opacity-100"
+              }`}
+              aria-label="Open sidebar"
+              tabIndex={isSidebarOpen ? -1 : 0}
             >
-              <rect x="1.5" y="2.5" width="13" height="11" rx="2" />
-              <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
-            </svg>
-          </button>
-          <OrganizationWorkspaceSwitcher workspace={workspace} wsOnly minimal />
-        </div>
-        {/* Tabs — centered */}
-        <div className="group/bar flex flex-col items-center pb-2">
-          {tabs.length > 0 && (
-            <div className="inline-flex items-center gap-2 min-w-0 overflow-x-auto scrollbar-hide">
-              {/* Island */}
-              <div role="tablist" className={`inline-flex items-center gap-1.5 px-1.5 py-1 rounded-full ${ISLAND_BG}`}>
-                {tabs.map(tab => (
-                  <TabPill
-                    key={tab.id}
-                    tab={tab}
-                    isActive={tab.id === activeTabId}
-                    canClose={tabs.length > 1}
-                    editingId={editingId}
-                    editValue={editValue}
-                    inputRef={inputRef}
-                    onSelect={() => onTabSelect(tab.id)}
-                    onClose={() => onTabClose(tab.id)}
-                    onStartEdit={() => startEdit(tab.id, tab.name)}
-                    onEditChange={setEditValue}
-                    onEditCommit={commitEdit}
-                    onEditKeyDown={handleKeyDown}
-                  />
-                ))}
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0"
+              >
+                <rect x="1.5" y="2.5" width="13" height="11" rx="2" />
+                <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
+              </svg>
+            </button>
+            <OrganizationWorkspaceSwitcher workspace={workspace} wsOnly minimal />
+          </div>
+
+          {/* Center: tabs + actions */}
+          {tabs.length > 0 ? (
+            <div className="flex items-center justify-center gap-2 min-w-0 overflow-x-auto scrollbar-hide">
+              {/* Island + hint */}
+              <div className="relative">
+                <div
+                  role="tablist"
+                  className={`inline-flex items-center gap-1.5 px-1.5 py-1 rounded-full ${ISLAND_BG}`}
+                >
+                  {tabs.map(tab => (
+                    <TabPill
+                      key={tab.id}
+                      tab={tab}
+                      isActive={tab.id === activeTabId}
+                      canClose={tabs.length > 1}
+                      editingId={editingId}
+                      editValue={editValue}
+                      inputRef={inputRef}
+                      onSelect={() => onTabSelect(tab.id)}
+                      onClose={() => onTabClose(tab.id)}
+                      onStartEdit={() => startEdit(tab.id, tab.name)}
+                      onEditChange={setEditValue}
+                      onEditCommit={commitEdit}
+                      onEditKeyDown={handleKeyDown}
+                    />
+                  ))}
+                </div>
+                {tabs.length > 1 && (
+                  <>
+                    <span className="hidden md:block absolute top-full left-0 right-0 text-center text-[10px] text-black/0 dark:text-white/0 group-hover/bar:text-black/25 dark:group-hover/bar:text-white/25 transition-colors duration-300 mt-0.5 select-none pointer-events-none">
+                      right-click to archive
+                    </span>
+                    <span className="md:hidden absolute top-full left-0 right-0 text-center text-[10px] text-black/25 dark:text-white/25 mt-0.5 select-none pointer-events-none">
+                      swipe up to close
+                    </span>
+                  </>
+                )}
               </div>
 
               {/* Action circles */}
@@ -458,18 +471,12 @@ export function TabBar({
                 )}
               </div>
             </div>
+          ) : (
+            <div />
           )}
 
-          {tabs.length > 1 && (
-            <>
-              <span className="hidden md:block text-[10px] text-black/0 dark:text-white/0 group-hover/bar:text-black/25 dark:group-hover/bar:text-white/25 transition-colors duration-300 mt-0.5 select-none">
-                right-click to archive
-              </span>
-              <span className="md:hidden text-[10px] text-black/25 dark:text-white/25 mt-0.5 select-none">
-                swipe up to close
-              </span>
-            </>
-          )}
+          {/* Right spacer — balances the left column for true centering */}
+          <div />
 
           {showClosedMenu && (
             <ClosedTabsDropdown

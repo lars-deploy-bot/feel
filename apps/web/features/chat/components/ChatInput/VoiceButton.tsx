@@ -63,11 +63,14 @@ export function VoiceButton({ state, onToggle, onStartRecording, onStopRecording
       // Was hold-to-speak — stop on release
       onStopRecording()
       isHolding.current = false
+    } else if (state === "recording") {
+      // Tap to stop — pointerDown was blocked so use state directly
+      onStopRecording()
     } else if (Date.now() - pointerDownAt.current < HOLD_THRESHOLD_MS) {
-      // Quick tap — toggle recording on/off
+      // Quick tap while idle — start recording
       onToggle()
     }
-  }, [onToggle, onStopRecording])
+  }, [state, onToggle, onStopRecording])
 
   const handlePointerLeave = useCallback(() => {
     if (holdTimerRef.current) {

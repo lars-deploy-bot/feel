@@ -1,8 +1,9 @@
 "use client"
 
-import { Check, ChevronDown, ChevronUp, Code, Copy, Eye, Save, Search, X } from "lucide-react"
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Check, ChevronDown, ChevronUp, Code, Copy, Eye, Pencil, Save, Search, X } from "lucide-react"
+import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { TOKEN_COLORS, tokenizeLine } from "@/lib/utils/syntax"
 import { useFileContent } from "./hooks/useFileContent"
 import { useWorkbenchShortcuts } from "./hooks/useWorkbenchShortcuts"
 import { getFileColor } from "./lib/file-colors"
@@ -30,6 +31,9 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
+  const [editing, setEditing] = useState(false)
+  const codeViewRef = useRef<HTMLPreElement>(null)
+
   const filename = getFileName(filePath)
   const lang = file?.language ?? ""
   const isMarkdown = lang === "markdown"
@@ -46,6 +50,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     setSaveError(null)
     setSearchOpen(false)
     setSearchQuery("")
+    setEditing(false)
   }, [filePath])
 
   // Preview tracks whether the file type supports it — always on for previewable files
@@ -104,8 +109,9 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
   )
 
   const openSearch = useCallback(() => {
-    // If in preview mode, switch to source first
+    // Switch to edit mode so textarea is available for search selection
     if (previewing) setPreviewing(false)
+    setEditing(true)
     setSearchOpen(true)
     requestAnimationFrame(() => searchInputRef.current?.focus())
   }, [previewing])
@@ -210,6 +216,24 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             title={previewing ? "Edit source" : `Preview ${isCsv ? "table" : "markdown"}`}
           >
             {previewing ? <Code size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
+          </button>
+        )}
+
+        {!hasPreview && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(e => !e)
+              if (!editing) requestAnimationFrame(() => textareaRef.current?.focus())
+            }}
+            className={`p-1 rounded transition-colors ${
+              editing
+                ? "text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300"
+                : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300"
+            }`}
+            title={editing ? "View highlighted" : "Edit"}
+          >
+            {editing ? <Eye size={14} strokeWidth={1.5} /> : <Pencil size={14} strokeWidth={1.5} />}
           </button>
         )}
 
@@ -331,7 +355,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
         </div>
       ) : previewing && isCsv ? (
         <CsvTable content={file?.content ?? ""} delimiter={lang === "tsv" ? "\t" : ","} />
-      ) : (
+      ) : editing || hasPreview ? (
         <textarea
           ref={textareaRef}
           value={editContent}
@@ -354,10 +378,65 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
           className="flex-1 w-full resize-none bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono text-zinc-800 dark:text-zinc-200 p-4 outline-none border-none"
           style={{ tabSize: 2 }}
         />
+      ) : (
+        <HighlightedCode
+          ref={codeViewRef}
+          content={editContent}
+          language={lang}
+          onDoubleClick={() => {
+            setEditing(true)
+            requestAnimationFrame(() => textareaRef.current?.focus())
+          }}
+        />
       )}
     </div>
   )
 }
+
+// --- Syntax-highlighted code view ---
+
+interface HighlightedCodeProps {
+  content: string
+  language: string
+  onDoubleClick: () => void
+}
+
+const HighlightedCode = forwardRef<HTMLPreElement, HighlightedCodeProps>(function HighlightedCode(
+  { content, language, onDoubleClick },
+  ref,
+) {
+  const lines = content.split("\n")
+  const gutterWidth = String(lines.length).length
+
+  return (
+    <pre
+      ref={ref}
+      onDoubleClick={onDoubleClick}
+      className="flex-1 overflow-auto bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono cursor-text select-text"
+      style={{ tabSize: 2 }}
+    >
+      <code className="flex flex-col py-4">
+        {lines.map((line, i) => (
+          <span key={i} className="flex">
+            <span
+              className="shrink-0 pr-4 pl-4 text-right text-zinc-300 dark:text-zinc-700 select-none"
+              style={{ width: `${gutterWidth + 4}ch` }}
+            >
+              {i + 1}
+            </span>
+            <span className="flex-1 pr-4">
+              {tokenizeLine(line, language).map((token, j) => (
+                <span key={j} className={TOKEN_COLORS[token.type]}>
+                  {token.value}
+                </span>
+              ))}
+            </span>
+          </span>
+        ))}
+      </code>
+    </pre>
+  )
+})
 
 // --- CSV Table Viewer ---
 

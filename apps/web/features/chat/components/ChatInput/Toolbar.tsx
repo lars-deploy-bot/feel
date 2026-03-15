@@ -44,11 +44,13 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
   const messageRef = useRef(message)
   messageRef.current = message
   const { markVoiceUsed } = useLLMActions()
+  const tabIdRef = useRef(tabId)
+  tabIdRef.current = tabId
   const handleTranscript = useCallback(
     (text: string) => {
       const current = messageRef.current
       setMessage(current ? `${current} ${text}` : text)
-      markVoiceUsed(tabId)
+      markVoiceUsed(tabIdRef.current)
     },
     [setMessage, markVoiceUsed],
   )

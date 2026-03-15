@@ -9,7 +9,7 @@
 /**
  * Supported languages keyed by ISO 639-1 code.
  */
-export const VOICE_LANGUAGES = {
+const VOICE_LANGUAGES_INTERNAL = {
   en: "English",
   nl: "Dutch",
   de: "German",
@@ -27,14 +27,35 @@ export const VOICE_LANGUAGES = {
   sv: "Swedish",
   da: "Danish",
   no: "Norwegian",
-} as const
+} satisfies Record<string, string>
 
-export type VoiceLanguage = keyof typeof VOICE_LANGUAGES
+export const VOICE_LANGUAGES: Readonly<typeof VOICE_LANGUAGES_INTERNAL> = VOICE_LANGUAGES_INTERNAL
+
+export type VoiceLanguage = keyof typeof VOICE_LANGUAGES_INTERNAL
 
 /**
  * All language codes as a tuple — for Zod schemas and runtime validation.
+ * The type assertion is avoided by explicitly listing codes.
  */
-export const VOICE_LANGUAGE_CODES = Object.keys(VOICE_LANGUAGES) as [VoiceLanguage, ...VoiceLanguage[]]
+export const VOICE_LANGUAGE_CODES: [VoiceLanguage, ...VoiceLanguage[]] = [
+  "en",
+  "nl",
+  "de",
+  "fr",
+  "es",
+  "pt",
+  "it",
+  "ja",
+  "zh",
+  "ko",
+  "ar",
+  "ru",
+  "pl",
+  "tr",
+  "sv",
+  "da",
+  "no",
+]
 
 /**
  * Default language
@@ -58,4 +79,32 @@ export function isValidVoiceLanguage(value: unknown): value is VoiceLanguage {
  */
 export function getLanguageDisplayName(lang: VoiceLanguage): string {
   return VOICE_LANGUAGES[lang]
+}
+
+/**
+ * Localized "thinking" phrases — shown while Claude is processing.
+ * Casual, human, slightly playful.
+ */
+const THINKING_PHRASES: Record<VoiceLanguage, string> = {
+  en: "thinking",
+  nl: "even nadenken",
+  de: "denke nach",
+  fr: "je réfléchis",
+  es: "pensando",
+  pt: "pensando",
+  it: "sto pensando",
+  ja: "考え中",
+  zh: "思考中",
+  ko: "생각 중",
+  ar: "أفكر",
+  ru: "думаю",
+  pl: "myślę",
+  tr: "düşünüyorum",
+  sv: "tänker",
+  da: "tænker",
+  no: "tenker",
+}
+
+export function getThinkingPhrase(lang: VoiceLanguage): string {
+  return THINKING_PHRASES[lang]
 }

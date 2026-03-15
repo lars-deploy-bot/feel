@@ -181,14 +181,6 @@ export {
   isValidClaudeModel,
 } from "./models.js"
 export {
-  DEFAULT_VOICE_LANGUAGE,
-  type VoiceLanguage,
-  VOICE_LANGUAGE_CODES,
-  VOICE_LANGUAGES,
-  getLanguageDisplayName,
-  isValidVoiceLanguage,
-} from "./voice-languages.js"
-export {
   formatProviderName,
   type OAuthFetchResult,
   type OAuthWarning,
@@ -346,6 +338,15 @@ export {
   type ToolDetailOptions,
 } from "./tools/stream-tools.js"
 export { getWorkspacePath } from "./tools/stream-tools-server.js"
+export {
+  DEFAULT_VOICE_LANGUAGE,
+  getLanguageDisplayName,
+  getThinkingPhrase,
+  isValidVoiceLanguage,
+  VOICE_LANGUAGE_CODES,
+  VOICE_LANGUAGES,
+  type VoiceLanguage,
+} from "./voice-languages.js"
 export {
   getRequiredDirectories,
   WORKSPACE_SCHEMA_VERSION,

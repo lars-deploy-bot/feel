@@ -13,9 +13,10 @@
  * Updates in real-time as tool_progress events arrive.
  */
 
-import { getToolActionLabel, getToolDetail, SDK_TOOL_LOWER } from "@webalive/shared"
+import { getThinkingPhrase, getToolActionLabel, getToolDetail, SDK_TOOL_LOWER } from "@webalive/shared"
 import { isStreamClientVisibleTool } from "@webalive/shared/tools"
 import { useEffect, useState } from "react"
+import { useVoiceLanguage } from "@/lib/stores/llmStore"
 import { type PendingTool, useIsStreamActive, usePendingTools } from "@/lib/stores/streamingStore"
 import { cn } from "@/lib/utils"
 import { monoText, mutedText } from "./message-renderers/styles"
@@ -91,10 +92,11 @@ function PendingToolItem({ tool }: { tool: PendingTool }) {
  * Provides immediate feedback when user sends a message
  */
 function ThinkingIndicator() {
+  const lang = useVoiceLanguage()
   return (
     <div className={cn("flex items-center gap-1.5 mb-2 text-xs", mutedText)} data-testid="thinking-indicator">
       <PulsingDot size="sm" />
-      <span>thinking</span>
+      <span>{getThinkingPhrase(lang)}</span>
     </div>
   )
 }

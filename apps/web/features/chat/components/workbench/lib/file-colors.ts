@@ -29,6 +29,11 @@ const FILE_TYPE_COLORS: Record<string, string> = {
   jpg: "text-violet-400/70",
   jpeg: "text-violet-400/70",
   webp: "text-violet-400/70",
+  // LaTeX
+  tex: "text-teal-400",
+  bib: "text-teal-300/70",
+  sty: "text-teal-300/70",
+  cls: "text-teal-300/70",
   // Config
   toml: "text-zinc-500",
   lock: "text-zinc-600",

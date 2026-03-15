@@ -107,6 +107,20 @@ function ChatPageContent() {
   const [_showCompletionDots, setShowCompletionDots] = useState(false)
   const modals = useModals()
 
+  // Measure input height so messages get enough bottom padding to scroll past it
+  const inputWrapperRef = useRef<HTMLDivElement | null>(null)
+  const [inputHeight, setInputHeight] = useState(0)
+
+  useEffect(() => {
+    const el = inputWrapperRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry) setInputHeight(entry.contentRect.height)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   // Smart scroll using Intersection Observer
   const { containerRef, anchorRef, isScrolledAway, scrollToBottom, forceScrollToBottom } = useChatScroll({
     threshold: 100,
@@ -316,7 +330,7 @@ function ChatPageContent() {
 
   const streamingActions = useStreamingActions()
   const lastSeenStreamSeq = useLastSeenStreamSeq(sessionTabId)
-  const { registerElementSelectHandler } = useWorkbenchContext()
+  const { registerElementSelectHandler, registerAddImageToChat } = useWorkbenchContext()
 
   // Context compaction state — tracks whether compaction is in progress
   // by comparing positions of the last "compacting" vs "compact_boundary" messages.
@@ -344,6 +358,13 @@ function ChatPageContent() {
       setTimeout(() => chatInputRef.current?.focus(), 0)
     })
   }, [registerElementSelectHandler])
+
+  // Register image-to-chat handler so WorkbenchPhotos can add images to the input
+  useEffect(() => {
+    registerAddImageToChat(imageKey => {
+      chatInputRef.current?.addPhotobookImage(imageKey)
+    })
+  }, [registerAddImageToChat])
 
   // Re-focus the message input when the user returns to this browser tab,
   // but only if nothing meaningful is focused (avoid stealing from modals/tool inputs)
@@ -544,13 +565,19 @@ function ChatPageContent() {
   // Calculate total domain count from organizations
   const totalDomainCount = organizations.reduce((sum, org) => sum + (org.workspace_count || 0), 0)
 
-  // Auto-scroll to bottom when new messages arrive (unless user scrolled away)
-  // Uses Intersection Observer under the hood - more reliable than scroll position math
+  // Auto-scroll to bottom when new messages arrive (unless user scrolled away).
+  // Only reacts to `messages` changes — NOT `isScrolledAway` transitions.
+  // Without this, when a user manually scrolls back to the bottom, the
+  // isScrolledAway→false transition would trigger a redundant scrollIntoView
+  // that causes a visible jump.
+  const isScrolledAwayRef = useRef(isScrolledAway)
+  isScrolledAwayRef.current = isScrolledAway
+
   useEffect(() => {
-    if (!isScrolledAway && messages.length > 0) {
-      scrollToBottom("auto")
+    if (!isScrolledAwayRef.current && messages.length > 0) {
+      scrollToBottom("smooth")
     }
-  }, [messages, isScrolledAway, scrollToBottom])
+  }, [messages, scrollToBottom])
 
   // Handle OAuth callback success/error params
   const urlSearchParams = typeof window !== "undefined" ? window.location.search : ""
@@ -765,7 +792,7 @@ function ChatPageContent() {
             >
               <section
                 data-panel-role="chat-area"
-                className="flex flex-col overflow-hidden relative h-full"
+                className="flex flex-col overflow-hidden relative h-full bg-[#faf8f5] dark:bg-[#1a1a1a]"
                 aria-label="Chat area"
                 onDragEnter={handleChatDragEnter}
                 onDragLeave={handleChatDragLeave}
@@ -782,31 +809,40 @@ function ChatPageContent() {
                     isMounted={mounted}
                   />
                 </Suspense>
-                <div data-panel-role="chat-main-content" className="flex-1 min-h-0 flex flex-col">
-                  {/* Tabs - shown when there are tabs, or when there are closed tabs to reopen */}
+                <div
+                  data-panel-role="chat-main-content"
+                  className="flex-1 min-h-0 grid grid-rows-[auto_1fr_auto] grid-cols-[1fr]"
+                >
+                  {/* Tab bar — fixed header, outside scroll */}
                   {(tabs.length > 0 || closedTabs.length > 0) && (
-                    <TabBar
-                      tabs={tabs}
-                      closedTabs={closedTabs}
-                      activeTabId={activeTabInGroup?.id ?? null}
-                      onTabSelect={handleTabSelect}
-                      onTabClose={handleTabClose}
-                      onTabRename={handleTabRename}
-                      onTabReopen={handleTabReopen}
-                      onAddTab={handleAddTab}
-                      workspace={workspace}
-                      isSidebarOpen={isSidebarOpen}
-                      onToggleSidebar={toggleSidebar}
-                    />
+                    <div className="row-start-1 bg-[#faf8f5] dark:bg-[#1a1a1a] z-10">
+                      <TabBar
+                        tabs={tabs}
+                        closedTabs={closedTabs}
+                        activeTabId={activeTabInGroup?.id ?? null}
+                        onTabSelect={handleTabSelect}
+                        onTabClose={handleTabClose}
+                        onTabRename={handleTabRename}
+                        onTabReopen={handleTabReopen}
+                        onAddTab={handleAddTab}
+                        workspace={workspace}
+                        isSidebarOpen={isSidebarOpen}
+                        onToggleSidebar={toggleSidebar}
+                      />
+                    </div>
                   )}
 
                   {/* Messages */}
                   <div
                     ref={containerRef}
                     data-panel-role="chat-messages-scroll"
-                    className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-8 flex flex-col"
+                    className="row-start-2 row-end-4 col-start-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col scrollbar-thin overscroll-contain"
+                    style={{ scrollPaddingBottom: inputHeight + 32 }}
                   >
-                    <div className="p-4 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0 flex-1">
+                    <div
+                      className="p-5 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0 flex-1"
+                      style={{ paddingBottom: inputHeight + 32 }}
+                    >
                       {messages.length === 0 && !busy && !isLoadingMessages && (
                         <ChatEmptyState
                           workspace={workspace}
@@ -849,59 +885,74 @@ function ChatPageContent() {
                     </div>
                   </div>
 
-                  {/* Input */}
-                  <div className="relative mx-auto w-full md:max-w-2xl">
-                    {/* Jump to bottom button - positioned above input, transparent background */}
-                    {isHydrated && (
-                      <AnimatePresence>
-                        {isScrolledAway && messages.length > 0 && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute left-0 right-0 bottom-full mb-2 z-10 flex justify-center pointer-events-none"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => forceScrollToBottom()}
-                              className="pointer-events-auto px-3 py-1.5 rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black text-sm font-medium shadow-lg hover:bg-black dark:hover:bg-white transition-colors active:scale-95"
+                  {/* Input — row 3, overlaps scroll area. Text peeks through rounded corners. */}
+                  <div ref={inputWrapperRef} className="row-start-3 col-start-1 z-10">
+                    <div className="relative mx-auto w-full md:max-w-2xl">
+                      {/* Jump to bottom button */}
+                      {isHydrated && (
+                        <AnimatePresence>
+                          {isScrolledAway && messages.length > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 10 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute left-0 right-0 bottom-full mb-2 z-10 flex justify-center pointer-events-none"
                             >
-                              ↓ New messages
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    )}
-                    {isAutomationRun ? (
-                      <ReadOnlyTranscriptBar />
-                    ) : tabId ? (
-                      <ChatInput
-                        ref={chatInputRef}
-                        message={msg}
-                        setMessage={setMsg}
-                        busy={busy}
-                        isReady={isChatReady && !!workspace}
-                        isStopping={isStopping}
-                        onSubmit={sendMessage}
-                        onStop={stopStreaming}
-                        onOpenTemplates={modals.openTemplates}
-                        tabId={tabId}
-                        config={{
-                          enableAttachments: true,
-                          enableCamera: true,
-                          maxAttachments: 5,
-                          maxFileSize: 20 * 1024 * 1024,
-                          workspace: workspace ?? undefined,
-                          worktree: requestWorktree,
-                          placeholder:
-                            !workspace && mounted && !organizationsLoading
-                              ? "Select a site to start chatting..."
-                              : "Tell me what to change...",
-                          onAttachmentUpload: handleAttachmentUpload,
-                        }}
-                      />
-                    ) : null}
+                              <button
+                                type="button"
+                                onClick={() => forceScrollToBottom()}
+                                aria-label="Scroll to bottom"
+                                className="pointer-events-auto size-8 flex items-center justify-center rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black shadow-lg hover:bg-black dark:hover:bg-white transition-colors duration-100 active:scale-95"
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M12 5v14" />
+                                  <path d="m19 12-7 7-7-7" />
+                                </svg>
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      )}
+                      {isAutomationRun ? (
+                        <ReadOnlyTranscriptBar />
+                      ) : tabId ? (
+                        <ChatInput
+                          ref={chatInputRef}
+                          message={msg}
+                          setMessage={setMsg}
+                          busy={busy}
+                          isReady={isChatReady && !!workspace}
+                          isStopping={isStopping}
+                          onSubmit={sendMessage}
+                          onStop={stopStreaming}
+                          onOpenTemplates={modals.openTemplates}
+                          tabId={tabId}
+                          config={{
+                            enableAttachments: true,
+                            enableCamera: true,
+                            maxAttachments: 5,
+                            maxFileSize: 20 * 1024 * 1024,
+                            workspace: workspace ?? undefined,
+                            worktree: requestWorktree,
+                            placeholder:
+                              !workspace && mounted && !organizationsLoading
+                                ? "Select a site to start chatting..."
+                                : "Tell me what to change...",
+                            onAttachmentUpload: handleAttachmentUpload,
+                          }}
+                        />
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </section>

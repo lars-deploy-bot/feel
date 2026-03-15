@@ -49,7 +49,7 @@ const useLLMStoreBase = create<LLMStore>()(
           set({ voiceUsedTabId: tabId })
         },
         clearVoiceUsed: () => {
-          set({ voiceUsedTabId: null })
+          if (get().voiceUsedTabId !== null) set({ voiceUsedTabId: null })
         },
         consumeVoiceUsed: (tabId: string): boolean => {
           const was = get().voiceUsedTabId === tabId

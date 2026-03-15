@@ -110,6 +110,10 @@ interface WorkbenchContextType {
   registerShortcuts: (shortcuts: WorkbenchShortcut[]) => () => void
   /** Typed view state storage — accessed via useViewState hook, not directly */
   viewStatesRef: React.RefObject<ViewStateStorage>
+  /** Add a photobook image to the chat input — registered by the chat page */
+  addImageToChat: ((imageKey: string) => void) | null
+  /** Register the callback for adding images to chat */
+  registerAddImageToChat: (handler: (imageKey: string) => void) => void
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined)
@@ -130,6 +134,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [onElementSelect, setOnElementSelect] = useState<((element: ElementSelection) => void) | null>(null)
   const [workbenchState, setWorkbenchState] = useState<WorkbenchState>(DEFAULT_WORKBENCH_STATE)
   const [selectorActive, setSelectorActive] = useState(false)
+  const [addImageToChat, setAddImageToChat] = useState<((imageKey: string) => void) | null>(null)
 
   const addEntry = (entry: Omit<WorkbenchEntry, "id" | "timestamp">) => {
     const newEntry: WorkbenchEntry = {
@@ -168,6 +173,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
   const registerElementSelectHandler = useCallback((handler: (element: ElementSelection) => void) => {
     setOnElementSelect(() => handler)
+  }, [])
+
+  const registerAddImageToChat = useCallback((handler: (imageKey: string) => void) => {
+    setAddImageToChat(() => handler)
   }, [])
 
   const setView = useCallback((view: WorkbenchView) => {
@@ -270,6 +279,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         toggleTreeCollapsed,
         registerShortcuts,
         viewStatesRef,
+        addImageToChat,
+        registerAddImageToChat,
       }}
     >
       {children}

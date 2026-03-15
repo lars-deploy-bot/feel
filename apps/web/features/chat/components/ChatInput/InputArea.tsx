@@ -37,6 +37,8 @@ export function InputArea() {
       const end = textarea.selectionEnd
       const newValue = message.slice(0, start) + trimmed + message.slice(end)
       setMessage(newValue)
+      // Pasting is manual input — clear voice flag (paste bypasses onChange)
+      clearVoiceUsed()
 
       // Restore cursor position after state update
       requestAnimationFrame(() => {
