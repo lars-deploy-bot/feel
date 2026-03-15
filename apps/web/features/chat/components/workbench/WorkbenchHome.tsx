@@ -146,8 +146,14 @@ function UrlStep({
         </button>
       ) : (
         <div className="mt-5">
-          <label className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1.5 block">Custom domain</label>
+          <label
+            htmlFor="custom-domain-input"
+            className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1.5 block"
+          >
+            Custom domain
+          </label>
           <input
+            id="custom-domain-input"
             type="text"
             value={config.customDomain.trim()}
             onChange={e => onChange({ customDomain: e.target.value })}
@@ -215,10 +221,13 @@ function InfoStep({ config, onChange }: { config: DeployConfig; onChange: (c: Pa
       <div className="space-y-5">
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">Title</label>
+            <label htmlFor="seo-title-input" className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">
+              Title
+            </label>
             <span className="text-[11px] text-zinc-300 dark:text-zinc-700 tabular-nums">{config.title.length}/60</span>
           </div>
           <input
+            id="seo-title-input"
             type="text"
             value={config.title}
             onChange={e => {
@@ -231,12 +240,15 @@ function InfoStep({ config, onChange }: { config: DeployConfig; onChange: (c: Pa
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">Description</label>
+            <label htmlFor="seo-description-input" className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">
+              Description
+            </label>
             <span className="text-[11px] text-zinc-300 dark:text-zinc-700 tabular-nums">
               {config.description.length}/160
             </span>
           </div>
           <textarea
+            id="seo-description-input"
             value={config.description}
             onChange={e => {
               if (e.target.value.length <= 160) onChange({ description: e.target.value })
@@ -248,7 +260,7 @@ function InfoStep({ config, onChange }: { config: DeployConfig; onChange: (c: Pa
         </div>
 
         <div>
-          <label className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1.5 block">Social image</label>
+          <span className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1.5 block">Social image</span>
           <button
             type="button"
             className="w-full h-20 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-[12px] text-zinc-400 dark:text-zinc-600 hover:border-zinc-300 dark:hover:border-zinc-700 hover:text-zinc-500 transition-colors duration-100"

@@ -341,28 +341,46 @@ function CreateCardPanel() {
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
         <div>
-          <label className={LABEL_CLASS}>Title</label>
-          <input ref={titleRef} placeholder="What needs to be done?" className={`${INPUT_CLASS} mt-1.5`} />
+          <label htmlFor="create-title" className={LABEL_CLASS}>
+            Title
+          </label>
+          <input
+            id="create-title"
+            ref={titleRef}
+            placeholder="What needs to be done?"
+            className={`${INPUT_CLASS} mt-1.5`}
+          />
         </div>
 
         <div>
-          <label className={LABEL_CLASS}>Description</label>
-          <textarea ref={descRef} placeholder="Add details..." rows={3} className={`${TEXTAREA_CLASS} mt-1.5`} />
+          <label htmlFor="create-desc" className={LABEL_CLASS}>
+            Description
+          </label>
+          <textarea
+            id="create-desc"
+            ref={descRef}
+            placeholder="Add details..."
+            rows={3}
+            className={`${TEXTAREA_CLASS} mt-1.5`}
+          />
         </div>
 
         <div>
-          <label className={`${LABEL_CLASS} mb-1.5 block`}>Status</label>
+          <span className={`${LABEL_CLASS} mb-1.5 block`}>Status</span>
           <StatusPicker value={columnId} onChange={setColumnId} />
         </div>
 
         <div>
-          <label className={`${LABEL_CLASS} mb-1.5 block`}>Priority</label>
+          <span className={`${LABEL_CLASS} mb-1.5 block`}>Priority</span>
           <PriorityPicker value={priority} onChange={setPriority} />
         </div>
 
         <div>
-          <label className={LABEL_CLASS}>Due date</label>
+          <label htmlFor="create-due" className={LABEL_CLASS}>
+            Due date
+          </label>
           <input
+            id="create-due"
             type="date"
             value={dueDate}
             onChange={e => setDueDate(e.target.value)}
@@ -371,12 +389,20 @@ function CreateCardPanel() {
         </div>
 
         <div>
-          <label className={LABEL_CLASS}>Notes</label>
-          <textarea ref={notesRef} placeholder="Internal notes..." rows={2} className={`${TEXTAREA_CLASS} mt-1.5`} />
+          <label htmlFor="create-notes" className={LABEL_CLASS}>
+            Notes
+          </label>
+          <textarea
+            id="create-notes"
+            ref={notesRef}
+            placeholder="Internal notes..."
+            rows={2}
+            className={`${TEXTAREA_CLASS} mt-1.5`}
+          />
         </div>
 
         <div>
-          <label className={`${LABEL_CLASS} mb-1.5 block`}>Attachments</label>
+          <span className={`${LABEL_CLASS} mb-1.5 block`}>Attachments</span>
           <AttachmentEditor attachments={attachments} onChange={setAttachments} />
         </div>
       </div>
@@ -474,13 +500,18 @@ function EditCardPanel() {
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
         <div>
-          <label className={LABEL_CLASS}>Title</label>
-          <input ref={titleRef} defaultValue={card.title} className={`${INPUT_CLASS} mt-1.5`} />
+          <label htmlFor="edit-title" className={LABEL_CLASS}>
+            Title
+          </label>
+          <input id="edit-title" ref={titleRef} defaultValue={card.title} className={`${INPUT_CLASS} mt-1.5`} />
         </div>
 
         <div>
-          <label className={LABEL_CLASS}>Description</label>
+          <label htmlFor="edit-desc" className={LABEL_CLASS}>
+            Description
+          </label>
           <textarea
+            id="edit-desc"
             ref={descRef}
             defaultValue={card.description}
             placeholder="Add details..."
@@ -490,18 +521,21 @@ function EditCardPanel() {
         </div>
 
         <div>
-          <label className={`${LABEL_CLASS} mb-1.5 block`}>Status</label>
+          <span className={`${LABEL_CLASS} mb-1.5 block`}>Status</span>
           <StatusPicker value={columnId} onChange={setColumnId} />
         </div>
 
         <div>
-          <label className={`${LABEL_CLASS} mb-1.5 block`}>Priority</label>
+          <span className={`${LABEL_CLASS} mb-1.5 block`}>Priority</span>
           <PriorityPicker value={priority} onChange={setPriority} />
         </div>
 
         <div>
-          <label className={LABEL_CLASS}>Due date</label>
+          <label htmlFor="edit-due" className={LABEL_CLASS}>
+            Due date
+          </label>
           <input
+            id="edit-due"
             type="date"
             value={dueDate}
             onChange={e => setDueDate(e.target.value)}
@@ -526,8 +560,11 @@ function EditCardPanel() {
         </div>
 
         <div>
-          <label className={LABEL_CLASS}>Notes</label>
+          <label htmlFor="edit-notes" className={LABEL_CLASS}>
+            Notes
+          </label>
           <textarea
+            id="edit-notes"
             ref={notesRef}
             defaultValue={card.notes}
             placeholder="Internal notes..."
@@ -537,7 +574,7 @@ function EditCardPanel() {
         </div>
 
         <div>
-          <label className={`${LABEL_CLASS} mb-1.5 block`}>Attachments</label>
+          <span className={`${LABEL_CLASS} mb-1.5 block`}>Attachments</span>
           <AttachmentEditor attachments={attachments} onChange={setAttachments} />
         </div>
 

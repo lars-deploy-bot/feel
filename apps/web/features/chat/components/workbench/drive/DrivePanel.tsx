@@ -130,26 +130,23 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
           style={{ width: treeWidth }}
         >
           {/* Header */}
-          <PanelBar className="justify-between">
-            <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Drive</span>
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={handleRefresh}
-                className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw size={12} strokeWidth={1.5} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setTreeCollapsed(true)}
-                className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors"
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose size={14} strokeWidth={1.5} />
-              </button>
-            </div>
+          <PanelBar className="justify-end gap-1">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw size={15} strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setTreeCollapsed(true)}
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose size={15} strokeWidth={1.5} />
+            </button>
           </PanelBar>
 
           {/* Tree */}
@@ -189,10 +186,10 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
             <button
               type="button"
               onClick={() => setTreeCollapsed(false)}
-              className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors"
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
               title="Show sidebar"
             >
-              <PanelLeftOpen size={14} strokeWidth={1.5} />
+              <PanelLeftOpen size={15} strokeWidth={1.5} />
             </button>
           </PanelBar>
         )}
