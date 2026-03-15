@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs"
+import type { SandboxStatus } from "@webalive/database"
 import { TEST_CONFIG } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -59,7 +60,7 @@ interface AppMockOptions {
     hostname: string
     execution_mode: "systemd" | "e2b"
     sandbox_id: string | null
-    sandbox_status: "creating" | "running" | "dead" | null
+    sandbox_status: SandboxStatus | null
   }> | null>
 }
 
