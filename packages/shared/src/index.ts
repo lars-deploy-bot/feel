@@ -38,6 +38,7 @@ export {
   resolveTemplatePath,
   SECURITY,
   SENTRY,
+  SHELL,
   STANDALONE,
   STREAM_ENV,
   type StreamEnv,

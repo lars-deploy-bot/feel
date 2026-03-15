@@ -40,9 +40,9 @@ export function useDeploys() {
   const buildMutation = useMutation({
     mutationFn: ({ applicationId, gitRef }: { applicationId: string; gitRef?: string }) =>
       deploysApi.build(applicationId, gitRef),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Build queued")
-      queryClient.invalidateQueries({ queryKey: DEPLOYS_KEY })
+      await queryClient.invalidateQueries({ queryKey: DEPLOYS_KEY })
     },
     onError: error => {
       toast.error(error instanceof Error ? error.message : "Failed to queue build")
@@ -59,9 +59,9 @@ export function useDeploys() {
       releaseId: string
       action?: DeployDeploymentAction
     }) => deploysApi.deploy(environmentId, releaseId, action),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Deployment queued")
-      queryClient.invalidateQueries({ queryKey: DEPLOYS_KEY })
+      await queryClient.invalidateQueries({ queryKey: DEPLOYS_KEY })
     },
     onError: error => {
       toast.error(error instanceof Error ? error.message : "Failed to queue deployment")

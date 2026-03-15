@@ -15,7 +15,7 @@
  */
 
 import { fetchWithRetry } from "../fetch-with-retry"
-import type { OAuthTokens } from "../types"
+import type { OAuthProviderMetadata, OAuthTokens } from "../types"
 import type { OAuthProviderCore, OAuthRefreshable, OAuthRevocable, PKCEOptions, TokenExchangeOptions } from "./base"
 
 /**
@@ -174,7 +174,12 @@ export class SupabaseProvider implements OAuthProviderCore, OAuthRefreshable, OA
    * Note: Check if Supabase supports token revocation endpoint
    * For now, we'll attempt the standard OAuth revocation
    */
-  async revokeToken(token: string, clientId: string, clientSecret: string): Promise<void> {
+  async revokeToken(
+    token: string,
+    clientId: string,
+    clientSecret: string,
+    _providerMetadata?: OAuthProviderMetadata,
+  ): Promise<void> {
     const params = new URLSearchParams({
       token,
       token_type_hint: "access_token",

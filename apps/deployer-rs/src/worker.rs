@@ -194,26 +194,55 @@ async fn health_handler(State(state): State<AppState>) -> Json<HealthResponse> {
 async fn health_details_handler(State(state): State<AppState>) -> Json<serde_json::Value> {
     let worker = state.health.read().await.clone();
     let ok = worker.status != WorkerStatus::Error;
+    let mut snapshot_errors: Vec<String> = Vec::new();
+
     let current_build = match worker.current_build_id.as_deref() {
-        Some(build_id) => read_task_snapshot(&state.data_dir, TaskKind::Build, build_id)
-            .await
-            .ok(),
+        Some(build_id) => {
+            match read_task_snapshot(&state.data_dir, TaskKind::Build, build_id).await {
+                Ok(snapshot) => Some(snapshot),
+                Err(error) => {
+                    warn!(
+                        message = "failed to read build snapshot",
+                        build_id = %build_id,
+                        error = %format!("{:#}", error),
+                    );
+                    snapshot_errors
+                        .push(format!("build {} snapshot read failed: {:#}", build_id, error));
+                    None
+                }
+            }
+        }
         None => None,
     };
     let current_deployment = match worker.current_deployment_id.as_deref() {
         Some(deployment_id) => {
-            read_task_snapshot(&state.data_dir, TaskKind::Deployment, deployment_id)
-                .await
-                .ok()
+            match read_task_snapshot(&state.data_dir, TaskKind::Deployment, deployment_id).await {
+                Ok(snapshot) => Some(snapshot),
+                Err(error) => {
+                    warn!(
+                        message = "failed to read deployment snapshot",
+                        deployment_id = %deployment_id,
+                        error = %format!("{:#}", error),
+                    );
+                    snapshot_errors.push(format!(
+                        "deployment {} snapshot read failed: {:#}",
+                        deployment_id, error
+                    ));
+                    None
+                }
+            }
         }
         None => None,
     };
 
+    let effective_ok = ok && snapshot_errors.is_empty();
+
     Json(json!({
-        "ok": ok,
+        "ok": effective_ok,
         "worker": worker,
         "current_build": current_build,
         "current_deployment": current_deployment,
+        "snapshot_errors": snapshot_errors,
     }))
 }
 

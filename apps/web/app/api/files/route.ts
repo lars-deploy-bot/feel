@@ -1,6 +1,7 @@
 import { readdir } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { RuntimePathValidationError, resolveSandboxWorkspacePath, SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -9,7 +10,8 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { connectSandbox, SANDBOX_WORKSPACE_ROOT, SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { listE2bDirectory } from "@/lib/sandbox/e2b-file-runtime"
 
 interface FileInfo {
   name: string
@@ -109,27 +111,24 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleE2bList(domain: ResolvedDomain, targetPath: string, requestId: string): Promise<NextResponse> {
-  // Path traversal check for E2B
-  const normalized = path.normalize(targetPath)
-  if (normalized.startsWith("..") || path.isAbsolute(normalized)) {
-    console.warn(`[Files ${requestId}] E2B path traversal blocked: ${targetPath}`)
-    return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
-      status: 403,
-      details: { requestId },
-    })
+  try {
+    resolveSandboxWorkspacePath(targetPath, { allowWorkspaceRoot: true })
+  } catch (err) {
+    if (err instanceof RuntimePathValidationError) {
+      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, { status: 403, details: { requestId } })
+    }
+    throw err
   }
 
   try {
-    const sandbox = await connectSandbox(domain)
-    const sandboxPath = path.join(SANDBOX_WORKSPACE_ROOT, targetPath)
-    const entries = await sandbox.files.list(sandboxPath)
+    const entries = await listE2bDirectory(domain, targetPath)
 
-    const files: FileInfo[] = entries.map(e => ({
-      name: e.name,
-      type: e.type === "dir" ? "directory" : "file",
+    const files: FileInfo[] = entries.map(entry => ({
+      name: entry.name,
+      type: entry.kind,
       size: 0,
       modified: "",
-      path: path.join(targetPath, e.name),
+      path: entry.path,
     }))
 
     return NextResponse.json({
@@ -139,6 +138,13 @@ async function handleE2bList(domain: ResolvedDomain, targetPath: string, request
       files,
     })
   } catch (err) {
+    if (err instanceof RuntimePathValidationError) {
+      console.warn(`[Files ${requestId}] E2B path traversal blocked: ${targetPath}`)
+      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
+        status: 403,
+        details: { requestId },
+      })
+    }
     if (err instanceof SandboxNotReadyError) {
       return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
     }
