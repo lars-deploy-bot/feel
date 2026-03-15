@@ -75,8 +75,6 @@ describe("message ordering", () => {
   beforeEach(() => {
     useDexieMessageStore.setState({
       session: null,
-      currentTabGroupId: null,
-      currentTabId: null,
       currentWorkspace: null,
       isLoading: false,
       isSyncing: false,
@@ -123,7 +121,6 @@ describe("message ordering", () => {
     const db = getMessageDb(TEST_USER_ID)
 
     // Ensure store knows the current conversation (required for startAssistantStream)
-    store.switchConversation(conversationId, tabId)
 
     // Simulate the real flow:
     // 1. User sends message 1
@@ -176,7 +173,6 @@ describe("message ordering", () => {
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
-    store.switchConversation(conversationId, tabId)
 
     // Fire off multiple operations concurrently (simulating race condition)
     // Note: With Promise.all, the ORDER within the batch is non-deterministic,
@@ -209,7 +205,6 @@ describe("message ordering", () => {
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
-    store.switchConversation(conversationId, tabId)
 
     // User message 1
     await store.addMessage(userMessage("rapid-1", "Question 1"), tabId)
@@ -242,7 +237,6 @@ describe("message ordering", () => {
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
-    store.switchConversation(conversationId, tabId)
 
     // Turn 1: User asks, AI responds with tools
     await store.addMessage(userMessage("turn1-user", "Build a website"), tabId)

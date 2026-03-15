@@ -20,8 +20,6 @@ describe("dexieMessageStore captureResumeSessionAtFromLatestAssistant", () => {
   beforeEach(() => {
     useDexieMessageStore.setState({
       session: null,
-      currentTabGroupId: null,
-      currentTabId: null,
       currentWorkspace: null,
       isLoading: false,
       isSyncing: false,

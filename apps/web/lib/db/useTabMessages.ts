@@ -15,7 +15,7 @@
 
 import { useMemo } from "react"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
-import { useDexieMessageStore } from "./dexieMessageStore"
+import { useDexieMessageStore, useDexieSession } from "./dexieMessageStore"
 import { toUIMessage } from "./messageAdapters"
 import { useMessages } from "./useMessageDb"
 
@@ -60,7 +60,8 @@ export interface TabMessage extends UIMessage {
  * @param userId - The user ID (required for Dexie database access)
  * @returns Array of TabMessage objects ready for UI rendering
  */
-export function useTabMessages(tabId: string | null, userId: string | null): TabMessage[] | undefined {
+export function useTabMessages(tabId: string | null): TabMessage[] | undefined {
+  const userId = useDexieSession()?.userId ?? null
   const dbMessages = useMessages(tabId, userId)
   const streamingBuffers = useDexieMessageStore(s => s.streamingBuffers)
 

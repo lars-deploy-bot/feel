@@ -54,8 +54,6 @@ describe("addMessage tab isolation (Dexie integration)", () => {
     // Reset Zustand store between tests
     useDexieMessageStore.setState({
       session: null,
-      currentTabGroupId: null,
-      currentTabId: null,
       currentWorkspace: null,
       isLoading: false,
       isSyncing: false,
@@ -78,11 +76,7 @@ describe("addMessage tab isolation (Dexie integration)", () => {
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
-    // User is currently looking at Tab B (this is the "current" tab)
-    store.switchTab("tab-B")
-    store.switchConversation(tabB.conversationId, "tab-B")
-
-    // But a stream for Tab A sends a message with targetTabId="tab-A"
+    // A stream for Tab A sends a message with targetTabId="tab-A"
     await store.addMessage(
       {
         id: "msg-1",
@@ -108,11 +102,7 @@ describe("addMessage tab isolation (Dexie integration)", () => {
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
-    // User is on Tab A
-    store.switchTab("tab-A")
-    store.switchConversation(tabA.conversationId, "tab-A")
-
-    // Stream for Tab A sends message (targetTabId matches currentTabId)
+    // Stream for Tab A sends message
     await store.addMessage(
       {
         id: "msg-1",
@@ -131,10 +121,6 @@ describe("addMessage tab isolation (Dexie integration)", () => {
     const { tabA, tabB } = await setupTwoTabs()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
-
-    // User is on Tab B
-    store.switchTab("tab-B")
-    store.switchConversation(tabB.conversationId, "tab-B")
 
     // Stream for Tab A sends a user message (should set title on conversation A, not B)
     await store.addMessage(
@@ -161,10 +147,6 @@ describe("addMessage tab isolation (Dexie integration)", () => {
     const { tabB } = await setupTwoTabs()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
-
-    // User is on Tab B but streams are active for both tabs
-    store.switchTab("tab-B")
-    store.switchConversation(tabB.conversationId, "tab-B")
 
     // Interleaved messages from two streams
     await store.addMessage(
@@ -194,10 +176,6 @@ describe("addMessage tab isolation (Dexie integration)", () => {
     const { tabB } = await setupTwoTabs()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
-
-    // User is on Tab B
-    store.switchTab("tab-B")
-    store.switchConversation(tabB.conversationId, "tab-B")
 
     // Add message to Tab A
     await store.addMessage(

@@ -18,7 +18,7 @@ export interface ElementSelection {
 }
 
 /** View mode for the workbench */
-export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events" | "agents"
+export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events" | "agents" | "photos"
 
 /** State for the workbench */
 export interface WorkbenchState {

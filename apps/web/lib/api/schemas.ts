@@ -704,6 +704,59 @@ export const apiSchemas = {
   },
 
   /**
+   * GET /api/automations/enriched
+   * Enriched automation jobs with run stats (server-to-server proxy to apps/api)
+   */
+  "automations/enriched": {
+    query: z.object({
+      workspace: z.string().min(1).optional(),
+    }),
+    res: z.object({
+      ok: z.literal(true),
+      jobs: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          description: z.string().nullable(),
+          hostname: z.string(),
+          is_active: z.boolean(),
+          status: z.string(),
+          trigger_type: TriggerTypeSchema,
+          cron_schedule: z.string().nullable(),
+          cron_timezone: z.string().nullable(),
+          email_address: z.string().nullable(),
+          last_run_at: z.string().nullable(),
+          last_run_status: AutomationRunStatusSchema.nullable(),
+          last_run_error: z.string().nullable(),
+          next_run_at: z.string().nullable(),
+          consecutive_failures: z.number().nullable(),
+          action_prompt: z.string().nullable(),
+          action_model: z.string().nullable(),
+          action_target_page: z.string().nullable(),
+          skills: z.array(z.string()).nullable(),
+          created_at: z.string(),
+          runs_30d: z.number(),
+          success_runs_30d: z.number(),
+          failure_runs_30d: z.number(),
+          avg_duration_ms: z.number().nullable(),
+          estimated_weekly_cost_usd: z.number(),
+          recent_runs: z.array(
+            z.object({
+              id: z.string(),
+              status: z.string(),
+              started_at: z.string(),
+              completed_at: z.string().nullable(),
+              duration_ms: z.number().nullable(),
+              error: z.string().nullable(),
+              triggered_by: z.string().nullable(),
+            }),
+          ),
+        }),
+      ),
+    }),
+  },
+
+  /**
    * POST /api/automations
    * Create a new automation job
    */
@@ -1635,6 +1688,19 @@ export const apiSchemas = {
       ok: z.literal(true),
       images: z.array(z.unknown()),
       count: z.number(),
+    }),
+  },
+
+  /**
+   * Transcribe audio via mini-tools Groq Whisper proxy.
+   * No req schema — route receives multipart/form-data (audio file).
+   */
+  "voice/transcribe": {
+    res: z.object({
+      ok: z.literal(true),
+      text: z.string(),
+      duration: z.number().nullable(),
+      language: z.string().nullable(),
     }),
   },
 } as const

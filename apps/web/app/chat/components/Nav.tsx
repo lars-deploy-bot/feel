@@ -1,26 +1,16 @@
 "use client"
 
-import { Image, Layers, MessageCircle, Settings } from "lucide-react"
-import type { RefObject } from "react"
-import { PhotoMenu } from "@/components/ui/PhotoMenu"
+import { Layers, MessageCircle, Settings } from "lucide-react"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
-import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import {
   trackComponentsClicked,
   trackFeedbackClicked,
-  trackPhotobookImageSelected,
-  trackPhotosClicked,
   trackSettingsClicked,
 } from "@/lib/analytics/events"
 
 interface NavProps {
   onFeedbackClick: () => void
   onTemplatesClick: () => void
-  showPhotoMenu: boolean
-  onPhotoMenuToggle: () => void
-  onPhotoMenuClose: () => void
-  photoButtonRef: RefObject<HTMLButtonElement | null>
-  chatInputRef: RefObject<ChatInputHandle | null>
   workspace: string | null
   isSidebarOpen: boolean
   onToggleSidebar: () => void
@@ -31,11 +21,6 @@ interface NavProps {
 export function Nav({
   onFeedbackClick,
   onTemplatesClick,
-  showPhotoMenu,
-  onPhotoMenuToggle,
-  onPhotoMenuClose,
-  photoButtonRef,
-  chatInputRef,
   workspace,
   isSidebarOpen,
   onToggleSidebar,
@@ -133,32 +118,6 @@ export function Nav({
             <Layers size={16} strokeWidth={1.5} />
           </button>
 
-          {/* Photos */}
-          <div className="relative">
-            <button
-              ref={photoButtonRef}
-              type="button"
-              onClick={() => {
-                trackPhotosClicked()
-                onPhotoMenuToggle()
-              }}
-              className={iconButtonStyle}
-              data-testid="photos-button"
-              aria-label="Photos"
-              title="Photos"
-            >
-              <Image size={16} strokeWidth={1.5} />
-            </button>
-            <PhotoMenu
-              isOpen={showPhotoMenu}
-              onClose={onPhotoMenuClose}
-              onSelectImage={imageKey => {
-                trackPhotobookImageSelected(imageKey)
-                chatInputRef.current?.addPhotobookImage(imageKey)
-              }}
-              triggerRef={photoButtonRef}
-            />
-          </div>
         </div>
       </div>
     </div>

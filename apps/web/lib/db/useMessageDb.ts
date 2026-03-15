@@ -241,35 +241,6 @@ export function usePendingMessages(tabId: string | null, userId: string | null):
 }
 
 // =============================================================================
-// Safety Hooks
-// =============================================================================
-
-/**
- * Safe hook for current conversation - handles cross-tab deletion.
- *
- * USE THIS instead of raw useConversation + useCurrentConversationId
- * to gracefully handle when a conversation is deleted in another tab.
- */
-export function useCurrentConversationSafe(
-  currentConversationId: string | null,
-  userId: string | null,
-  clearCurrentConversation: () => void,
-): DbConversation | null {
-  const conversation = useConversation(currentConversationId, userId)
-
-  // Handle cross-tab deletion: if we have an ID but conversation is null,
-  // it was deleted in another tab - clear our selection
-  if (currentConversationId && conversation === null && userId) {
-    // Schedule the clear for next tick to avoid render loop
-    queueMicrotask(() => {
-      clearCurrentConversation()
-    })
-  }
-
-  return conversation
-}
-
-// =============================================================================
 // Utility Hooks
 // =============================================================================
 

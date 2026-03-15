@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, Image, Layers, MessageCircle, Plus } from "lucide-react"
+import { ChevronRight, Layers, MessageCircle, Plus } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
@@ -40,7 +40,6 @@ interface ConversationSidebarProps {
   /** Mobile action button callbacks — desktop versions live in Nav.tsx (search: "desktop only") */
   onFeedbackClick?: () => void
   onTemplatesClick?: () => void
-  onPhotosClick?: () => void
 }
 
 export function ConversationSidebar({
@@ -63,7 +62,6 @@ export function ConversationSidebar({
   onSettingsClick,
   onFeedbackClick,
   onTemplatesClick,
-  onPhotosClick,
 }: ConversationSidebarProps) {
   const isOpen = useSidebarOpen()
   const { closeSidebar } = useSidebarActions()
@@ -298,7 +296,6 @@ export function ConversationSidebar({
                   [
                     { icon: MessageCircle, label: "Feedback", action: onFeedbackClick },
                     { icon: Layers, label: "Components", action: onTemplatesClick },
-                    { icon: Image, label: "Photos", action: onPhotosClick },
                   ] as const
                 ).map(({ icon: Icon, label, action }) => (
                   <button

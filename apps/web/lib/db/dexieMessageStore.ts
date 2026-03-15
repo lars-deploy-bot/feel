@@ -884,7 +884,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     if (alreadyFinalized.has(messageId)) return
     alreadyFinalized.add(messageId)
 
-    const { streamingBuffers, activeStreamByTab, currentTabGroupId, session } = get()
+    const { streamingBuffers, activeStreamByTab, session } = get()
     if (!session) return
 
     const db = getMessageDb(session.userId)
@@ -910,7 +910,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    await queueSyncForStreamTab(db, session.userId, tabId, currentTabGroupId)
+    await queueSyncForStreamTab(db, session.userId, tabId)
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
@@ -918,7 +918,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     if (alreadyFinalized.has(messageId)) return
     alreadyFinalized.add(messageId)
 
-    const { streamingBuffers, activeStreamByTab, currentTabGroupId, session } = get()
+    const { streamingBuffers, activeStreamByTab, session } = get()
     if (!session) return
 
     const db = getMessageDb(session.userId)
@@ -945,7 +945,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    await queueSyncForStreamTab(db, session.userId, tabId, currentTabGroupId)
+    await queueSyncForStreamTab(db, session.userId, tabId)
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
@@ -953,7 +953,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     if (alreadyFinalized.has(messageId)) return
     alreadyFinalized.add(messageId)
 
-    const { streamingBuffers, activeStreamByTab, currentTabGroupId, session } = get()
+    const { streamingBuffers, activeStreamByTab, session } = get()
     if (!session) return
 
     const db = getMessageDb(session.userId)
@@ -980,12 +980,8 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    await queueSyncForStreamTab(db, session.userId, tabId, currentTabGroupId)
+    await queueSyncForStreamTab(db, session.userId, tabId)
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
-  },
-
-  clearCurrentConversation: () => {
-    set({ currentTabGroupId: null, currentTabId: null })
   },
 }))
 
@@ -993,15 +989,6 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
 // Selectors
 // =============================================================================
 
-/**
- * Returns the current tab group ID (sidebar grouping).
- * A "conversation" in Dexie represents a group of tabs.
- * @deprecated Use useDexieCurrentTabGroupId for clarity
- */
-export const useDexieCurrentConversationId = () => useDexieMessageStore(s => s.currentTabGroupId)
-/** Returns the current tab group ID (sidebar grouping) */
-export const useDexieCurrentTabGroupId = () => useDexieMessageStore(s => s.currentTabGroupId)
-export const useDexieCurrentTabId = () => useDexieMessageStore(s => s.currentTabId)
 export const useDexieCurrentWorkspace = () => useDexieMessageStore(s => s.currentWorkspace)
 export const useDexieIsSyncing = () => useDexieMessageStore(s => s.isSyncing)
 export const useDexieIsLoading = () => useDexieMessageStore(s => s.isLoading)
@@ -1013,7 +1000,6 @@ export const useDexieMessageActions = () =>
     setSession: state.setSession,
     initializeConversation: state.initializeConversation,
     ensureTabGroupWithTab: state.ensureTabGroupWithTab,
-    switchConversation: state.switchConversation,
     deleteConversation: state.deleteConversation,
     archiveConversation: state.archiveConversation,
     unarchiveConversation: state.unarchiveConversation,
@@ -1022,7 +1008,6 @@ export const useDexieMessageActions = () =>
     unshareConversation: state.unshareConversation,
     addMessage: state.addMessage,
     addTab: state.addTab,
-    switchTab: state.switchTab,
     removeTab: state.removeTab,
     reopenTab: state.reopenTab,
     renameTab: state.renameTab,
@@ -1033,7 +1018,6 @@ export const useDexieMessageActions = () =>
     finalizeAssistantStream: state.finalizeAssistantStream,
     stopAssistantStream: state.stopAssistantStream,
     failAssistantStream: state.failAssistantStream,
-    clearCurrentConversation: state.clearCurrentConversation,
     deleteMessagesAfter: state.deleteMessagesAfter,
     getResumeSessionAt: state.getResumeSessionAt,
     clearResumeSessionAt: state.clearResumeSessionAt,
@@ -1050,7 +1034,6 @@ export {
   useArchivedConversations as useDexieArchivedConversations,
   useConversation as useDexieConversation,
   useConversations as useDexieConversations,
-  useCurrentConversationSafe as useDexieCurrentConversationSafe,
   useMessages as useDexieMessages,
   useSharedConversations as useDexieSharedConversations,
   useTabs as useDexieTabs,

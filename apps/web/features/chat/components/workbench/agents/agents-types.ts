@@ -1,4 +1,5 @@
 import type { JobStatus, RunStatus, TriggerType } from "@webalive/database"
+import type { Res } from "@/lib/api/schemas"
 
 export interface AutomationRun {
   id: string
@@ -33,29 +34,17 @@ export interface AutomationJob {
   hostname: string
 }
 
-export interface RecentRun {
-  id: string
-  status: string
-  started_at: string
-  duration_ms: number | null
-  error: string | null
-  triggered_by: string | null
-}
+/** Single job from the enriched API response */
+export type EnrichedJobRaw = Res<"automations/enriched">["jobs"][number]
 
-/** Raw API response shape from /api/automations/enriched */
-export interface EnrichedJobRaw extends AutomationJob {
-  runs_30d: number
-  success_runs_30d: number
-  failure_runs_30d: number
-  avg_duration_ms: number | null
-  recent_runs: RecentRun[]
-}
-
-/** Client-side enriched job with computed fields */
+/** Enriched job with client-computed fields */
 export interface EnrichedJob extends EnrichedJobRaw {
   success_rate: number
   streak: number
 }
+
+/** Recent run from enriched response */
+export type RecentRun = EnrichedJobRaw["recent_runs"][number]
 
 export type AgentView =
   | { kind: "list" }
