@@ -21,7 +21,7 @@ async function ensureConversationSidebarOpen(authenticatedPage: Page): Promise<v
     return
   }
 
-  const openSidebarButton = authenticatedPage.getByRole("button", { name: "Open sidebar" })
+  const openSidebarButton = authenticatedPage.locator('button[aria-label="Open sidebar"]').first()
   await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await openSidebarButton.click()
   await expect(sidebar).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
