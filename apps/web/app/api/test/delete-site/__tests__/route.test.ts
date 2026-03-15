@@ -85,6 +85,7 @@ vi.mock("@/lib/deployment/site-occupancy", () => ({
 }))
 
 vi.mock("@/lib/config", () => ({
+  WILDCARD_DOMAIN: "alive.best",
   extractSlugFromDomain: (domain: string) => {
     const suffix = ".alive.best"
     if (domain.endsWith(suffix)) return domain.replace(suffix, "")

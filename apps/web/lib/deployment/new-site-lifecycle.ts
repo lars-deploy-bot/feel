@@ -75,17 +75,14 @@ export function buildNewSiteSuccessPayload(params: {
   executionMode: ExecutionMode
   message: string
 }): NewSiteSuccessPayload {
-  const searchParams = new URLSearchParams()
-  searchParams.set(QUERY_KEYS.workspace, params.domain)
-  if (params.orgId) {
-    searchParams.set(QUERY_KEYS.org, params.orgId)
-  }
   return {
     message: params.message,
     domain: params.domain,
     orgId: params.orgId,
     executionMode: params.executionMode,
-    chatUrl: `/chat?${searchParams.toString()}`,
+    chatUrl: params.orgId
+      ? `/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(params.domain)}&${QUERY_KEYS.org}=${encodeURIComponent(params.orgId)}`
+      : `/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(params.domain)}`,
   }
 }
 

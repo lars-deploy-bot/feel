@@ -28,6 +28,11 @@ interface WorkspaceState {
    *  validateWorkspaceAvailability yet. Prevents the validator from clearing
    *  the workspace before the all-workspaces fetch has completed. Not persisted. */
   deepLinkPending: string | null
+  /** Monotonic counter incremented on every explicit user intent (manual switch,
+   *  deep link consumption). Async corrections (allWorkspaces coherence check,
+   *  server sync) must capture this before awaiting and discard their result if
+   *  it changed. Not persisted. */
+  intentVersion: number
 }
 
 // Actions interface - grouped under stable object (Guide §14.3)
@@ -44,6 +49,7 @@ interface WorkspaceActions {
     setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
     clearRecentWorkspaces: () => void
+    getRecentForOrg: (orgId: string) => RecentWorkspace[]
   }
 }
 
@@ -64,10 +70,17 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             if (workspace && nextWorktrees[workspace] === undefined) {
               nextWorktrees[workspace] = null
             }
-            return {
+            const updates: Partial<WorkspaceState> = {
               currentWorkspace: workspace,
               currentWorktreeByWorkspace: nextWorktrees,
+              intentVersion: state.intentVersion + 1,
             }
+            // Manual switch clears deepLinkPending so deferred resolution
+            // doesn't override the user's explicit choice.
+            if (state.deepLinkPending && workspace !== state.deepLinkPending) {
+              updates.deepLinkPending = null
+            }
+            return updates
           })
           // Also track in recent workspaces for history
           if (workspace && orgId) {
@@ -105,10 +118,14 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
 
         setSelectedOrg: (orgId: string | null) => {
           set(state => {
-            const updates: Partial<WorkspaceState> = { selectedOrgId: orgId }
-            // Clear workspace when switching orgs - it belongs to the old org
-            if (orgId !== state.selectedOrgId && state.currentWorkspace) {
-              updates.currentWorkspace = null
+            const updates: Partial<WorkspaceState> = {
+              selectedOrgId: orgId,
+              intentVersion: state.intentVersion + 1,
+            }
+            // Manual org switch cancels any deferred deep link resolution.
+            // The user's explicit org choice takes precedence over stale URL intent.
+            if (state.deepLinkPending) {
+              updates.deepLinkPending = null
             }
             return updates
           })
@@ -142,14 +159,17 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             return false
           }
 
-          if (state.recentWorkspaces.length > 0) {
-            // If an org is selected, only pick from that org's workspaces
-            const candidates = state.selectedOrgId
-              ? state.recentWorkspaces.filter(w => w.orgId === state.selectedOrgId)
-              : state.recentWorkspaces
+          if (state.recentWorkspaces.length === 0) {
+            return false
+          }
 
-            if (candidates.length === 0) return false
+          // If an org is already selected, only pick from that org's recents.
+          // Picking across orgs would silently switch the org, surprising the user.
+          const candidates = state.selectedOrgId
+            ? state.recentWorkspaces.filter(r => r.orgId === state.selectedOrgId)
+            : state.recentWorkspaces
 
+          if (candidates.length > 0) {
             const sorted = [...candidates].sort((a, b) => b.lastAccessed - a.lastAccessed)
             const mostRecent = sorted[0]
             set({
@@ -159,16 +179,30 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             return true
           }
 
-          return false
+          // Selected org has no recents — fall back to global most recent.
+          // This sets both workspace AND org, so the pair stays coherent.
+          const sorted = [...state.recentWorkspaces].sort((a, b) => b.lastAccessed - a.lastAccessed)
+          const mostRecent = sorted[0]
+          set({
+            currentWorkspace: mostRecent.domain,
+            selectedOrgId: mostRecent.orgId,
+          })
+          return true
         },
 
         /**
-         * Validate and clean up org references when org list changes
+         * Validate and clean up org references when org list changes.
          * Handles cases where user was kicked out, org was deleted, etc.
          *
-         * This is the central cleanup point for:
+         * This handles ORG-LEVEL cleanup only:
          * - Invalid selectedOrgId (user no longer member)
          * - Stale recentWorkspaces pointing to removed orgs
+         *
+         * This does NOT clear currentWorkspace based on recents — recents are not
+         * authoritative for workspace-to-org mapping. Workspace clearing for
+         * membership loss happens via the allWorkspaces coherence effect in
+         * page.tsx (server-authoritative) or validateWorkspaceAvailability
+         * (filesystem-authoritative).
          */
         validateAndCleanup: (organizations: Organization[]) => {
           set(state => {
@@ -184,14 +218,6 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             const filteredRecent = state.recentWorkspaces.filter(workspace => validOrgIds.has(workspace.orgId))
             if (filteredRecent.length !== state.recentWorkspaces.length) {
               updates.recentWorkspaces = filteredRecent
-            }
-
-            // Clear currentWorkspace if it belonged to a removed org
-            if (state.currentWorkspace) {
-              const workspaceOrg = state.recentWorkspaces.find(w => w.domain === state.currentWorkspace)?.orgId
-              if (workspaceOrg && !validOrgIds.has(workspaceOrg)) {
-                updates.currentWorkspace = null
-              }
             }
 
             return Object.keys(updates).length > 0 ? updates : state
@@ -276,6 +302,12 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
         clearRecentWorkspaces: () => {
           set({ recentWorkspaces: [] })
         },
+
+        getRecentForOrg: (_orgId: string) => {
+          // This is a selector function, but included in actions for convenience
+          // In practice, use the hook selector instead
+          return []
+        },
       }
 
       return {
@@ -284,6 +316,7 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
         recentWorkspaces: [],
         currentWorktreeByWorkspace: {},
         deepLinkPending: null,
+        intentVersion: 0,
         actions,
       }
     },
@@ -321,6 +354,7 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             recentWorkspaces: state.recentWorkspaces ?? [],
             currentWorktreeByWorkspace: state.currentWorktreeByWorkspace ?? {},
             deepLinkPending: null,
+            intentVersion: 0,
           }
         }
         return {
@@ -329,6 +363,7 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
           recentWorkspaces: state.recentWorkspaces ?? [],
           currentWorktreeByWorkspace: state.currentWorktreeByWorkspace ?? {},
           deepLinkPending: null,
+          intentVersion: 0,
         }
       },
       onRehydrateStorage: () => (_state, error) => {
@@ -350,6 +385,7 @@ export const useCurrentWorkspace = () => useWorkspaceStoreBase(state => state.cu
 export const useCurrentWorktree = (workspace: string | null) =>
   useWorkspaceStoreBase(state => (workspace ? (state.currentWorktreeByWorkspace[workspace] ?? null) : null))
 export const useSelectedOrgId = () => useWorkspaceStoreBase(state => state.selectedOrgId)
+export const useIntentVersion = () => useWorkspaceStoreBase(state => state.intentVersion)
 export const useRecentWorkspaces = () => useWorkspaceStoreBase(state => state.recentWorkspaces)
 
 // Derived selector: get recent workspaces for a specific org
