@@ -52,61 +52,55 @@ type ViewOption = {
   view: WorkbenchView
   label: string
   icon: PhosphorIcon
+  color: string // tailwind color stem, e.g. "emerald", "violet"
   activeClass: string
-  /** Inactive: monochrome text, colored icon keeps the color recognizable ("click the green one") */
-  inactiveIcon: string
-  inactiveHover: string
+  inactiveColor: string // icon color when inactive — visible enough for "click the green one"
 }
 
-// Inactive pills: neutral text, but the icon retains its section color at low
-// opacity so users can still identify "the green one" / "the purple one" without
-// the full rainbow-toy effect of coloring every pill at rest.
-const INACTIVE_BASE = "text-black/40 dark:text-white/30"
+// Active: colored bg tint + colored text + filled icon + subtle shadow
+// Inactive: neutral text, colored icon only — wayfinding without the rainbow-toy effect
+const INACTIVE_TEXT = "text-black/45 dark:text-white/35"
 
 const STANDARD_VIEWS: ViewOption[] = [
   {
     view: "code",
     label: "Files",
     icon: FolderSimple,
-    activeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    inactiveIcon: "text-emerald-600/40 dark:text-emerald-400/30",
-    inactiveHover:
-      "hover:bg-emerald-500/[0.06] hover:text-emerald-600/70 dark:hover:bg-emerald-500/[0.06] dark:hover:text-emerald-400/50",
+    color: "emerald",
+    activeClass: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 shadow-[0_0_0_1px_theme(colors.emerald.500/0.08)]",
+    inactiveColor: "text-emerald-600/55 dark:text-emerald-400/40",
   },
   {
     view: "agents",
     label: "Agents",
     icon: Sparkle,
-    activeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-    inactiveIcon: "text-violet-600/40 dark:text-violet-400/30",
-    inactiveHover:
-      "hover:bg-violet-500/[0.06] hover:text-violet-600/70 dark:hover:bg-violet-500/[0.06] dark:hover:text-violet-400/50",
+    color: "violet",
+    activeClass: "bg-violet-500/12 text-violet-600 dark:text-violet-400 shadow-[0_0_0_1px_theme(colors.violet.500/0.08)]",
+    inactiveColor: "text-violet-600/55 dark:text-violet-400/40",
   },
   {
     view: "photos",
     label: "Photos",
     icon: ImageSquare,
-    activeClass: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
-    inactiveIcon: "text-pink-600/40 dark:text-pink-400/30",
-    inactiveHover:
-      "hover:bg-pink-500/[0.06] hover:text-pink-600/70 dark:hover:bg-pink-500/[0.06] dark:hover:text-pink-400/50",
+    color: "pink",
+    activeClass: "bg-pink-500/12 text-pink-600 dark:text-pink-400 shadow-[0_0_0_1px_theme(colors.pink.500/0.08)]",
+    inactiveColor: "text-pink-600/55 dark:text-pink-400/40",
   },
   {
     view: "kanban",
     label: "Todos",
     icon: Kanban,
-    activeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    inactiveIcon: "text-amber-600/40 dark:text-amber-400/30",
-    inactiveHover:
-      "hover:bg-amber-500/[0.06] hover:text-amber-600/70 dark:hover:bg-amber-500/[0.06] dark:hover:text-amber-400/50",
+    color: "amber",
+    activeClass: "bg-amber-500/12 text-amber-600 dark:text-amber-400 shadow-[0_0_0_1px_theme(colors.amber.500/0.08)]",
+    inactiveColor: "text-amber-600/55 dark:text-amber-400/40",
   },
   {
     view: "home",
     label: "Info",
     icon: Info,
-    activeClass: "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white",
-    inactiveIcon: "text-black/35 dark:text-white/25",
-    inactiveHover: "hover:bg-black/[0.04] hover:text-black/60 dark:hover:bg-white/[0.05] dark:hover:text-white/45",
+    color: "neutral",
+    activeClass: "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white shadow-[0_0_0_1px_rgba(0,0,0,0.06)]",
+    inactiveColor: "text-black/40 dark:text-white/30",
   },
 ]
 
@@ -114,10 +108,9 @@ const SITE_PREVIEW_VIEW: ViewOption = {
   view: "site",
   label: "Preview",
   icon: Browser,
-  activeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  inactiveIcon: "text-blue-600/40 dark:text-blue-400/30",
-  inactiveHover:
-    "hover:bg-blue-500/[0.06] hover:text-blue-600/70 dark:hover:bg-blue-500/[0.06] dark:hover:text-blue-400/50",
+  color: "blue",
+  activeClass: "bg-blue-500/12 text-blue-600 dark:text-blue-400 shadow-[0_0_0_1px_theme(colors.blue.500/0.08)]",
+  inactiveColor: "text-blue-600/55 dark:text-blue-400/40",
 }
 
 const SUPERADMIN_VIEWS: ViewOption[] = [
@@ -125,19 +118,17 @@ const SUPERADMIN_VIEWS: ViewOption[] = [
     view: "events",
     label: "Activity",
     icon: Lightning,
-    activeClass: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-    inactiveIcon: "text-yellow-600/40 dark:text-yellow-400/30",
-    inactiveHover:
-      "hover:bg-yellow-500/[0.06] hover:text-yellow-600/70 dark:hover:bg-yellow-500/[0.06] dark:hover:text-yellow-400/50",
+    color: "yellow",
+    activeClass: "bg-yellow-500/12 text-yellow-600 dark:text-yellow-400 shadow-[0_0_0_1px_theme(colors.yellow.500/0.08)]",
+    inactiveColor: "text-yellow-600/55 dark:text-yellow-400/40",
   },
   {
     view: "terminal",
     label: "Console",
     icon: Terminal,
-    activeClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
-    inactiveIcon: "text-cyan-600/40 dark:text-cyan-400/30",
-    inactiveHover:
-      "hover:bg-cyan-500/[0.06] hover:text-cyan-600/70 dark:hover:bg-cyan-500/[0.06] dark:hover:text-cyan-400/50",
+    color: "cyan",
+    activeClass: "bg-cyan-500/12 text-cyan-600 dark:text-cyan-400 shadow-[0_0_0_1px_theme(colors.cyan.500/0.08)]",
+    inactiveColor: "text-cyan-600/55 dark:text-cyan-400/40",
   },
 ]
 
@@ -166,22 +157,24 @@ export function Workbench() {
   return (
     <div data-panel-role="workbench" className="relative bg-white dark:bg-[#0d0d0d] flex flex-col h-full w-full">
       {/* View switcher */}
-      <div data-panel-role="workbench-view-switcher" className="h-11 px-2.5 flex items-center gap-1.5 shrink-0">
-        {viewOptions.map(({ view, label, icon: Icon, activeClass, inactiveIcon, inactiveHover }) => {
+      <div data-panel-role="workbench-view-switcher" className="h-11 px-2.5 flex items-center gap-1 shrink-0">
+        {viewOptions.map(({ view, label, icon: Icon, activeClass, inactiveColor }) => {
           const active = workbench.view === view
           return (
             <button
               key={view}
               type="button"
               onClick={() => handleSelectView(view)}
-              className={`group flex items-center gap-2 h-8 px-3.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
-                active ? activeClass : `${INACTIVE_BASE} ${inactiveHover}`
+              className={`flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[13px] transition-all duration-150 ${
+                active
+                  ? `font-medium ${activeClass}`
+                  : `${INACTIVE_TEXT} hover:bg-black/[0.04] dark:hover:bg-white/[0.04]`
               }`}
             >
               <Icon
-                size={16}
+                size={15}
                 weight={active ? "fill" : "regular"}
-                className={active ? "" : `${inactiveIcon} transition-colors duration-200`}
+                className={active ? "" : inactiveColor}
               />
               <span>{label}</span>
             </button>
@@ -277,10 +270,10 @@ function SuperadminMenu({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1.5 h-8 px-3 rounded-full text-[13px] font-medium transition-all duration-200 ${
+        className={`flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[13px] transition-all duration-150 ${
           isActive && activeView
-            ? activeView.activeClass
-            : `${INACTIVE_BASE} hover:bg-black/[0.04] hover:text-black/55 dark:hover:bg-white/[0.05] dark:hover:text-white/40`
+            ? `font-medium ${activeView.activeClass}`
+            : `${INACTIVE_TEXT} hover:bg-black/[0.04] dark:hover:bg-white/[0.04]`
         }`}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -297,7 +290,7 @@ function SuperadminMenu({
       {open && (
         <div
           role="menu"
-          className="absolute top-full left-0 mt-1.5 w-44 bg-white dark:bg-zinc-900 border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+          className="absolute top-full left-0 mt-1 w-40 bg-white dark:bg-zinc-900 border border-black/[0.06] dark:border-white/[0.06] rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
         >
           <div className="p-1.5 space-y-0.5">
             {views.map(({ view, label, icon: Icon, activeClass }) => {
@@ -311,14 +304,14 @@ function SuperadminMenu({
                     onSelect(view)
                     setOpen(false)
                   }}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors flex items-center gap-2.5 ${
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2.5 ${
                     active
                       ? activeClass
                       : "text-black/50 dark:text-white/40 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-black/70 dark:hover:text-white/60"
                   }`}
                 >
-                  <Icon size={16} weight={active ? "fill" : "regular"} className="shrink-0" />
-                  <span className="text-[13px] font-medium">{label}</span>
+                  <Icon size={15} weight={active ? "fill" : "regular"} className="shrink-0" />
+                  <span className="text-[13px]">{label}</span>
                 </button>
               )
             })}
