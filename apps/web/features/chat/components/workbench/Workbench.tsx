@@ -67,7 +67,8 @@ const STANDARD_VIEWS: ViewOption[] = [
     label: "Files",
     icon: FolderSimple,
     color: "emerald",
-    activeClass: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 shadow-[0_0_0_1px_theme(colors.emerald.500/0.08)]",
+    activeClass:
+      "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 shadow-[0_0_0_1px_theme(colors.emerald.500/0.08)]",
     inactiveColor: "text-emerald-600/55 dark:text-emerald-400/40",
   },
   {
@@ -75,7 +76,8 @@ const STANDARD_VIEWS: ViewOption[] = [
     label: "Agents",
     icon: Sparkle,
     color: "violet",
-    activeClass: "bg-violet-500/12 text-violet-600 dark:text-violet-400 shadow-[0_0_0_1px_theme(colors.violet.500/0.08)]",
+    activeClass:
+      "bg-violet-500/12 text-violet-600 dark:text-violet-400 shadow-[0_0_0_1px_theme(colors.violet.500/0.08)]",
     inactiveColor: "text-violet-600/55 dark:text-violet-400/40",
   },
   {
@@ -85,14 +87,6 @@ const STANDARD_VIEWS: ViewOption[] = [
     color: "pink",
     activeClass: "bg-pink-500/12 text-pink-600 dark:text-pink-400 shadow-[0_0_0_1px_theme(colors.pink.500/0.08)]",
     inactiveColor: "text-pink-600/55 dark:text-pink-400/40",
-  },
-  {
-    view: "kanban",
-    label: "Todos",
-    icon: Kanban,
-    color: "amber",
-    activeClass: "bg-amber-500/12 text-amber-600 dark:text-amber-400 shadow-[0_0_0_1px_theme(colors.amber.500/0.08)]",
-    inactiveColor: "text-amber-600/55 dark:text-amber-400/40",
   },
   {
     view: "home",
@@ -115,11 +109,20 @@ const SITE_PREVIEW_VIEW: ViewOption = {
 
 const SUPERADMIN_VIEWS: ViewOption[] = [
   {
+    view: "kanban",
+    label: "Todos",
+    icon: Kanban,
+    color: "amber",
+    activeClass: "bg-amber-500/12 text-amber-600 dark:text-amber-400 shadow-[0_0_0_1px_theme(colors.amber.500/0.08)]",
+    inactiveColor: "text-amber-600/55 dark:text-amber-400/40",
+  },
+  {
     view: "events",
     label: "Activity",
     icon: Lightning,
     color: "yellow",
-    activeClass: "bg-yellow-500/12 text-yellow-600 dark:text-yellow-400 shadow-[0_0_0_1px_theme(colors.yellow.500/0.08)]",
+    activeClass:
+      "bg-yellow-500/12 text-yellow-600 dark:text-yellow-400 shadow-[0_0_0_1px_theme(colors.yellow.500/0.08)]",
     inactiveColor: "text-yellow-600/55 dark:text-yellow-400/40",
   },
   {
@@ -171,11 +174,7 @@ export function Workbench() {
                   : `${INACTIVE_TEXT} hover:bg-black/[0.04] dark:hover:bg-white/[0.04]`
               }`}
             >
-              <Icon
-                size={15}
-                weight={active ? "fill" : "regular"}
-                className={active ? "" : inactiveColor}
-              />
+              <Icon size={15} weight={active ? "fill" : "regular"} className={`shrink-0 w-[15px] ${active ? "" : inactiveColor}`} />
               <span>{label}</span>
             </button>
           )
