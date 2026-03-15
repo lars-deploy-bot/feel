@@ -54,8 +54,9 @@ export interface WorkbenchShortcut {
  * const state = useViewState("drive", { selectedFile: null, treeWidth: 240 })
  * state.value.selectedFile  // string | null — fully typed, zero assertions
  */
-// biome-ignore lint/suspicious/noEmptyInterface: views extend this as they adopt useViewState
-export interface ViewStateMap {}
+export interface ViewStateMap {
+  site: { device: "desktop" | "mobile" }
+}
 
 /** Internal typed storage — maps each declared view key to its state. */
 type ViewStateStorage = { [K in keyof ViewStateMap]?: ViewStateMap[K] }
