@@ -21,7 +21,7 @@ console.log("Creating sandbox...")
 const t0 = Date.now()
 const sandbox = await Sandbox.create(E2B_DEFAULT_TEMPLATE, {
   apiKey: API_KEY,
-  domain: "e2b.sonno.tech",
+  domain: process.env.E2B_DOMAIN,
   cpuCount: 4,
   memoryMB: 4096,
   timeoutMs: 5 * 60 * 1000,
