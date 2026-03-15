@@ -36,10 +36,8 @@ interface WorkspaceActions {
     autoSelectWorkspace: () => boolean // Returns true if a workspace was auto-selected
     validateAndCleanup: (organizations: Organization[]) => void
     validateWorkspaceAvailability: (availableWorkspaces: string[]) => void
-    setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
     clearRecentWorkspaces: () => void
-    getRecentForOrg: (orgId: string) => RecentWorkspace[]
   }
 }
 
@@ -97,7 +95,14 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
         },
 
         setSelectedOrg: (orgId: string | null) => {
-          set({ selectedOrgId: orgId })
+          set(state => {
+            const updates: Partial<WorkspaceState> = { selectedOrgId: orgId }
+            // Clear workspace when switching orgs - it belongs to the old org
+            if (orgId !== state.selectedOrgId && state.currentWorkspace) {
+              updates.currentWorkspace = null
+            }
+            return updates
+          })
           // Sync to server for cross-device access
           queueSyncToServer()
         },
@@ -128,9 +133,15 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             return false
           }
 
-          // Find the most recently accessed workspace
           if (state.recentWorkspaces.length > 0) {
-            const sorted = [...state.recentWorkspaces].sort((a, b) => b.lastAccessed - a.lastAccessed)
+            // If an org is selected, only pick from that org's workspaces
+            const candidates = state.selectedOrgId
+              ? state.recentWorkspaces.filter(w => w.orgId === state.selectedOrgId)
+              : state.recentWorkspaces
+
+            if (candidates.length === 0) return false
+
+            const sorted = [...candidates].sort((a, b) => b.lastAccessed - a.lastAccessed)
             const mostRecent = sorted[0]
             set({
               currentWorkspace: mostRecent.domain,
@@ -166,6 +177,14 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
               updates.recentWorkspaces = filteredRecent
             }
 
+            // Clear currentWorkspace if it belonged to a removed org
+            if (state.currentWorkspace) {
+              const workspaceOrg = state.recentWorkspaces.find(w => w.domain === state.currentWorkspace)?.orgId
+              if (workspaceOrg && !validOrgIds.has(workspaceOrg)) {
+                updates.currentWorkspace = null
+              }
+            }
+
             return Object.keys(updates).length > 0 ? updates : state
           })
 
@@ -196,11 +215,6 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
 
             return Object.keys(updates).length > 0 ? updates : state
           })
-        },
-
-        setSelectedWorkspace: (workspace: string | null, orgId?: string) => {
-          // Backward compatibility: delegates to setCurrentWorkspace
-          actions.setCurrentWorkspace(workspace, orgId)
         },
 
         addRecentWorkspace: (domain: string, orgId: string) => {
@@ -234,12 +248,6 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
 
         clearRecentWorkspaces: () => {
           set({ recentWorkspaces: [] })
-        },
-
-        getRecentForOrg: (_orgId: string) => {
-          // This is a selector function, but included in actions for convenience
-          // In practice, use the hook selector instead
-          return []
         },
       }
 
