@@ -7,6 +7,7 @@ import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { SettingsNav } from "@/features/settings/SettingsNav"
 import { trackSidebarClosed, trackSidebarOpened } from "@/lib/analytics/events"
+import { fetchConversations } from "@/lib/db/conversationSync"
 import { useDexieArchivedConversations, useDexieConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
 import type { DbConversation } from "@/lib/db/messageDb"
 import { SIDEBAR_RAIL } from "@/lib/layout"
@@ -87,6 +88,13 @@ export function ConversationSidebar({
     }
     didInitRef.current = true
   }, [isOpen])
+
+  // Pull conversations from server on workspace change to sync server-side data (e.g. automation runs)
+  useEffect(() => {
+    if (workspace && session?.userId && session?.orgId) {
+      fetchConversations(workspace, session.userId, session.orgId)
+    }
+  }, [workspace, session?.userId, session?.orgId])
 
   // Get streaming state for all tabs to show activity indicator
   const streamingTabs = useStreamingStore(state => state.tabs)

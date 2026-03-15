@@ -47,7 +47,7 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
   await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
   // Sidebar defaults to closed — open it first via the Nav toggle button
-  const openSidebarButton = authenticatedPage.locator('button[aria-label="Open sidebar"]')
+  const openSidebarButton = authenticatedPage.locator('button[aria-label="Open sidebar"]').first()
   await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await openSidebarButton.click()
 
