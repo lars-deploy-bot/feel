@@ -180,7 +180,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             <polyline points="14 2 14 8 20 8" />
           </svg>
         </span>
-        <span className="text-[13px] text-neutral-700 dark:text-neutral-300 truncate flex-1">
+        <span className="text-[13px] text-zinc-700 dark:text-zinc-300 truncate flex-1">
           {filename}
           {hasChanges && <span className="text-amber-500 ml-1">*</span>}
         </span>
@@ -205,7 +205,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             className={`p-1 rounded transition-colors ${
               previewing
                 ? "text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300"
-                : "text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300"
+                : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300"
             }`}
             title={previewing ? "Edit source" : `Preview ${isCsv ? "table" : "markdown"}`}
           >
@@ -219,7 +219,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
           className={`p-1 rounded transition-colors ${
             searchOpen
               ? "text-sky-500 dark:text-sky-400"
-              : "text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300"
+              : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300"
           }`}
           title="Search (Ctrl+F)"
         >
@@ -230,7 +230,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
           type="button"
           onClick={handleCopy}
           disabled={!editContent && editContent !== ""}
-          className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors disabled:opacity-30"
+          className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors disabled:opacity-30"
           title={copied ? "Copied!" : "Copy"}
         >
           {copied ? (
@@ -243,7 +243,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
         <button
           type="button"
           onClick={onClose}
-          className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors"
+          className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors"
           title="Close (Esc)"
         >
           <X size={14} strokeWidth={1.5} />
@@ -252,8 +252,8 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
 
       {/* Search bar */}
       {searchOpen && (
-        <div className="h-9 px-3 flex items-center gap-2 border-b border-black/[0.06] dark:border-white/[0.04] bg-neutral-50/50 dark:bg-neutral-900/30 shrink-0">
-          <Search size={13} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-600 shrink-0" />
+        <div className="h-9 px-3 flex items-center gap-2 border-b border-black/[0.06] dark:border-white/[0.04] bg-zinc-50/50 dark:bg-zinc-900/30 shrink-0">
+          <Search size={13} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600 shrink-0" />
           <input
             ref={searchInputRef}
             type="text"
@@ -271,10 +271,10 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
               }
             }}
             placeholder="Find..."
-            className="flex-1 min-w-0 bg-transparent text-[13px] text-neutral-800 dark:text-neutral-200 outline-none placeholder:text-neutral-300 dark:placeholder:text-neutral-700"
+            className="flex-1 min-w-0 bg-transparent text-[13px] text-zinc-800 dark:text-zinc-200 outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
           />
           {searchQuery && (
-            <span className="text-[11px] text-neutral-400 dark:text-neutral-600 tabular-nums shrink-0">
+            <span className="text-[11px] text-zinc-400 dark:text-zinc-600 tabular-nums shrink-0">
               {searchMatches.length === 0 ? "No results" : `${searchIndex + 1} of ${searchMatches.length}`}
             </span>
           )}
@@ -282,7 +282,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             type="button"
             onClick={() => handleSearchNav(-1)}
             disabled={searchMatches.length === 0}
-            className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors disabled:opacity-30"
+            className="p-0.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors disabled:opacity-30"
             title="Previous (Shift+Enter)"
           >
             <ChevronUp size={14} strokeWidth={1.5} />
@@ -291,7 +291,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             type="button"
             onClick={() => handleSearchNav(1)}
             disabled={searchMatches.length === 0}
-            className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors disabled:opacity-30"
+            className="p-0.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors disabled:opacity-30"
             title="Next (Enter)"
           >
             <ChevronDown size={14} strokeWidth={1.5} />
@@ -299,7 +299,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
           <button
             type="button"
             onClick={closeSearch}
-            className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors"
+            className="p-0.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors"
             title="Close (Esc)"
           >
             <X size={13} strokeWidth={1.5} />
@@ -309,7 +309,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
 
       {/* Save error */}
       {saveError && (
-        <div className="px-3 py-1.5 text-[12px] text-red-500 bg-red-500/5 border-b border-red-500/10">{saveError}</div>
+        <div className="px-3 py-1.5 text-[12px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-white/[0.04]">{saveError}</div>
       )}
 
       {/* Content */}
@@ -349,7 +349,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             }
           }}
           spellCheck={false}
-          className="flex-1 w-full resize-none bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono text-neutral-800 dark:text-neutral-200 p-4 outline-none border-none"
+          className="flex-1 w-full resize-none bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono text-zinc-800 dark:text-zinc-200 p-4 outline-none border-none"
           style={{ tabSize: 2 }}
         />
       )}
@@ -412,13 +412,13 @@ const CsvTable = memo(function CsvTable({ content, delimiter }: CsvTableProps) {
       <table className="w-full border-collapse text-[13px] font-mono">
         <thead className="sticky top-0 z-10">
           <tr>
-            <th className="px-3 py-1.5 text-right text-[11px] text-neutral-400 dark:text-neutral-600 bg-neutral-50 dark:bg-neutral-900 border-b border-black/[0.06] dark:border-white/[0.06] w-10">
+            <th className="px-3 py-1.5 text-right text-[11px] text-zinc-400 dark:text-zinc-600 bg-zinc-50 dark:bg-zinc-900 border-b border-black/[0.06] dark:border-white/[0.06] w-10">
               #
             </th>
             {headers.map((h, i) => (
               <th
                 key={i}
-                className="px-3 py-1.5 text-left font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-50 dark:bg-neutral-900 border-b border-black/[0.06] dark:border-white/[0.06] whitespace-nowrap"
+                className="px-3 py-1.5 text-left font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900 border-b border-black/[0.06] dark:border-white/[0.06] whitespace-nowrap"
               >
                 {h}
               </th>
@@ -428,13 +428,13 @@ const CsvTable = memo(function CsvTable({ content, delimiter }: CsvTableProps) {
         <tbody>
           {rows.map((row, ri) => (
             <tr key={ri} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
-              <td className="px-3 py-1 text-right text-[11px] text-neutral-400 dark:text-neutral-600 border-b border-black/[0.03] dark:border-white/[0.03]">
+              <td className="px-3 py-1 text-right text-[11px] text-zinc-400 dark:text-zinc-600 border-b border-black/[0.03] dark:border-white/[0.03]">
                 {ri + 1}
               </td>
               {headers.map((_, ci) => (
                 <td
                   key={ci}
-                  className="px-3 py-1 text-neutral-800 dark:text-neutral-200 border-b border-black/[0.03] dark:border-white/[0.03] whitespace-nowrap"
+                  className="px-3 py-1 text-zinc-800 dark:text-zinc-200 border-b border-black/[0.03] dark:border-white/[0.03] whitespace-nowrap"
                 >
                   {row[ci] ?? ""}
                 </td>
@@ -443,7 +443,7 @@ const CsvTable = memo(function CsvTable({ content, delimiter }: CsvTableProps) {
           ))}
         </tbody>
       </table>
-      <div className="px-3 py-2 text-[11px] text-neutral-400 dark:text-neutral-600 border-t border-black/[0.06] dark:border-white/[0.06]">
+      <div className="px-3 py-2 text-[11px] text-zinc-400 dark:text-zinc-600 border-t border-black/[0.06] dark:border-white/[0.06]">
         {rows.length} rows, {headers.length} columns
       </div>
     </div>

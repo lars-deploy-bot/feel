@@ -275,7 +275,7 @@ export function useChatMessaging({
                 // Note: sendMessage will be called via the returned function
               }, 4000)
               if (!data.onTrack) {
-                toast("Supervisor: Course correction suggested", { icon: "🎯" })
+                toast("Adjusting approach")
               }
             }
           })
@@ -478,7 +478,7 @@ export function useChatMessaging({
                 const helpText = getErrorHelp(errorData.error, errorData.details)
                 if (helpText) userMessage += `\n\n${helpText}`
                 if (errorData.error === ErrorCodes.CONVERSATION_BUSY) {
-                  toast.error(userMessage, { duration: 4000, position: "top-center" })
+                  toast(userMessage, { duration: 4000 })
                 }
               } else {
                 // Friendly fallback messages when structured error JSON is unavailable
@@ -557,9 +557,8 @@ export function useChatMessaging({
                       : parsed.reason === "workspace_limit"
                         ? "This workspace is busy"
                         : "Server is busy"
-                  toast(`${reasonText} — your request is queued`, {
+                  toast(`${reasonText} — queued, hang on`, {
                     id: "stream-queued",
-                    icon: "\u23F3",
                     duration: 10_000,
                   })
                   markStreamAlive()

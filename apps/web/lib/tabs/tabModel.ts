@@ -17,7 +17,7 @@ import type { TabGroupId, TabId } from "@/lib/types/ids"
 // ============================================================================
 
 /** Maximum tabs allowed per conversation (TabGroup). No global limit. */
-export const MAX_TABS_PER_GROUP = 5
+export const MAX_TABS_PER_GROUP = 10
 
 /** How long to keep closed tabs before cleanup (7 days) */
 export const CLOSED_TAB_TTL_MS = 7 * 24 * 60 * 60 * 1000

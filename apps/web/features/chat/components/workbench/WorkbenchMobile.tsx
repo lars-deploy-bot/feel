@@ -45,14 +45,14 @@ export function WorkbenchMobile({ onClose, children, busy, statusText, onStop }:
           <>
             {/* Loading overlay */}
             {(isLoading || !previewToken) && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900">
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-zinc-900">
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative w-12 h-12">
                     <div className="absolute inset-0 rounded-full bg-emerald-400/20 alive-logo-outer" />
                     <div className="absolute inset-1.5 rounded-full bg-emerald-400/30 alive-logo-inner" />
                     <div className="absolute inset-3 rounded-full bg-emerald-400" />
                   </div>
-                  <span className="text-sm font-semibold text-neutral-300">Opening your site</span>
+                  <span className="text-sm font-semibold text-zinc-300">Opening your site</span>
                 </div>
               </div>
             )}
@@ -66,32 +66,32 @@ export function WorkbenchMobile({ onClose, children, busy, statusText, onStop }:
             )}
           </>
         ) : (
-          <div className="flex items-center justify-center h-full text-neutral-700 bg-neutral-900">
+          <div className="flex items-center justify-center h-full text-zinc-700 bg-zinc-900">
             <div className="text-center">
               <div className="mb-2">{workspace ? "Invalid workspace format" : "No workspace selected"}</div>
-              <div className="text-xs text-neutral-600">Workspace must be a domain (e.g., example.com)</div>
+              <div className="text-xs text-zinc-600">Workspace must be a domain (e.g., example.com)</div>
             </div>
           </div>
         )}
       </div>
 
       {/* Bottom bar with URL controls and chat input */}
-      <div className="bg-neutral-950 border-t border-white/10">
+      <div className="bg-zinc-950 border-t border-white/10">
         {/* URL bar row - compact on mobile */}
         <div className="flex items-center gap-2 px-3 py-2">
           <button
             type="button"
             onClick={refresh}
-            className="p-2.5 text-neutral-400 hover:text-white active:bg-white/10 rounded-lg transition-colors"
+            className="p-2.5 text-zinc-400 hover:text-white active:bg-white/10 rounded-lg transition-colors"
             title="Refresh"
           >
             <RotateCw size={20} strokeWidth={2} />
           </button>
-          <span className="flex-1 text-sm text-neutral-500 truncate">{path}</span>
+          <span className="flex-1 text-sm text-zinc-500 truncate">{path}</span>
           <button
             type="button"
             onClick={onClose}
-            className="p-2.5 text-neutral-400 hover:text-white active:bg-white/10 rounded-lg transition-colors"
+            className="p-2.5 text-zinc-400 hover:text-white active:bg-white/10 rounded-lg transition-colors"
             aria-label="Close preview"
           >
             <X size={20} />
@@ -102,7 +102,7 @@ export function WorkbenchMobile({ onClose, children, busy, statusText, onStop }:
         {busy ? (
           <div className="border-t border-white/5 px-4 py-3 flex items-center gap-2">
             <PulsingDot size="sm" className="flex-shrink-0" />
-            <span className="text-sm text-neutral-300 truncate flex-1">{statusText || "Working..."}</span>
+            <span className="text-sm text-zinc-300 truncate flex-1">{statusText || "Working..."}</span>
             {onStop && (
               <button
                 type="button"

@@ -102,7 +102,7 @@ export function WorkbenchEvents(_props: WorkbenchViewProps) {
       {/* Events list */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {visibleEvents.length === 0 ? (
-          <div className="text-green-700">No events yet...</div>
+          <div className="text-[13px] text-zinc-300 dark:text-zinc-700">Nothing here yet</div>
         ) : (
           visibleEvents.map((devEvent, index) => {
             let displayContent: string

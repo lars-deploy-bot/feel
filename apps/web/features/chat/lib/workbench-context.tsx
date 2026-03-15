@@ -18,7 +18,7 @@ export interface ElementSelection {
 }
 
 /** View mode for the workbench */
-export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events" | "agents" | "photos"
+export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events" | "agents" | "photos" | "kanban"
 
 // ── Workbench View Contract ─────────────────────────────────────────────────
 

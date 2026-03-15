@@ -128,15 +128,15 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-[13px] text-zinc-400 dark:text-zinc-600">Loading...</p>
+            <p className="text-[13px] text-zinc-300 dark:text-zinc-700">Loading</p>
           </div>
         ) : images.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 px-5">
             <div className="w-10 h-10 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
               <Image size={16} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600" />
             </div>
-            <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">No photos</p>
-            <p className="text-[12px] text-zinc-400 dark:text-zinc-600">Drag images here or click to upload</p>
+            <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">No photos yet</p>
+            <p className="text-[12px] text-zinc-400 dark:text-zinc-600">Drop images here or upload</p>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -188,7 +188,7 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
                   {/* Actions — frosted pill, top-right */}
                   <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
                     <div
-                      className="flex items-center bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl
+                      className="flex items-center bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl
                       border border-black/[0.06] dark:border-white/[0.06] rounded-lg overflow-hidden"
                     >
                       <button
@@ -261,10 +261,10 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
 
       {deleteConfirm && (
         <DeleteModal
-          title="Delete this image?"
-          message="This action cannot be undone."
+          title="Delete image"
+          message="This can't be undone."
           confirmText="Delete"
-          cancelText="Cancel"
+          cancelText="Keep"
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteConfirm(null)}
         />

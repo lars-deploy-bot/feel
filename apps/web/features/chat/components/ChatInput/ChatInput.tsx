@@ -53,7 +53,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       maxHeight: "100px",
       onMessage: (msg, type) => {
         if (type === "error") {
-          toast.error(msg)
+          toast(msg)
         }
       },
       ...userConfig,

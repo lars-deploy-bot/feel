@@ -49,7 +49,7 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
     },
     [setMessage],
   )
-  const handleVoiceError = useCallback((msg: string) => toast.error(msg), [])
+  const handleVoiceError = useCallback((msg: string) => toast(msg), [])
   const voice = useVoiceInput({ onTranscript: handleTranscript, onError: handleVoiceError })
   const skills = useAllSkills()
   const isLoading = useSkillsLoading()
@@ -93,7 +93,7 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
 
   const handleCopyMessages = async () => {
     if (!messages || messages.length === 0) {
-      toast.error("No messages to copy")
+      toast("Nothing to copy yet")
       return
     }
 
@@ -102,9 +102,9 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
     try {
       await navigator.clipboard.writeText(formatted)
       trackMessagesCopied()
-      toast.success("Messages copied")
+      toast("Copied to clipboard")
     } catch {
-      toast.error("Failed to copy")
+      toast("Couldn't copy — try again")
     }
   }
 

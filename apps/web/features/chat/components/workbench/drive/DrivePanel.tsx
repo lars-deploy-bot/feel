@@ -69,7 +69,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
       invalidateDriveCache(workspace, worktree)
       setRefreshKey(k => k + 1)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Delete failed")
+      toast(err instanceof Error ? err.message : "Couldn't delete that")
     }
   }, [pendingDelete, workspace, worktree, selectedFile])
 
@@ -131,12 +131,12 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
         >
           {/* Header */}
           <PanelBar className="justify-between">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Drive</span>
+            <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Drive</span>
             <div className="flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={handleRefresh}
-                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+                className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors"
                 title="Refresh"
               >
                 <RefreshCw size={12} strokeWidth={1.5} />
@@ -144,7 +144,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
               <button
                 type="button"
                 onClick={() => setTreeCollapsed(true)}
-                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+                className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors"
                 title="Collapse sidebar"
               >
                 <PanelLeftClose size={14} strokeWidth={1.5} />
@@ -189,7 +189,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
             <button
               type="button"
               onClick={() => setTreeCollapsed(false)}
-              className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+              className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors"
               title="Show sidebar"
             >
               <PanelLeftOpen size={14} strokeWidth={1.5} />
@@ -200,18 +200,17 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
         {selectedFile ? (
           <DrivePreview workspace={workspace} worktree={worktree} filePath={selectedFile} onClose={handleCloseFile} />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-neutral-400 dark:text-neutral-600 text-sm">
-            <span>Select a file to preview</span>
+          <div className="flex-1 flex items-center justify-center text-zinc-300 dark:text-zinc-700 text-[13px]">
+            Pick a file from the left
           </div>
         )}
       </div>
 
       {pendingDelete && (
         <ConfirmModal
-          title={`Delete ${pendingDelete.isDir ? "directory" : "file"}`}
-          message={`Are you sure you want to delete "${pendingDelete.path}"?`}
+          title={`Delete ${pendingDelete.path}`}
+          message="This can't be undone."
           confirmText="Delete"
-          confirmStyle="danger"
           onConfirm={confirmDelete}
           onCancel={() => setPendingDelete(null)}
         />

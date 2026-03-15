@@ -3,11 +3,12 @@ import {
   Browser,
   CaretDown,
   FolderSimple,
-  GearSix,
+  Info,
   ImageSquare,
+  Kanban,
   Lightning,
   type Icon as PhosphorIcon,
-  Robot,
+  Sparkle,
   Terminal,
 } from "@phosphor-icons/react"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
@@ -25,6 +26,7 @@ import { WorkbenchAgents } from "./WorkbenchAgents"
 import { WorkbenchCodeView } from "./WorkbenchCodeView"
 import { WorkbenchEvents } from "./WorkbenchEvents"
 import { WorkbenchHome } from "./WorkbenchHome"
+import { WorkbenchKanban } from "./WorkbenchKanban"
 import { WorkbenchPhotos } from "./WorkbenchPhotos"
 import { WorkbenchTerminal } from "./WorkbenchTerminal"
 
@@ -43,9 +45,10 @@ const VIEW_REGISTRY: Record<WorkbenchView, ComponentType<WorkbenchViewProps>> = 
   agents: WorkbenchAgents,
   photos: WorkbenchPhotos,
   events: WorkbenchEvents,
+  kanban: WorkbenchKanban,
 }
 
-type ViewOption = { view: WorkbenchView; label: string; icon: PhosphorIcon; activeClass: string }
+type ViewOption = { view: WorkbenchView; label: string; icon: PhosphorIcon; activeClass: string; inactiveClass: string }
 
 const STANDARD_VIEWS: ViewOption[] = [
   {
@@ -53,24 +56,35 @@ const STANDARD_VIEWS: ViewOption[] = [
     label: "Files",
     icon: FolderSimple,
     activeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    inactiveClass: "bg-emerald-500/[0.04] text-emerald-700/30 dark:bg-emerald-500/[0.04] dark:text-emerald-400/25 hover:bg-emerald-500/[0.07] hover:text-emerald-700/50 dark:hover:bg-emerald-500/[0.07] dark:hover:text-emerald-400/40",
   },
   {
     view: "agents",
     label: "Agents",
-    icon: Robot,
+    icon: Sparkle,
     activeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    inactiveClass: "bg-violet-500/[0.04] text-violet-700/30 dark:bg-violet-500/[0.04] dark:text-violet-400/25 hover:bg-violet-500/[0.07] hover:text-violet-700/50 dark:hover:bg-violet-500/[0.07] dark:hover:text-violet-400/40",
   },
   {
     view: "photos",
     label: "Photos",
     icon: ImageSquare,
     activeClass: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+    inactiveClass: "bg-pink-500/[0.04] text-pink-700/30 dark:bg-pink-500/[0.04] dark:text-pink-400/25 hover:bg-pink-500/[0.07] hover:text-pink-700/50 dark:hover:bg-pink-500/[0.07] dark:hover:text-pink-400/40",
+  },
+  {
+    view: "kanban",
+    label: "Todos",
+    icon: Kanban,
+    activeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    inactiveClass: "bg-amber-500/[0.04] text-amber-700/30 dark:bg-amber-500/[0.04] dark:text-amber-400/25 hover:bg-amber-500/[0.07] hover:text-amber-700/50 dark:hover:bg-amber-500/[0.07] dark:hover:text-amber-400/40",
   },
   {
     view: "home",
-    label: "Settings",
-    icon: GearSix,
+    label: "Info",
+    icon: Info,
     activeClass: "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white",
+    inactiveClass: "bg-black/[0.02] text-black/30 dark:bg-white/[0.03] dark:text-white/25 hover:bg-black/[0.05] hover:text-black/50 dark:hover:bg-white/[0.06] dark:hover:text-white/40",
   },
 ]
 
@@ -79,6 +93,7 @@ const SITE_PREVIEW_VIEW: ViewOption = {
   label: "Preview",
   icon: Browser,
   activeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  inactiveClass: "bg-blue-500/[0.04] text-blue-700/30 dark:bg-blue-500/[0.04] dark:text-blue-400/25 hover:bg-blue-500/[0.07] hover:text-blue-700/50 dark:hover:bg-blue-500/[0.07] dark:hover:text-blue-400/40",
 }
 
 const SUPERADMIN_VIEWS: ViewOption[] = [
@@ -87,12 +102,14 @@ const SUPERADMIN_VIEWS: ViewOption[] = [
     label: "Activity",
     icon: Lightning,
     activeClass: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+    inactiveClass: "bg-yellow-500/[0.04] text-yellow-700/30 dark:bg-yellow-500/[0.04] dark:text-yellow-400/25 hover:bg-yellow-500/[0.07] hover:text-yellow-700/50 dark:hover:bg-yellow-500/[0.07] dark:hover:text-yellow-400/40",
   },
   {
     view: "terminal",
     label: "Console",
     icon: Terminal,
     activeClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+    inactiveClass: "bg-cyan-500/[0.04] text-cyan-700/30 dark:bg-cyan-500/[0.04] dark:text-cyan-400/25 hover:bg-cyan-500/[0.07] hover:text-cyan-700/50 dark:hover:bg-cyan-500/[0.07] dark:hover:text-cyan-400/40",
   },
 ]
 
@@ -111,7 +128,6 @@ export function Workbench() {
 
   const isFullscreen = useWorkbenchFullscreen()
   const { setWorkbench, toggleWorkbenchFullscreen } = useDebugActions()
-
   const handleSelectView = (view: WorkbenchView) => {
     trackWorkbenchViewChanged(view)
     setView(view)
@@ -124,7 +140,7 @@ export function Workbench() {
     <div data-panel-role="workbench" className="relative bg-white dark:bg-[#0d0d0d] flex flex-col h-full w-full">
       {/* View switcher */}
       <div data-panel-role="workbench-view-switcher" className="h-11 px-2.5 flex items-center gap-1.5 shrink-0">
-        {viewOptions.map(({ view, label, icon: Icon, activeClass }) => {
+        {viewOptions.map(({ view, label, icon: Icon, activeClass, inactiveClass }) => {
           const active = workbench.view === view
           return (
             <button
@@ -132,7 +148,7 @@ export function Workbench() {
               type="button"
               onClick={() => handleSelectView(view)}
               className={`flex items-center gap-2 h-8 px-3.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
-                active ? activeClass : "text-black/30 dark:text-white/25 hover:text-black/50 dark:hover:text-white/40"
+                active ? activeClass : inactiveClass
               }`}
             >
               <Icon size={16} weight={active ? "fill" : "regular"} />
@@ -174,8 +190,8 @@ export function Workbench() {
         {!workspace || (!workspace.includes(".") && !isSuperadminWorkspace) ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <p className="text-neutral-400 dark:text-neutral-600 text-sm">
-                {workspace ? "Invalid workspace" : "No site selected"}
+              <p className="text-zinc-300 dark:text-zinc-700 text-[13px]">
+                {workspace ? "Can't open this workspace" : "Pick a site to get started"}
               </p>
             </div>
           </div>
@@ -239,7 +255,7 @@ function SuperadminMenu({
         className={`flex items-center gap-1.5 h-8 px-3 rounded-full text-[13px] font-medium transition-all duration-200 ${
           isActive && activeView
             ? activeView.activeClass
-            : "text-black/30 dark:text-white/25 hover:text-black/50 dark:hover:text-white/40"
+            : "bg-black/[0.02] text-black/30 dark:bg-white/[0.03] dark:text-white/25 hover:bg-black/[0.05] hover:text-black/50 dark:hover:bg-white/[0.06] dark:hover:text-white/40"
         }`}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -256,7 +272,7 @@ function SuperadminMenu({
       {open && (
         <div
           role="menu"
-          className="absolute top-full left-0 mt-1.5 w-44 bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+          className="absolute top-full left-0 mt-1.5 w-44 bg-white dark:bg-zinc-900 border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
         >
           <div className="p-1.5 space-y-0.5">
             {views.map(({ view, label, icon: Icon, activeClass }) => {

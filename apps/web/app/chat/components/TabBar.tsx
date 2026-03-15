@@ -3,7 +3,9 @@
 import { History, Plus } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { trackTabClosed, trackTabCreated, trackTabReopened } from "@/lib/analytics/events"
+import { SIDEBAR_RAIL } from "@/lib/layout"
 import type { Tab } from "@/lib/stores/tabStore"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -340,6 +342,9 @@ interface TabBarProps {
   onTabRename: (tabId: string, name: string) => void
   onTabReopen: (tabId: string) => void
   onAddTab: () => void
+  workspace: string | null
+  isSidebarOpen: boolean
+  onToggleSidebar: () => void
 }
 
 export function TabBar({
@@ -351,6 +356,9 @@ export function TabBar({
   onTabRename,
   onTabReopen,
   onAddTab,
+  workspace,
+  isSidebarOpen,
+  onToggleSidebar,
 }: TabBarProps) {
   const { editingId, editValue, setEditValue, inputRef, startEdit, commitEdit, handleKeyDown } =
     useInlineEdit(onTabRename)
@@ -361,8 +369,31 @@ export function TabBar({
 
   return (
     <div data-testid="tab-bar" className="flex-shrink-0 overflow-hidden">
-      <div className="px-3 md:px-6 mx-auto w-full">
-        <div className="group/bar flex flex-col items-center py-2">
+      <div className="px-3 mx-auto w-full">
+        {/* Project name — left aligned */}
+        <div
+          className="flex items-center gap-2 mb-1"
+          style={{ height: SIDEBAR_RAIL.iconSize, marginTop: SIDEBAR_RAIL.paddingY }}
+        >
+          {/* Sidebar toggle — mobile only */}
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className={`md:hidden inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-200 ease-in-out overflow-hidden ${
+              isSidebarOpen ? "w-0 opacity-0 pointer-events-none" : "w-8 opacity-100"
+            }`}
+            aria-label="Open sidebar"
+            tabIndex={isSidebarOpen ? -1 : 0}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <rect x="1.5" y="2.5" width="13" height="11" rx="2" />
+              <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
+            </svg>
+          </button>
+          <OrganizationWorkspaceSwitcher workspace={workspace} wsOnly minimal />
+        </div>
+        {/* Tabs — centered */}
+        <div className="group/bar flex flex-col items-center pb-2">
           {tabs.length > 0 && (
             <div className="inline-flex items-center gap-2 min-w-0 overflow-x-auto scrollbar-hide">
               {/* Island */}

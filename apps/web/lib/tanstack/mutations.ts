@@ -51,10 +51,10 @@ export function useUpdateOrganization(
     onSuccess: () => {
       // Invalidate org queries to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all })
-      toast.success("Organization updated")
+      toast("Organization updated")
     },
     onError: (error: ApiError) => {
-      toast.error(error.message || "Failed to update organization")
+      toast(error.message || "Couldn't update organization")
     },
     ...options,
   })
@@ -91,10 +91,10 @@ export function useCreateWebsite(
     onSuccess: data => {
       // Invalidate workspace queries
       queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
-      toast.success(`Created ${data.domain}`)
+      toast(`Created ${data.domain}`)
     },
     onError: (error: ApiError) => {
-      toast.error(error.message || "Failed to create website")
+      toast(error.message || "Couldn't create website")
     },
     ...options,
   })
@@ -130,10 +130,10 @@ export function useRemoveOrgMember(
     onSuccess: (_, { orgId }) => {
       // Invalidate member queries for this org
       queryClient.invalidateQueries({ queryKey: queryKeys.orgMembers.forOrg(orgId) })
-      toast.success("Member removed")
+      toast("Member removed")
     },
     onError: (error: ApiError) => {
-      toast.error(error.message || "Failed to remove member")
+      toast(error.message || "Couldn't remove member")
     },
     ...options,
   })
@@ -164,10 +164,10 @@ export function useUpdateUser(
     onSuccess: () => {
       // Invalidate user queries
       queryClient.invalidateQueries({ queryKey: queryKeys.user.all })
-      toast.success("Profile updated")
+      toast("Profile updated")
     },
     onError: (error: ApiError) => {
-      toast.error(error.message || "Failed to update profile")
+      toast(error.message || "Couldn't update profile")
     },
     ...options,
   })
@@ -190,10 +190,10 @@ export function useRevokeSession() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.authSessions.all })
-      toast.success("Session revoked")
+      toast("Session revoked")
     },
     onError: (error: ApiError) => {
-      toast.error(error.message || "Failed to revoke session")
+      toast(error.message || "Couldn't revoke session")
     },
   })
 }
@@ -210,10 +210,10 @@ export function useRevokeOtherSessions() {
     },
     onSuccess: data => {
       queryClient.invalidateQueries({ queryKey: queryKeys.authSessions.all })
-      toast.success(`${data.revokedCount} session${data.revokedCount === 1 ? "" : "s"} revoked`)
+      toast(`${data.revokedCount} session${data.revokedCount === 1 ? "" : "s"} revoked`)
     },
     onError: (error: ApiError) => {
-      toast.error(error.message || "Failed to revoke sessions")
+      toast(error.message || "Couldn't revoke sessions")
     },
   })
 }

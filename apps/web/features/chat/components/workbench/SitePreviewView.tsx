@@ -83,7 +83,7 @@ export function SitePreviewView({ workspace }: WorkbenchViewProps) {
           <button
             type="button"
             onClick={refresh}
-            className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors shrink-0"
+            className="p-0.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors shrink-0"
             title="Refresh"
           >
             <RotateCw size={13} strokeWidth={1.5} />
@@ -93,7 +93,7 @@ export function SitePreviewView({ workspace }: WorkbenchViewProps) {
             type="text"
             defaultValue={path}
             onKeyDown={handlePathSubmit}
-            className="flex-1 min-w-0 bg-transparent text-[13px] text-neutral-600 dark:text-neutral-400 outline-none placeholder:text-neutral-300 dark:placeholder:text-neutral-700"
+            className="flex-1 min-w-0 bg-transparent text-[13px] text-zinc-600 dark:text-zinc-400 outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
             placeholder="/"
           />
         </div>
@@ -101,7 +101,7 @@ export function SitePreviewView({ workspace }: WorkbenchViewProps) {
           href={getSiteUrl(workspace, path)}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors shrink-0"
+          className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors shrink-0"
           title="Open in new tab"
         >
           <ExternalLink size={14} strokeWidth={1.5} />
@@ -109,7 +109,7 @@ export function SitePreviewView({ workspace }: WorkbenchViewProps) {
       </div>
 
       {/* Preview viewport */}
-      <div className="flex-1 overflow-hidden bg-neutral-100 dark:bg-[#111] relative flex items-start justify-center">
+      <div className="flex-1 overflow-hidden bg-zinc-100 dark:bg-[#111] relative flex items-start justify-center">
         {(isLoading || !previewToken) && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white dark:bg-[#0d0d0d]">
             <PulsingDot size="lg" />

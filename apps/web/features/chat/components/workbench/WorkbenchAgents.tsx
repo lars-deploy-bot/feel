@@ -38,16 +38,16 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
   if (error) {
     return (
       <div className="h-full flex flex-col items-center justify-center px-6">
-        <div className="w-10 h-10 rounded-lg border border-dashed border-red-200 dark:border-red-500/20 flex items-center justify-center mb-3">
-          <TriangleAlert size={16} strokeWidth={1.5} className="text-red-400 dark:text-red-500" />
+        <div className="w-10 h-10 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 flex items-center justify-center mb-3">
+          <TriangleAlert size={16} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600" />
         </div>
-        <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1">{error}</p>
+        <p className="text-[13px] text-zinc-400 dark:text-zinc-500 mb-3">{error}</p>
         <button
           type="button"
           onClick={refresh}
-          className="mt-2 inline-flex items-center gap-1.5 h-8 px-4 rounded-lg text-[12px] font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+          className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg text-[12px] font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
         >
-          <RotateCw size={12} /> Retry
+          <RotateCw size={12} /> Try again
         </button>
       </div>
     )
@@ -59,11 +59,9 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
         <div className="w-12 h-12 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 flex items-center justify-center mb-4">
           <Bot size={20} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600" />
         </div>
-        <p className="text-[14px] font-medium text-zinc-900 dark:text-zinc-100 mb-1">No agents</p>
+        <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1">No agents yet</p>
         <p className="text-[12px] text-zinc-400 dark:text-zinc-600 text-center">
-          Create agents in the chat to automate
-          <br />
-          tasks for this workspace.
+          Ask in the chat to set one up
         </p>
       </div>
     )

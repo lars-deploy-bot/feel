@@ -104,9 +104,7 @@ function NewUserWelcome({ onImportGithub }: { onImportGithub?: () => void }) {
       <p className="text-2xl font-semibold text-black dark:text-white tracking-tight">Build something.</p>
 
       {/* Template grid */}
-      {loading ? (
-        <div className="h-48" />
-      ) : templates.length > 0 ? (
+      {loading ? null : templates.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {templates.map(template => (
             <button
@@ -135,7 +133,7 @@ function NewUserWelcome({ onImportGithub }: { onImportGithub?: () => void }) {
       ) : null}
 
       {/* Secondary actions */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-3">
         {onImportGithub && (
           <button
             type="button"
@@ -143,9 +141,9 @@ function NewUserWelcome({ onImportGithub }: { onImportGithub?: () => void }) {
               trackEmptyStateOpenGithub()
               onImportGithub()
             }}
-            className="text-[13px] text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 transition-colors duration-200"
+            className="text-[13px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-100"
           >
-            Open from GitHub
+            Import from GitHub
           </button>
         )}
       </div>
@@ -163,8 +161,8 @@ function ReturningUserPicker({
 }) {
   return (
     <div className="max-w-md text-center space-y-6">
-      <p className="text-lg text-black/80 dark:text-white/80 font-medium">Pick a project to continue.</p>
-      <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+      <p className="text-lg text-black/80 dark:text-white/80 font-medium">Welcome back.</p>
+      <div className="pt-2 flex items-center justify-center gap-3">
         {onSelectSite && (
           <button
             type="button"
@@ -172,9 +170,9 @@ function ReturningUserPicker({
               trackEmptyStateSelectSite()
               onSelectSite()
             }}
-            className="inline-flex items-center justify-center h-10 px-5 rounded-full bg-black dark:bg-white text-white dark:text-black text-sm font-medium hover:brightness-[0.85] active:brightness-75 active:scale-95 transition-all duration-150"
+            className="h-9 px-5 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-[13px] font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors duration-100"
           >
-            Select a site
+            Open a project
           </button>
         )}
         {onImportGithub && (
@@ -184,9 +182,9 @@ function ReturningUserPicker({
               trackEmptyStateOpenGithub()
               onImportGithub()
             }}
-            className="inline-flex items-center justify-center h-10 px-5 rounded-full bg-black/[0.025] dark:bg-white/[0.04] border border-black/[0.03] dark:border-white/[0.04] text-sm font-medium text-black/55 dark:text-white/55 hover:text-black/80 dark:hover:text-white/80 transition-all duration-200 active:scale-95"
+            className="h-9 px-5 rounded-lg text-[13px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-100"
           >
-            Open from GitHub
+            Import from GitHub
           </button>
         )}
       </div>

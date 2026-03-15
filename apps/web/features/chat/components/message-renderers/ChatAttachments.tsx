@@ -119,7 +119,7 @@ export function ChatAttachments({ attachments }: ChatAttachmentsProps) {
                 key={file.id || index}
                 className="px-3 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-sm flex items-center gap-2"
               >
-                <span className="text-lg">{isImage ? "🖼️" : "📄"}</span>
+                <span className="text-[13px] text-zinc-400 dark:text-zinc-500">{isImage ? "IMG" : "FILE"}</span>
                 <div className="min-w-0">
                   <div className="font-medium text-black dark:text-white truncate max-w-32">{file.originalName}</div>
                   <div className="text-xs text-black/60 dark:text-white/60">{(file.size / 1024).toFixed(1)} KB</div>
