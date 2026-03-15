@@ -7,9 +7,9 @@
  */
 
 import { protectedRoute } from "@/features/auth/lib/protectedRoute"
-import { apiClient } from "@/lib/api-client"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty, handleQuery, isHandleBodyError } from "@/lib/api/server"
+import { apiClient } from "@/lib/api-client"
 import { ErrorCodes } from "@/lib/error-codes"
 
 interface ApiOrgSummary {

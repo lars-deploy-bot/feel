@@ -1,7 +1,7 @@
 "use client"
 
 import { Save } from "lucide-react"
-import { useState } from "react"
+import { useId, useState } from "react"
 import { ActionButton } from "./AgentUI"
 import { agentsApi } from "./agents-api"
 import { trigLabel } from "./agents-helpers"
@@ -22,14 +22,19 @@ function EditField({
   placeholder?: string
   mono?: boolean
 }) {
+  const id = useId()
   const inputCls = `w-full text-[12px] text-zinc-900 dark:text-zinc-100 bg-transparent border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 focus:border-zinc-400 dark:focus:border-zinc-500 outline-none transition-all duration-100 ${mono ? "font-mono" : ""}`
   return (
     <div className="mb-3">
-      <label className="text-[11px] font-medium text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-1 block">
+      <label
+        htmlFor={id}
+        className="text-[11px] font-medium text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-1 block"
+      >
         {label}
       </label>
       {multiline ? (
         <textarea
+          id={id}
           className={`${inputCls} resize-none`}
           rows={4}
           value={value}
@@ -38,6 +43,7 @@ function EditField({
         />
       ) : (
         <input
+          id={id}
           type="text"
           className={inputCls}
           value={value}

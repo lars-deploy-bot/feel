@@ -116,7 +116,7 @@ describe("message ordering", () => {
   })
 
   it("should correctly order user message after AI streaming messages", async () => {
-    const { tabId, conversationId } = await setupTab()
+    const { tabId } = await setupTab()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
@@ -169,7 +169,7 @@ describe("message ordering", () => {
   })
 
   it("should handle concurrent addMessage and startAssistantStream without seq collision", async () => {
-    const { tabId, conversationId } = await setupTab()
+    const { tabId } = await setupTab()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
@@ -200,7 +200,7 @@ describe("message ordering", () => {
   })
 
   it("should maintain order when rapidly sending user messages during AI stream", async () => {
-    const { tabId, conversationId } = await setupTab()
+    const { tabId } = await setupTab()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
@@ -231,7 +231,7 @@ describe("message ordering", () => {
   })
 
   it("should preserve order across multiple conversation turns", async () => {
-    const { tabId, conversationId } = await setupTab()
+    const { tabId } = await setupTab()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
