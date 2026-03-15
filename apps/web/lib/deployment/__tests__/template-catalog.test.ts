@@ -1,5 +1,6 @@
-import { DOMAINS } from "@webalive/shared"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+
+const TEST_WILDCARD = "alive.test"
 
 const createAppClientMock = vi.fn()
 const existsSyncMock = vi.fn()
@@ -28,6 +29,16 @@ vi.mock("node:fs", () => ({
 vi.mock("@/lib/supabase/app", () => ({
   createAppClient: (...args: unknown[]) => createAppClientMock(...args),
 }))
+
+// Provide a real wildcard domain so getDeploymentTemplatePublicHostname doesn't throw
+vi.mock("@webalive/shared", async importOriginal => {
+  const actual = await importOriginal<typeof import("@webalive/shared")>()
+  return {
+    ...actual,
+    DOMAINS: { ...actual.DOMAINS, WILDCARD: TEST_WILDCARD },
+    PATHS: { ...actual.PATHS, TEMPLATES_ROOT: "/srv/webalive/templates" },
+  }
+})
 
 const { findDeploymentTemplateById, listDeploymentTemplates } = await import("../template-catalog")
 
@@ -83,7 +94,7 @@ describe("template-catalog", () => {
 
     expect(templates).toHaveLength(1)
     expect(templates[0]?.template_id).toBe("tmpl_blank")
-    expect(templates[0]?.preview_url).toBe(`https://blank.${DOMAINS.WILDCARD}`)
+    expect(templates[0]?.preview_url).toBe(`https://blank.${TEST_WILDCARD}`)
     expect(existsSyncMock).not.toHaveBeenCalled()
   })
 
@@ -95,7 +106,7 @@ describe("template-catalog", () => {
 
     expect(templates).toHaveLength(1)
     expect(templates[0]?.template_id).toBe("tmpl_blank")
-    expect(templates[0]?.preview_url).toBe(`https://blank.${DOMAINS.WILDCARD}`)
+    expect(templates[0]?.preview_url).toBe(`https://blank.${TEST_WILDCARD}`)
   })
 
   it("finds a filesystem template by id when the database row is missing", async () => {

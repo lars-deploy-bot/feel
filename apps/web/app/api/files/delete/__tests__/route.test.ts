@@ -32,6 +32,11 @@ vi.mock("@/features/chat/lib/workspaceRetriever", () => ({
   getWorkspace: vi.fn(),
 }))
 
+// Mock domain runtime resolution (returns null = systemd path)
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  resolveDomainRuntime: vi.fn().mockResolvedValue(null),
+}))
+
 // Import after mocking
 const { POST } = await import("../route")
 const { getSessionUser, verifyWorkspaceAccess } = await import("@/features/auth/lib/auth")

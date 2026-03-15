@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest, NextResponse } from "next/server"
@@ -52,7 +52,7 @@ vi.mock("@/features/workspace/lib/workspace-secure", () => ({
 const { POST } = await import("../route")
 const { getWorkspace } = await import("@/features/chat/lib/workspaceRetriever")
 
-const TEST_WORKSPACE = path.join(tmpdir(), "write-test-workspace")
+const TEST_WORKSPACE = path.join(realpathSync(tmpdir()), "write-test-workspace")
 
 interface WriteSuccessResponse {
   ok: true
