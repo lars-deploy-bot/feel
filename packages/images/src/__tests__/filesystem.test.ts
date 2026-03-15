@@ -9,9 +9,8 @@ describe("FilesystemStorage", () => {
   let tempDir: string
 
   beforeEach(async () => {
-    // Create temporary directory for tests
-    tempDir = path.join(os.tmpdir(), `images-test-${Date.now()}`)
-    await fs.mkdir(tempDir, { recursive: true })
+    // Use mkdtemp for unique dirs + realpath to resolve /var → /private/var on macOS
+    tempDir = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "images-test-")))
 
     storage = new FilesystemStorage({
       basePath: tempDir,
