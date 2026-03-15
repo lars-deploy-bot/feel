@@ -784,7 +784,7 @@ export type Database = {
       automation_trigger_type: "cron" | "webhook" | "one-time" | "email"
       conversation_source: "chat" | "automation_run"
       execution_mode: "systemd" | "e2b"
-      sandbox_status: "creating" | "running" | "dead"
+      sandbox_status: "creating" | "running" | "paused" | "dead"
       severity_level: "info" | "warn" | "error" | "debug" | "fatal"
     }
     CompositeTypes: {
@@ -911,7 +911,7 @@ export const Constants = {
       automation_trigger_type: ["cron", "webhook", "one-time", "email"],
       conversation_source: ["chat", "automation_run"],
       execution_mode: ["systemd", "e2b"],
-      sandbox_status: ["creating", "running", "dead"],
+      sandbox_status: ["creating", "running", "paused", "dead"],
       severity_level: ["info", "warn", "error", "debug", "fatal"],
     },
   },

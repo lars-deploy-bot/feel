@@ -1,7 +1,7 @@
 /**
  * Sandbox Manager
  *
- * Manages E2B sandbox lifecycle: create, connect, evict, kill.
+ * Manages E2B sandbox lifecycle: create, connect, pause, resume, evict, kill.
  * Deduplicates concurrent creates for the same domain.
  * Reconnects by stored sandbox_id; only creates a new sandbox when the old one is definitely gone.
  * Syncs workspace source files into the sandbox on first create.
@@ -32,7 +32,7 @@ export const SANDBOX_WORKSPACE_ROOT = "/home/user/project"
 
 /** Callback to persist sandbox state changes to the database. */
 export interface SandboxPersistence {
-  updateSandbox(domainId: string, sandboxId: string, status: "creating" | "running" | "dead"): Promise<void>
+  updateSandbox(domainId: string, sandboxId: string, status: SandboxStatus): Promise<void>
 }
 
 interface SandboxManagerConfig {
@@ -148,6 +148,29 @@ export class SandboxManager {
     this.sandboxes.delete(domainId)
   }
 
+  /** Pause a sandbox (preserves filesystem + memory). Resumes automatically on next connect. */
+  async pause(domainId: string): Promise<void> {
+    const sandbox = this.sandboxes.get(domainId)
+    if (sandbox) {
+      this.sandboxes.delete(domainId)
+      try {
+        const paused = await sandbox.pause({ domain: this.domain })
+        if (paused) {
+          await this.persistence.updateSandbox(domainId, sandbox.sandboxId, "paused")
+          console.error(`[sandbox-manager] Paused ${sandbox.sandboxId} for ${domainId}`)
+        } else {
+          // Already paused — update DB to match
+          await this.persistence.updateSandbox(domainId, sandbox.sandboxId, "paused")
+          console.error(`[sandbox-manager] ${sandbox.sandboxId} already paused for ${domainId}`)
+        }
+      } catch {
+        // Pause failed — sandbox may already be paused or dead
+        console.error(`[sandbox-manager] Pause failed for ${sandbox.sandboxId}, marking dead`)
+        await this.persistence.updateSandbox(domainId, sandbox.sandboxId, "dead")
+      }
+    }
+  }
+
   /** Kill a sandbox and remove from cache. */
   async kill(domainId: string): Promise<void> {
     const sandbox = this.sandboxes.get(domainId)
@@ -164,8 +187,9 @@ export class SandboxManager {
 
   /** Try to reconnect by stored sandbox_id, fall back to creating a new one. */
   private async resolve(domain: SandboxDomain, hostWorkspacePath?: string): Promise<Sandbox> {
-    // Try reconnect if we have a stored sandbox_id
-    if (domain.sandbox_id && domain.sandbox_status === "running") {
+    // Try reconnect if we have a stored sandbox_id.
+    // "paused" sandboxes are auto-resumed by Sandbox.connect() (E2B lifecycle feature).
+    if (domain.sandbox_id && (domain.sandbox_status === "running" || domain.sandbox_status === "paused")) {
       try {
         const sandbox = await Sandbox.connect(domain.sandbox_id, {
           timeoutMs: this.timeoutMs,
@@ -185,7 +209,8 @@ export class SandboxManager {
         // sandbox was created before installDependencies existed, or if it was deleted.
         await ensureDependencies(sandbox)
 
-        console.error(`[sandbox-manager] Reconnected to ${domain.sandbox_id} for ${domain.hostname}`)
+        const verb = domain.sandbox_status === "paused" ? "Resumed" : "Reconnected to"
+        console.error(`[sandbox-manager] ${verb} ${domain.sandbox_id} for ${domain.hostname}`)
         return sandbox
       } catch (err) {
         console.error(
@@ -210,6 +235,9 @@ export class SandboxManager {
     const sandbox = await Sandbox.create(this.template, {
       timeoutMs: this.timeoutMs,
       domain: this.domain,
+      lifecycle: {
+        onTimeout: "pause",
+      },
       metadata: {
         domain_id: domain.domain_id,
         hostname: domain.hostname,
