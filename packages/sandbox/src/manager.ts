@@ -388,7 +388,6 @@ async function detectInstallCommand(sandbox: Sandbox): Promise<string | null> {
   const lockChecks = [
     { file: "bun.lock", cmd: "bun install" },
     { file: "bun.lockb", cmd: "bun install" },
-    { file: "pnpm-lock.yaml", cmd: "pnpm install" },
   ]
 
   for (const { file, cmd } of lockChecks) {

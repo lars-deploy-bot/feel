@@ -29,7 +29,11 @@ export function AddWebsiteModal({ onClose, onSuccess }: AddWebsiteModalProps) {
   const { wildcard } = useDomainConfig()
   const [deploying, setDeploying] = useState(false)
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState<{ domain: string; executionMode: ExecutionMode | null } | null>(null)
+  const [success, setSuccess] = useState<{
+    domain: string
+    executionMode: ExecutionMode | null
+    chatUrl: string
+  } | null>(null)
 
   const handleComplete = async (result: WebsiteConfigResult) => {
     setError("")
@@ -57,7 +61,14 @@ export function AddWebsiteModal({ onClose, onSuccess }: AddWebsiteModalProps) {
         return
       }
 
-      setSuccess({ domain, executionMode: data.executionMode ?? null })
+      setSuccess({
+        domain,
+        executionMode: data.executionMode ?? null,
+        chatUrl:
+          typeof data.chatUrl === "string"
+            ? data.chatUrl
+            : `/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(domain)}`,
+      })
       // Call onSuccess after a short delay so user sees the success state
       setTimeout(() => {
         onSuccess()
@@ -103,10 +114,7 @@ export function AddWebsiteModal({ onClose, onSuccess }: AddWebsiteModalProps) {
               {success.executionMode === "e2b" ? (
                 <>
                   Your sandbox workspace is ready for{" "}
-                  <a
-                    href={`/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(success.domain)}`}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
+                  <a href={success.chatUrl} className="text-blue-600 dark:text-blue-400 hover:underline">
                     {success.domain}
                   </a>
                 </>
