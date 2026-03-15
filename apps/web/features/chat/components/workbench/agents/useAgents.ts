@@ -22,11 +22,16 @@ function enrichJobs(raw: EnrichedResponse["jobs"]): EnrichedJob[] {
 export function useAgents(workspace: string) {
   const queryClient = useQueryClient()
 
-  const { data: jobs = [], isLoading, error } = useQuery({
+  const {
+    data: jobs = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.automations.enriched(workspace),
     queryFn: () =>
-      fetcher<EnrichedResponse>(`/api/automations/enriched?workspace=${encodeURIComponent(workspace)}`)
-        .then(res => enrichJobs(res.jobs)),
+      fetcher<EnrichedResponse>(`/api/automations/enriched?workspace=${encodeURIComponent(workspace)}`).then(res =>
+        enrichJobs(res.jobs),
+      ),
     staleTime: 30_000,
   })
 

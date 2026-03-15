@@ -53,7 +53,7 @@ export const GET = protectedRoute(async ({ user, req }) => {
   const parsedQuery = await handleQuery("automations", req)
   if (isHandleBodyError(parsedQuery)) return parsedQuery
 
-  const { org_id: orgId, site_id: siteId, limit } = parsedQuery
+  const { org_id: orgId, site_id: siteId, workspace, limit } = parsedQuery
 
   const supabase = await createRLSAppClient()
 
@@ -97,6 +97,10 @@ export const GET = protectedRoute(async ({ user, req }) => {
 
   if (siteId) {
     jobsQuery = jobsQuery.eq("site_id", siteId)
+  }
+
+  if (workspace) {
+    jobsQuery = jobsQuery.eq("domains.hostname", workspace)
   }
 
   const { data, error } = await jobsQuery.returns<AutomationListRow[]>()

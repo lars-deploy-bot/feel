@@ -4,6 +4,7 @@ import { Check, ChevronDown, ChevronUp, Code, Copy, Eye, Save, Search, X } from 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { invalidateFileContentCache, useFileContent } from "./hooks/useFileContent"
+import { useWorkbenchShortcuts } from "./hooks/useWorkbenchShortcuts"
 import { writeFile } from "./lib/file-api"
 import { getFileColor } from "./lib/file-colors"
 import { notifyFileChange } from "./lib/file-events"
@@ -116,18 +117,6 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     textareaRef.current?.focus()
   }, [])
 
-  // Ctrl+F to open search, Escape to close
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "f") {
-        e.preventDefault()
-        openSearch()
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [openSearch])
-
   // --- Save ---
 
   const handleCopy = async () => {
@@ -154,17 +143,25 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     }
   }, [workspace, filePath, editContent, worktree])
 
-  // Ctrl+S / Cmd+S to save
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault()
-        if (hasChanges) handleSave()
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [handleSave, hasChanges])
+  // Keyboard shortcuts — scoped via workbench handler (not window)
+  const handleFind = useCallback(
+    (e: KeyboardEvent) => {
+      e.preventDefault()
+      openSearch()
+    },
+    [openSearch],
+  )
+  const handleSaveShortcut = useCallback(
+    (e: KeyboardEvent) => {
+      e.preventDefault()
+      if (hasChanges) handleSave()
+    },
+    [handleSave, hasChanges],
+  )
+  useWorkbenchShortcuts([
+    { id: "codeviewer-find", key: "f", ctrlOrMeta: true, handler: handleFind },
+    { id: "codeviewer-save", key: "s", ctrlOrMeta: true, handler: handleSaveShortcut },
+  ])
 
   return (
     <div className="h-full flex flex-col">

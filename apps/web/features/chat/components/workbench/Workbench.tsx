@@ -1,8 +1,24 @@
 "use client"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
-import { Activity, Bot, ExternalLink, FolderOpen, Globe, Image, Maximize2, Minimize2, Monitor, RotateCw, Settings, Smartphone, SquareTerminal, X } from "lucide-react"
+import {
+  Activity,
+  Bot,
+  ExternalLink,
+  FolderOpen,
+  Globe,
+  Image,
+  Maximize2,
+  Minimize2,
+  Monitor,
+  RotateCw,
+  Settings,
+  Smartphone,
+  SquareTerminal,
+  X,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useWorkbenchContext, type WorkbenchView } from "@/features/chat/lib/workbench-context"
+import type { ComponentType } from "react"
+import { type WorkbenchView, type WorkbenchViewProps, useWorkbenchContext } from "@/features/chat/lib/workbench-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useSuperadmin } from "@/hooks/use-superadmin"
 import { trackWorkbenchViewChanged } from "@/lib/analytics/events"
@@ -11,13 +27,26 @@ import { useDebugActions, useWorkbenchFullscreen } from "@/lib/stores/debug-stor
 import { PulsingDot } from "../ui/PulsingDot"
 // import { useFeatureFlag } from "@/lib/stores/featureFlagStore" -- will be needed when final home style is chosen
 import { DrivePanel } from "./drive/DrivePanel"
-import { WorkbenchAgents } from "./WorkbenchAgents"
 import { usePreviewEngine } from "./hooks/usePreviewEngine"
+import { WorkbenchAgents } from "./WorkbenchAgents"
 import { WorkbenchCodeView } from "./WorkbenchCodeView"
 import { WorkbenchEvents } from "./WorkbenchEvents"
 import { WorkbenchHome } from "./WorkbenchHome"
 import { WorkbenchPhotos } from "./WorkbenchPhotos"
 import { WorkbenchTerminal } from "./WorkbenchTerminal"
+
+// ── View Registry ─────────────────────────────────────────────────────────────
+// Type-safe: every entry MUST accept WorkbenchViewProps. The compiler rejects
+// any component whose props don't include { workspace, worktree? }.
+// "Simple" views only need WorkbenchViewProps. Views with extra props (code, home, site)
+// are rendered explicitly below.
+const SIMPLE_VIEWS: Partial<Record<WorkbenchView, ComponentType<WorkbenchViewProps>>> = {
+  terminal: WorkbenchTerminal,
+  agents: WorkbenchAgents,
+  photos: WorkbenchPhotos,
+  events: WorkbenchEvents,
+  drive: DrivePanel,
+}
 
 export function Workbench() {
   const { workspace, worktree } = useWorkspace({ allowEmpty: true })
@@ -88,50 +117,47 @@ export function Workbench() {
   ]
 
   return (
-    <div
-      data-panel-role="workbench"
-      className="relative bg-white dark:bg-[#0d0d0d] flex flex-col h-full w-full"
-    >
+    <div data-panel-role="workbench" className="relative bg-white dark:bg-[#0d0d0d] flex flex-col h-full w-full">
       {/* View switcher */}
       <div data-panel-role="workbench-view-switcher" className="h-11 px-2.5 flex items-center gap-1.5 shrink-0">
-          {viewOptions.map(({ view, label, icon: Icon }) => {
-            const active = workbench.view === view
-            return (
-              <button
-                key={view}
-                type="button"
-                onClick={() => handleSelectView(view)}
-                className={`flex items-center gap-2 h-8 px-3.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
-                  active
-                    ? "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white"
-                    : "text-black/30 dark:text-white/25 hover:text-black/50 dark:hover:text-white/40"
-                }`}
-              >
-                <Icon size={15} strokeWidth={1.5} />
-                <span>{label}</span>
-              </button>
-            )
-          })}
-          <div className="flex-1" />
-          <button
-            type="button"
-            onClick={toggleWorkbenchFullscreen}
-            className="p-1.5 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
-            data-panel-role="workbench-fullscreen-toggle"
-            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-          >
-            {isFullscreen ? <Minimize2 size={15} strokeWidth={1.5} /> : <Maximize2 size={15} strokeWidth={1.5} />}
-          </button>
-          <button
-            type="button"
-            onClick={() => setWorkbench(false)}
-            className="xl:hidden p-1.5 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
-            data-panel-role="workbench-close"
-            title="Close"
-          >
-            <X size={15} strokeWidth={1.5} />
-          </button>
-        </div>
+        {viewOptions.map(({ view, label, icon: Icon }) => {
+          const active = workbench.view === view
+          return (
+            <button
+              key={view}
+              type="button"
+              onClick={() => handleSelectView(view)}
+              className={`flex items-center gap-2 h-8 px-3.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
+                active
+                  ? "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white"
+                  : "text-black/30 dark:text-white/25 hover:text-black/50 dark:hover:text-white/40"
+              }`}
+            >
+              <Icon size={15} strokeWidth={1.5} />
+              <span>{label}</span>
+            </button>
+          )
+        })}
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={toggleWorkbenchFullscreen}
+          className="p-1.5 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
+          data-panel-role="workbench-fullscreen-toggle"
+          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+        >
+          {isFullscreen ? <Minimize2 size={15} strokeWidth={1.5} /> : <Maximize2 size={15} strokeWidth={1.5} />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setWorkbench(false)}
+          className="xl:hidden p-1.5 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
+          data-panel-role="workbench-close"
+          title="Close"
+        >
+          <X size={15} strokeWidth={1.5} />
+        </button>
+      </div>
 
       {/* Context bar — view-specific controls */}
       {workbench.view === "site" && (
@@ -202,47 +228,105 @@ export function Workbench() {
               </p>
             </div>
           </div>
-        ) : workbench.view === "home" ? (
-          <WorkbenchHome onSelectView={handleSelectView} />
-        ) : workbench.view === "site" ? (
-          <PreviewViewport device={previewDevice} isLoading={isLoading || !previewToken}>
-            {previewToken && (
-              <iframe
-                ref={setIframeRef}
-                className="w-full h-full border-0"
-                title={`Preview: ${workspace}`}
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            )}
-          </PreviewViewport>
-        ) : workbench.view === "code" ? (
-          <WorkbenchCodeView
+        ) : (
+          <WorkbenchViewDispatcher
+            view={workbench.view}
             workspace={workspace}
             worktree={worktree}
-            filePath={workbench.filePath}
-            expandedFolders={workbench.expandedFolders}
-            treeWidth={workbench.treeWidth}
-            treeCollapsed={workbench.treeCollapsed}
-            onSelectFile={openFile}
-            onCloseFile={closeFile}
-            onToggleFolder={toggleFolder}
-            onSetTreeWidth={setTreeWidth}
-            onToggleTreeCollapsed={toggleTreeCollapsed}
+            previewDevice={previewDevice}
+            isLoading={isLoading}
+            previewToken={previewToken}
+            setIframeRef={setIframeRef}
+            workbench={workbench}
+            openFile={openFile}
+            closeFile={closeFile}
+            toggleFolder={toggleFolder}
+            setTreeWidth={setTreeWidth}
+            toggleTreeCollapsed={toggleTreeCollapsed}
+            onSelectView={handleSelectView}
           />
-        ) : workbench.view === "drive" ? (
-          <DrivePanel workspace={workspace} worktree={worktree} />
-        ) : workbench.view === "terminal" ? (
-          <WorkbenchTerminal workspace={workspace} />
-        ) : workbench.view === "agents" ? (
-          <WorkbenchAgents workspace={workspace} />
-        ) : workbench.view === "photos" ? (
-          <WorkbenchPhotos />
-        ) : workbench.view === "events" ? (
-          <WorkbenchEvents />
-        ) : null}
+        )}
       </div>
     </div>
   )
+}
+
+// ── View Dispatcher ──────────────────────────────────────────────────────────
+// Routes to the correct view component. Simple views go through the type-safe
+// SIMPLE_VIEWS registry (enforces WorkbenchViewProps). Complex views with extra
+// props are handled explicitly.
+
+function WorkbenchViewDispatcher({
+  view,
+  workspace,
+  worktree,
+  previewDevice,
+  isLoading,
+  previewToken,
+  setIframeRef,
+  workbench,
+  openFile,
+  closeFile,
+  toggleFolder,
+  setTreeWidth,
+  toggleTreeCollapsed,
+  onSelectView,
+}: WorkbenchViewProps & {
+  view: WorkbenchView
+  previewDevice: "desktop" | "mobile"
+  isLoading: boolean
+  previewToken: string | null
+  setIframeRef: (el: HTMLIFrameElement | null) => void
+  workbench: { filePath: string | null; expandedFolders: Set<string>; treeWidth: number; treeCollapsed: boolean }
+  openFile: (path: string) => void
+  closeFile: () => void
+  toggleFolder: (path: string) => void
+  setTreeWidth: (width: number) => void
+  toggleTreeCollapsed: () => void
+  onSelectView: (view: WorkbenchView) => void
+}) {
+  // Simple views — dispatched from the type-safe registry
+  const SimpleView = SIMPLE_VIEWS[view]
+  if (SimpleView) {
+    return <SimpleView workspace={workspace} worktree={worktree} />
+  }
+
+  // Complex views — have extra props beyond WorkbenchViewProps
+  switch (view) {
+    case "home":
+      return <WorkbenchHome workspace={workspace} worktree={worktree} onSelectView={onSelectView} />
+    case "site":
+      return (
+        <PreviewViewport device={previewDevice} isLoading={isLoading || !previewToken}>
+          {previewToken && (
+            <iframe
+              ref={setIframeRef}
+              className="w-full h-full border-0"
+              title={`Preview: ${workspace}`}
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          )}
+        </PreviewViewport>
+      )
+    case "code":
+      return (
+        <WorkbenchCodeView
+          workspace={workspace}
+          worktree={worktree}
+          filePath={workbench.filePath}
+          expandedFolders={workbench.expandedFolders}
+          treeWidth={workbench.treeWidth}
+          treeCollapsed={workbench.treeCollapsed}
+          onSelectFile={openFile}
+          onCloseFile={closeFile}
+          onToggleFolder={toggleFolder}
+          onSetTreeWidth={setTreeWidth}
+          onToggleTreeCollapsed={toggleTreeCollapsed}
+        />
+      )
+    default:
+      return null
+  }
 }
 
 // ── Preview Viewport ──────────────────────────────────────────────────────────
@@ -272,9 +356,7 @@ function PreviewViewport({
       )}
       <div
         className={`h-full bg-white dark:bg-[#0d0d0d] transition-[width,box-shadow] duration-300 ease-out overflow-hidden ${
-          isMobile
-            ? "rounded-xl mt-3 mb-3 shadow-lg border border-black/[0.08] dark:border-white/[0.06]"
-            : ""
+          isMobile ? "rounded-xl mt-3 mb-3 shadow-lg border border-black/[0.08] dark:border-white/[0.06]" : ""
         }`}
         style={{
           width: DEVICE_WIDTHS[device],

@@ -146,7 +146,6 @@ interface DexieMessageStoreActions {
   finalizeAssistantStream: (messageId: string) => Promise<void>
   stopAssistantStream: (messageId: string) => Promise<void>
   failAssistantStream: (messageId: string, errorCode?: string) => Promise<void>
-
 }
 
 type DexieMessageStore = DexieMessageStoreState & DexieMessageStoreActions
@@ -214,11 +213,7 @@ function scheduleFlushStreamingSnapshot(messageId: string, userId: string, getTe
   }, FLUSH_DEBOUNCE_MS)
 }
 
-async function queueSyncForStreamTab(
-  db: ReturnType<typeof getMessageDb>,
-  userId: string,
-  tabId: string | undefined,
-) {
+async function queueSyncForStreamTab(db: ReturnType<typeof getMessageDb>, userId: string, tabId: string | undefined) {
   if (!tabId) return
   const streamTab = await db.tabs.get(tabId)
   if (streamTab) {

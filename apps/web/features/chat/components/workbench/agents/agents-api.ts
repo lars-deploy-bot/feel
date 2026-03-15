@@ -1,52 +1,24 @@
-import type { AutomationJob, AutomationRun } from "./agents-types"
-
-const fetchJson = async (url: string, init?: RequestInit) => {
-  const res = await fetch(url, { credentials: "include", ...init })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error ?? `Request failed (${res.status})`)
-  }
-  return res.json()
-}
+import { delly, patchy, postty } from "@/lib/api/api-client"
+import { validateRequest } from "@/lib/api/schemas"
 
 export const agentsApi = {
-  list: async (workspace: string): Promise<AutomationJob[]> => {
-    const json = await fetchJson("/api/automations?limit=100")
-    const all: AutomationJob[] = json.automations ?? []
-    return all.filter(a => a.hostname === workspace)
-  },
-
-  get: async (id: string): Promise<AutomationJob> => {
-    const json = await fetchJson(`/api/automations/${id}`)
-    return json.automation
-  },
-
   update: async (id: string, fields: Record<string, unknown>): Promise<void> => {
-    await fetchJson(`/api/automations/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(fields),
-    })
+    const body = validateRequest("automations/update", fields)
+    await patchy("automations/update", body, undefined, `/api/automations/${id}`)
   },
 
   setActive: async (id: string, isActive: boolean): Promise<void> => {
-    await fetchJson(`/api/automations/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_active: isActive }),
-    })
+    const body = validateRequest("automations/update", { is_active: isActive })
+    await patchy("automations/update", body, undefined, `/api/automations/${id}`)
   },
 
   trigger: async (id: string): Promise<void> => {
-    await fetchJson(`/api/automations/${id}/trigger`, { method: "POST" })
+    const body = validateRequest("automations/trigger")
+    await postty("automations/trigger", body, undefined, `/api/automations/${id}/trigger`)
   },
 
   delete: async (id: string): Promise<void> => {
-    await fetchJson(`/api/automations/${id}`, { method: "DELETE" })
-  },
-
-  getRuns: async (id: string): Promise<AutomationRun[]> => {
-    const json = await fetchJson(`/api/automations/${id}/runs`)
-    return json.runs ?? []
+    const body = validateRequest("automations/delete")
+    await delly("automations/delete", body, `/api/automations/${id}`)
   },
 }

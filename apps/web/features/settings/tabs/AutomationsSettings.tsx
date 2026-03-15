@@ -10,6 +10,7 @@ import { type AutomationFormData, AutomationSidePanel } from "@/components/autom
 import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { trackAutomationCreated, trackAutomationDeleted, trackAutomationsViewed } from "@/lib/analytics/events"
+import { futTime, relTime, trigLabel } from "@/features/automations/display-helpers"
 import { delly, patchy, postty } from "@/lib/api/api-client"
 import { type AutomationRunStatus, type Res, type TriggerType, validateRequest } from "@/lib/api/schemas"
 import { buildCreatePayload, buildUpdatePayload } from "@/lib/automation/build-payload"
@@ -20,60 +21,6 @@ import { plural } from "../lib/format"
 import { SettingsTabLayout } from "./SettingsTabLayout"
 
 const DELETE_CONFIRM_TIMEOUT_MS = 3000
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function relTime(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  const ms = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(ms / 60000)
-  const hrs = Math.floor(mins / 60)
-  const days = Math.floor(hrs / 24)
-  if (mins < 1) return "Just now"
-  if (mins < 60) return `${mins}m ago`
-  if (hrs < 24) return `${hrs}h ago`
-  if (days < 7) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString()
-}
-
-function futTime(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  const ms = new Date(dateStr).getTime() - Date.now()
-  if (ms < 0) return "Overdue"
-  const mins = Math.floor(ms / 60000)
-  const hrs = Math.floor(mins / 60)
-  const days = Math.floor(hrs / 24)
-  if (mins < 1) return "Now"
-  if (mins < 60) return `in ${mins}m`
-  if (hrs < 24) return `in ${hrs}h`
-  return `in ${days}d`
-}
-
-function trigLabel(job: AutomationJob): string {
-  switch (job.trigger_type) {
-    case "email":
-      return job.email_address ? job.email_address : "Email trigger"
-    case "webhook":
-      return "Webhook"
-    case "one-time":
-      return "One-time"
-    default: {
-      if (!job.cron_schedule) return "No schedule"
-      const parts = job.cron_schedule.split(" ")
-      if (parts.length === 5) {
-        const [min, hour, , , weekday] = parts
-        if (min === "0" && hour !== "*" && weekday === "*") return `Daily at ${hour}:00`
-        if (min === "0" && hour !== "*" && weekday === "1-5") return `Weekdays at ${hour}:00`
-        if (min === "0" && hour !== "*" && weekday !== "*") {
-          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-          const idx = Number(weekday)
-          return `${Number.isInteger(idx) && days[idx] ? days[idx] : weekday} at ${hour}:00`
-        }
-      }
-      return job.cron_schedule
-    }
-  }
-}
 
 function StatusDot({ job }: { job: AutomationJob }) {
   if (!job.is_active)

@@ -2,16 +2,16 @@
 
 import { FilePlus, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { CodeViewer } from "./CodeViewer"
 import { FileTree, invalidateFileCache } from "./FileTree"
 import { useFileWatcher } from "./hooks/useFileWatcher"
+import { useWorkbenchShortcuts } from "./hooks/useWorkbenchShortcuts"
 import { getParentFilePath } from "./lib/file-paths"
 import { NewFileInput } from "./NewFileInput"
 import { PanelBar } from "./ui"
 
-interface WorkbenchCodeViewProps {
-  workspace: string
-  worktree?: string | null
+interface WorkbenchCodeViewProps extends WorkbenchViewProps {
   filePath: string | null
   expandedFolders: Set<string>
   treeWidth: number
@@ -78,18 +78,17 @@ export function WorkbenchCodeView({
     }
   }, [isResizing, onSetTreeWidth])
 
-  // Keyboard: Escape closes file
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && filePath) {
+  // Keyboard: Escape closes file (scoped via workbench shortcut handler)
+  const handleEscapeClose = useCallback(
+    (e: KeyboardEvent) => {
+      if (filePath) {
         e.preventDefault()
         onCloseFile()
       }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [filePath, onCloseFile])
+    },
+    [filePath, onCloseFile],
+  )
+  useWorkbenchShortcuts([{ id: "codeview-escape", key: "Escape", handler: handleEscapeClose }])
 
   return (
     <div ref={containerRef} className={`h-full flex bg-white dark:bg-[#0d0d0d] ${isResizing ? "select-none" : ""}`}>
