@@ -10,6 +10,10 @@ describe("buildInviteLink", () => {
     expect(buildInviteLink("XYZ", "https://example.com")).toBe("https://example.com/invite/XYZ")
   })
 
+  it("throws if code is empty", () => {
+    expect(() => buildInviteLink("", "https://app.alive.best")).toThrow("[referral] code is required")
+  })
+
   it("throws if baseUrl is empty", () => {
     expect(() => buildInviteLink("ABC", "")).toThrow("[referral] baseUrl is required")
   })

@@ -181,6 +181,14 @@ export {
   isValidClaudeModel,
 } from "./models.js"
 export {
+  DEFAULT_VOICE_LANGUAGE,
+  type VoiceLanguage,
+  VOICE_LANGUAGE_CODES,
+  VOICE_LANGUAGES,
+  getLanguageDisplayName,
+  isValidVoiceLanguage,
+} from "./voice-languages.js"
+export {
   formatProviderName,
   type OAuthFetchResult,
   type OAuthWarning,

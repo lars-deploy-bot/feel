@@ -17,7 +17,10 @@ export function KanbanColumn({ column }: { column: KanbanColumnDef }) {
         className="shrink-0 flex flex-col items-center py-3 px-1 cursor-pointer rounded-xl hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
         style={{ width: 36 }}
         onClick={() => setCollapsed(false)}
-        onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+        onDragOver={e => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
         onDragLeave={() => setDragOver(false)}
         onDrop={e => {
           e.preventDefault()
@@ -28,7 +31,10 @@ export function KanbanColumn({ column }: { column: KanbanColumnDef }) {
         }}
         title={`${column.label} (${cards.length})`}
       >
-        <span className={`w-2.5 h-2.5 rounded-full shrink-0 mb-2 ${dragOver ? "ring-2 ring-blue-500" : ""}`} style={{ background: column.color }} />
+        <span
+          className={`w-2.5 h-2.5 rounded-full shrink-0 mb-2 ${dragOver ? "ring-2 ring-blue-500" : ""}`}
+          style={{ background: column.color }}
+        />
         <span className="text-[11px] font-medium text-black/40 dark:text-white/30 [writing-mode:vertical-rl] rotate-180">
           {column.label}
         </span>
@@ -48,9 +54,7 @@ export function KanbanColumn({ column }: { column: KanbanColumnDef }) {
           style={{ background: column.color }}
           title="Collapse column"
         />
-        <span className="text-[13px] font-semibold text-black/70 dark:text-white/60 flex-1">
-          {column.label}
-        </span>
+        <span className="text-[13px] font-semibold text-black/70 dark:text-white/60 flex-1">{column.label}</span>
         <span className="text-[11px] text-black/30 dark:text-white/20 tabular-nums">{cards.length}</span>
         <button
           type="button"

@@ -12,6 +12,7 @@
  * @throws if baseUrl is falsy
  */
 export function buildInviteLink(code: string, baseUrl: string): string {
+  if (!code) throw new Error("[referral] code is required for invite link generation")
   if (!baseUrl) throw new Error("[referral] baseUrl is required for invite link generation")
   return `${baseUrl}/invite/${code}`
 }

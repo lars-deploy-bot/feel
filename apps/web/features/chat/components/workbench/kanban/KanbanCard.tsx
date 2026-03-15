@@ -39,7 +39,10 @@ export function KanbanCardItem({ card }: { card: CardType }) {
       }}
       onKeyDown={e => {
         if (e.key === "Enter") setEditingCardId(card.id)
-        if (e.key === " ") { e.preventDefault(); toggleSelect(card.id) }
+        if (e.key === " ") {
+          e.preventDefault()
+          toggleSelect(card.id)
+        }
       }}
       role="button"
       tabIndex={0}
@@ -48,9 +51,11 @@ export function KanbanCardItem({ card }: { card: CardType }) {
         group relative p-3.5 rounded-lg cursor-grab active:cursor-grabbing
         transition-all duration-100 select-none
         ${isDragged ? "opacity-30" : ""}
-        ${isFocused
-          ? "ring-2 ring-blue-500/40 bg-blue-50/50 dark:bg-blue-500/[0.08]"
-          : "bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"}
+        ${
+          isFocused
+            ? "ring-2 ring-blue-500/40 bg-blue-50/50 dark:bg-blue-500/[0.08]"
+            : "bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+        }
         ${isSelected ? "ring-2 ring-blue-500/60" : ""}
         shadow-sm border border-black/[0.06] dark:border-white/[0.06]
       `}
@@ -59,22 +64,31 @@ export function KanbanCardItem({ card }: { card: CardType }) {
         {/* Selection checkbox */}
         <div
           className={`mt-0.5 w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors
-            ${isSelected
-              ? "bg-blue-500 border-blue-500"
-              : "border-black/15 dark:border-white/15 opacity-0 group-hover:opacity-100"}`}
-          onClick={e => { e.stopPropagation(); toggleSelect(card.id) }}
+            ${
+              isSelected
+                ? "bg-blue-500 border-blue-500"
+                : "border-black/15 dark:border-white/15 opacity-0 group-hover:opacity-100"
+            }`}
+          onClick={e => {
+            e.stopPropagation()
+            toggleSelect(card.id)
+          }}
         >
           {isSelected && (
             <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-              <path d="M1.5 4L3.2 5.5L6.5 2.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M1.5 4L3.2 5.5L6.5 2.5"
+                stroke="white"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           )}
         </div>
 
         <div className="flex-1 min-w-0">
-          <span className="text-[13px] leading-snug font-medium text-black/80 dark:text-white/75">
-            {card.title}
-          </span>
+          <span className="text-[13px] leading-snug font-medium text-black/80 dark:text-white/75">{card.title}</span>
 
           {/* Description preview */}
           {hasDescription && (
@@ -87,7 +101,9 @@ export function KanbanCardItem({ card }: { card: CardType }) {
           {hasMetadata && (
             <div className="flex items-center gap-2.5 mt-2">
               {hasDueDate && (
-                <span className={`flex items-center gap-0.5 text-[11px] ${isOverdue ? "text-red-500" : "text-black/25 dark:text-white/20"}`}>
+                <span
+                  className={`flex items-center gap-0.5 text-[11px] ${isOverdue ? "text-red-500" : "text-black/25 dark:text-white/20"}`}
+                >
                   <CalendarBlank size={11} className="shrink-0" />
                   {new Date(card.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </span>

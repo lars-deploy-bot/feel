@@ -2,6 +2,7 @@
  * Referral credit awarding logic.
  *
  * Server-only. Takes query functions as parameters — no Supabase dependency.
+ * Does NOT log — callers own observability (Sentry, structured logging, etc.).
  */
 
 import { REFERRAL } from "@webalive/shared"
@@ -10,7 +11,7 @@ export interface AwardCreditsResult {
   success: boolean
   orgId?: string
   newBalance?: number
-  error?: string
+  error?: "no_org" | "credit_failed"
 }
 
 /**
@@ -35,17 +36,14 @@ export async function awardCreditsToUserPrimaryOrg(
   const orgId = await ops.findPrimaryOrgId(userId)
 
   if (!orgId) {
-    console.warn(`[Referral] User ${userId} has no org — credits not awarded`)
     return { success: false, error: "no_org" }
   }
 
   try {
     const newBalance = await ops.addCredits(orgId, amount)
-    console.log(`[Referral] Awarded ${amount} credits to org ${orgId}, new balance: ${newBalance}`)
     return { success: true, orgId, newBalance }
-  } catch (err) {
-    console.error(`[Referral] Failed to add credits to org ${orgId}:`, err)
-    return { success: false, error: "credit_failed" }
+  } catch {
+    return { success: false, orgId, error: "credit_failed" }
   }
 }
 
@@ -66,14 +64,6 @@ export async function awardReferralCredits(
     awardCreditsToUserPrimaryOrg(ops, referrerId, amount),
     awardCreditsToUserPrimaryOrg(ops, referredId, amount),
   ])
-
-  if (!referrerResult.success || !referredResult.success) {
-    console.error("[Referral] Partial credit award:", {
-      referrer: { userId: referrerId, ...referrerResult },
-      referred: { userId: referredId, ...referredResult },
-      amount,
-    })
-  }
 
   return { referrerResult, referredResult }
 }

@@ -12,14 +12,14 @@ import {
   Terminal,
 } from "@phosphor-icons/react"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
-import { Maximize2, Minimize2, X } from "lucide-react"
+import { X } from "lucide-react"
 import type { ComponentType } from "react"
 import { useEffect, useRef, useState } from "react"
 import { useWorkbenchContext, type WorkbenchView, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useSuperadmin } from "@/hooks/use-superadmin"
 import { trackWorkbenchViewChanged } from "@/lib/analytics/events"
-import { useDebugActions, useWorkbenchFullscreen } from "@/lib/stores/debug-store"
+import { useDebugActions } from "@/lib/stores/debug-store"
 import { DrivePanel } from "./drive/DrivePanel"
 import { SitePreviewView } from "./SitePreviewView"
 import { WorkbenchAgents } from "./WorkbenchAgents"
@@ -56,35 +56,40 @@ const STANDARD_VIEWS: ViewOption[] = [
     label: "Files",
     icon: FolderSimple,
     activeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    inactiveClass: "bg-emerald-500/[0.04] text-emerald-700/30 dark:bg-emerald-500/[0.04] dark:text-emerald-400/25 hover:bg-emerald-500/[0.07] hover:text-emerald-700/50 dark:hover:bg-emerald-500/[0.07] dark:hover:text-emerald-400/40",
+    inactiveClass:
+      "bg-emerald-500/[0.04] text-emerald-700/30 dark:bg-emerald-500/[0.04] dark:text-emerald-400/25 hover:bg-emerald-500/[0.07] hover:text-emerald-700/50 dark:hover:bg-emerald-500/[0.07] dark:hover:text-emerald-400/40",
   },
   {
     view: "agents",
     label: "Agents",
     icon: Sparkle,
     activeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-    inactiveClass: "bg-violet-500/[0.04] text-violet-700/30 dark:bg-violet-500/[0.04] dark:text-violet-400/25 hover:bg-violet-500/[0.07] hover:text-violet-700/50 dark:hover:bg-violet-500/[0.07] dark:hover:text-violet-400/40",
+    inactiveClass:
+      "bg-violet-500/[0.04] text-violet-700/30 dark:bg-violet-500/[0.04] dark:text-violet-400/25 hover:bg-violet-500/[0.07] hover:text-violet-700/50 dark:hover:bg-violet-500/[0.07] dark:hover:text-violet-400/40",
   },
   {
     view: "photos",
     label: "Photos",
     icon: ImageSquare,
     activeClass: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
-    inactiveClass: "bg-pink-500/[0.04] text-pink-700/30 dark:bg-pink-500/[0.04] dark:text-pink-400/25 hover:bg-pink-500/[0.07] hover:text-pink-700/50 dark:hover:bg-pink-500/[0.07] dark:hover:text-pink-400/40",
+    inactiveClass:
+      "bg-pink-500/[0.04] text-pink-700/30 dark:bg-pink-500/[0.04] dark:text-pink-400/25 hover:bg-pink-500/[0.07] hover:text-pink-700/50 dark:hover:bg-pink-500/[0.07] dark:hover:text-pink-400/40",
   },
   {
     view: "kanban",
     label: "Todos",
     icon: Kanban,
     activeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    inactiveClass: "bg-amber-500/[0.04] text-amber-700/30 dark:bg-amber-500/[0.04] dark:text-amber-400/25 hover:bg-amber-500/[0.07] hover:text-amber-700/50 dark:hover:bg-amber-500/[0.07] dark:hover:text-amber-400/40",
+    inactiveClass:
+      "bg-amber-500/[0.04] text-amber-700/30 dark:bg-amber-500/[0.04] dark:text-amber-400/25 hover:bg-amber-500/[0.07] hover:text-amber-700/50 dark:hover:bg-amber-500/[0.07] dark:hover:text-amber-400/40",
   },
   {
     view: "home",
     label: "Info",
     icon: Info,
     activeClass: "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white",
-    inactiveClass: "bg-black/[0.02] text-black/30 dark:bg-white/[0.03] dark:text-white/25 hover:bg-black/[0.05] hover:text-black/50 dark:hover:bg-white/[0.06] dark:hover:text-white/40",
+    inactiveClass:
+      "bg-black/[0.02] text-black/30 dark:bg-white/[0.03] dark:text-white/25 hover:bg-black/[0.05] hover:text-black/50 dark:hover:bg-white/[0.06] dark:hover:text-white/40",
   },
 ]
 
@@ -93,7 +98,8 @@ const SITE_PREVIEW_VIEW: ViewOption = {
   label: "Preview",
   icon: Browser,
   activeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  inactiveClass: "bg-blue-500/[0.04] text-blue-700/30 dark:bg-blue-500/[0.04] dark:text-blue-400/25 hover:bg-blue-500/[0.07] hover:text-blue-700/50 dark:hover:bg-blue-500/[0.07] dark:hover:text-blue-400/40",
+  inactiveClass:
+    "bg-blue-500/[0.04] text-blue-700/30 dark:bg-blue-500/[0.04] dark:text-blue-400/25 hover:bg-blue-500/[0.07] hover:text-blue-700/50 dark:hover:bg-blue-500/[0.07] dark:hover:text-blue-400/40",
 }
 
 const SUPERADMIN_VIEWS: ViewOption[] = [
@@ -102,14 +108,16 @@ const SUPERADMIN_VIEWS: ViewOption[] = [
     label: "Activity",
     icon: Lightning,
     activeClass: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-    inactiveClass: "bg-yellow-500/[0.04] text-yellow-700/30 dark:bg-yellow-500/[0.04] dark:text-yellow-400/25 hover:bg-yellow-500/[0.07] hover:text-yellow-700/50 dark:hover:bg-yellow-500/[0.07] dark:hover:text-yellow-400/40",
+    inactiveClass:
+      "bg-yellow-500/[0.04] text-yellow-700/30 dark:bg-yellow-500/[0.04] dark:text-yellow-400/25 hover:bg-yellow-500/[0.07] hover:text-yellow-700/50 dark:hover:bg-yellow-500/[0.07] dark:hover:text-yellow-400/40",
   },
   {
     view: "terminal",
     label: "Console",
     icon: Terminal,
     activeClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
-    inactiveClass: "bg-cyan-500/[0.04] text-cyan-700/30 dark:bg-cyan-500/[0.04] dark:text-cyan-400/25 hover:bg-cyan-500/[0.07] hover:text-cyan-700/50 dark:hover:bg-cyan-500/[0.07] dark:hover:text-cyan-400/40",
+    inactiveClass:
+      "bg-cyan-500/[0.04] text-cyan-700/30 dark:bg-cyan-500/[0.04] dark:text-cyan-400/25 hover:bg-cyan-500/[0.07] hover:text-cyan-700/50 dark:hover:bg-cyan-500/[0.07] dark:hover:text-cyan-400/40",
   },
 ]
 
@@ -126,8 +134,7 @@ export function Workbench() {
     }
   }, [isSuperadminWorkspace, workbench.view, setView])
 
-  const isFullscreen = useWorkbenchFullscreen()
-  const { setWorkbench, toggleWorkbenchFullscreen } = useDebugActions()
+  const { setWorkbench } = useDebugActions()
   const handleSelectView = (view: WorkbenchView) => {
     trackWorkbenchViewChanged(view)
     setView(view)
@@ -167,15 +174,6 @@ export function Workbench() {
         <div className="flex-1" />
         <button
           type="button"
-          onClick={toggleWorkbenchFullscreen}
-          className="p-1.5 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
-          data-panel-role="workbench-fullscreen-toggle"
-          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-        >
-          {isFullscreen ? <Minimize2 size={15} strokeWidth={1.5} /> : <Maximize2 size={15} strokeWidth={1.5} />}
-        </button>
-        <button
-          type="button"
           onClick={() => setWorkbench(false)}
           className="xl:hidden p-1.5 text-black/25 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40 rounded-full transition-colors"
           data-panel-role="workbench-close"
@@ -184,6 +182,9 @@ export function Workbench() {
           <X size={15} strokeWidth={1.5} />
         </button>
       </div>
+
+      {/* Divider */}
+      <div className="h-px bg-black/[0.06] dark:bg-white/[0.06] shrink-0" />
 
       {/* Content */}
       <div data-panel-role="workbench-content" className="flex-1 overflow-hidden relative">

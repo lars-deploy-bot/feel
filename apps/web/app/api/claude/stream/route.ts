@@ -207,6 +207,7 @@ export async function POST(req: NextRequest) {
       tabGroupId,
       tabId,
       model: userModel,
+      voiceLanguage,
       projectId,
       additionalContext,
       analyzeImageUrls,
@@ -555,6 +556,7 @@ export async function POST(req: NextRequest) {
       hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName, hasStripeConnection),
       connectedEmailProviders,
       additionalContext,
+      voiceLanguage,
     })
 
     logger.log("Spawning child process runner")

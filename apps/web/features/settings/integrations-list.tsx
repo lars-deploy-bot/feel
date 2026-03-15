@@ -365,8 +365,7 @@ function IntegrationDetail({ integration, onUpdate }: { integration: Integration
     const success = await connect()
     if (success) {
       trackIntegrationConnected(integration.provider_key)
-      toast(`${integration.display_name} connected`, {
-      })
+      toast(`${integration.display_name} connected`, {})
       onUpdate()
     }
   }
@@ -544,8 +543,7 @@ function DetailPatInput({
     if (!token.trim()) return
     const result = await connectWithPat(token.trim())
     if (result.success) {
-      toast(`Connected to ${displayName} as ${result.username}`, {
-      })
+      toast(`Connected to ${displayName} as ${result.username}`, {})
       setToken("")
       setExpanded(false)
       onSuccess()
@@ -663,8 +661,7 @@ function PatInput({
 
     const result = await connectWithPat(token.trim())
     if (result.success) {
-      toast(`Connected to ${displayName} as ${result.username}`, {
-      })
+      toast(`Connected to ${displayName} as ${result.username}`, {})
       setToken("")
       setShowInput(false)
       onSuccess()
@@ -765,8 +762,7 @@ function DualConnectionOptions({
 
     const result = await connectWithPat(token.trim())
     if (result.success) {
-      toast(`Connected to ${displayName} as ${result.username}`, {
-      })
+      toast(`Connected to ${displayName} as ${result.username}`, {})
       setToken("")
       setShowPatInput(false)
       onSuccess()
@@ -886,8 +882,7 @@ function IntegrationCard({ integration, onUpdate }: IntegrationCardProps) {
     const success = await connect()
     if (success) {
       trackIntegrationConnected(integration.provider_key)
-      toast(`${integration.display_name} connected`, {
-      })
+      toast(`${integration.display_name} connected`, {})
       onUpdate()
     }
   }

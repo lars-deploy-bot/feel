@@ -352,6 +352,11 @@ export function trackInviteEmailSent() {
   capture("invite_email_sent")
 }
 
+/** Teammate added to org via settings */
+export function trackTeammateInvited(orgId: string) {
+  capture("teammate_invited", { org_id: orgId })
+}
+
 /** User lands on invite page */
 export function trackReferralLanding(code: string) {
   capture("referral_landing", { referral_code: code })
@@ -532,6 +537,13 @@ export function trackMessagesCopied() {
 /** User toggles theme */
 export function trackThemeChanged(theme: string) {
   capture("theme_changed", { theme })
+}
+
+// ─── Language ────────────────────────────────────────────────────────────────
+
+/** User changes voice/response language in settings */
+export function trackLanguageChanged(language: string) {
+  capture("language_changed", { language })
 }
 
 // ─── Session ────────────────────────────────────────────────────────────────

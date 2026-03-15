@@ -111,7 +111,11 @@ function WizardFooter({
 
 // ── Deploy Steps ─────────────────────────────────────────────────────────────
 
-function UrlStep({ workspace, config, onChange }: {
+function UrlStep({
+  workspace,
+  config,
+  onChange,
+}: {
   workspace: string
   config: DeployConfig
   onChange: (c: Partial<DeployConfig>) => void
@@ -121,10 +125,7 @@ function UrlStep({ workspace, config, onChange }: {
 
   return (
     <div>
-      <SectionHeader
-        title="Website address"
-        description="Your site's URL. You can add a custom domain later."
-      />
+      <SectionHeader title="Website address" description="Your site's URL. You can add a custom domain later." />
 
       <div className="flex items-center h-10 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
         <span className="h-full flex items-center px-3 text-[13px] font-medium text-zinc-900 dark:text-zinc-100">
@@ -145,9 +146,7 @@ function UrlStep({ workspace, config, onChange }: {
         </button>
       ) : (
         <div className="mt-5">
-          <label className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1.5 block">
-            Custom domain
-          </label>
+          <label className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1.5 block">Custom domain</label>
           <input
             type="text"
             value={config.customDomain.trim()}
@@ -161,10 +160,7 @@ function UrlStep({ workspace, config, onChange }: {
   )
 }
 
-function AccessStep({ config, onChange }: {
-  config: DeployConfig
-  onChange: (c: Partial<DeployConfig>) => void
-}) {
+function AccessStep({ config, onChange }: { config: DeployConfig; onChange: (c: Partial<DeployConfig>) => void }) {
   const options: { id: AccessLevel; label: string; hint: string }[] = [
     { id: "public", label: "Public", hint: "Anyone with the link" },
     { id: "private", label: "Private", hint: "Only you" },
@@ -172,10 +168,7 @@ function AccessStep({ config, onChange }: {
 
   return (
     <div>
-      <SectionHeader
-        title="Who can access"
-        description="Choose who can view your published site."
-      />
+      <SectionHeader title="Who can access" description="Choose who can view your published site." />
 
       <div className="divide-y divide-zinc-100 dark:divide-white/[0.04]">
         {options.map(({ id, label, hint }) => {
@@ -188,18 +181,22 @@ function AccessStep({ config, onChange }: {
               className="w-full text-left flex items-center justify-between py-3.5 transition-colors duration-100 group"
             >
               <div>
-                <span className={`text-[13px] ${
-                  selected ? "font-medium text-zinc-900 dark:text-zinc-100" : "text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100"
-                }`}>
+                <span
+                  className={`text-[13px] ${
+                    selected
+                      ? "font-medium text-zinc-900 dark:text-zinc-100"
+                      : "text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100"
+                  }`}
+                >
                   {label}
                 </span>
                 <span className="text-[13px] text-zinc-400 dark:text-zinc-600 ml-2">{hint}</span>
               </div>
-              <div className={`size-4 rounded-full border-2 flex items-center justify-center transition-colors duration-100 ${
-                selected
-                  ? "border-zinc-900 dark:border-zinc-100"
-                  : "border-zinc-300 dark:border-zinc-700"
-              }`}>
+              <div
+                className={`size-4 rounded-full border-2 flex items-center justify-center transition-colors duration-100 ${
+                  selected ? "border-zinc-900 dark:border-zinc-100" : "border-zinc-300 dark:border-zinc-700"
+                }`}
+              >
                 {selected && <div className="size-2 rounded-full bg-zinc-900 dark:bg-zinc-100" />}
               </div>
             </button>
@@ -210,29 +207,23 @@ function AccessStep({ config, onChange }: {
   )
 }
 
-function InfoStep({ config, onChange }: {
-  config: DeployConfig
-  onChange: (c: Partial<DeployConfig>) => void
-}) {
+function InfoStep({ config, onChange }: { config: DeployConfig; onChange: (c: Partial<DeployConfig>) => void }) {
   return (
     <div>
-      <SectionHeader
-        title="Website info"
-        description="Search engines and social sharing. Optional."
-      />
+      <SectionHeader title="Website info" description="Search engines and social sharing. Optional." />
 
       <div className="space-y-5">
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">Title</label>
-            <span className="text-[11px] text-zinc-300 dark:text-zinc-700 tabular-nums">
-              {config.title.length}/60
-            </span>
+            <span className="text-[11px] text-zinc-300 dark:text-zinc-700 tabular-nums">{config.title.length}/60</span>
           </div>
           <input
             type="text"
             value={config.title}
-            onChange={e => { if (e.target.value.length <= 60) onChange({ title: e.target.value }) }}
+            onChange={e => {
+              if (e.target.value.length <= 60) onChange({ title: e.target.value })
+            }}
             placeholder="My Website"
             className="w-full h-10 px-3 rounded-lg text-[13px] border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all duration-100"
           />
@@ -247,7 +238,9 @@ function InfoStep({ config, onChange }: {
           </div>
           <textarea
             value={config.description}
-            onChange={e => { if (e.target.value.length <= 160) onChange({ description: e.target.value }) }}
+            onChange={e => {
+              if (e.target.value.length <= 160) onChange({ description: e.target.value })
+            }}
             placeholder="A short description of your site"
             rows={3}
             className="w-full px-3 py-2.5 rounded-lg text-[13px] border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all duration-100 resize-none"
@@ -255,9 +248,7 @@ function InfoStep({ config, onChange }: {
         </div>
 
         <div>
-          <label className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1.5 block">
-            Social image
-          </label>
+          <label className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1.5 block">Social image</label>
           <button
             type="button"
             className="w-full h-20 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-[12px] text-zinc-400 dark:text-zinc-600 hover:border-zinc-300 dark:hover:border-zinc-700 hover:text-zinc-500 transition-colors duration-100"
@@ -270,7 +261,14 @@ function InfoStep({ config, onChange }: {
   )
 }
 
-function ReviewStep({ workspace, config, publishState, publishMessage, onPublish, onBack }: {
+function ReviewStep({
+  workspace,
+  config,
+  publishState,
+  publishMessage,
+  onPublish,
+  onBack,
+}: {
   workspace: string
   config: DeployConfig
   publishState: string
@@ -280,17 +278,12 @@ function ReviewStep({ workspace, config, publishState, publishMessage, onPublish
 }) {
   return (
     <div>
-      <SectionHeader
-        title="Review"
-        description="Confirm your settings."
-      />
+      <SectionHeader title="Review" description="Confirm your settings." />
 
       <div>
         <Row label="URL">{workspace}</Row>
         <Row label="Access">{config.access === "public" ? "Anyone with the link" : "Only you"}</Row>
-        <Row label="Title">
-          {config.title || <span className="text-zinc-300 dark:text-zinc-700">—</span>}
-        </Row>
+        <Row label="Title">{config.title || <span className="text-zinc-300 dark:text-zinc-700">—</span>}</Row>
         <Row label="Description">
           {config.description || <span className="text-zinc-300 dark:text-zinc-700">—</span>}
         </Row>
@@ -351,8 +344,12 @@ function DeployPanel({ workspace }: { workspace: string }) {
   }, [])
 
   const currentIdx = STEP_ORDER.indexOf(step)
-  const goNext = () => { if (currentIdx < STEP_ORDER.length - 1) setStep(STEP_ORDER[currentIdx + 1]) }
-  const goBack = () => { if (currentIdx > 0) setStep(STEP_ORDER[currentIdx - 1]) }
+  const goNext = () => {
+    if (currentIdx < STEP_ORDER.length - 1) setStep(STEP_ORDER[currentIdx + 1])
+  }
+  const goBack = () => {
+    if (currentIdx > 0) setStep(STEP_ORDER[currentIdx - 1])
+  }
 
   return (
     <div>
@@ -372,9 +369,7 @@ function DeployPanel({ workspace }: { workspace: string }) {
         />
       )}
 
-      {step !== "review" && (
-        <WizardFooter step={step} onBack={goBack} onNext={goNext} />
-      )}
+      {step !== "review" && <WizardFooter step={step} onBack={goBack} onNext={goNext} />}
     </div>
   )
 }
@@ -386,10 +381,7 @@ function ProjectPanel({ workspace }: { workspace: string }) {
 
   return (
     <div>
-      <SectionHeader
-        title="Project"
-        description="Your site and its current state."
-      />
+      <SectionHeader title="Project" description="Your site and its current state." />
       <Row label="Domain">
         {siteUrl ? (
           <a
@@ -433,21 +425,17 @@ export function WorkbenchHome({ workspace }: WorkbenchViewProps) {
                 type="button"
                 onClick={() => setActiveTab(id)}
                 className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors duration-100 ${
-                  active
-                    ? "bg-black/[0.04] dark:bg-white/[0.04]"
-                    : "hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                  active ? "bg-black/[0.04] dark:bg-white/[0.04]" : "hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
                 }`}
               >
-                <span className={`block text-[13px] ${
-                  active
-                    ? "font-medium text-zinc-900 dark:text-zinc-100"
-                    : "text-zinc-500 dark:text-zinc-500"
-                }`}>
+                <span
+                  className={`block text-[13px] ${
+                    active ? "font-medium text-zinc-900 dark:text-zinc-100" : "text-zinc-500 dark:text-zinc-500"
+                  }`}
+                >
                   {label}
                 </span>
-                <span className="block text-[11px] text-zinc-400 dark:text-zinc-600 mt-0.5">
-                  {description}
-                </span>
+                <span className="block text-[11px] text-zinc-400 dark:text-zinc-600 mt-0.5">{description}</span>
               </button>
             )
           })}

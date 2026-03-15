@@ -1,17 +1,28 @@
 "use client"
 
-import { ALL_CLAUDE_MODELS, DEFAULT_CLAUDE_MODEL, getModelDisplayName, isValidClaudeModel } from "@webalive/shared"
+import {
+  ALL_CLAUDE_MODELS,
+  DEFAULT_CLAUDE_MODEL,
+  getLanguageDisplayName,
+  getModelDisplayName,
+  isValidClaudeModel,
+  isValidVoiceLanguage,
+  VOICE_LANGUAGE_CODES,
+} from "@webalive/shared"
 import { Monitor, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
-import { useLLMStore } from "@/lib/stores/llmStore"
+import { trackLanguageChanged } from "@/lib/analytics/events"
+import { useLLMActions, useModel, useVoiceLanguage } from "@/lib/stores/llmStore"
 import { select, text } from "../styles"
 import { SettingsTabLayout } from "./SettingsTabLayout"
 
 export function GeneralSettings() {
   const { user } = useAuth()
   const { theme, setTheme } = useTheme()
-  const { model, setModel } = useLLMStore()
+  const model = useModel()
+  const voiceLanguage = useVoiceLanguage()
+  const { setModel, setVoiceLanguage } = useLLMActions()
 
   const canSelectAnyModel = user?.canSelectAnyModel ?? false
   const enabledModels = user?.enabledModels ?? []
@@ -25,6 +36,14 @@ export function GeneralSettings() {
   const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value
     if (isValidClaudeModel(value)) setModel(value)
+  }
+
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value
+    if (isValidVoiceLanguage(value)) {
+      setVoiceLanguage(value)
+      trackLanguageChanged(value)
+    }
   }
 
   const emailPrefix = user?.email?.split("@")[0] ?? ""
@@ -78,7 +97,7 @@ export function GeneralSettings() {
       </div>
 
       {/* Model */}
-      <div>
+      <div className="mb-8">
         <label htmlFor="claude-model" className={`block ${text.label} mb-1`}>
           Model
         </label>
@@ -104,6 +123,27 @@ export function GeneralSettings() {
               </option>
             ))
           })()}
+        </select>
+      </div>
+
+      {/* Language */}
+      <div>
+        <label htmlFor="voice-language" className={`block ${text.label} mb-1`}>
+          Language
+        </label>
+        <p className={`${text.muted} mb-3`}>Used for voice transcription and Claude's responses.</p>
+        <select
+          id="voice-language"
+          value={voiceLanguage}
+          onChange={handleLanguageChange}
+          className={select}
+          aria-label="Language Selection"
+        >
+          {VOICE_LANGUAGE_CODES.map(code => (
+            <option key={code} value={code}>
+              {getLanguageDisplayName(code)}
+            </option>
+          ))}
         </select>
       </div>
     </SettingsTabLayout>

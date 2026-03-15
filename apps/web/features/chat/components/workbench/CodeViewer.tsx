@@ -309,7 +309,9 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
 
       {/* Save error */}
       {saveError && (
-        <div className="px-3 py-1.5 text-[12px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-white/[0.04]">{saveError}</div>
+        <div className="px-3 py-1.5 text-[12px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-white/[0.04]">
+          {saveError}
+        </div>
       )}
 
       {/* Content */}

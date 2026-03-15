@@ -103,11 +103,16 @@ function SortPicker() {
               <button
                 key={field}
                 type="button"
-                onClick={() => { setSortField(field); setOpen(false) }}
+                onClick={() => {
+                  setSortField(field)
+                  setOpen(false)
+                }}
                 className={`w-full text-left px-2.5 py-1.5 text-[12px] rounded-lg transition-colors
-                  ${sortField === field
-                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
-                    : "text-black/50 dark:text-white/40 hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"}`}
+                  ${
+                    sortField === field
+                      ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
+                      : "text-black/50 dark:text-white/40 hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
+                  }`}
               >
                 {label}
               </button>
@@ -166,9 +171,11 @@ function PriorityPicker({ value, onChange }: { value: KanbanPriority; onChange: 
           type="button"
           onClick={() => onChange(p)}
           className={`text-xs px-2.5 py-1 rounded-full capitalize transition-colors
-            ${value === p
-              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
-              : "text-black/40 dark:text-white/30 hover:text-black/60 dark:hover:text-white/50"}`}
+            ${
+              value === p
+                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
+                : "text-black/40 dark:text-white/30 hover:text-black/60 dark:hover:text-white/50"
+            }`}
         >
           {p}
         </button>
@@ -187,9 +194,11 @@ function StatusPicker({ value, onChange }: { value: string; onChange: (colId: st
           type="button"
           onClick={() => onChange(col.id)}
           className={`text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5
-            ${value === col.id
-              ? "font-medium"
-              : "text-black/40 dark:text-white/30 hover:text-black/60 dark:hover:text-white/50"}`}
+            ${
+              value === col.id
+                ? "font-medium"
+                : "text-black/40 dark:text-white/30 hover:text-black/60 dark:hover:text-white/50"
+            }`}
           style={value === col.id ? { background: `${col.color}15`, color: col.color } : undefined}
         >
           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: col.color }} />
@@ -250,13 +259,23 @@ function AttachmentEditor({
           ref={urlRef}
           placeholder="URL"
           className="flex-1 min-w-0 px-2 py-1.5 text-xs rounded-lg border border-black/10 dark:border-white/10 bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500/30"
-          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAdd() } }}
+          onKeyDown={e => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              handleAdd()
+            }
+          }}
         />
         <input
           ref={labelRef}
           placeholder="Label"
           className="w-20 px-2 py-1.5 text-xs rounded-lg border border-black/10 dark:border-white/10 bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500/30"
-          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAdd() } }}
+          onKeyDown={e => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              handleAdd()
+            }
+          }}
         />
         <button
           type="button"
@@ -311,7 +330,11 @@ function CreateCardPanel() {
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-black/[0.06] dark:border-white/[0.04]">
         <h3 className="text-[13px] font-semibold text-black/70 dark:text-white/60">New card</h3>
-        <button type="button" onClick={() => setCreatingInColumn(null)} className="text-black/30 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40">
+        <button
+          type="button"
+          onClick={() => setCreatingInColumn(null)}
+          className="text-black/30 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40"
+        >
           <X size={16} />
         </button>
       </div>
@@ -373,7 +396,8 @@ function CreateCardPanel() {
 // ── Edit Card Panel ─────────────────────────────────────────────────────────
 
 function EditCardPanel() {
-  const { editingCardId, setEditingCardId, cards, updateCard, deleteCard, moveCard, adapter, cardsByColumn } = useKanban()
+  const { editingCardId, setEditingCardId, cards, updateCard, deleteCard, moveCard, adapter, cardsByColumn } =
+    useKanban()
 
   const card = editingCardId ? cards.find(c => c.id === editingCardId) : null
   const titleRef = useRef<HTMLInputElement>(null)
@@ -437,11 +461,13 @@ function EditCardPanel() {
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-black/[0.06] dark:border-white/[0.04]">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: column?.color ?? "#6B7280" }} />
-          <h3 className="text-[13px] font-semibold text-black/70 dark:text-white/60">
-            {column?.label ?? "Card"}
-          </h3>
+          <h3 className="text-[13px] font-semibold text-black/70 dark:text-white/60">{column?.label ?? "Card"}</h3>
         </div>
-        <button type="button" onClick={() => setEditingCardId(null)} className="text-black/30 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40">
+        <button
+          type="button"
+          onClick={() => setEditingCardId(null)}
+          className="text-black/30 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40"
+        >
           <X size={16} />
         </button>
       </div>
@@ -454,7 +480,13 @@ function EditCardPanel() {
 
         <div>
           <label className={LABEL_CLASS}>Description</label>
-          <textarea ref={descRef} defaultValue={card.description} placeholder="Add details..." rows={3} className={`${TEXTAREA_CLASS} mt-1.5`} />
+          <textarea
+            ref={descRef}
+            defaultValue={card.description}
+            placeholder="Add details..."
+            rows={3}
+            className={`${TEXTAREA_CLASS} mt-1.5`}
+          />
         </div>
 
         <div>
@@ -477,7 +509,9 @@ function EditCardPanel() {
           />
           {dueDate && (
             <div className="flex items-center gap-2 mt-1.5">
-              <span className={`text-[11px] ${isDueOverdue(dueDate) ? "text-red-500" : "text-black/30 dark:text-white/20"}`}>
+              <span
+                className={`text-[11px] ${isDueOverdue(dueDate) ? "text-red-500" : "text-black/30 dark:text-white/20"}`}
+              >
                 {formatDueDate(dueDate)}
               </span>
               <button
@@ -493,7 +527,13 @@ function EditCardPanel() {
 
         <div>
           <label className={LABEL_CLASS}>Notes</label>
-          <textarea ref={notesRef} defaultValue={card.notes} placeholder="Internal notes..." rows={2} className={`${TEXTAREA_CLASS} mt-1.5`} />
+          <textarea
+            ref={notesRef}
+            defaultValue={card.notes}
+            placeholder="Internal notes..."
+            rows={2}
+            className={`${TEXTAREA_CLASS} mt-1.5`}
+          />
         </div>
 
         <div>
@@ -547,14 +587,22 @@ function ShortcutsModal() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/40"
-      onClick={e => { if (e.target === e.currentTarget) setShowShortcuts(false) }}
-      onKeyDown={e => { if (e.key === "Escape") setShowShortcuts(false) }}
+      onClick={e => {
+        if (e.target === e.currentTarget) setShowShortcuts(false)
+      }}
+      onKeyDown={e => {
+        if (e.key === "Escape") setShowShortcuts(false)
+      }}
     >
       <div className="w-[320px] bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-black/[0.06] dark:border-white/[0.06] p-4">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-black/70 dark:text-white/60">Keyboard Shortcuts</h3>
-            <button type="button" onClick={() => setShowShortcuts(false)} className="text-black/30 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40">
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(false)}
+              className="text-black/30 dark:text-white/20 hover:text-black/50 dark:hover:text-white/40"
+            >
               <X size={16} />
             </button>
           </div>

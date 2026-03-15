@@ -12,6 +12,7 @@ export {
   type CreditOps,
 } from "./credits.js"
 export {
+  type LoopsResponse,
   type SendReferralInviteConfig,
   type SendReferralInviteParams,
   sendReferralInvite,
