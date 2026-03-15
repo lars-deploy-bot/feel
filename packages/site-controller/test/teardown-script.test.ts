@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process"
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
@@ -42,6 +42,7 @@ exit 0
   writeExecutable(
     join(binDir, "bun"),
     `#!/bin/bash
+echo "$*" >> "$TEST_STATE_DIR/bun-invocations"
 exit 0
 `,
   )
@@ -199,6 +200,7 @@ function runTeardown(options: { killMode: "term-succeeds" | "stubborn" }) {
       TEST_SITE_USER: "site-testsite-alive-best",
       TEST_STATE_DIR: stateDir,
     },
+    timeout: 30_000,
   })
 
   return { tempDir, stateDir, targetDir, envFilePath, symlinkPath, result }
@@ -216,6 +218,7 @@ describe("99-teardown.sh", () => {
   it("kills lingering user processes before removing the user and files", () => {
     const run = runTeardown({ killMode: "term-succeeds" })
     tempDirs.push(run.tempDir)
+    const bunInvocations = readFileSync(join(run.stateDir, "bun-invocations"), "utf8")
 
     expect(run.result.status).toBe(0)
     expect(run.result.stderr).toContain("Stopping lingering processes for user: site-testsite-alive-best")
@@ -223,9 +226,11 @@ describe("99-teardown.sh", () => {
     expect(run.result.stderr).toContain("Files removed")
     expect(run.result.stderr).not.toContain("Failed to remove user")
     expect(run.result.stderr).toContain("Teardown complete: testsite.alive.best")
+    expect(bunInvocations).toContain("run --cwd packages/site-controller routing:generate")
+    expect(bunInvocations).toContain(`${join(run.tempDir, "stream-root", "scripts", "sync-generated-caddy.ts")}`)
   })
 
-  it("fails loudly and never reports success when user removal cannot complete", { timeout: 20_000 }, () => {
+  it("fails loudly and never reports success when user removal cannot complete", () => {
     const run = runTeardown({ killMode: "stubborn" })
     tempDirs.push(run.tempDir)
 

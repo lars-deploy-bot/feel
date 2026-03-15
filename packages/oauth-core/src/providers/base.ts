@@ -9,7 +9,7 @@
  * - Dynamic client registration support
  */
 
-import type { OAuthTokens } from "../types"
+import type { OAuthProviderMetadata, OAuthTokens } from "../types"
 
 /**
  * PKCE options for authorization and token exchange
@@ -96,7 +96,12 @@ export interface OAuthRevocable {
    * @param clientId - OAuth app client ID
    * @param clientSecret - OAuth app client secret
    */
-  revokeToken(token: string, clientId: string, clientSecret: string): Promise<void>
+  revokeToken(
+    token: string,
+    clientId: string,
+    clientSecret: string,
+    providerMetadata?: OAuthProviderMetadata,
+  ): Promise<void>
 }
 
 /**

@@ -40,8 +40,9 @@ describe("buildNewSiteSuccessPayload", () => {
       message: "Created",
     })
 
-    expect(payload.chatUrl).toContain("wk=my%20site.alive.best")
-    expect(payload.chatUrl).toContain("org=org%20with%20spaces")
+    // URLSearchParams encodes spaces as '+' (application/x-www-form-urlencoded)
+    expect(payload.chatUrl).toContain("wk=my+site.alive.best")
+    expect(payload.chatUrl).toContain("org=org+with+spaces")
   })
 
   it("preserves all payload fields", () => {

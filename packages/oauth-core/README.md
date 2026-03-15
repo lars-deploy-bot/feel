@@ -28,7 +28,8 @@ Create a `.env` file with the following:
 ```bash
 # Supabase Connection (Required)
 SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_SERVICE_KEY="eyJ..."  # Service role key (bypasses RLS)
+SUPABASE_SERVICE_ROLE_KEY="eyJ..."  # Preferred service role key name
+# SUPABASE_SERVICE_KEY is also supported as a legacy alias
 
 # Security (Required - Generate with: openssl rand -hex 32)
 LOCKBOX_MASTER_KEY="your_64_character_hex_string_here"
@@ -55,8 +56,8 @@ bun run setup-schema
 This creates:
 - `lockbox` schema
 - `lockbox.user_secrets` table with encryption fields
-- RLS policies and indexes
-- Triggers and permissions
+- public lockbox RPCs used by `LockboxAdapter`
+- indexes, triggers, and permissions
 
 ## Usage
 
@@ -233,8 +234,10 @@ Existing data will use `instance_id = 'default'` for backwards compatibility.
 
 - ✅ **Linear** - Linear OAuth
 - ✅ **GitHub** - OAuth Apps and GitHub Apps
-- 🔜 **Google** - Coming soon
-- 🔜 **Microsoft** - Coming soon
+- ✅ **Google** - OAuth + user info
+- ✅ **Microsoft** - OAuth + user info
+- ✅ **Stripe** - OAuth with Stripe-specific token metadata
+- ✅ **Supabase** - OAuth provider integration
 
 ### Adding Custom Providers
 
@@ -248,7 +251,11 @@ class CustomProvider implements OAuthProvider {
     // Implementation
   }
 
-  // Optional: refreshToken, revokeToken, getAuthUrl
+  getAuthUrl(clientId, redirectUri, scope, state) {
+    // Implementation
+  }
+
+  // Optional: refreshToken, revokeToken, getUserInfo
 }
 
 registerProvider('custom', new CustomProvider());
@@ -260,7 +267,7 @@ registerProvider('custom', new CustomProvider());
 
 1. **Tenant Setup**: Store OAuth app credentials encrypted in `lockbox.user_secrets` with namespace `provider_config`
 2. **User Auth**: Exchange authorization code for tokens
-3. **Token Storage**: Encrypt and store user tokens with namespace `oauth_tokens`
+3. **Token Storage**: Encrypt and store user tokens with namespace `oauth_connections`
 4. **Token Usage**: Decrypt tokens on-demand for API calls
 
 ### Database Schema
@@ -268,9 +275,9 @@ registerProvider('custom', new CustomProvider());
 ```
 lockbox.user_secrets
 ├── user_secret_id (UUID)
-├── user_id (UUID FK to iam.users)
+├── user_id (TEXT FK to iam.users)
 ├── instance_id (TEXT - instance identifier for isolation)
-├── namespace ('provider_config' | 'oauth_tokens' | 'oauth_connections')
+├── namespace ('provider_config' | 'oauth_connections' | 'user_env_keys')
 ├── name (e.g., 'github_client_secret')
 ├── ciphertext (BYTEA - encrypted data)
 ├── iv (BYTEA - 12 bytes)
@@ -314,8 +321,8 @@ bun run test --coverage
 
 ```bash
 # Set test user IDs (must exist in iam.users)
-export TEST_TENANT_ID="uuid-here"
-export TEST_USER_ID="uuid-here"
+export TEST_TENANT_ID="user_abc123"
+export TEST_USER_ID="user_xyz789"
 
 # Run verification
 bun run verify
@@ -369,12 +376,13 @@ export async function GET(req: NextRequest) {
 
 Ensure all environment variables are set:
 - `SUPABASE_URL` - Full Supabase project URL
-- `SUPABASE_SERVICE_KEY` - Service role key (not anon key)
+- `SUPABASE_SERVICE_ROLE_KEY` - Preferred service role key name
+- `SUPABASE_SERVICE_KEY` - Legacy alias, still accepted
 - `LOCKBOX_MASTER_KEY` - 64 hex characters (32 bytes)
 
 ### "Foreign key constraint violation"
 
-The `clerk_id` must reference an existing user in `iam.users` table. Ensure users exist before storing secrets.
+The `user_id` must reference an existing row in `iam.users`. In this repo those are text IDs like `user_abc123`, not UUIDs.
 
 ### "Decryption failed"
 

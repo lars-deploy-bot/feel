@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -21,15 +20,10 @@ const ripgrepExcludes = RIPGREP_TARGETS.filter(target => target !== ripgrepTarge
 )
 
 // Read build metadata at config time (baked into the bundle via env:{}).
-let buildCommit = "unknown"
-let buildBranch = "unknown"
-const buildTime = new Date().toISOString()
-try {
-  buildCommit = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim() || "unknown"
-  buildBranch = execSync("git branch --show-current", { encoding: "utf-8" }).trim() || "unknown"
-} catch {
-  // Build metadata is optional and will fall back to "unknown"
-}
+// Deployer-owned builds inject these explicitly so local_fs sources do not depend on `.git`.
+const buildCommit = process.env.ALIVE_BUILD_COMMIT || "unknown"
+const buildBranch = process.env.ALIVE_BUILD_BRANCH || "unknown"
+const buildTime = process.env.ALIVE_BUILD_TIME || new Date().toISOString()
 
 // Read server-config.json for build-time values (avoids hardcoding domains).
 // next.config.js is pure JS and can't import @webalive/shared, so we read directly.

@@ -1,3 +1,6 @@
+# Python
+__pycache__/
+
 # Dependencies
 node_modules/
 npm-debug.log*
@@ -144,6 +147,7 @@ public
 tmp/
 temp/
 .tmp/
+.artifacts/
 
 # Local development workspace
 .alive/
@@ -188,6 +192,7 @@ pnpm-lock.yaml
 *.db
 *.sqlite
 *.sqlite3
+target/
 
 # Scraped/debug HTML dumps
 apps/mcp-servers/google-scraper/test-html/

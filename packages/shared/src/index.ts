@@ -19,6 +19,7 @@ export {
   type AutomationTriggerResponse,
   AutomationTriggerResponseSchema,
 } from "./automation-schemas.js"
+export { caddySitesFilteredPath, caddySitesPath, requireStreamEnv } from "./caddy-paths.js"
 export {
   assertValidServerId,
   CONFIG_PATH,
@@ -37,6 +38,7 @@ export {
   resolveTemplatePath,
   SECURITY,
   SENTRY,
+  SHELL,
   STANDALONE,
   STREAM_ENV,
   type StreamEnv,
@@ -167,6 +169,7 @@ export {
   providerSupportsOAuth,
   providerSupportsPat,
 } from "./mcp-providers.js"
+export { type ReachableGlobalMcpServersResult, resolveReachableGlobalMcpServers } from "./mcp-runtime.js"
 export {
   ALL_CLAUDE_MODELS,
   // Claude models - SINGLE SOURCE OF TRUTH

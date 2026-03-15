@@ -10,7 +10,7 @@
 #
 # =============================================================================
 
-.PHONY: all clean test help ship ship-fast staging staging-fast production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager
+.PHONY: all clean test help ship ship-fast staging staging-fast production production-fast deploy-status smoke-deploy-entrypoint dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager deployer
 
 all: help
 
@@ -47,6 +47,7 @@ help:
 	@echo "  make production      Deploy production only (port 9000)"
 	@echo "  make production-fast Deploy production only, skip E2E tests"
 	@echo "  make deploy-status   Check if a deployment is running"
+	@echo "  make smoke-deploy-entrypoint Verify detached 'nohup make staging' startup path"
 	@echo "  CLEAN_BUILD=1 ...    Force a full rebuild and clear deploy caches"
 	@echo ""
 	@echo "$(GREEN)Development:$(NC)"
@@ -64,6 +65,7 @@ help:
 	@echo "  make services        Build and deploy API + Manager"
 	@echo "  make api             Build and deploy API only"
 	@echo "  make manager         Build and deploy Manager only"
+	@echo "  make deployer        Build and deploy the Rust deployer only"
 	@echo ""
 	@echo "$(GREEN)Other:$(NC)"
 	@echo "  make rollback        Interactive rollback to previous build"
@@ -107,6 +109,9 @@ production-fast:
 deploy-status:
 	@./scripts/deployment/ship.sh --status || true
 
+smoke-deploy-entrypoint:
+	@./scripts/deployment/smoke-detached-entrypoint.sh
+
 # =============================================================================
 # Development
 # =============================================================================
@@ -138,18 +143,18 @@ status:
 	@echo ""
 	@echo "$(GREEN)Services:$(NC)"
 	@systemctl is-active alive-dev >/dev/null 2>&1 && echo "  Dev (8997):        $(GREEN)running$(NC)" || echo "  Dev (8997):        $(RED)stopped$(NC)"
-	@systemctl is-active alive-staging >/dev/null 2>&1 && echo "  Staging (8998):    $(GREEN)running$(NC)" || echo "  Staging (8998):    $(RED)stopped$(NC)"
-	@systemctl is-active alive-production >/dev/null 2>&1 && echo "  Production (9000): $(GREEN)running$(NC)" || echo "  Production (9000): $(RED)stopped$(NC)"
+	@./scripts/deployment/show-runtime-status.sh staging
+	@./scripts/deployment/show-runtime-status.sh production
 	@systemctl is-active preview-proxy >/dev/null 2>&1 && echo "  Preview proxy (5055): $(GREEN)running$(NC)" || echo "  Preview proxy (5055): $(RED)stopped$(NC)"
 	@echo ""
 	@echo "$(GREEN)Deployment Lock:$(NC)"
 	@./scripts/deployment/ship.sh --status || true
 
 logs-staging:
-	@journalctl -u alive-staging -f
+	@./scripts/deployment/follow-runtime-logs.sh staging
 
 logs-production:
-	@journalctl -u alive-production -f
+	@./scripts/deployment/follow-runtime-logs.sh production
 
 logs-dev:
 	@journalctl -u alive-dev -f
@@ -193,3 +198,6 @@ api:
 
 manager:
 	@./scripts/deployment/deploy-services.sh --manager
+
+deployer:
+	@./scripts/deployment/deploy-services.sh --deployer

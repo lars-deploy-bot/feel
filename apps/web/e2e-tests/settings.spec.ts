@@ -6,11 +6,12 @@ import { buildJsonMockResponse } from "./lib/strict-api-guard"
 /**
  * Settings E2E tests
  *
- * Settings is inline in the sidebar: clicking the user account button at the
- * bottom of the sidebar toggles settings mode, which shows SettingsNav tabs
- * in the sidebar and SettingsContent (General tab) in the main content area.
+ * Settings is inline in the sidebar. The entrypoint has moved over time:
+ * older builds expose a gear button in the sidebar header, newer builds
+ * expose a user account/settings button at the bottom of the sidebar.
+ * Both should open the same settings UI.
  *
- * Flow: open sidebar → click user account button → verify settings content.
+ * Flow: open sidebar → click a settings entrypoint → verify settings content.
  *
  * IMPORTANT: The FlowgladProvider in the layout makes API calls to /api/flowglad
  * which can crash for E2E test users (no Flowglad customer record). We mock all
@@ -54,7 +55,12 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
   // Both desktop and mobile sidebars render this button with the same testid,
   // so we scope to the visible desktop aside to avoid strict mode violations.
   const desktopSidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
-  const settingsButton = desktopSidebar.locator('[data-testid="settings-button"]')
+  const sidebarSettingsButton = desktopSidebar.locator('[data-testid="settings-button"]')
+  const navSettingsButton = authenticatedPage.getByRole("button", { name: /open settings|close settings/i })
+  const settingsButton = (await sidebarSettingsButton.isVisible({ timeout: TEST_TIMEOUTS.medium }).catch(() => false))
+    ? sidebarSettingsButton
+    : navSettingsButton
+
   await expect(settingsButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await settingsButton.click()
 

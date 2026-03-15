@@ -59,6 +59,7 @@ import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
 import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
 import { getRequestId } from "@/lib/request-id"
 import { createRequestLogger } from "@/lib/request-logger"
+import { getRuntimeAccessDecision } from "@/lib/runtime/authorization"
 import { consumeCancelIntent, consumeCancelIntentByRequestId } from "@/lib/stream/cancel-intent-registry"
 import { registerCancellation, startTTLCleanup, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 import { type CancelState, createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
@@ -646,6 +647,8 @@ export async function POST(req: NextRequest) {
       let firstMessageReceived = false
       childStream = new ReadableStream<Uint8Array>({
         async start(controller) {
+          const runtimeAccess = getRuntimeAccessDecision(user, resolvedWorkspaceName, true)
+
           // Helper to run query with given resume session and optional message position
           const runQuery = async (resumeId: string | undefined, resumeAtMessage: string | undefined) => {
             return pool.query(credentials, {
@@ -664,19 +667,7 @@ export async function POST(req: NextRequest) {
                 userEnvKeys, // User-defined environment keys for MCP servers
                 agentConfig,
                 sessionCookie, // Required for MCP tools to authenticate API calls
-                // E2B sandbox routing
-                executionMode: domainRecord.execution_mode,
-                ...(domainRecord.execution_mode === "e2b"
-                  ? {
-                      sandboxDomain: {
-                        domain_id: domainRecord.domain_id,
-                        hostname: domainRecord.hostname,
-                        is_test_env: domainRecord.is_test_env ?? undefined,
-                        sandbox_id: domainRecord.sandbox_id,
-                        sandbox_status: domainRecord.sandbox_status,
-                      },
-                    }
-                  : {}),
+                runtimeAccess,
               },
               onMessage: (msg: WorkerToParentMessage) => {
                 // Track first message timing
@@ -735,6 +726,15 @@ export async function POST(req: NextRequest) {
 
               const diagnosticHints: string[] = []
               if (diagnostics && typeof diagnostics === "object") {
+                const failureType = getObjectProperty(diagnostics, "failureType")
+                const phase = getObjectProperty(diagnostics, "phase")
+                const stderrExcerpt = getObjectProperty(diagnostics, "stderrExcerpt")
+                if (typeof failureType === "string" && typeof phase === "string") {
+                  diagnosticHints.push(`${failureType}:${phase}`)
+                }
+                if (typeof stderrExcerpt === "string") {
+                  diagnosticHints.push(stderrExcerpt)
+                }
                 const surfacedErrorMessage = getObjectProperty(diagnostics, "surfacedErrorMessage")
                 if (typeof surfacedErrorMessage === "string") {
                   diagnosticHints.push(surfacedErrorMessage)

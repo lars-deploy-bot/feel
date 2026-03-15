@@ -66,7 +66,11 @@ fi
 # =============================================================================
 
 log_info "[2/7] Creating new user: ${NEW_USER}"
-useradd --system --shell /usr/sbin/nologin --no-create-home "$NEW_USER"
+host_run useradd --system --shell /usr/sbin/nologin --no-create-home "$NEW_USER"
+if [[ -f /.dockerenv ]]; then
+    nsenter --target 1 --mount -- cat /etc/passwd > /etc/passwd
+    nsenter --target 1 --mount -- cat /etc/group > /etc/group
+fi
 log_success "User created: $(id "$NEW_USER")"
 
 # =============================================================================
@@ -131,7 +135,11 @@ systemctl enable "$NEW_SERVICE"
 # =============================================================================
 
 log_info "[7/7] Removing old user: ${OLD_USER}"
-userdel "$OLD_USER" 2>/dev/null || log_warn "Failed to remove old user"
+host_run userdel "$OLD_USER" 2>/dev/null || log_warn "Failed to remove old user"
+if [[ -f /.dockerenv ]]; then
+    nsenter --target 1 --mount -- cat /etc/passwd > /etc/passwd
+    nsenter --target 1 --mount -- cat /etc/group > /etc/group
+fi
 
 systemctl daemon-reload
 log_success "Rename complete: ${OLD_DOMAIN} → ${NEW_DOMAIN}"

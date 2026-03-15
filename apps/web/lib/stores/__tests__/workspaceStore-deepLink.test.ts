@@ -95,22 +95,20 @@ describe("coherence", () => {
     expect(getState().recentWorkspaces[0].orgId).toBe("org-A")
   })
 
-  it("validateAndCleanup does NOT clear workspace (recents not authoritative)", () => {
+  it("validateAndCleanup clears workspace when org changes", () => {
     useWorkspaceStoreBase.setState({
       currentWorkspace: "site-B",
       selectedOrgId: "org-B",
       recentWorkspaces: [{ domain: "site-B", orgId: "org-B", lastAccessed: 200 }],
     })
 
-    // org-B removed. validateAndCleanup clears org and recents,
-    // but does NOT touch currentWorkspace — that's the server's job.
+    // org-B removed → auto-selects org-A → setSelectedOrg clears workspace
+    // because the workspace belonged to the old org.
     getActions().validateAndCleanup([makeOrg("org-A")])
 
     expect(getState().selectedOrgId).toBe("org-A") // auto-selected
     expect(getState().recentWorkspaces).toHaveLength(0) // org-B recents gone
-    // Workspace is NOT cleared here — the allWorkspaces coherence effect
-    // or validateWorkspaceAvailability handles this from authoritative data.
-    expect(getState().currentWorkspace).toBe("site-B")
+    expect(getState().currentWorkspace).toBeNull() // cleared on org switch
   })
 })
 

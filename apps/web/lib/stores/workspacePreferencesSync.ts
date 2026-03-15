@@ -226,8 +226,16 @@ function mergeRecentWorkspaces(local: RecentWorkspace[], server: RecentWorkspace
     }
   }
 
-  // Sort by lastAccessed descending
-  return Array.from(byKey.values()).sort((a, b) => b.lastAccessed - a.lastAccessed)
+  // Sort by lastAccessed descending, then cap per org
+  const MAX_RECENT_PER_ORG = 6
+  const sorted = Array.from(byKey.values()).sort((a, b) => b.lastAccessed - a.lastAccessed)
+  const countByOrg = new Map<string, number>()
+  return sorted.filter(ws => {
+    const count = countByOrg.get(ws.orgId) ?? 0
+    if (count >= MAX_RECENT_PER_ORG) return false
+    countByOrg.set(ws.orgId, count + 1)
+    return true
+  })
 }
 
 function getLastSyncTime(): number | null {

@@ -22,8 +22,10 @@ import type {
   ParentToWorkerMessage,
   QueryOptions,
   QueryResult,
+  WorkerBootFailureDiagnostics,
   WorkerHandle,
   WorkerInfo,
+  WorkerPidsPressureDiagnostics,
   WorkerPoolConfig,
   WorkerPoolEventListener,
   WorkerPoolEvents,
@@ -79,6 +81,39 @@ interface PidsPressureCheck {
   snapshot: PidsPressureSnapshot
 }
 
+export function createWorkerPidsPressureDiagnostics(snapshot: PidsPressureSnapshot): WorkerPidsPressureDiagnostics {
+  return {
+    current: snapshot.current,
+    max: snapshot.max,
+    headroom: snapshot.headroom,
+    usagePercent: Number(snapshot.usagePercent.toFixed(1)),
+    cgroupPath: snapshot.cgroupPath,
+    pid: snapshot.pid,
+  }
+}
+
+export function getWorkerStderrExcerpt(stderr: string | undefined, maxLines = 6): string {
+  if (!stderr) return ""
+  const lines = stderr
+    .split("\n")
+    .map(line => line.trimEnd())
+    .filter(Boolean)
+  if (lines.length === 0) return ""
+  return lines.slice(0, maxLines).join("\n")
+}
+
+export function getWorkerBootFailurePhase(stderr: string | undefined): WorkerBootFailureDiagnostics["phase"] {
+  if (!stderr) return "startup"
+  if (
+    stderr.includes("ERR_MODULE_NOT_FOUND") ||
+    stderr.includes("Cannot find module") ||
+    stderr.includes("node:internal/modules/esm/resolve")
+  ) {
+    return "module_resolution"
+  }
+  return "startup"
+}
+
 export function parseCgroupPathFromProcSelfCgroup(raw: string): string | null {
   const lines = raw
     .split("\n")
@@ -125,6 +160,27 @@ export function evaluatePidsPressure(
     usageRatio,
     headroom,
   }
+}
+
+/**
+ * Resolve the runtime used to launch persistent worker processes.
+ *
+ * We intentionally avoid running workers under Bun when the parent process is
+ * Bun. The worker later drops privileges with setuid/setgid and then asks the
+ * Claude SDK to spawn the CLI. In Docker, Bun workers that mutate credentials
+ * this way can end up with "0 messages, no result" child queries, while the
+ * same flow is stable under Node.
+ *
+ * Keep the worker entry itself unchanged; only its host runtime changes.
+ */
+export function resolveWorkerProcessExecutable(currentExecPath: string, nodeExecutablePath: string): string {
+  const execName = (
+    currentExecPath.includes("\\") ? path.win32.basename(currentExecPath) : path.basename(currentExecPath)
+  ).toLowerCase()
+  if (execName === "bun" || execName === "bun.exe") {
+    return nodeExecutablePath
+  }
+  return currentExecPath
 }
 
 /** Internal worker handle with IPC and pending queries */
@@ -1175,6 +1231,8 @@ export class WorkerPoolManager extends EventEmitter {
 
     let child: ChildProcess
     try {
+      const workerExecutable = resolveWorkerProcessExecutable(process.execPath, this.config.nodeExecutablePath)
+
       // SECURITY: Allowlist env vars for worker subprocess.
       // The parent process has secrets (SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, JWT_SECRET, etc.)
       // that must NEVER leak to workspace users. createWorkerSpawnEnv() only passes safe vars.
@@ -1186,7 +1244,7 @@ export class WorkerPoolManager extends EventEmitter {
         WORKER_WORKSPACE_KEY: workspaceKey,
       })
 
-      child = spawn(process.execPath, [this.config.workerEntryPath], {
+      child = spawn(workerExecutable, [this.config.workerEntryPath], {
         env: workerEnv,
         stdio: ["ignore", "inherit", "pipe"],
         // Detached ensures each worker owns a process group so we can terminate the full tree with -pid.
@@ -1386,6 +1444,17 @@ export class WorkerPoolManager extends EventEmitter {
 
     if (!wasShuttingDown && !this.isShuttingDown) {
       const pidsSnapshot = this.lastPidsPressureCheck?.pressured ? this.lastPidsPressureCheck.snapshot : undefined
+      const stderrExcerpt = getWorkerStderrExcerpt(stderr)
+      const crashDiagnostics: WorkerBootFailureDiagnostics = {
+        failureType: "worker_boot_error",
+        phase: getWorkerBootFailurePhase(stderr),
+        exitCode: code,
+        signal,
+        pid: worker.process.pid,
+        stderrExcerpt,
+        stderrLineCount: stderr ? stderr.split("\n").filter(Boolean).length : 0,
+        ...(pidsSnapshot ? { pids: createWorkerPidsPressureDiagnostics(pidsSnapshot) } : {}),
+      }
       const crashMsg = `Worker ${workspaceKey} crashed: ${exitReason}, pid=${worker.process.pid}, uptime=${Date.now() - worker.createdAt.getTime()}ms${stderr ? `, stderr: ${stderr.slice(0, 2000)}` : ", stderr: (empty)"}${pidsSnapshot ? `, pids=${pidsSnapshot.current}/${pidsSnapshot.max}` : ""}`
       console.error(`[pool] ${crashMsg}`)
       Sentry.captureException(new Error(`Worker crashed: ${exitReason}`), {
@@ -1395,6 +1464,7 @@ export class WorkerPoolManager extends EventEmitter {
           signal,
           uptime: Date.now() - worker.createdAt.getTime(),
           stderr: stderr?.slice(0, 2000),
+          phase: crashDiagnostics.phase,
         },
       })
       this.emit("worker:crashed", {
@@ -1402,7 +1472,7 @@ export class WorkerPoolManager extends EventEmitter {
         exitCode: code,
         signal,
         stderr,
-        diagnostics: pidsSnapshot ? { pids: pidsSnapshot } : undefined,
+        diagnostics: crashDiagnostics,
       })
     } else {
       this.emit("worker:shutdown", {
@@ -1528,7 +1598,19 @@ export class WorkerPoolManager extends EventEmitter {
         worker.ipc?.close()
         worker.process.kill("SIGKILL")
         this.workers.delete(worker.workspaceKey)
-        reject(new Error(`Worker ${worker.workspaceKey} failed to become ready within ${this.config.readyTimeoutMs}ms`))
+        const error: WorkerPoolQueryError = new Error(
+          `Worker ${worker.workspaceKey} failed to become ready within ${this.config.readyTimeoutMs}ms`,
+        )
+        error.diagnostics = {
+          failureType: "worker_boot_error",
+          phase: "ready_timeout",
+          exitCode: worker.process.exitCode,
+          signal: worker.process.signalCode,
+          pid: worker.process.pid,
+          stderrExcerpt: "",
+          stderrLineCount: 0,
+        } satisfies WorkerBootFailureDiagnostics
+        reject(error)
       }, this.config.readyTimeoutMs)
 
       const onReady = (event: { workspaceKey: string }) => {
@@ -1548,18 +1630,30 @@ export class WorkerPoolManager extends EventEmitter {
         if (event.workspaceKey === worker.workspaceKey) {
           cleanup()
           const exitInfo = event.signal ? `signal=${event.signal}` : `code=${event.exitCode}`
+          const diagnostics =
+            event.diagnostics && typeof event.diagnostics === "object"
+              ? (event.diagnostics as WorkerBootFailureDiagnostics)
+              : undefined
+          const stderrExcerpt = diagnostics?.stderrExcerpt || getWorkerStderrExcerpt(event.stderr)
+          const phaseText = diagnostics ? `, phase=${diagnostics.phase}` : ""
+          const excerptText = stderrExcerpt ? `\n${stderrExcerpt}` : ""
           const err = new Error(
-            `Worker ${worker.workspaceKey} crashed before becoming ready (${exitInfo})`,
+            `Worker ${worker.workspaceKey} crashed before becoming ready (${exitInfo}${phaseText})${excerptText}`,
           ) as Error & { stderr?: string; diagnostics?: unknown }
           if (event.stderr) {
             err.stderr = event.stderr
           }
           err.diagnostics = {
+            failureType: "worker_boot_error",
+            phase: diagnostics?.phase ?? getWorkerBootFailurePhase(event.stderr),
             exitCode: event.exitCode,
             signal: event.signal,
             pid: worker.process.pid,
-            ...(event.diagnostics && typeof event.diagnostics === "object" ? event.diagnostics : {}),
-          }
+            stderrExcerpt,
+            stderrLineCount:
+              diagnostics?.stderrLineCount ?? (event.stderr ? event.stderr.split("\n").filter(Boolean).length : 0),
+            ...(diagnostics?.pids ? { pids: diagnostics.pids } : {}),
+          } satisfies WorkerBootFailureDiagnostics
           reject(err)
         }
       }

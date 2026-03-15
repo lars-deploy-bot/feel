@@ -9,7 +9,7 @@
  */
 
 import { fetchWithRetry } from "../fetch-with-retry"
-import type { OAuthTokens } from "../types"
+import type { OAuthProviderMetadata, OAuthTokens } from "../types"
 import type { OAuthProviderCore, OAuthRefreshable, OAuthRevocable, PKCEOptions, TokenExchangeOptions } from "./base"
 
 export const STRIPE_SCOPES = ["read_write", "read_only"] as const
@@ -25,6 +25,24 @@ export interface StripeTokenResponse extends OAuthTokens {
   livemode?: boolean
   /** Stripe publishable key (if applicable) */
   stripe_publishable_key?: string
+}
+
+function buildStripeProviderMetadata(data: Record<string, unknown>): OAuthProviderMetadata {
+  const providerMetadata: OAuthProviderMetadata = {}
+
+  if (typeof data.stripe_user_id === "string") {
+    providerMetadata.stripe_user_id = data.stripe_user_id
+  }
+
+  if (typeof data.livemode === "boolean") {
+    providerMetadata.livemode = data.livemode
+  }
+
+  if (typeof data.stripe_publishable_key === "string") {
+    providerMetadata.stripe_publishable_key = data.stripe_publishable_key
+  }
+
+  return providerMetadata
 }
 
 export class StripeProvider implements OAuthProviderCore, OAuthRefreshable, OAuthRevocable {
@@ -105,6 +123,8 @@ export class StripeProvider implements OAuthProviderCore, OAuthRefreshable, OAut
       throw new Error(`Stripe OAuth error: ${data.error_description || data.error}`)
     }
 
+    const providerMetadata = buildStripeProviderMetadata(data)
+
     return {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
@@ -115,6 +135,7 @@ export class StripeProvider implements OAuthProviderCore, OAuthRefreshable, OAut
       stripe_publishable_key: data.stripe_publishable_key,
       // Stripe Connect tokens don't expire by default, but we include expires_in if provided
       expires_in: data.expires_in,
+      provider_metadata: providerMetadata,
     }
   }
 
@@ -154,6 +175,8 @@ export class StripeProvider implements OAuthProviderCore, OAuthRefreshable, OAut
       throw new Error(`Stripe refresh error: ${data.error_description || data.error}`)
     }
 
+    const providerMetadata = buildStripeProviderMetadata(data)
+
     return {
       access_token: data.access_token,
       refresh_token: data.refresh_token || refreshToken, // Reuse if not provided
@@ -163,6 +186,7 @@ export class StripeProvider implements OAuthProviderCore, OAuthRefreshable, OAut
       livemode: data.livemode,
       stripe_publishable_key: data.stripe_publishable_key,
       expires_in: data.expires_in,
+      provider_metadata: providerMetadata,
     }
   }
 
@@ -171,9 +195,18 @@ export class StripeProvider implements OAuthProviderCore, OAuthRefreshable, OAut
    *
    * POST to /oauth/deauthorize to disconnect the connected account
    */
-  async revokeToken(_token: string, clientId: string, clientSecret: string, stripeUserId?: string): Promise<void> {
+  async revokeToken(
+    _token: string,
+    clientId: string,
+    clientSecret: string,
+    providerMetadata?: OAuthProviderMetadata,
+  ): Promise<void> {
+    const stripeUserId =
+      typeof providerMetadata?.stripe_user_id === "string" ? providerMetadata.stripe_user_id : undefined
+
     if (!stripeUserId) {
-      console.warn("[Stripe OAuth] No stripe_user_id provided for revocation, skipping API call")
+      // Legacy connections may not have provider metadata.
+      // Skip remote deauthorize so caller can still remove local credentials.
       return
     }
 

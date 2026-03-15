@@ -14,8 +14,8 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "dev": "tsc --watch",
-    "type-check": "tsgo --noEmit",
     "test": "vitest run",
+    "type-check": "tsgo --noEmit",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "ci": "biome ci ."
@@ -24,7 +24,7 @@
     "@anthropic-ai/claude-agent-sdk": "^0.2.34",
     "@webalive/database": "workspace:*",
     "@webalive/shared": "workspace:*",
-    "e2b": "^2.13.0",
+    "e2b": "^2.14.1",
     "zod": "^4.1.5"
   },
   "devDependencies": {

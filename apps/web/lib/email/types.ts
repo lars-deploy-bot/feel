@@ -37,7 +37,7 @@ export interface EmailProvider {
  * Typed error for email provider failures.
  * Routes map these codes to HTTP status codes.
  */
-export type EmailErrorCode = "not_connected" | "no_sender" | "api_error" | "no_result"
+export type EmailErrorCode = "not_connected" | "no_sender" | "api_error" | "no_result" | "delivery_disabled"
 
 export class EmailProviderError extends Error {
   readonly code: EmailErrorCode

@@ -139,6 +139,7 @@ function ChatPageContent() {
 
   const { user } = useAuth()
   const selectedOrgId = useSelectedOrgId()
+  const { setSelectedOrg } = useWorkspaceActions()
   const _isAdmin = user?.isAdmin ?? false
 
   // Tabs are on by default for all users
@@ -179,17 +180,16 @@ function ChatPageContent() {
     claimRunId: automationMeta?.claim_run_id ?? null,
   })
 
-  // Handle ?wk= URL parameter to pre-select workspace (e.g., from widget "Edit me" button)
-  // This is a one-time deep-link intent: consume the param, set the workspace, then clear it
-  // so it doesn't fight back when the user switches org/project later.
+  // Handle ?wk= and ?org= URL parameters to pre-select workspace (e.g., from deploy or widget "Edit me" button)
+  // Consume-once per value: tracks consumed wk value so a second deep link with a different workspace takes effect.
   const [wkParam, setWkParam] = useQueryState(QUERY_KEYS.workspace)
+  const [orgParam, setOrgParam] = useQueryState(QUERY_KEYS.org)
   const [wtParam, setWtParam] = useQueryState(QUERY_KEYS.worktree)
   const worktreesEnabled = useFeatureFlag("WORKTREES")
   const requestWorktree = worktreesEnabled ? worktree : null
   const wkConsumedRef = useRef<string | null>(null)
   const queryClient = useQueryClient()
-  const [orgParam, setOrgParam] = useQueryState(QUERY_KEYS.org)
-  const { setSelectedOrg, setDeepLinkPending } = useWorkspaceActions()
+  const { setDeepLinkPending } = useWorkspaceActions()
   useEffect(() => {
     if (!mounted || !wkParam || wkConsumedRef.current === wkParam) return
     wkConsumedRef.current = wkParam

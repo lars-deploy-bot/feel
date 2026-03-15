@@ -4,6 +4,7 @@ import type { AppBindings } from "../types/hono"
 import { authRoutes } from "./auth/auth.routes"
 import { healthRoutes } from "./health/health.routes"
 import { automationsRoutes } from "./manager/automations/automations.routes"
+import { deploysRoutes } from "./manager/deploys/deploys.routes"
 import { domainsRoutes } from "./manager/domains/domains.routes"
 import { feedbackRoutes } from "./manager/feedback/feedback.routes"
 import { orgsRoutes } from "./manager/orgs/orgs.routes"
@@ -34,6 +35,7 @@ export function buildRoutes(): Hono<AppBindings> {
   const manager = new Hono<AppBindings>()
   manager.use("/*", authMiddleware)
   manager.route("/automations", automationsRoutes)
+  manager.route("/deploys", deploysRoutes)
   manager.route("/orgs", orgsRoutes)
   manager.route("/users", usersRoutes)
   manager.route("/domains", domainsRoutes)

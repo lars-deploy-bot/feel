@@ -1,20 +1,12 @@
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
-import { DOMAINS, SUPERADMIN } from "@webalive/shared"
+import { DOMAINS, SHELL, SUPERADMIN } from "@webalive/shared"
 import { NextResponse } from "next/server"
-import { z } from "zod"
 import { validateRequest } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
-
-const LeaseResponseSchema = z.object({
-  lease: z.string(),
-  workspace: z.string(),
-  expiresAt: z.number(),
-})
-
-const SHELL_SERVER_URL = "http://localhost:3888"
+import { requestInternalWatchLease } from "@/lib/terminal/internal-lease"
 
 export async function POST(req: Request) {
   const requestId = crypto.randomUUID().slice(0, 8)
@@ -53,34 +45,20 @@ export async function POST(req: Request) {
     Sentry.captureMessage(`[Watch ${requestId}] Shell host not configured in server-config.json`, "error")
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500, details: { requestId } })
   }
+  if (!SHELL.UPSTREAM) {
+    console.error(`[Watch ${requestId}] Shell upstream not configured in server-config.json`)
+    Sentry.captureMessage(`[Watch ${requestId}] Shell upstream not configured in server-config.json`, "error")
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500, details: { requestId } })
+  }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 5000)
   try {
-    const res = await fetch(`${SHELL_SERVER_URL}/internal/watch-lease`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Internal-Secret": shellPassword,
-      },
-      body: JSON.stringify({ workspace: shellWorkspace, worktree }),
-      signal: controller.signal,
+    const data = await requestInternalWatchLease({
+      upstream: SHELL.UPSTREAM,
+      requestId,
+      serviceName: "Shell server watch lease",
+      secret: shellPassword,
+      body: { workspace: shellWorkspace, worktree },
     })
-
-    if (!res.ok) {
-      const text = await res.text()
-      console.error(`[Watch ${requestId}] Shell server returned ${res.status}: ${text}`)
-      Sentry.captureMessage(`[Watch ${requestId}] Shell server returned ${res.status}: ${text}`, "error")
-      return structuredErrorResponse(ErrorCodes.SHELL_SERVER_UNAVAILABLE, { status: 502, details: { requestId } })
-    }
-
-    const parsed = LeaseResponseSchema.safeParse(await res.json())
-    if (!parsed.success) {
-      console.error(`[Watch ${requestId}] Unexpected shell server response shape`)
-      Sentry.captureMessage(`[Watch ${requestId}] Unexpected shell server response shape`, "error")
-      return structuredErrorResponse(ErrorCodes.SHELL_SERVER_UNAVAILABLE, { status: 502, details: { requestId } })
-    }
-    const data = parsed.data
 
     return NextResponse.json({
       ok: true,
@@ -93,7 +71,5 @@ export async function POST(req: Request) {
     console.error(`[Watch ${requestId}] Failed to reach shell server:`, err)
     Sentry.captureException(err)
     return structuredErrorResponse(ErrorCodes.SHELL_SERVER_UNAVAILABLE, { status: 502, details: { requestId } })
-  } finally {
-    clearTimeout(timeout)
   }
 }

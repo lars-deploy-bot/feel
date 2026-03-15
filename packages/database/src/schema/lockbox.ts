@@ -22,7 +22,7 @@ import {
 } from "drizzle-orm/pg-core"
 
 // Import IAM schema for foreign keys
-import { users } from "./iam"
+import { users } from "./iam.js"
 
 // Define the Lockbox schema
 export const lockboxSchema = pgSchema("lockbox")

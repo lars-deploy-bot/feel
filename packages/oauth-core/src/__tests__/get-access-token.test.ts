@@ -65,6 +65,37 @@ function makeTokenBlob(overrides: {
   })
 }
 
+function makeStoredConnectionBlob(overrides: {
+  provider?: string
+  credential_provider?: string
+  tenant_user_id?: string | null
+  redirect_uri?: string | null
+  access_token?: string
+  refresh_token?: string | null
+  expires_at?: string | null
+  scope?: string | null
+  token_type?: string
+  cached_email?: string | null
+  provider_metadata?: Record<string, string | number | boolean | null>
+}) {
+  return JSON.stringify({
+    version: 1,
+    provider: "google",
+    credential_provider: "google",
+    tenant_user_id: null,
+    redirect_uri: null,
+    access_token: "old-access-token",
+    refresh_token: "valid-refresh-token",
+    expires_at: null,
+    scope: "read write",
+    token_type: "Bearer",
+    saved_at: new Date().toISOString(),
+    cached_email: "user@example.com",
+    provider_metadata: {},
+    ...overrides,
+  })
+}
+
 /** Encrypts a token blob and returns what the RPC would return */
 function encryptedRow(blob: string) {
   const encrypted = Security.encrypt(blob)
@@ -200,6 +231,51 @@ describe("OAuthManager.getAccessToken", () => {
 
     const manager = createManager()
     await expect(manager.getAccessToken("user-1", "google")).rejects.toThrow("Missing OAuth credentials for 'google'")
+  })
+
+  it("refreshes using tenant-scoped provider config from the stored connection record", async () => {
+    const pastDate = new Date(Date.now() - 60_000).toISOString()
+    const blob = makeStoredConnectionBlob({
+      expires_at: pastDate,
+      tenant_user_id: "tenant-123",
+      credential_provider: "google",
+    })
+
+    rpcMock.mockResolvedValueOnce(encryptedRow(blob))
+    rpcMock.mockResolvedValueOnce(encryptedRow("tenant-client-id"))
+    rpcMock.mockResolvedValueOnce(encryptedRow("tenant-client-secret"))
+    rpcMock.mockResolvedValueOnce({ data: [], error: null })
+    rpcMock.mockResolvedValueOnce(encryptedRow(blob))
+    rpcMock.mockResolvedValueOnce({ data: "saved", error: null })
+
+    delete process.env.GOOGLE_CLIENT_ID
+    delete process.env.GOOGLE_CLIENT_SECRET
+
+    const mockRefreshToken = vi.fn().mockResolvedValue({
+      access_token: "tenant-refreshed-token",
+      refresh_token: "tenant-refreshed-refresh-token",
+      expires_in: 3600,
+      scope: "read write",
+      token_type: "Bearer",
+    })
+    mockGetProvider.mockReturnValue({
+      name: "google",
+      refreshToken: mockRefreshToken,
+      exchangeCode: vi.fn(),
+      getAuthUrl: vi.fn(),
+    })
+
+    const manager = createManager()
+    const token = await manager.getAccessToken("user-1", "google")
+
+    expect(token).toBe("tenant-refreshed-token")
+    expect(mockRefreshToken).toHaveBeenCalledWith("valid-refresh-token", "tenant-client-id", "tenant-client-secret")
+
+    const saveCall = rpcMock.mock.calls[5]
+    const savedParams = saveCall[1]
+    const savedBlob = JSON.parse(Security.decrypt(savedParams.p_ciphertext, savedParams.p_iv, savedParams.p_auth_tag))
+    expect(savedBlob.tenant_user_id).toBe("tenant-123")
+    expect(savedBlob.credential_provider).toBe("google")
   })
 
   // ---------------------------------------------------------------

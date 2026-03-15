@@ -7,6 +7,7 @@
 import { statSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
 import type { OnPersistMessage } from "@webalive/automation-engine"
+import { authorizeRuntimeAccess } from "@webalive/runtime-auth"
 import { DEFAULTS, WORKER_POOL } from "@webalive/shared"
 import { isQueryResultCancelled, type QueryResult } from "@webalive/worker-pool"
 import {
@@ -208,6 +209,17 @@ export async function tryWorkerPool(params: WorkerPoolParams): Promise<AttemptRe
     isSuperadmin: useSuperadminTools,
     extraTools,
   }
+  const runtimeAccess = authorizeRuntimeAccess({
+    userId,
+    workspace,
+    hasWorkspaceAccess: true,
+    isAdmin: useSuperadminTools,
+    isSuperadmin: useSuperadminTools,
+    canWriteFiles: true,
+    canDeleteFiles: true,
+    canEnsureRunning: true,
+    canLeaseTerminal: false,
+  })
 
   const pool = getWorkerPool()
   const abort = new AbortController()
@@ -239,6 +251,7 @@ export async function tryWorkerPool(params: WorkerPoolParams): Promise<AttemptRe
         userEnvKeys: {},
         agentConfig,
         sessionCookie,
+        runtimeAccess,
       },
       onMessage: (msg: Record<string, unknown>) => {
         armTimeout()

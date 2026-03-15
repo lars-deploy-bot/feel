@@ -49,7 +49,6 @@ interface WorkspaceActions {
     setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
     clearRecentWorkspaces: () => void
-    getRecentForOrg: (orgId: string) => RecentWorkspace[]
   }
 }
 
@@ -126,6 +125,10 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             // The user's explicit org choice takes precedence over stale URL intent.
             if (state.deepLinkPending) {
               updates.deepLinkPending = null
+            }
+            // Clear workspace when switching orgs - it belongs to the old org
+            if (orgId !== state.selectedOrgId && state.currentWorkspace) {
+              updates.currentWorkspace = null
             }
             return updates
           })
@@ -220,6 +223,14 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
               updates.recentWorkspaces = filteredRecent
             }
 
+            // Clear currentWorkspace if it belonged to a removed org
+            if (state.currentWorkspace) {
+              const workspaceOrg = state.recentWorkspaces.find(w => w.domain === state.currentWorkspace)?.orgId
+              if (workspaceOrg && !validOrgIds.has(workspaceOrg)) {
+                updates.currentWorkspace = null
+              }
+            }
+
             return Object.keys(updates).length > 0 ? updates : state
           })
 
@@ -301,12 +312,6 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
 
         clearRecentWorkspaces: () => {
           set({ recentWorkspaces: [] })
-        },
-
-        getRecentForOrg: (_orgId: string) => {
-          // This is a selector function, but included in actions for convenience
-          // In practice, use the hook selector instead
-          return []
         },
       }
 

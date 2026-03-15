@@ -1,21 +1,12 @@
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
-import { DOMAINS, SUPERADMIN } from "@webalive/shared"
+import { DOMAINS, SHELL, SUPERADMIN } from "@webalive/shared"
 import { NextResponse } from "next/server"
-import { z } from "zod"
 import { validateRequest } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
-
-const LeaseResponseSchema = z.object({
-  lease: z.string(),
-  workspace: z.string(),
-  expiresAt: z.number(),
-})
-
-const SHELL_SERVER_URL = "http://localhost:3888"
-const E2B_TERMINAL_URL = "http://localhost:5075"
+import { requestInternalLease } from "@/lib/terminal/internal-lease"
 
 export async function POST(req: Request) {
   const requestId = crypto.randomUUID().slice(0, 8)
@@ -40,6 +31,11 @@ export async function POST(req: Request) {
     Sentry.captureMessage(`[Terminal ${requestId}] Shell host not configured in server-config.json`, "error")
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500, details: { requestId } })
   }
+  if (!SHELL.UPSTREAM) {
+    console.error(`[Terminal ${requestId}] Shell upstream not configured in server-config.json`)
+    Sentry.captureMessage(`[Terminal ${requestId}] Shell upstream not configured in server-config.json`, "error")
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500, details: { requestId } })
+  }
 
   // Superadmin uses systemd/root access, never E2B — skip the DB lookup
   let domain: Awaited<ReturnType<typeof resolveDomainRuntime>> = null
@@ -51,22 +47,24 @@ export async function POST(req: Request) {
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500, details: { requestId } })
   }
   if (domain?.execution_mode === "e2b") {
+    if (!SHELL.E2B_UPSTREAM) {
+      console.error(`[Terminal ${requestId}] E2B shell upstream not configured in server-config.json`)
+      Sentry.captureMessage(`[Terminal ${requestId}] E2B shell upstream not configured in server-config.json`, "error")
+      return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500, details: { requestId } })
+    }
+
     // Fail fast if sandbox isn't running — worker must create first
     if (!domain.sandbox_id || !domain.hostname || domain.sandbox_status !== "running") {
       return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
     }
 
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 5000)
-
-      const res = await fetch(`${E2B_TERMINAL_URL}/internal/lease`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Internal-Secret": shellPassword,
-        },
-        body: JSON.stringify({
+      const data = await requestInternalLease({
+        upstream: SHELL.E2B_UPSTREAM,
+        requestId,
+        serviceName: "E2B terminal bridge",
+        secret: shellPassword,
+        body: {
           workspace: shellWorkspace,
           sandboxDomain: {
             domain_id: domain.domain_id,
@@ -74,26 +72,8 @@ export async function POST(req: Request) {
             sandbox_id: domain.sandbox_id,
             sandbox_status: domain.sandbox_status,
           },
-        }),
-        signal: controller.signal,
+        },
       })
-
-      clearTimeout(timeout)
-
-      if (!res.ok) {
-        const text = await res.text()
-        console.error(`[Terminal ${requestId}] E2B bridge returned ${res.status}: ${text}`)
-        Sentry.captureMessage(`[Terminal ${requestId}] E2B bridge returned ${res.status}: ${text}`, "error")
-        return structuredErrorResponse(ErrorCodes.SHELL_SERVER_UNAVAILABLE, { status: 502, details: { requestId } })
-      }
-
-      const parsed = LeaseResponseSchema.safeParse(await res.json())
-      if (!parsed.success) {
-        console.error(`[Terminal ${requestId}] Unexpected E2B bridge response shape`)
-        Sentry.captureMessage(`[Terminal ${requestId}] Unexpected E2B bridge response shape`, "error")
-        return structuredErrorResponse(ErrorCodes.SHELL_SERVER_UNAVAILABLE, { status: 502, details: { requestId } })
-      }
-      const data = parsed.data
 
       // E2B terminal uses /e2b/ws path on the same shell host (caddy-shell routes it)
       return NextResponse.json({
@@ -112,35 +92,13 @@ export async function POST(req: Request) {
 
   // Systemd path: existing shell-server-go flow
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
-
-    const res = await fetch(`${SHELL_SERVER_URL}/internal/lease`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Internal-Secret": shellPassword,
-      },
-      body: JSON.stringify({ workspace: shellWorkspace }),
-      signal: controller.signal,
+    const data = await requestInternalLease({
+      upstream: SHELL.UPSTREAM,
+      requestId,
+      serviceName: "Shell server",
+      secret: shellPassword,
+      body: { workspace: shellWorkspace },
     })
-
-    clearTimeout(timeout)
-
-    if (!res.ok) {
-      const text = await res.text()
-      console.error(`[Terminal ${requestId}] Shell server returned ${res.status}: ${text}`)
-      Sentry.captureMessage(`[Terminal ${requestId}] Shell server returned ${res.status}: ${text}`, "error")
-      return structuredErrorResponse(ErrorCodes.SHELL_SERVER_UNAVAILABLE, { status: 502, details: { requestId } })
-    }
-
-    const parsed = LeaseResponseSchema.safeParse(await res.json())
-    if (!parsed.success) {
-      console.error(`[Terminal ${requestId}] Unexpected shell server response shape`)
-      Sentry.captureMessage(`[Terminal ${requestId}] Unexpected shell server response shape`, "error")
-      return structuredErrorResponse(ErrorCodes.SHELL_SERVER_UNAVAILABLE, { status: 502, details: { requestId } })
-    }
-    const data = parsed.data
 
     return NextResponse.json({
       ok: true,

@@ -47,6 +47,21 @@ gh api repos/<OWNER>/<REPO>/issues/<PR_NUMBER>/comments | jq -f .claude/skills/c
 gh api graphql -F query=@.claude/skills/coderabbit/pr-threads.graphql -f owner=<OWNER> -f repo=<REPO> -F pr=<PR_NUMBER> | jq -f .claude/skills/coderabbit/filter-threads.jq
 ```
 
+### Raw CodeRabbit mini-thread dump
+
+**Use this only when the user explicitly asks for nested comments, mini threads, or missing subcomments.** The filtered thread query can miss nested/subcomments. In that case, dump the raw pull-review comments to a dated markdown file under `.alive/todo/` using the REST review-comments endpoint, not just the filtered GraphQL thread output.
+
+```bash
+mkdir -p .alive/todo
+DATE=$(date +%F)
+DUMP_FILE=".alive/todo/coderabbit-mini-threads-${DATE}-pr-<PR_NUMBER>.md"
+gh api repos/<OWNER>/<REPO>/pulls/<PR_NUMBER>/comments?per_page=100 \
+  | jq -r '.[] | select(.user.login=="coderabbitai[bot]") | "## comment_id: \(.id)\n- path: \(.path)\n- line: \(.line // "")\n- created_at: \(.created_at)\n- url: \(.html_url)\n\n\(.body)\n\n---\n"' \
+  > "$DUMP_FILE"
+```
+
+This dump is the source of truth for "mini threads" that the reduced unresolved-thread query can hide. Only create it on explicit user request for nested/subcomment coverage.
+
 ### CI status
 
 ```bash
@@ -189,6 +204,7 @@ Report what was done:
 - **ALWAYS use pr-threads.graphql** — load the query from file with `-F query=@.claude/skills/coderabbit/pr-threads.graphql` to avoid shell encoding issues with inline GraphQL
 - **ALWAYS use filter-threads.jq** — never dump raw GraphQL thread responses into context
 - **ALWAYS use filter-comments.jq** — never use `!=` in jq within bash (causes `\!` escaping errors)
+- **When the user explicitly asks for nested/mini-thread comments, create a dated markdown dump** — write the raw CodeRabbit pull-review comments to `.alive/todo/coderabbit-mini-threads-YYYY-MM-DD-pr-<PR_NUMBER>.md` so nested/subcomments are preserved even when the filtered GraphQL thread view misses them
 - **ALWAYS use check-box.py** — never use `sed` for checkbox updates (silent failures on metacharacters, whitespace mismatches, and missing items)
 - **ALWAYS use GraphQL variables** — never hardcode owner/repo in query strings
 - **User comments are #1 priority** — fix them before CodeRabbit suggestions

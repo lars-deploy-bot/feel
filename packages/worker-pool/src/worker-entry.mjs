@@ -41,7 +41,7 @@ import {
   SandboxManager,
 } from "@webalive/sandbox"
 // biome-ignore format: import checker expects a single-line import statement for this package.
-import { createStreamToolContext, DEFAULTS, formatUncaughtError, GLOBAL_MCP_PROVIDERS, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, OAUTH_MCP_PROVIDERS, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
+import { createStreamToolContext, DEFAULTS, formatUncaughtError, isAbortError, isFatalError, isStreamInitVisibleTool, isTransientNetworkError, OAUTH_MCP_PROVIDERS, resolveReachableGlobalMcpServers, resolveStreamMode, SENTRY, STREAM_MODES } from "@webalive/shared"
 import {
   emailInternalMcp,
   sandboxedFsInternalMcp,
@@ -51,6 +51,7 @@ import {
 } from "@webalive/tools"
 import { resolveSandboxTemplate } from "../dist/e2b-template.js"
 import { E2B_INFRASTRUCTURE_ENV_KEYS, prepareRequestEnv } from "../dist/env-isolation.js"
+import { getMissingTerminalResultError } from "../dist/query-guard.js"
 
 // Initialize Sentry for error reporting in the worker process.
 // DSN comes from server-config.json via @webalive/shared.
@@ -581,8 +582,20 @@ function dropPrivileges() {
   }
 
   // Drop privileges with validation
-  // CRITICAL: Must drop GID before UID (can't setgid after dropping root UID)
+  // CRITICAL:
+  // 1. Reset supplementary groups BEFORE setgid/setuid. Otherwise the process
+  //    can retain root-era group state, and Claude SDK queries can silently
+  //    return 0 messages with no stderr after privilege drop.
+  // 2. Drop GID before UID (can't setgid after dropping root UID).
   try {
+    if (targetGid && process.getuid() === 0 && process.setgroups) {
+      process.setgroups([targetGid])
+      if (process.getgroups && !process.getgroups().includes(targetGid)) {
+        throw new Error(`Supplementary groups missing target GID ${targetGid} after reset`)
+      }
+      console.error(`[worker] Reset supplementary groups to: ${targetGid}`)
+    }
+
     if (targetGid && process.setgid) {
       process.setgid(targetGid)
       const actualGid = process.getgid()
@@ -872,14 +885,17 @@ async function handleQuery(ipc, requestId, payload) {
     // createSdkMcpServer returns function objects.
     // They must be imported and created locally in the worker.
 
-    // Build global HTTP MCP servers (always available, no auth required)
-    // These are defined in GLOBAL_MCP_PROVIDERS in @webalive/shared
-    const globalMcpServers = {}
-    for (const [providerKey, config] of Object.entries(GLOBAL_MCP_PROVIDERS)) {
-      globalMcpServers[providerKey] = {
-        type: "http",
-        url: config.url,
-      }
+    const {
+      filteredAllowedTools,
+      reachableServers: globalMcpServers,
+      skippedServers: skippedGlobalMcpServers,
+    } = modeConfig.mcpEnabled
+      ? await resolveReachableGlobalMcpServers(allowedTools)
+      : { filteredAllowedTools: allowedTools, reachableServers: {}, skippedServers: [] }
+    allowedTools.length = 0
+    allowedTools.push(...filteredAllowedTools)
+    if (skippedGlobalMcpServers.length > 0) {
+      console.error(`[worker] Skipping unreachable global MCP servers: ${skippedGlobalMcpServers.join(", ")}`)
     }
 
     // Optional MCP servers — only loaded when extraTools references them
@@ -999,6 +1015,8 @@ async function handleQuery(ipc, requestId, payload) {
       const isBunRuntime = typeof Bun !== "undefined"
       const claudeExecutable = isBunRuntime ? "bun" : "node"
       const claudeExecutableArgs = isBunRuntime ? ["--no-env-file"] : []
+      // Previously we passed executable:"bun" which tried to run the native
+      // binary as a JS file, causing silent failures in Docker.
 
       // SECURITY (defense-in-depth): Build explicit env for the Claude subprocess.
       // Even though createWorkerSpawnEnv() already strips secrets at spawn time,
@@ -1130,6 +1148,11 @@ async function handleQuery(ipc, requestId, payload) {
         })
       }
     })
+
+    const missingTerminalResultError = getMissingTerminalResultError(queryResult, messageCount, signal.aborted)
+    if (missingTerminalResultError) {
+      throw new Error(missingTerminalResultError)
+    }
 
     // Send completion (include cancelled flag if aborted)
     const wasCancelled = signal.aborted
