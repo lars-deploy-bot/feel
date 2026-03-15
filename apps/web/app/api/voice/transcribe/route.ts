@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server"
-import type { TranscribeError, TranscribeResult } from "@/lib/api/types"
+import { structuredErrorResponse } from "@/lib/api/responses"
+import type { TranscribeResult } from "@/lib/api/types"
 import { miniToolsFetch } from "@/lib/clients/mini-tools"
+import { ErrorCodes } from "@/lib/error-codes"
 
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? ""
   if (!contentType.includes("multipart/form-data")) {
-    return NextResponse.json<TranscribeError>({ error: "Expected multipart/form-data" }, { status: 400 })
+    return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, { status: 400 })
   }
 
   const formData = await request.formData()
   const file = formData.get("file")
   if (!file || !(file instanceof File)) {
-    return NextResponse.json<TranscribeError>({ error: "Missing audio file" }, { status: 400 })
+    return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 400 })
   }
 
   const upstream = new FormData()
@@ -21,7 +23,10 @@ export async function POST(request: Request) {
   const data = await response.json()
 
   if (!response.ok) {
-    return NextResponse.json<TranscribeError>({ error: data.error }, { status: response.status })
+    return structuredErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, {
+      status: response.status,
+      details: { upstream: data.error },
+    })
   }
 
   return NextResponse.json<TranscribeResult>({

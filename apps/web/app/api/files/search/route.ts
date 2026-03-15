@@ -35,7 +35,8 @@ async function walkAndMatch(
   let entries: import("node:fs").Dirent[]
   try {
     entries = (await readdir(path.join(root, dir), { withFileTypes: true })) as import("node:fs").Dirent[]
-  } catch {
+  } catch (_err) {
+    // Directory may not be readable — skip silently
     return
   }
 
