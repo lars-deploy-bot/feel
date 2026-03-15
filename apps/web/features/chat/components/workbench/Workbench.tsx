@@ -1,21 +1,25 @@
 "use client"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import {
-  Activity,
-  Bot,
   ExternalLink,
-  FolderOpen,
-  Globe,
-  Image,
   Maximize2,
   Minimize2,
   Monitor,
   RotateCw,
-  Settings,
   Smartphone,
-  SquareTerminal,
   X,
 } from "lucide-react"
+import {
+  Browser,
+  CaretDown,
+  FolderSimple,
+  GearSix,
+  ImageSquare,
+  Lightning,
+  Robot,
+  Terminal,
+  type Icon as PhosphorIcon,
+} from "@phosphor-icons/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { ComponentType } from "react"
 import { type WorkbenchView, type WorkbenchViewProps, useWorkbenchContext } from "@/features/chat/lib/workbench-context"
@@ -54,6 +58,8 @@ const VIEW_REGISTRY: Record<WorkbenchView, ViewRegistration> = {
   photos: { kind: "simple", component: WorkbenchPhotos },
   events: { kind: "simple", component: WorkbenchEvents },
 }
+
+type ViewOption = { view: WorkbenchView; label: string; icon: PhosphorIcon; activeClass: string }
 
 export function Workbench() {
   const { workspace, worktree } = useWorkspace({ allowEmpty: true })
@@ -111,23 +117,25 @@ export function Workbench() {
     setView(view)
   }
 
-  type ViewOption = { view: WorkbenchView; label: string; icon: typeof Globe }
-  const opt = (view: WorkbenchView, label: string, icon: typeof Globe): ViewOption => ({ view, label, icon })
   const viewOptions: ViewOption[] = [
-    ...(isSuperadminWorkspace ? [] : [opt("site", "Preview", Globe)]),
-    opt("code", "Files", FolderOpen),
-    opt("terminal", "Console", SquareTerminal),
-    opt("agents", "Agents", Bot),
-    opt("photos", "Photos", Image),
-    ...(isSuperadmin ? [opt("events", "Activity", Activity)] : []),
-    opt("home", "Settings", Settings),
+    ...(isSuperadminWorkspace ? [] : [{ view: "site" as const, label: "Preview", icon: Browser, activeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400" }]),
+    { view: "code", label: "Files", icon: FolderSimple, activeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+    { view: "agents", label: "Agents", icon: Robot, activeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+    { view: "photos", label: "Photos", icon: ImageSquare, activeClass: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
+    { view: "home", label: "Settings", icon: GearSix, activeClass: "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white" },
   ]
+
+  const superadminViews: ViewOption[] = [
+    { view: "events", label: "Activity", icon: Lightning, activeClass: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400" },
+    { view: "terminal", label: "Console", icon: Terminal, activeClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" },
+  ]
+  const isSuperadminViewActive = superadminViews.some(v => v.view === workbench.view)
 
   return (
     <div data-panel-role="workbench" className="relative bg-white dark:bg-[#0d0d0d] flex flex-col h-full w-full">
       {/* View switcher */}
       <div data-panel-role="workbench-view-switcher" className="h-11 px-2.5 flex items-center gap-1.5 shrink-0">
-        {viewOptions.map(({ view, label, icon: Icon }) => {
+        {viewOptions.map(({ view, label, icon: Icon, activeClass }) => {
           const active = workbench.view === view
           return (
             <button
@@ -136,15 +144,23 @@ export function Workbench() {
               onClick={() => handleSelectView(view)}
               className={`flex items-center gap-2 h-8 px-3.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
                 active
-                  ? "bg-black/[0.07] dark:bg-white/[0.1] text-black dark:text-white"
+                  ? activeClass
                   : "text-black/30 dark:text-white/25 hover:text-black/50 dark:hover:text-white/40"
               }`}
             >
-              <Icon size={15} strokeWidth={1.5} />
+              <Icon size={16} weight={active ? "fill" : "regular"} />
               <span>{label}</span>
             </button>
           )
         })}
+        {isSuperadmin && (
+          <SuperadminMenu
+            views={superadminViews}
+            currentView={workbench.view}
+            isActive={isSuperadminViewActive}
+            onSelect={handleSelectView}
+          />
+        )}
         <div className="flex-1" />
         <button
           type="button"
@@ -335,6 +351,94 @@ function WorkbenchViewDispatcher({
     default:
       return null
   }
+}
+
+// ── Superadmin Menu ──────────────────────────────────────────────────────────
+
+function SuperadminMenu({
+  views,
+  currentView,
+  isActive,
+  onSelect,
+}: {
+  views: ViewOption[]
+  currentView: WorkbenchView
+  isActive: boolean
+  onSelect: (view: WorkbenchView) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("mousedown", handleClick)
+    document.addEventListener("keydown", handleKey)
+    return () => {
+      document.removeEventListener("mousedown", handleClick)
+      document.removeEventListener("keydown", handleKey)
+    }
+  }, [open])
+
+  const activeView = views.find(v => v.view === currentView)
+  const ActiveIcon = activeView?.icon ?? Terminal
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-1.5 h-8 px-3 rounded-full text-[13px] font-medium transition-all duration-200 ${
+          isActive && activeView
+            ? activeView.activeClass
+            : "text-black/30 dark:text-white/25 hover:text-black/50 dark:hover:text-white/40"
+        }`}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        <ActiveIcon size={16} weight={isActive ? "fill" : "regular"} />
+        {isActive && <span>{activeView?.label}</span>}
+        <CaretDown size={12} weight="bold" className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute top-full left-0 mt-1.5 w-44 bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+        >
+          <div className="p-1.5 space-y-0.5">
+            {views.map(({ view, label, icon: Icon, activeClass }) => {
+              const active = currentView === view
+              return (
+                <button
+                  key={view}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onSelect(view)
+                    setOpen(false)
+                  }}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors flex items-center gap-2.5 ${
+                    active
+                      ? activeClass
+                      : "text-black/50 dark:text-white/40 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-black/70 dark:hover:text-white/60"
+                  }`}
+                >
+                  <Icon size={16} weight={active ? "fill" : "regular"} className="shrink-0" />
+                  <span className="text-[13px] font-medium">{label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Preview Viewport ──────────────────────────────────────────────────────────
