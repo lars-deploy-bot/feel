@@ -25,7 +25,7 @@ vi.mock("@webalive/shared", () => ({
 import { AutomationConfig, type AutomationConfigData } from "../AutomationConfig"
 
 const baseData: AutomationConfigData = {
-  sites: [{ id: "site-1", hostname: "example.alive.best" }],
+  sites: [{ id: "site-1", hostname: "example.test.example" }],
   defaultName: "Daily summary",
   defaultPrompt: "Review the website and summarize key updates for today.",
 }

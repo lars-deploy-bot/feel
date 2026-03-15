@@ -39,7 +39,7 @@ describe("SandboxManager", () => {
 
     const result = await manager.getOrCreate({
       domain_id: "dom_123",
-      hostname: "example.alive.best",
+      hostname: "example.test.example",
       sandbox_id: "sbx_old",
       sandbox_status: "running",
       is_test_env: true,
@@ -61,7 +61,7 @@ describe("SandboxManager", () => {
     await expect(
       manager.getOrCreate({
         domain_id: "dom_123",
-        hostname: "example.alive.best",
+        hostname: "example.test.example",
         sandbox_id: "sbx_old",
         sandbox_status: "running",
       }),
@@ -79,7 +79,7 @@ describe("SandboxManager", () => {
 
     await manager.getOrCreate({
       domain_id: "dom_123",
-      hostname: "example.alive.best",
+      hostname: "example.test.example",
       sandbox_id: null,
       sandbox_status: null,
     })
@@ -103,7 +103,7 @@ describe("SandboxManager", () => {
 
     const result = await manager.getOrCreate({
       domain_id: "dom_123",
-      hostname: "example.alive.best",
+      hostname: "example.test.example",
       sandbox_id: "sbx_paused",
       sandbox_status: "paused",
     })
@@ -126,7 +126,7 @@ describe("SandboxManager", () => {
 
     await manager.getOrCreate({
       domain_id: "dom_123",
-      hostname: "example.alive.best",
+      hostname: "example.test.example",
       sandbox_id: null,
       sandbox_status: null,
     })
@@ -150,7 +150,7 @@ describe("SandboxManager", () => {
 
     await manager.getOrCreate({
       domain_id: "dom_123",
-      hostname: "example.alive.best",
+      hostname: "example.test.example",
       sandbox_id: null,
       sandbox_status: null,
     })
@@ -169,7 +169,7 @@ describe("SandboxManager", () => {
 
     await manager.getOrCreate({
       domain_id: "dom_123",
-      hostname: "example.alive.best",
+      hostname: "example.test.example",
       sandbox_id: null,
       sandbox_status: null,
       is_test_env: true,
@@ -181,7 +181,7 @@ describe("SandboxManager", () => {
       expect.objectContaining({
         metadata: {
           domain_id: "dom_123",
-          hostname: "example.alive.best",
+          hostname: "example.test.example",
           is_test_env: "true",
           test_run_id: "run-123",
         },

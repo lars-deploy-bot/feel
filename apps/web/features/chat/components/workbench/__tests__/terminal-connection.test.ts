@@ -104,7 +104,7 @@ async function simulateConnect(
     const res = await mockFetch("/api/terminal/lease", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspace: "test.alive.best" }),
+      body: JSON.stringify({ workspace: "test.test.example" }),
     })
 
     if (!res.ok) {

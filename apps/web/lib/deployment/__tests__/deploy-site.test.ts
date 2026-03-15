@@ -32,7 +32,7 @@ vi.mock("@webalive/site-controller", () => ({
       return Promise.resolve({
         domain: config.domain,
         port: 3700,
-        serviceName: "site@testsite-alive-best.service",
+        serviceName: "site@testsite-test-example.service",
         success: true,
       })
     },
@@ -46,7 +46,7 @@ describe("deploySite", () => {
     deployCalls.length = 0
 
     await deploySite({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       email: "test@example.com",
     })
 
@@ -58,7 +58,7 @@ describe("deploySite", () => {
     deployCalls.length = 0
 
     await deploySite({
-      domain: "another.alive.best",
+      domain: "another.test.example",
       email: "test@example.com",
     })
 

@@ -85,9 +85,9 @@ vi.mock("@/lib/deployment/site-occupancy", () => ({
 }))
 
 vi.mock("@/lib/config", () => ({
-  WILDCARD_DOMAIN: "alive.best",
+  WILDCARD_DOMAIN: "test.example",
   extractSlugFromDomain: (domain: string) => {
-    const suffix = ".alive.best"
+    const suffix = ".test.example"
     if (domain.endsWith(suffix)) return domain.replace(suffix, "")
     return null
   },
@@ -129,7 +129,7 @@ describe("DELETE /api/test/delete-site", () => {
   })
 
   it("returns 404 without valid test secret outside test env", async () => {
-    const res = await DELETE(makeRequest({ domain: "demo.alive.best" }))
+    const res = await DELETE(makeRequest({ domain: "demo.test.example" }))
     expect(res.status).toBe(404)
     expect(mockExecFile).not.toHaveBeenCalled()
   })
@@ -150,20 +150,20 @@ describe("DELETE /api/test/delete-site", () => {
       error: null,
     })
 
-    const res = await DELETE(makeRequest({ domain: "prod.alive.best" }, "test-secret"))
+    const res = await DELETE(makeRequest({ domain: "prod.test.example" }, "test-secret"))
     expect(res.status).toBe(403)
     expect(mockExecFile).not.toHaveBeenCalled()
   })
 
   it("deletes test domain successfully", async () => {
-    const res = await DELETE(makeRequest({ domain: "e2e-site.alive.best" }, "test-secret"))
+    const res = await DELETE(makeRequest({ domain: "e2e-site.test.example" }, "test-secret"))
     const payload = await res.json()
 
     expect(res.status).toBe(200)
-    expect(payload).toEqual({ ok: true, domain: "e2e-site.alive.best" })
+    expect(payload).toEqual({ ok: true, domain: "e2e-site.test.example" })
     expect(mockExecFile).toHaveBeenCalledWith(
       expect.stringContaining("/scripts/sites/delete-site.sh"),
-      ["e2e-site.alive.best", "--force"],
+      ["e2e-site.test.example", "--force"],
       expect.any(Function),
     )
   })
@@ -173,7 +173,7 @@ describe("DELETE /api/test/delete-site", () => {
       cb(new Error("delete failed")),
     )
 
-    const res = await DELETE(makeRequest({ domain: "e2e-site.alive.best" }, "test-secret"))
+    const res = await DELETE(makeRequest({ domain: "e2e-site.test.example" }, "test-secret"))
     expect(res.status).toBe(500)
   })
 

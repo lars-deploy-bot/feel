@@ -18,7 +18,7 @@ vi.mock("@/lib/storage", () => ({
 }))
 
 vi.mock("@/lib/tenant-utils", () => ({
-  workspaceToTenantId: vi.fn().mockReturnValue("demo.alive.best"),
+  workspaceToTenantId: vi.fn().mockReturnValue("demo.test.example"),
 }))
 
 const { GET } = await import("../route")
@@ -40,10 +40,10 @@ describe("GET /api/images/list", () => {
     vi.clearAllMocks()
 
     vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
-    vi.mocked(verifyWorkspaceAccess).mockResolvedValue("demo.alive.best")
+    vi.mocked(verifyWorkspaceAccess).mockResolvedValue("demo.test.example")
     vi.mocked(resolveWorkspace).mockResolvedValue({
       success: true,
-      workspace: "/srv/webalive/sites/demo.alive.best/user",
+      workspace: "/srv/webalive/sites/demo.test.example/user",
     })
     vi.mocked(imageStorage.list).mockResolvedValue({ data: [], error: null })
   })
@@ -51,7 +51,7 @@ describe("GET /api/images/list", () => {
   it("returns 401 when user is not authenticated", async () => {
     vi.mocked(getSessionUser).mockResolvedValue(null)
 
-    const res = await GET(createRequest("?workspace=demo.alive.best"))
+    const res = await GET(createRequest("?workspace=demo.test.example"))
     const data = await res.json()
 
     expect(res.status).toBe(401)
@@ -62,7 +62,7 @@ describe("GET /api/images/list", () => {
   it("returns 401 when workspace authorization fails", async () => {
     vi.mocked(verifyWorkspaceAccess).mockResolvedValue(null)
 
-    const res = await GET(createRequest("?workspace=demo.alive.best"))
+    const res = await GET(createRequest("?workspace=demo.test.example"))
     const data = await res.json()
 
     expect(res.status).toBe(401)
@@ -76,7 +76,7 @@ describe("GET /api/images/list", () => {
       error: { message: "boom", code: "fs:list" },
     })
 
-    const res = await GET(createRequest("?workspace=demo.alive.best"))
+    const res = await GET(createRequest("?workspace=demo.test.example"))
     const data = await res.json()
 
     expect(res.status).toBe(500)
@@ -87,15 +87,15 @@ describe("GET /api/images/list", () => {
   it("groups variants by content hash and ignores malformed keys", async () => {
     vi.mocked(imageStorage.list).mockResolvedValue({
       data: [
-        "t/demo.alive.best/o/hash-1/v/orig.webp",
-        "t/demo.alive.best/o/hash-1/v/thumb.webp",
-        "t/demo.alive.best/o/hash-2/v/w640.webp",
+        "t/demo.test.example/o/hash-1/v/orig.webp",
+        "t/demo.test.example/o/hash-1/v/thumb.webp",
+        "t/demo.test.example/o/hash-2/v/w640.webp",
         "bad-key-format",
       ],
       error: null,
     })
 
-    const res = await GET(createRequest("?workspace=demo.alive.best&worktree=feat-x"))
+    const res = await GET(createRequest("?workspace=demo.test.example&worktree=feat-x"))
     const data = await res.json()
 
     expect(res.status).toBe(200)
@@ -103,14 +103,14 @@ describe("GET /api/images/list", () => {
     expect(data.count).toBe(2)
     expect(verifyWorkspaceAccess).toHaveBeenCalledWith(
       MOCK_USER,
-      { workspace: "demo.alive.best", worktree: "feat-x" },
+      { workspace: "demo.test.example", worktree: "feat-x" },
       expect.any(String),
     )
 
-    const hash1 = data.images.find((img: { key: string }) => img.key === "demo.alive.best/hash-1")
+    const hash1 = data.images.find((img: { key: string }) => img.key === "demo.test.example/hash-1")
     expect(hash1).toBeDefined()
-    expect(hash1.variants.orig).toBe("t/demo.alive.best/o/hash-1/v/orig.webp")
-    expect(hash1.variants.thumb).toBe("t/demo.alive.best/o/hash-1/v/thumb.webp")
+    expect(hash1.variants.orig).toBe("t/demo.test.example/o/hash-1/v/orig.webp")
+    expect(hash1.variants.thumb).toBe("t/demo.test.example/o/hash-1/v/thumb.webp")
   })
 
   it("passes through workspace resolution errors", async () => {
@@ -119,7 +119,7 @@ describe("GET /api/images/list", () => {
       response: NextResponse.json({ ok: false, error: "WORKSPACE_NOT_FOUND" }, { status: 404 }),
     })
 
-    const res = await GET(createRequest("?workspace=demo.alive.best"))
+    const res = await GET(createRequest("?workspace=demo.test.example"))
     const data = await res.json()
 
     expect(res.status).toBe(404)

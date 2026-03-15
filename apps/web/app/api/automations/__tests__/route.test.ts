@@ -105,7 +105,7 @@ const mockValidateCronSchedule = vi.fn((): { valid: boolean; error?: string; nex
 const mockValidateTimezone = vi.fn((): { valid: boolean; error?: string } => ({ valid: true }))
 const mockValidateSiteId = vi.fn(
   (): Promise<{ valid: boolean; error?: string; hostname?: string }> =>
-    Promise.resolve({ valid: true, hostname: "test.alive.best" }),
+    Promise.resolve({ valid: true, hostname: "test.test.example" }),
 )
 
 vi.mock("@/lib/automation/validation", () => ({
@@ -167,7 +167,7 @@ describe("POST /api/automations", () => {
     mockValidateActionPrompt.mockReturnValue({ valid: true })
     mockValidateCronSchedule.mockReturnValue({ valid: true, nextRuns: [] })
     mockValidateTimezone.mockReturnValue({ valid: true })
-    mockValidateSiteId.mockResolvedValue({ valid: true, hostname: "test.alive.best" })
+    mockValidateSiteId.mockResolvedValue({ valid: true, hostname: "test.test.example" })
   })
 
   it("creates automation for normal site as regular user", async () => {

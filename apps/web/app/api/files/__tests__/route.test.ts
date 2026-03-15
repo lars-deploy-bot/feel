@@ -138,7 +138,7 @@ describe("POST /api/files", () => {
   })
 
   it("blocks path traversal on the systemd path", async () => {
-    const response = await POST(createMockRequest({ path: "../../../etc", workspace: "example.alive.best" }))
+    const response = await POST(createMockRequest({ path: "../../../etc", workspace: "example.test.example" }))
     const data: FilesListResponse = await response.json()
 
     expect(response.status).toBe(403)
@@ -149,7 +149,7 @@ describe("POST /api/files", () => {
   })
 
   it("lists files in the workspace", async () => {
-    const response = await POST(createMockRequest({ path: "", workspace: "example.alive.best" }))
+    const response = await POST(createMockRequest({ path: "", workspace: "example.test.example" }))
     const data: FilesListResponse = await response.json()
 
     expect(response.status).toBe(200)
@@ -163,7 +163,7 @@ describe("POST /api/files", () => {
   it("maps E2B path validation failures to PATH_OUTSIDE_WORKSPACE", async () => {
     mockResolveDomainRuntime.mockResolvedValue({
       domain_id: "domain-1",
-      hostname: "example.alive.best",
+      hostname: "example.test.example",
       port: 3000,
       is_test_env: null,
       execution_mode: "e2b",
@@ -172,7 +172,7 @@ describe("POST /api/files", () => {
     })
     mockListE2bDirectory.mockRejectedValue(new RuntimePathValidationError("../etc"))
 
-    const response = await POST(createMockRequest({ path: "../etc", workspace: "example.alive.best" }))
+    const response = await POST(createMockRequest({ path: "../etc", workspace: "example.test.example" }))
     const data: FilesListResponse = await response.json()
 
     expect(response.status).toBe(403)
@@ -188,7 +188,7 @@ describe("POST /api/files", () => {
       response: NextResponse.json({ ok: false, error: "WORKSPACE_NOT_FOUND" }, { status: 404 }),
     })
 
-    const response = await POST(createMockRequest({ path: "", workspace: "example.alive.best" }))
+    const response = await POST(createMockRequest({ path: "", workspace: "example.test.example" }))
     const data: FilesListResponse = await response.json()
 
     expect(response.status).toBe(404)

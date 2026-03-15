@@ -115,7 +115,7 @@ describe("configResultToFormData", () => {
   it("converts daily schedule to cron form data", () => {
     const result = {
       siteId: "site-1",
-      siteName: "test.alive.best",
+      siteName: "test.test.example",
       name: "Daily Task",
       prompt: "Update content",
       model: "claude-sonnet-4-6" as const,
@@ -142,7 +142,7 @@ describe("configResultToFormData", () => {
   it("converts one-time schedule with timezone-aware run_at", () => {
     const result = {
       siteId: "site-1",
-      siteName: "test.alive.best",
+      siteName: "test.test.example",
       name: "One-time Task",
       prompt: "Do once",
       model: "claude-sonnet-4-6" as const,

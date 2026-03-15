@@ -179,19 +179,19 @@ describe("cancellation", () => {
 
   it("deferred resolution failing clears deepLinkPending and lets validator clean up", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "nonexistent.alive.best",
-      deepLinkPending: "nonexistent.alive.best",
+      currentWorkspace: "nonexistent.test.example",
+      deepLinkPending: "nonexistent.test.example",
     })
 
     // First validation: pending protects workspace
-    getActions().validateWorkspaceAvailability(["other.alive.best"])
-    expect(getState().currentWorkspace).toBe("nonexistent.alive.best")
+    getActions().validateWorkspaceAvailability(["other.test.example"])
+    expect(getState().currentWorkspace).toBe("nonexistent.test.example")
 
     // allWorkspaces loaded, workspace not found → clear pending
     getActions().setDeepLinkPending(null)
 
     // Second validation: no protection, workspace cleared
-    getActions().validateWorkspaceAvailability(["other.alive.best"])
+    getActions().validateWorkspaceAvailability(["other.test.example"])
     expect(getState().currentWorkspace).toBeNull()
   })
 })
@@ -327,14 +327,14 @@ describe("autoSelectWorkspace", () => {
 
   it("does not auto-select when workspace already set", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "existing.alive.best",
-      recentWorkspaces: [{ domain: "other.alive.best", orgId: "org-A", lastAccessed: 999 }],
+      currentWorkspace: "existing.test.example",
+      recentWorkspaces: [{ domain: "other.test.example", orgId: "org-A", lastAccessed: 999 }],
     })
 
     const didSelect = getActions().autoSelectWorkspace()
 
     expect(didSelect).toBe(false)
-    expect(getState().currentWorkspace).toBe("existing.alive.best")
+    expect(getState().currentWorkspace).toBe("existing.test.example")
   })
 
   it("after validateAndCleanup removes org, does not pick from removed org", () => {
@@ -388,28 +388,28 @@ describe("convergence", () => {
 
   it("deleted workspace cleared from selection and recents", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "deleted.alive.best",
+      currentWorkspace: "deleted.test.example",
       recentWorkspaces: [
-        { domain: "deleted.alive.best", orgId: "org-A", lastAccessed: 100 },
-        { domain: "kept.alive.best", orgId: "org-A", lastAccessed: 200 },
+        { domain: "deleted.test.example", orgId: "org-A", lastAccessed: 100 },
+        { domain: "kept.test.example", orgId: "org-A", lastAccessed: 200 },
       ],
     })
 
-    getActions().validateWorkspaceAvailability(["kept.alive.best"])
+    getActions().validateWorkspaceAvailability(["kept.test.example"])
 
     expect(getState().currentWorkspace).toBeNull()
     expect(getState().recentWorkspaces).toHaveLength(1)
-    expect(getState().recentWorkspaces[0].domain).toBe("kept.alive.best")
+    expect(getState().recentWorkspaces[0].domain).toBe("kept.test.example")
   })
 
   it("rehydration with stale workspace (not on server) is cleared by validator", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "gone.alive.best",
+      currentWorkspace: "gone.test.example",
       selectedOrgId: "org-A",
       deepLinkPending: null,
     })
 
-    getActions().validateWorkspaceAvailability(["other.alive.best"])
+    getActions().validateWorkspaceAvailability(["other.test.example"])
 
     expect(getState().currentWorkspace).toBeNull()
     expect(getState().selectedOrgId).toBe("org-A")
@@ -429,14 +429,14 @@ describe("convergence", () => {
 
   it("empty available list does not clear deepLinkPending workspace", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "new-site.alive.best",
-      deepLinkPending: "new-site.alive.best",
+      currentWorkspace: "new-site.test.example",
+      deepLinkPending: "new-site.test.example",
     })
 
     getActions().validateWorkspaceAvailability([])
 
-    expect(getState().currentWorkspace).toBe("new-site.alive.best")
-    expect(getState().deepLinkPending).toBe("new-site.alive.best")
+    expect(getState().currentWorkspace).toBe("new-site.test.example")
+    expect(getState().deepLinkPending).toBe("new-site.test.example")
   })
 })
 
@@ -447,8 +447,8 @@ describe("convergence", () => {
 describe("persistence", () => {
   it("deepLinkPending is not persisted", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "test.alive.best",
-      deepLinkPending: "test.alive.best",
+      currentWorkspace: "test.test.example",
+      deepLinkPending: "test.test.example",
     })
 
     useWorkspaceStoreBase.setState(resetState())
@@ -490,29 +490,29 @@ describe("persistence", () => {
 
 describe("deepLinkPending mechanism", () => {
   it("setDeepLinkPending sets and clears the flag", () => {
-    getActions().setDeepLinkPending("example.alive.best")
-    expect(getState().deepLinkPending).toBe("example.alive.best")
+    getActions().setDeepLinkPending("example.test.example")
+    expect(getState().deepLinkPending).toBe("example.test.example")
     getActions().setDeepLinkPending(null)
     expect(getState().deepLinkPending).toBeNull()
   })
 
   it("validateWorkspaceAvailability protects pending workspace", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "newsite.alive.best",
-      deepLinkPending: "newsite.alive.best",
+      currentWorkspace: "newsite.test.example",
+      deepLinkPending: "newsite.test.example",
     })
-    getActions().validateWorkspaceAvailability(["other.alive.best"])
-    expect(getState().currentWorkspace).toBe("newsite.alive.best")
-    expect(getState().deepLinkPending).toBe("newsite.alive.best")
+    getActions().validateWorkspaceAvailability(["other.test.example"])
+    expect(getState().currentWorkspace).toBe("newsite.test.example")
+    expect(getState().deepLinkPending).toBe("newsite.test.example")
   })
 
   it("validateWorkspaceAvailability clears pending when workspace confirmed", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "newsite.alive.best",
-      deepLinkPending: "newsite.alive.best",
+      currentWorkspace: "newsite.test.example",
+      deepLinkPending: "newsite.test.example",
     })
-    getActions().validateWorkspaceAvailability(["newsite.alive.best", "other.alive.best"])
-    expect(getState().currentWorkspace).toBe("newsite.alive.best")
+    getActions().validateWorkspaceAvailability(["newsite.test.example", "other.test.example"])
+    expect(getState().currentWorkspace).toBe("newsite.test.example")
     expect(getState().deepLinkPending).toBeNull()
   })
 })
@@ -525,7 +525,7 @@ describe("edge cases", () => {
   it("workspace not in recents stays after validateAndCleanup (no false clear)", () => {
     // Workspace set without going through addRecentWorkspace
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "orphan.alive.best",
+      currentWorkspace: "orphan.test.example",
       selectedOrgId: "org-B",
       recentWorkspaces: [],
     })
@@ -536,22 +536,22 @@ describe("edge cases", () => {
     expect(getState().selectedOrgId).toBe("org-A")
     // workspace stays — validateAndCleanup can't determine ownership without
     // authoritative data, so it doesn't make a false clear
-    expect(getState().currentWorkspace).toBe("orphan.alive.best")
+    expect(getState().currentWorkspace).toBe("orphan.test.example")
   })
 
   it("stale validateWorkspaceAvailability response after newer selection is harmless", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "new-site.alive.best",
-      deepLinkPending: "new-site.alive.best",
+      currentWorkspace: "new-site.test.example",
+      deepLinkPending: "new-site.test.example",
     })
 
     // Stale response
-    getActions().validateWorkspaceAvailability(["old-site.alive.best"])
-    expect(getState().currentWorkspace).toBe("new-site.alive.best")
+    getActions().validateWorkspaceAvailability(["old-site.test.example"])
+    expect(getState().currentWorkspace).toBe("new-site.test.example")
 
     // Fresh response
-    getActions().validateWorkspaceAvailability(["old-site.alive.best", "new-site.alive.best"])
-    expect(getState().currentWorkspace).toBe("new-site.alive.best")
+    getActions().validateWorkspaceAvailability(["old-site.test.example", "new-site.test.example"])
+    expect(getState().currentWorkspace).toBe("new-site.test.example")
     expect(getState().deepLinkPending).toBeNull()
   })
 

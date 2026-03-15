@@ -54,7 +54,7 @@ vi.mock("next/headers", () => ({
   })),
   headers: vi.fn(async () => ({
     get: vi.fn((name: string) => {
-      if (name.toLowerCase() === "host") return "demo.alive.best"
+      if (name.toLowerCase() === "host") return "demo.test.example"
       return null
     }),
   })),
@@ -220,7 +220,7 @@ vi.mock("@/types/guards/api", () => ({
       success: true,
       data: {
         message: typeof body.message === "string" ? body.message : "hello",
-        workspace: "demo.alive.best",
+        workspace: "demo.test.example",
         worktree: undefined,
         conversationId: "conv-1",
         tabGroupId: "tab-group-1",
@@ -243,7 +243,7 @@ vi.mock("../retry-observability", () => ({
 
 const { POST } = await import("../route")
 const { AuthenticationError } = await import("@/features/auth/lib/auth")
-const SESSION_KEY = "user-1::demo.alive.best::tab-group-1::tab-1"
+const SESSION_KEY = "user-1::demo.test.example::tab-group-1::tab-1"
 
 function createRequest(message = "test message"): NextRequest {
   return new NextRequest("http://localhost/api/claude/stream", {
@@ -252,7 +252,7 @@ function createRequest(message = "test message"): NextRequest {
       "Content-Type": "application/json",
       origin: "http://localhost",
     },
-    body: JSON.stringify({ message, workspace: "demo.alive.best" }),
+    body: JSON.stringify({ message, workspace: "demo.test.example" }),
   })
 }
 
@@ -279,7 +279,7 @@ function createMockDomainClient() {
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           single: vi.fn(async () => ({
-            data: { domain_id: "domain-1", hostname: "demo.alive.best", port: 3777 },
+            data: { domain_id: "domain-1", hostname: "demo.test.example", port: 3777 },
           })),
         })),
       })),
@@ -352,7 +352,7 @@ describe("POST /api/claude/stream cleanup", () => {
       isSuperadmin: false,
       enabledModels: ["model-default"],
     })
-    verifyWorkspaceAccessMock.mockResolvedValue("demo.alive.best")
+    verifyWorkspaceAccessMock.mockResolvedValue("demo.test.example")
     getSafeSessionCookieMock.mockResolvedValue("session-cookie")
 
     tabKeyMock.mockReturnValue(SESSION_KEY)
@@ -535,7 +535,7 @@ describe("POST /api/claude/stream cleanup", () => {
       isSuperadmin: true,
       enabledModels: ["model-default"],
     })
-    verifyWorkspaceAccessMock.mockResolvedValueOnce("demo.alive.best")
+    verifyWorkspaceAccessMock.mockResolvedValueOnce("demo.test.example")
 
     const res = await POST(createRequest("mode probe"))
     expect(res.status).toBe(200)
@@ -557,7 +557,7 @@ describe("POST /api/claude/stream cleanup", () => {
       isSuperadmin: false,
       enabledModels: ["model-default"],
     })
-    verifyWorkspaceAccessMock.mockResolvedValueOnce("demo.alive.best")
+    verifyWorkspaceAccessMock.mockResolvedValueOnce("demo.test.example")
 
     const res = await POST(createRequest("mode probe"))
     expect(res.status).toBe(200)

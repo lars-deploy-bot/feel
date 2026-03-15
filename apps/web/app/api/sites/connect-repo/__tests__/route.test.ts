@@ -80,8 +80,8 @@ describe("PATCH /api/sites/connect-repo", () => {
       metadataPath,
       JSON.stringify({
         slug: "test-site",
-        domain: "test-site.alive.best",
-        workspace: "test-site.alive.best",
+        domain: "test-site.test.example",
+        workspace: "test-site.test.example",
         email: "test@example.com",
         siteIdeas: "",
         createdAt: Date.now(),

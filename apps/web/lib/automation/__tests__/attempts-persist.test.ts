@@ -73,7 +73,7 @@ describe("tryWorkerPool onPersistMessage", () => {
     await tryWorkerPool({
       requestId: "req_1",
       cwd: "/tmp/test",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       userId: "user_1",
       fullPrompt: "do stuff",
       selectedModel: "claude-sonnet-4-20250514",
@@ -101,7 +101,7 @@ describe("tryWorkerPool onPersistMessage", () => {
     const result = await tryWorkerPool({
       requestId: "req_2",
       cwd: "/tmp/test",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       userId: "user_1",
       fullPrompt: "do stuff",
       selectedModel: "claude-sonnet-4-20250514",
@@ -120,7 +120,7 @@ describe("tryWorkerPool onPersistMessage", () => {
       tryWorkerPool({
         requestId: "req_cancelled",
         cwd: "/tmp/test",
-        workspace: "test.alive.best",
+        workspace: "test.test.example",
         userId: "user_1",
         fullPrompt: "do stuff",
         selectedModel: "claude-sonnet-4-20250514",

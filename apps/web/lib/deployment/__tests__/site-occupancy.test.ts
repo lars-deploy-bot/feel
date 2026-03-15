@@ -4,7 +4,7 @@ const existsSyncMock = vi.fn<(path: string) => boolean>()
 const execFileSyncMock = vi.fn()
 
 vi.mock("@/lib/config", () => ({
-  buildSubdomain: (slug: string) => `${slug}.alive.best`,
+  buildSubdomain: (slug: string) => `${slug}.test.example`,
 }))
 
 vi.mock("@/lib/site-workspace-registry", () => ({
@@ -33,7 +33,7 @@ describe("inspectSiteOccupancy", () => {
   })
 
   it("reports workspace directories as occupied", () => {
-    existsSyncMock.mockImplementation(input => input === "/srv/webalive/sites/testsite.alive.best")
+    existsSyncMock.mockImplementation(input => input === "/srv/webalive/sites/testsite.test.example")
 
     expect(inspectSiteOccupancy("testsite")).toEqual({
       occupied: true,
@@ -42,7 +42,7 @@ describe("inspectSiteOccupancy", () => {
   })
 
   it("reports e2b scratch workspaces as occupied", () => {
-    existsSyncMock.mockImplementation(input => input === "/tmp/e2b/testsite.alive.best")
+    existsSyncMock.mockImplementation(input => input === "/tmp/e2b/testsite.test.example")
 
     expect(inspectSiteOccupancy("testsite")).toEqual({
       occupied: true,

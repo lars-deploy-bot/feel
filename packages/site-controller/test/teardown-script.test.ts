@@ -125,9 +125,9 @@ function runTeardown(options: { killMode: "term-succeeds" | "stubborn" }) {
   const streamRoot = join(tempDir, "stream-root")
   const configPath = join(tempDir, "server-config.json")
   const sitesRoot = join(tempDir, "sites")
-  const targetDir = join(sitesRoot, "testsite.alive.best")
-  const symlinkPath = join(sitesRoot, "testsite-alive-best")
-  const envFilePath = join(tempDir, "testsite-alive-best.env")
+  const targetDir = join(sitesRoot, "testsite.test.example")
+  const symlinkPath = join(sitesRoot, "testsite-test-example")
+  const envFilePath = join(tempDir, "testsite-test-example.env")
 
   mkdirSync(join(streamRoot, "packages", "site-controller"), { recursive: true })
   mkdirSync(targetDir, { recursive: true })
@@ -190,14 +190,14 @@ function runTeardown(options: { killMode: "term-succeeds" | "stubborn" }) {
       PATH: `${binDir}:${process.env.PATH ?? ""}`,
       STREAM_ROOT: streamRoot,
       SERVER_CONFIG_PATH: configPath,
-      SITE_DOMAIN: "testsite.alive.best",
-      SITE_SLUG: "testsite-alive-best",
-      SERVICE_NAME: "site@testsite-alive-best.service",
+      SITE_DOMAIN: "testsite.test.example",
+      SITE_SLUG: "testsite-test-example",
+      SERVICE_NAME: "site@testsite-test-example.service",
       REMOVE_USER: "true",
       REMOVE_FILES: "true",
       ENV_FILE_PATH: envFilePath,
       SITES_ROOT: sitesRoot,
-      TEST_SITE_USER: "site-testsite-alive-best",
+      TEST_SITE_USER: "site-testsite-test-example",
       TEST_STATE_DIR: stateDir,
     },
     timeout: 30_000,
@@ -221,11 +221,11 @@ describe("99-teardown.sh", () => {
     const bunInvocations = readFileSync(join(run.stateDir, "bun-invocations"), "utf8")
 
     expect(run.result.status).toBe(0)
-    expect(run.result.stderr).toContain("Stopping lingering processes for user: site-testsite-alive-best")
+    expect(run.result.stderr).toContain("Stopping lingering processes for user: site-testsite-test-example")
     expect(run.result.stderr).toContain("User removed")
     expect(run.result.stderr).toContain("Files removed")
     expect(run.result.stderr).not.toContain("Failed to remove user")
-    expect(run.result.stderr).toContain("Teardown complete: testsite.alive.best")
+    expect(run.result.stderr).toContain("Teardown complete: testsite.test.example")
     expect(bunInvocations).toContain("run --cwd packages/site-controller routing:generate")
     expect(bunInvocations).toContain(`${join(run.tempDir, "stream-root", "scripts", "sync-generated-caddy.ts")}`)
   })
@@ -235,7 +235,7 @@ describe("99-teardown.sh", () => {
     tempDirs.push(run.tempDir)
 
     expect(run.result.status).not.toBe(0)
-    expect(run.result.stderr).toContain("Failed to stop processes for site-testsite-alive-best")
+    expect(run.result.stderr).toContain("Failed to stop processes for site-testsite-test-example")
     expect(run.result.stderr).not.toContain("User removed")
   })
 })

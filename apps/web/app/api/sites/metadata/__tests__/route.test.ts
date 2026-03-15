@@ -28,8 +28,8 @@ vi.mock("@/features/auth/lib/auth", async () => {
 
 const mockMetadata: SiteMetadata = {
   slug: "my-site",
-  domain: "my-site.alive.best",
-  workspace: "/srv/webalive/sites/my-site.alive.best",
+  domain: "my-site.test.example",
+  workspace: "/srv/webalive/sites/my-site.test.example",
   email: "owner@example.com",
   siteIdeas: "A cool website",
   templateId: "tmpl_blank",
@@ -140,7 +140,7 @@ describe("GET /api/sites/metadata", () => {
     expect(res.status).toBe(200)
     expect(data.ok).toBe(true)
     expect(data.metadata.slug).toBe("my-site")
-    expect(data.metadata.domain).toBe("my-site.alive.best")
+    expect(data.metadata.domain).toBe("my-site.test.example")
     expect(data.metadata.siteIdeas).toBe("A cool website")
   })
 })

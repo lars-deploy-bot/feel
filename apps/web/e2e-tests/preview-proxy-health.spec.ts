@@ -24,8 +24,8 @@ if (!PREVIEW_BASE) {
 }
 
 /**
- * Convert a domain (e.g. "blank.alive.best") to preview subdomain label.
- * "blank.alive.best" → "blank-alive-best"
+ * Convert a domain (e.g. "blank.test.example") to preview subdomain label.
+ * "blank.test.example" → "blank-test-example"
  */
 function toPreviewLabel(domain: string): string {
   return domain.split(".").join("-")
@@ -33,7 +33,7 @@ function toPreviewLabel(domain: string): string {
 
 /**
  * Build the preview proxy URL for a given domain.
- * e.g. "blank.alive.best" → "https://preview--blank-alive-best.sonno.tech"
+ * e.g. "blank.test.example" → "https://preview--blank-test-example.test.example"
  */
 function previewUrl(domain: string, path = "/"): string {
   const label = toPreviewLabel(domain)

@@ -60,7 +60,7 @@ const REGULAR_USER = MOCK_SESSION_USER
 
 const SUPERADMIN_USER = createMockSessionUser({
   id: "superadmin-1",
-  email: "admin@alive.best",
+  email: "admin@test.example",
   isSuperadmin: true,
 })
 
