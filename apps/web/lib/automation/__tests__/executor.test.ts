@@ -150,7 +150,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "  ",
     })
 
@@ -164,7 +164,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test",
       timeoutSeconds: 0,
     })
@@ -179,7 +179,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test",
       timeoutSeconds: 5000,
     })
@@ -195,7 +195,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test prompt",
     })
 
@@ -212,7 +212,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test prompt",
     })
 
@@ -229,7 +229,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test prompt",
     })
 
@@ -250,7 +250,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test",
       responseToolName: "send_reply",
     })
@@ -273,7 +273,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test",
       responseToolName: "send_reply",
     })
@@ -296,7 +296,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test prompt",
     })
 
@@ -327,7 +327,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test prompt",
     })
 
@@ -396,7 +396,7 @@ describe("runAutomationJob", () => {
       jobId: "j1",
       userId: "u1",
       orgId: "o1",
-      workspace: "test.alive.best",
+      workspace: "test.test.example",
       prompt: "test prompt",
     })
 

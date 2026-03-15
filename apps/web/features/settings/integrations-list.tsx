@@ -30,6 +30,7 @@ import {
   trackIntegrationsViewed,
 } from "@/lib/analytics/events"
 import { getIntegrationUI } from "@/lib/integrations/registry"
+import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
 
 // Constants
 const VISIBILITY_STATUS = {
@@ -108,6 +109,7 @@ interface IntegrationsListProps {
 }
 
 export function IntegrationsList({ layout = "grid", filter }: IntegrationsListProps) {
+  const { contactEmail } = useDomainConfig()
   const { integrations, loading, error, refetch } = useIntegrations()
 
   useEffect(() => {
@@ -212,7 +214,7 @@ export function IntegrationsList({ layout = "grid", filter }: IntegrationsListPr
             variant="outline"
             size="sm"
             onClick={() => {
-              window.open("mailto:team@alive.best?subject=Request%20Integration%20Access", "_blank")
+              window.open(`mailto:${contactEmail}?subject=Request%20Integration%20Access`, "_blank")
             }}
           >
             Request Access

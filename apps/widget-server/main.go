@@ -5,12 +5,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
 const widget = `/**
  * Alive Badge Widget — "The Secret"
- * Usage: <script src="https://widget.alive.best/widget.js" defer></script>
+ * Usage: <script src="https://widget.{{MAIN_DOMAIN}}/widget.js" defer></script>
  */
 ;(function () {
   "use strict"
@@ -83,7 +84,7 @@ const widget = `/**
     isMobile = window.innerWidth < 640
 
     var hostname = window.location.hostname
-    var editUrl = "https://app.alive.best/chat?wk=" + encodeURIComponent(hostname)
+    var editUrl = "https://app.{{MAIN_DOMAIN}}/chat?wk=" + encodeURIComponent(hostname)
 
     // Overlay
     overlay = document.createElement("div")
@@ -142,7 +143,7 @@ const widget = `/**
 
     // Make your own CTA
     var a2 = document.createElement("a")
-    a2.href = "https://app.alive.best/chat"
+    a2.href = "https://app.{{MAIN_DOMAIN}}/chat"
     a2.target = "_blank"
     a2.rel = "noopener noreferrer"
     a2.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:" + py + " 16px;border-radius:12px;text-decoration:none;transition:background .2s"
@@ -200,12 +201,20 @@ func main() {
 		port = "5050"
 	}
 
+	mainDomain := os.Getenv("MAIN_DOMAIN")
+	if mainDomain == "" {
+		log.Fatal("FATAL: MAIN_DOMAIN env var is required (e.g. 'alive.best')")
+	}
+
+	// Replace placeholder with actual domain at startup
+	resolvedWidget := strings.ReplaceAll(widget, "{{MAIN_DOMAIN}}", mainDomain)
+
 	// Widget endpoint
 	http.HandleFunc("/widget.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 		w.Header().Set("Cache-Control", "public, max-age=3600") // 1 hour cache
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Write([]byte(widget))
+		w.Write([]byte(resolvedWidget))
 	})
 
 	// Health check
@@ -220,7 +229,7 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		http.Redirect(w, r, "https://alive.best", http.StatusFound)
+		http.Redirect(w, r, "https://"+mainDomain, http.StatusFound)
 	})
 
 	log.Printf("Widget server starting on :%s", port)

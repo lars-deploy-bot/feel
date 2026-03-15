@@ -37,7 +37,7 @@ describe("getClientIdentifier", () => {
 
   it("does not use host header as IP fallback", () => {
     const req = createRequest({
-      host: "staging.alive.best",
+      host: "staging.test.example",
     })
 
     expect(getClientIdentifier(req, "login:ip")).toBe("login:ip:unknown")

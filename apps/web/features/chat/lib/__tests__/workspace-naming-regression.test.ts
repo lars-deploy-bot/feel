@@ -27,7 +27,7 @@ function skipIfMissing(ctx: TestContext, path: string, extraMessage?: string): v
 
 describe("Workspace Naming Bug - Regression Test", () => {
   /**
-   * THE BUG: Code was converting evermore.test.local → evermore-alive-best
+   * THE BUG: Code was converting evermore.test.local → evermore-test-example
    * THE FIX: Try both, dots first
    *
    * This test fails if someone reverts to the old behavior.
@@ -35,7 +35,7 @@ describe("Workspace Naming Bug - Regression Test", () => {
   it("CRITICAL: finds evermore.test.local with DOTS in directory name", async ctx => {
     // Verify the actual directory exists with DOTS
     const dotsPath = "/srv/webalive/sites/evermore.test.local/user"
-    const hyphensPath = "/srv/webalive/sites/evermore-alive-best/user"
+    const hyphensPath = "/srv/webalive/sites/evermore-test-example/user"
 
     skipIfMissing(ctx, dotsPath, "This test requires evermore.test.local to exist")
 

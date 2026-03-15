@@ -128,7 +128,7 @@ describe("registerDomain", () => {
 
   it("inherits test flags from a provided organization when registering a domain", async () => {
     await registerDomain({
-      hostname: "testsite.alive.best",
+      hostname: "testsite.test.example",
       email: "owner@example.com",
       port: 3701,
       executionMode: "e2b",
@@ -136,7 +136,7 @@ describe("registerDomain", () => {
     })
 
     expect(domainInsert).toHaveBeenCalledWith({
-      hostname: "testsite.alive.best",
+      hostname: "testsite.test.example",
       port: 3701,
       org_id: "org-test",
       execution_mode: "e2b",
@@ -148,7 +148,7 @@ describe("registerDomain", () => {
 
   it("inherits test flags from the resolved default organization", async () => {
     await registerDomain({
-      hostname: "worker.alive.best",
+      hostname: "worker.test.example",
       email: "owner@example.com",
       port: 3702,
       executionMode: "e2b",
@@ -156,7 +156,7 @@ describe("registerDomain", () => {
 
     expect(getUserDefaultOrgIdMock).toHaveBeenCalledWith("user-123", "owner@example.com")
     expect(domainInsert).toHaveBeenCalledWith({
-      hostname: "worker.alive.best",
+      hostname: "worker.test.example",
       port: 3702,
       org_id: "org-test",
       execution_mode: "e2b",

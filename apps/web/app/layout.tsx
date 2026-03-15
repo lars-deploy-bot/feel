@@ -1,4 +1,4 @@
-import { DOMAINS } from "@webalive/shared"
+import { CONTACT_EMAIL, DOMAINS } from "@webalive/shared"
 import NextTopLoader from "nextjs-toploader"
 import { NuqsAdapter } from "nuqs/adapters/next/app"
 import { AuthModal } from "@/components/modals/AuthModal"
@@ -29,6 +29,7 @@ const domainConfig = {
   wildcard: DOMAINS.WILDCARD,
   main: DOMAINS.MAIN,
   previewBase: DOMAINS.PREVIEW_BASE,
+  contactEmail: CONTACT_EMAIL,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

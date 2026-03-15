@@ -18,7 +18,7 @@ async function mintTestToken(overrides: { ttlSeconds?: number; now?: Date } = {}
     issuer: TEST_ISSUER,
     audience: TEST_AUDIENCE,
     subject: "user-test",
-    workspace: "example.alive.best",
+    workspace: "example.test.example",
     role: RuntimeRoleSchema.enum.user,
     scopes: [RuntimeScopeSchema.enum["files:read"]],
     ttlSeconds: overrides.ttlSeconds ?? 60,
@@ -33,7 +33,7 @@ describe("runtime capability", () => {
       issuer: TEST_ISSUER,
       audience: TEST_AUDIENCE,
       subject: "user-1",
-      workspace: "example.alive.best",
+      workspace: "example.test.example",
       role: RuntimeRoleSchema.enum.admin,
       scopes: [RuntimeScopeSchema.enum["files:read"], RuntimeScopeSchema.enum["files:list"]],
       ttlSeconds: 60,
@@ -49,7 +49,7 @@ describe("runtime capability", () => {
     })
 
     expect(capability.sub).toBe("user-1")
-    expect(capability.workspace).toBe("example.alive.best")
+    expect(capability.workspace).toBe("example.test.example")
     expect(capability.role).toBe(RuntimeRoleSchema.enum.admin)
     expect(capability.scopes).toEqual([RuntimeScopeSchema.enum["files:read"], RuntimeScopeSchema.enum["files:list"]])
   })
@@ -60,7 +60,7 @@ describe("runtime capability", () => {
       issuer: TEST_ISSUER,
       audience: TEST_AUDIENCE,
       subject: "user-2",
-      workspace: "one.alive.best",
+      workspace: "one.test.example",
       role: RuntimeRoleSchema.enum.user,
       scopes: [RuntimeScopeSchema.enum["files:read"]],
       ttlSeconds: 60,
@@ -78,7 +78,7 @@ describe("runtime capability", () => {
     expect(() =>
       requireCapabilityScope({
         capability,
-        workspace: "two.alive.best",
+        workspace: "two.test.example",
         scope: RuntimeScopeSchema.enum["files:read"],
       }),
     ).toThrow(RuntimeCapabilityError)
@@ -90,7 +90,7 @@ describe("runtime capability", () => {
       issuer: TEST_ISSUER,
       audience: TEST_AUDIENCE,
       subject: "user-3",
-      workspace: "example.alive.best",
+      workspace: "example.test.example",
       role: RuntimeRoleSchema.enum.user,
       scopes: [RuntimeScopeSchema.enum["files:list"]],
       ttlSeconds: 60,
@@ -108,7 +108,7 @@ describe("runtime capability", () => {
     expect(() =>
       requireCapabilityScope({
         capability,
-        workspace: "example.alive.best",
+        workspace: "example.test.example",
         scope: RuntimeScopeSchema.enum["files:read"],
       }),
     ).toThrow(RuntimeCapabilityError)

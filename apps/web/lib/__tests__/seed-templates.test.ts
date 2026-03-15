@@ -10,14 +10,14 @@ describe("buildTemplateSeedSql", () => {
           name: "Blank Canvas",
           description: "Minimal starter - build from scratch",
           sourcePath: "/srv/webalive/templates/blank.alive.best",
-          previewUrl: "https://blank.sonno.tech",
+          previewUrl: "https://blank.test.example",
         },
       ],
       {
         serverId: "srv_sonno_dot_tech_95_217_89_48",
         name: "Sonno Tech",
         ip: "95.217.89.48",
-        hostname: "sonno.tech",
+        hostname: "test.example",
       },
     )
 
@@ -28,6 +28,6 @@ describe("buildTemplateSeedSql", () => {
     expect(sql).toContain("template_id IN ('tmpl_blank')")
     expect(sql).toContain("server_id = 'srv_sonno_dot_tech_95_217_89_48'")
     expect(sql).toContain("Expected 1 active templates after seed")
-    expect(sql).toContain("https://blank.sonno.tech")
+    expect(sql).toContain("https://blank.test.example")
   })
 })

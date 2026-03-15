@@ -36,7 +36,7 @@ describe("e2e test env guards", () => {
     vi.stubEnv("TEST_ENV", "local")
     const { assertStandardE2ETarget } = await loadTestEnvModule()
 
-    expect(() => assertStandardE2ETarget("staging", "https://staging.alive.best")).toThrow(
+    expect(() => assertStandardE2ETarget("staging", "https://staging.test.example")).toThrow(
       'Standard E2E rejects TEST_ENV="staging"',
     )
   })
@@ -45,7 +45,7 @@ describe("e2e test env guards", () => {
     vi.stubEnv("TEST_ENV", "local")
     const { assertStandardE2ETarget } = await loadTestEnvModule()
 
-    expect(() => assertStandardE2ETarget("local", "https://staging.alive.best")).toThrow(
+    expect(() => assertStandardE2ETarget("local", "https://staging.test.example")).toThrow(
       "TEST_ENV=local requires an HTTP loopback base URL.",
     )
   })
@@ -54,7 +54,7 @@ describe("e2e test env guards", () => {
     vi.stubEnv("TEST_ENV", "staging")
     const { assertLiveE2ETarget } = await loadTestEnvModule()
 
-    expect(() => assertLiveE2ETarget("staging", "https://staging.alive.best")).not.toThrow()
+    expect(() => assertLiveE2ETarget("staging", "https://staging.test.example")).not.toThrow()
   })
 
   it("rejects local targets in the live lane", async () => {

@@ -17,12 +17,12 @@ describe("readTemplatePortMap", () => {
     const dir = mkdtempSync(join(tmpdir(), "template-envs-"))
     tempDirs.push(dir)
 
-    writeFileSync(join(dir, "blank.alive.best.env"), "PORT=3594\n")
-    writeFileSync(join(dir, "template1.alive.best.env"), "PORT=3352\n")
+    writeFileSync(join(dir, "blank.test.example.env"), "PORT=3594\n")
+    writeFileSync(join(dir, "template1.test.example.env"), "PORT=3352\n")
 
     expect(readTemplatePortMap(dir)).toEqual({
-      "blank.alive.best": 3594,
-      "template1.alive.best": 3352,
+      "blank.test.example": 3594,
+      "template1.test.example": 3352,
     })
   })
 
@@ -31,8 +31,8 @@ describe("readTemplatePortMap", () => {
     tempDirs.push(dir)
     mkdirSync(join(dir, "nested"))
 
-    writeFileSync(join(dir, "blank.alive.best.env"), "PORT=not-a-number\n")
-    writeFileSync(join(dir, "template1.alive.best.env"), "OTHER=1\n")
+    writeFileSync(join(dir, "blank.test.example.env"), "PORT=not-a-number\n")
+    writeFileSync(join(dir, "template1.test.example.env"), "OTHER=1\n")
     writeFileSync(join(dir, "ignored.txt"), "PORT=9999\n")
 
     expect(readTemplatePortMap(dir)).toEqual({})

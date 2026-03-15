@@ -61,7 +61,7 @@ vi.mock("@/lib/api/responses", () => ({
 const MOCK_WORKSPACE_BASE = "/srv/webalive/sites"
 
 vi.mock("@/lib/config", () => ({
-  buildSubdomain: vi.fn((slug: string) => `${slug}.alive.best`),
+  buildSubdomain: vi.fn((slug: string) => `${slug}.test.example`),
   WORKSPACE_BASE: MOCK_WORKSPACE_BASE,
 }))
 
@@ -198,9 +198,9 @@ describe("POST /api/import-repo", () => {
       cleanupDir: "/tmp/import",
     })
     runStrictDeploymentMock.mockResolvedValue({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       port: 3700,
-      serviceName: "site@testsite-alive-best.service",
+      serviceName: "site@testsite-test-example.service",
       executionMode: "systemd",
     })
     siteMetadataSetSiteMock.mockResolvedValue(undefined)
@@ -229,7 +229,7 @@ describe("POST /api/import-repo", () => {
     expect(response.status).toBe(200)
     expect(runStrictDeploymentMock).toHaveBeenCalledOnce()
     expect(runStrictDeploymentMock.mock.calls[0][0]).toMatchObject({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       email: "owner@example.com",
       orgId: "org-1",
       templatePath: "/tmp/import/template",
@@ -239,9 +239,9 @@ describe("POST /api/import-repo", () => {
 
   it("stores imported metadata in the e2b scratch root when sandbox mode is enabled", async () => {
     runStrictDeploymentMock.mockResolvedValueOnce({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       port: 3701,
-      serviceName: "e2b-site@testsite.alive.best",
+      serviceName: "e2b-site@testsite.test.example",
       executionMode: "e2b",
     })
 
@@ -257,9 +257,9 @@ describe("POST /api/import-repo", () => {
     expect(siteMetadataSetSiteMock).toHaveBeenCalledWith(
       "testsite",
       expect.objectContaining({
-        domain: "testsite.alive.best",
+        domain: "testsite.test.example",
       }),
-      { workspaceRoot: `${MOCK_E2B_SCRATCH}/testsite.alive.best` },
+      { workspaceRoot: `${MOCK_E2B_SCRATCH}/testsite.test.example` },
     )
 
     const payload = (await response.json()) as { executionMode: string }
@@ -434,7 +434,7 @@ describe("POST /api/import-repo", () => {
         sourceRepo: "https://github.com/Acme/Toolkit",
         sourceBranch: "release/v2",
       }),
-      { workspaceRoot: `${MOCK_WORKSPACE_BASE}/testsite.alive.best` },
+      { workspaceRoot: `${MOCK_WORKSPACE_BASE}/testsite.test.example` },
     )
   })
 

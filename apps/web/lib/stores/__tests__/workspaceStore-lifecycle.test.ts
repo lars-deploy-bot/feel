@@ -46,8 +46,8 @@ describe("Coherence", () => {
   test("setSelectedOrg to different org clears currentWorkspace", () => {
     // Set org first so workspace isn't cleared by the initial org selection
     getActions().setSelectedOrg("org-a")
-    getActions().setCurrentWorkspace("site-a.alive.best", "org-a")
-    expect(getState().currentWorkspace).toBe("site-a.alive.best")
+    getActions().setCurrentWorkspace("site-a.test.example", "org-a")
+    expect(getState().currentWorkspace).toBe("site-a.test.example")
 
     // Switch to a different org
     getActions().setSelectedOrg("org-b")
@@ -61,7 +61,7 @@ describe("Coherence", () => {
 
   test("setSelectedOrg to same org preserves currentWorkspace", () => {
     getActions().setSelectedOrg("org-a")
-    getActions().setCurrentWorkspace("site-a.alive.best", "org-a")
+    getActions().setCurrentWorkspace("site-a.test.example", "org-a")
     const workspaceBefore = getState().currentWorkspace
 
     // Re-select the same org
@@ -80,20 +80,20 @@ describe("Coherence", () => {
   })
 
   test("setCurrentWorkspace with orgId updates both workspace and recents", () => {
-    getActions().setCurrentWorkspace("site-x.alive.best", "org-x")
+    getActions().setCurrentWorkspace("site-x.test.example", "org-x")
 
-    expect(getState().currentWorkspace).toBe("site-x.alive.best")
+    expect(getState().currentWorkspace).toBe("site-x.test.example")
     // Should appear in recents with the orgId
     const recents = getState().recentWorkspaces
     expect(recents).toHaveLength(1)
-    expect(recents[0].domain).toBe("site-x.alive.best")
+    expect(recents[0].domain).toBe("site-x.test.example")
     expect(recents[0].orgId).toBe("org-x")
   })
 
   test("setCurrentWorkspace without orgId does not add to recents", () => {
-    getActions().setCurrentWorkspace("site-x.alive.best")
+    getActions().setCurrentWorkspace("site-x.test.example")
 
-    expect(getState().currentWorkspace).toBe("site-x.alive.best")
+    expect(getState().currentWorkspace).toBe("site-x.test.example")
     expect(getState().recentWorkspaces).toHaveLength(0)
   })
 
@@ -101,15 +101,15 @@ describe("Coherence", () => {
     // Seed recents manually
     useWorkspaceStoreBase.setState({
       recentWorkspaces: [
-        { domain: "site-b.alive.best", orgId: "org-b", lastAccessed: 100 },
-        { domain: "site-a.alive.best", orgId: "org-a", lastAccessed: 200 },
+        { domain: "site-b.test.example", orgId: "org-b", lastAccessed: 100 },
+        { domain: "site-a.test.example", orgId: "org-a", lastAccessed: 200 },
       ],
     })
 
     const picked = getActions().autoSelectWorkspace()
     expect(picked).toBe(true)
     // Should pick the most recent (site-a, lastAccessed=200) and set its org
-    expect(getState().currentWorkspace).toBe("site-a.alive.best")
+    expect(getState().currentWorkspace).toBe("site-a.test.example")
     expect(getState().selectedOrgId).toBe("org-a")
   })
 })
@@ -130,8 +130,8 @@ describe("Cancellation / Cleanup", () => {
     useWorkspaceStoreBase.setState({
       selectedOrgId: "org-a",
       recentWorkspaces: [
-        { domain: "site-a.alive.best", orgId: "org-a", lastAccessed: 100 },
-        { domain: "site-b.alive.best", orgId: "org-removed", lastAccessed: 200 },
+        { domain: "site-a.test.example", orgId: "org-a", lastAccessed: 100 },
+        { domain: "site-b.test.example", orgId: "org-removed", lastAccessed: 200 },
       ],
     })
 
@@ -146,14 +146,14 @@ describe("Cancellation / Cleanup", () => {
     const orgA = makeOrg("org-a")
     useWorkspaceStoreBase.setState({
       selectedOrgId: "org-a",
-      currentWorkspace: "site-a.alive.best",
-      recentWorkspaces: [{ domain: "site-a.alive.best", orgId: "org-a", lastAccessed: 100 }],
+      currentWorkspace: "site-a.test.example",
+      recentWorkspaces: [{ domain: "site-a.test.example", orgId: "org-a", lastAccessed: 100 }],
     })
 
     getActions().validateAndCleanup([orgA])
 
     expect(getState().selectedOrgId).toBe("org-a")
-    expect(getState().currentWorkspace).toBe("site-a.alive.best")
+    expect(getState().currentWorkspace).toBe("site-a.test.example")
     expect(getState().recentWorkspaces).toHaveLength(1)
   })
 
@@ -161,9 +161,9 @@ describe("Cancellation / Cleanup", () => {
     useWorkspaceStoreBase.setState({
       selectedOrgId: "org-keep",
       recentWorkspaces: [
-        { domain: "site-1.alive.best", orgId: "org-keep", lastAccessed: 300 },
-        { domain: "site-2.alive.best", orgId: "org-gone-1", lastAccessed: 200 },
-        { domain: "site-3.alive.best", orgId: "org-gone-2", lastAccessed: 100 },
+        { domain: "site-1.test.example", orgId: "org-keep", lastAccessed: 300 },
+        { domain: "site-2.test.example", orgId: "org-gone-1", lastAccessed: 200 },
+        { domain: "site-3.test.example", orgId: "org-gone-2", lastAccessed: 100 },
       ],
     })
 
@@ -171,7 +171,7 @@ describe("Cancellation / Cleanup", () => {
 
     const recents = getState().recentWorkspaces
     expect(recents).toHaveLength(1)
-    expect(recents[0].domain).toBe("site-1.alive.best")
+    expect(recents[0].domain).toBe("site-1.test.example")
   })
 
   test("validateAndCleanup auto-selects first org after clearing invalid selection", () => {
@@ -190,7 +190,7 @@ describe("Cancellation / Cleanup", () => {
   test("validateAndCleanup with empty org list clears everything", () => {
     useWorkspaceStoreBase.setState({
       selectedOrgId: "org-a",
-      recentWorkspaces: [{ domain: "site-a.alive.best", orgId: "org-a", lastAccessed: 100 }],
+      recentWorkspaces: [{ domain: "site-a.test.example", orgId: "org-a", lastAccessed: 100 }],
     })
 
     getActions().validateAndCleanup([])
@@ -209,29 +209,29 @@ describe("Convergence", () => {
       currentWorkspace: null,
       selectedOrgId: null,
       recentWorkspaces: [
-        { domain: "old-site.alive.best", orgId: "org-a", lastAccessed: 100 },
-        { domain: "newest-site.alive.best", orgId: "org-b", lastAccessed: 500 },
-        { domain: "mid-site.alive.best", orgId: "org-a", lastAccessed: 300 },
+        { domain: "old-site.test.example", orgId: "org-a", lastAccessed: 100 },
+        { domain: "newest-site.test.example", orgId: "org-b", lastAccessed: 500 },
+        { domain: "mid-site.test.example", orgId: "org-a", lastAccessed: 300 },
       ],
     })
 
     const result = getActions().autoSelectWorkspace()
 
     expect(result).toBe(true)
-    expect(getState().currentWorkspace).toBe("newest-site.alive.best")
+    expect(getState().currentWorkspace).toBe("newest-site.test.example")
     expect(getState().selectedOrgId).toBe("org-b")
   })
 
   test("autoSelectWorkspace returns false when workspace already set", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "existing.alive.best",
-      recentWorkspaces: [{ domain: "other.alive.best", orgId: "org-a", lastAccessed: 999 }],
+      currentWorkspace: "existing.test.example",
+      recentWorkspaces: [{ domain: "other.test.example", orgId: "org-a", lastAccessed: 999 }],
     })
 
     const result = getActions().autoSelectWorkspace()
 
     expect(result).toBe(false)
-    expect(getState().currentWorkspace).toBe("existing.alive.best")
+    expect(getState().currentWorkspace).toBe("existing.test.example")
   })
 
   test("autoSelectWorkspace returns false when no recents exist", () => {
@@ -250,7 +250,7 @@ describe("Convergence", () => {
     useWorkspaceStoreBase.setState({
       currentWorkspace: null,
       selectedOrgId: null,
-      recentWorkspaces: [{ domain: "only.alive.best", orgId: "org-z", lastAccessed: 42 }],
+      recentWorkspaces: [{ domain: "only.test.example", orgId: "org-z", lastAccessed: 42 }],
     })
 
     getActions().autoSelectWorkspace()
@@ -260,11 +260,11 @@ describe("Convergence", () => {
 
   test("validateWorkspaceAvailability clears unavailable workspace", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "deleted-site.alive.best",
-      recentWorkspaces: [{ domain: "deleted-site.alive.best", orgId: "org-a", lastAccessed: 100 }],
+      currentWorkspace: "deleted-site.test.example",
+      recentWorkspaces: [{ domain: "deleted-site.test.example", orgId: "org-a", lastAccessed: 100 }],
     })
 
-    getActions().validateWorkspaceAvailability(["other-site.alive.best"])
+    getActions().validateWorkspaceAvailability(["other-site.test.example"])
 
     expect(getState().currentWorkspace).toBeNull()
   })
@@ -272,27 +272,27 @@ describe("Convergence", () => {
   test("validateWorkspaceAvailability cleans recents to only available workspaces", () => {
     useWorkspaceStoreBase.setState({
       recentWorkspaces: [
-        { domain: "available.alive.best", orgId: "org-a", lastAccessed: 300 },
-        { domain: "gone.alive.best", orgId: "org-a", lastAccessed: 200 },
-        { domain: "also-gone.alive.best", orgId: "org-b", lastAccessed: 100 },
+        { domain: "available.test.example", orgId: "org-a", lastAccessed: 300 },
+        { domain: "gone.test.example", orgId: "org-a", lastAccessed: 200 },
+        { domain: "also-gone.test.example", orgId: "org-b", lastAccessed: 100 },
       ],
     })
 
-    getActions().validateWorkspaceAvailability(["available.alive.best"])
+    getActions().validateWorkspaceAvailability(["available.test.example"])
 
     const recents = getState().recentWorkspaces
     expect(recents).toHaveLength(1)
-    expect(recents[0].domain).toBe("available.alive.best")
+    expect(recents[0].domain).toBe("available.test.example")
   })
 
   test("validateWorkspaceAvailability preserves workspace when it is available", () => {
     useWorkspaceStoreBase.setState({
-      currentWorkspace: "good-site.alive.best",
+      currentWorkspace: "good-site.test.example",
     })
 
-    getActions().validateWorkspaceAvailability(["good-site.alive.best", "other.alive.best"])
+    getActions().validateWorkspaceAvailability(["good-site.test.example", "other.test.example"])
 
-    expect(getState().currentWorkspace).toBe("good-site.alive.best")
+    expect(getState().currentWorkspace).toBe("good-site.test.example")
   })
 
   test("autoSelectOrg only selects when no org is currently selected", () => {
@@ -340,8 +340,8 @@ describe("Persistence shape", () => {
   })
 
   test("recentWorkspaces entries include orgId", () => {
-    getActions().addRecentWorkspace("site-1.alive.best", "org-1")
-    getActions().addRecentWorkspace("site-2.alive.best", "org-2")
+    getActions().addRecentWorkspace("site-1.test.example", "org-1")
+    getActions().addRecentWorkspace("site-2.test.example", "org-2")
 
     const recents = getState().recentWorkspaces
     for (const entry of recents) {
@@ -353,7 +353,7 @@ describe("Persistence shape", () => {
 
   test("recentWorkspaces entries include lastAccessed timestamp", () => {
     const before = Date.now()
-    getActions().addRecentWorkspace("site-1.alive.best", "org-1")
+    getActions().addRecentWorkspace("site-1.test.example", "org-1")
     const after = Date.now()
 
     const recents = getState().recentWorkspaces
@@ -365,7 +365,7 @@ describe("Persistence shape", () => {
   test("addRecentWorkspace enforces per-org limit of 6", () => {
     // Add 7 workspaces for the same org
     for (let i = 0; i < 7; i++) {
-      getActions().addRecentWorkspace(`site-${i}.alive.best`, "org-a")
+      getActions().addRecentWorkspace(`site-${i}.test.example`, "org-a")
     }
 
     const recents = getState().recentWorkspaces
@@ -376,11 +376,11 @@ describe("Persistence shape", () => {
   test("addRecentWorkspace per-org limit is independent across orgs", () => {
     // Add 6 for org-a
     for (let i = 0; i < 6; i++) {
-      getActions().addRecentWorkspace(`a-site-${i}.alive.best`, "org-a")
+      getActions().addRecentWorkspace(`a-site-${i}.test.example`, "org-a")
     }
     // Add 3 for org-b
     for (let i = 0; i < 3; i++) {
-      getActions().addRecentWorkspace(`b-site-${i}.alive.best`, "org-b")
+      getActions().addRecentWorkspace(`b-site-${i}.test.example`, "org-b")
     }
 
     const recents = getState().recentWorkspaces
@@ -396,8 +396,8 @@ describe("Persistence shape", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe("Edge cases", () => {
   test("setCurrentWorkspace(null) clears workspace", () => {
-    getActions().setCurrentWorkspace("site.alive.best", "org-a")
-    expect(getState().currentWorkspace).toBe("site.alive.best")
+    getActions().setCurrentWorkspace("site.test.example", "org-a")
+    expect(getState().currentWorkspace).toBe("site.test.example")
 
     getActions().setCurrentWorkspace(null)
     expect(getState().currentWorkspace).toBeNull()
@@ -420,14 +420,14 @@ describe("Edge cases", () => {
   })
 
   test("addRecentWorkspace dedupes by domain+orgId", () => {
-    getActions().addRecentWorkspace("site.alive.best", "org-a")
+    getActions().addRecentWorkspace("site.test.example", "org-a")
     const firstTimestamp = getState().recentWorkspaces[0].lastAccessed
 
     // Add the same domain+orgId again — should deduplicate, not create a second entry
-    getActions().addRecentWorkspace("site.alive.best", "org-a")
+    getActions().addRecentWorkspace("site.test.example", "org-a")
 
     const recents = getState().recentWorkspaces
-    const matches = recents.filter(r => r.domain === "site.alive.best" && r.orgId === "org-a")
+    const matches = recents.filter(r => r.domain === "site.test.example" && r.orgId === "org-a")
     // Should have exactly one entry, not a duplicate
     expect(matches).toHaveLength(1)
     // Timestamp should be updated (or at least equal)
@@ -435,8 +435,8 @@ describe("Edge cases", () => {
   })
 
   test("same domain in different orgs are separate recents", () => {
-    getActions().addRecentWorkspace("shared-site.alive.best", "org-a")
-    getActions().addRecentWorkspace("shared-site.alive.best", "org-b")
+    getActions().addRecentWorkspace("shared-site.test.example", "org-a")
+    getActions().addRecentWorkspace("shared-site.test.example", "org-b")
 
     const recents = getState().recentWorkspaces
     expect(recents).toHaveLength(2)
@@ -445,28 +445,28 @@ describe("Edge cases", () => {
   })
 
   test("setCurrentWorkspace initializes worktree entry for new workspace", () => {
-    getActions().setCurrentWorkspace("new-site.alive.best", "org-a")
+    getActions().setCurrentWorkspace("new-site.test.example", "org-a")
 
     const worktrees = getState().currentWorktreeByWorkspace
-    expect(worktrees).toHaveProperty("new-site.alive.best")
-    expect(worktrees["new-site.alive.best"]).toBeNull()
+    expect(worktrees).toHaveProperty("new-site.test.example")
+    expect(worktrees["new-site.test.example"]).toBeNull()
   })
 
   test("setCurrentWorkspace preserves existing worktree entry", () => {
     // Set up a worktree first
-    getActions().setCurrentWorkspace("site.alive.best", "org-a")
-    getActions().setCurrentWorktree("site.alive.best", "feature-branch")
+    getActions().setCurrentWorkspace("site.test.example", "org-a")
+    getActions().setCurrentWorktree("site.test.example", "feature-branch")
 
-    expect(getState().currentWorktreeByWorkspace["site.alive.best"]).toBe("feature-branch")
+    expect(getState().currentWorktreeByWorkspace["site.test.example"]).toBe("feature-branch")
 
     // Re-set the same workspace — should not reset the worktree
-    getActions().setCurrentWorkspace("site.alive.best", "org-a")
-    expect(getState().currentWorktreeByWorkspace["site.alive.best"]).toBe("feature-branch")
+    getActions().setCurrentWorkspace("site.test.example", "org-a")
+    expect(getState().currentWorktreeByWorkspace["site.test.example"]).toBe("feature-branch")
   })
 
   test("clearRecentWorkspaces empties the list", () => {
-    getActions().addRecentWorkspace("site-1.alive.best", "org-a")
-    getActions().addRecentWorkspace("site-2.alive.best", "org-b")
+    getActions().addRecentWorkspace("site-1.test.example", "org-a")
+    getActions().addRecentWorkspace("site-2.test.example", "org-b")
     expect(getState().recentWorkspaces.length).toBeGreaterThan(0)
 
     getActions().clearRecentWorkspaces()
@@ -477,8 +477,8 @@ describe("Edge cases", () => {
     const orgA = makeOrg("org-a")
     useWorkspaceStoreBase.setState({
       selectedOrgId: "org-a",
-      currentWorkspace: "site.alive.best",
-      recentWorkspaces: [{ domain: "site.alive.best", orgId: "org-a", lastAccessed: 100 }],
+      currentWorkspace: "site.test.example",
+      recentWorkspaces: [{ domain: "site.test.example", orgId: "org-a", lastAccessed: 100 }],
     })
 
     const stateBefore = { ...getState() }

@@ -65,8 +65,8 @@ describe("resolveTemplatePath", () => {
   })
 
   it("handles a simple directory name", () => {
-    const result = resolveTemplatePath("blank.alive.best")
-    expect(result).toBe(`${TEMPLATES_ROOT}/blank.alive.best`)
+    const result = resolveTemplatePath("blank.test.example")
+    expect(result).toBe(`${TEMPLATES_ROOT}/blank.test.example`)
   })
 
   it("extracts last segment from multi-level path", () => {
@@ -446,7 +446,7 @@ describe("isAliveWorkspace", () => {
 
   it("returns false for regular site hostnames", () => {
     expect(isAliveWorkspace("example.com")).toBe(false)
-    expect(isAliveWorkspace("test.alive.best")).toBe(false)
+    expect(isAliveWorkspace("test.test.example")).toBe(false)
     expect(isAliveWorkspace("")).toBe(false)
   })
 

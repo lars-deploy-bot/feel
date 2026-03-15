@@ -303,8 +303,8 @@ export const searchToolsTool = tool(
   search_tools({ category: "workspace", detail_level: "full" })
 
 **Execute mode** (run a discovered tool):
-  search_tools({ execute: "debug_workspace", params: { workspace: "my-site.alive.best" } })
-  search_tools({ execute: "read_server_logs", params: { workspace: "my-site.alive.best", lines: 50 } })
+  search_tools({ execute: "debug_workspace", params: { workspace: "my-site.example.com" } })
+  search_tools({ execute: "read_server_logs", params: { workspace: "my-site.example.com", lines: 50 } })
 
 Categories: ${TOOL_CATEGORIES.join(", ")}
 

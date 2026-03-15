@@ -37,8 +37,8 @@ Usage:
   bun run deploy-site <domain>           Deploy a site
 
 Examples:
-  bun run deploy-site mysite             → mysite.sonno.tech
-  bun run deploy-site mysite.sonno.tech  → mysite.sonno.tech
+  bun run deploy-site mysite             → mysite.test.example
+  bun run deploy-site mysite.test.example  → mysite.test.example
   bun run deploy-site custom.com         → custom.com (requires DNS)
 
 Environment:

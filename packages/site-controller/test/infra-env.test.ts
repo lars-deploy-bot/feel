@@ -19,7 +19,7 @@ describe("loadCanonicalInfraEnvFromFile", () => {
         [
           "DATABASE_URL=postgresql://prod-db",
           "DATABASE_PASSWORD=secret",
-          "E2B_DOMAIN=e2b.sonno.tech",
+          "E2B_DOMAIN=e2b.test.example",
           "SUPABASE_URL=https://prod.supabase.co",
           "SUPABASE_SERVICE_ROLE_KEY=prod-service-role",
           "NEXT_PUBLIC_SUPABASE_URL=https://browser.supabase.co",
@@ -30,7 +30,7 @@ describe("loadCanonicalInfraEnvFromFile", () => {
       expect(loadCanonicalInfraEnvFromFile(envFile)).toEqual({
         DATABASE_URL: "postgresql://prod-db",
         DATABASE_PASSWORD: "secret",
-        E2B_DOMAIN: "e2b.sonno.tech",
+        E2B_DOMAIN: "e2b.test.example",
         SUPABASE_URL: "https://prod.supabase.co",
         SUPABASE_SERVICE_ROLE_KEY: "prod-service-role",
       })

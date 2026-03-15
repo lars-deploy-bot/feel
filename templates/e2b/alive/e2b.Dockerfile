@@ -22,24 +22,26 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Claude Code CLI
-# Install as root, then set up for the 'user' account (created by e2b provisioning at boot).
-# Claude's native install expects ~/.local/bin/claude and ~/.local/share/claude/versions/.
-# Without this structure, it errors: "installMethod is native, but directory ... does not exist"
-RUN curl -fsSL https://claude.ai/install.sh | bash && \
-    CLAUDE_BIN="$(readlink -f /root/.local/bin/claude)" && \
-    CLAUDE_VERSION="$(basename "$CLAUDE_BIN")" && \
-    cp "$CLAUDE_BIN" /usr/local/bin/claude && \
+# Download binary directly (the install script runs `claude install` which OOMs in build VMs).
+# Set up the native install structure for both root and 'user' (created by e2b provisioning at boot).
+RUN GCS_BUCKET="https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases" && \
+    VERSION=$(curl -fsSL "$GCS_BUCKET/latest") && \
+    curl -fsSL -o /usr/local/bin/claude "$GCS_BUCKET/$VERSION/linux-x64/claude" && \
+    chmod +x /usr/local/bin/claude && \
     mkdir -p /home/user/.local/bin /home/user/.local/share/claude/versions && \
-    cp "$CLAUDE_BIN" "/home/user/.local/share/claude/versions/$CLAUDE_VERSION" && \
-    ln -sf "/home/user/.local/share/claude/versions/$CLAUDE_VERSION" /home/user/.local/bin/claude
+    cp /usr/local/bin/claude "/home/user/.local/share/claude/versions/$VERSION" && \
+    ln -sf "/home/user/.local/share/claude/versions/$VERSION" /home/user/.local/bin/claude
+
+# Node 22 LTS (base image ships 20 at /usr/local/bin/node, override it)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    rm -f /usr/local/bin/node /usr/local/bin/npm /usr/local/bin/npx
 
 # Bun (copy to /usr/local/bin so it's accessible to all users)
 RUN curl -fsSL https://bun.sh/install | bash && \
     cp /root/.bun/bin/bun /usr/local/bin/bun && \
     ln -sf /usr/local/bin/bun /usr/local/bin/bunx
-
-# pnpm
-RUN npm install -g pnpm
 
 # Workspace dir (user is created by e2b provisioning at boot)
 RUN mkdir -p /home/user/project

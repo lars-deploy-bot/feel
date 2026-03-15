@@ -100,22 +100,24 @@ export async function syncFromServer(): Promise<boolean> {
       return false
     }
 
-    // Merge strategy — workspace and org are set atomically to prevent incoherent pairs
+    // Merge strategy — workspace and org are set atomically to prevent
+    // incoherent pairs where workspace belongs to a different org (I6).
     let didUpdate = false
-    const updates: Record<string, unknown> = {}
+    const atomicUpdate: Partial<{ currentWorkspace: string | null; selectedOrgId: string | null }> = {}
 
-    // Current workspace: use server if local is null
     if (!store.currentWorkspace && server.currentWorkspace) {
-      updates.currentWorkspace = server.currentWorkspace
+      atomicUpdate.currentWorkspace = server.currentWorkspace
+      // If setting workspace from server, also take server's orgId —
+      // they're a pair that must stay coherent.
+      if (server.selectedOrgId) {
+        atomicUpdate.selectedOrgId = server.selectedOrgId
+      }
+    } else if (!store.selectedOrgId && server.selectedOrgId) {
+      atomicUpdate.selectedOrgId = server.selectedOrgId
     }
 
-    // Selected org: use server if local is null
-    if (!store.selectedOrgId && server.selectedOrgId) {
-      updates.selectedOrgId = server.selectedOrgId
-    }
-
-    if (Object.keys(updates).length > 0) {
-      useWorkspaceStoreBase.setState(updates)
+    if (Object.keys(atomicUpdate).length > 0) {
+      useWorkspaceStoreBase.setState(atomicUpdate)
       didUpdate = true
     }
 
@@ -214,16 +216,8 @@ function mergeRecentWorkspaces(local: RecentWorkspace[], server: RecentWorkspace
     }
   }
 
-  // Sort by lastAccessed descending, then cap per org
-  const MAX_RECENT_PER_ORG = 6
-  const sorted = Array.from(byKey.values()).sort((a, b) => b.lastAccessed - a.lastAccessed)
-  const countByOrg = new Map<string, number>()
-  return sorted.filter(ws => {
-    const count = countByOrg.get(ws.orgId) ?? 0
-    if (count >= MAX_RECENT_PER_ORG) return false
-    countByOrg.set(ws.orgId, count + 1)
-    return true
-  })
+  // Sort by lastAccessed descending
+  return Array.from(byKey.values()).sort((a, b) => b.lastAccessed - a.lastAccessed)
 }
 
 function getLastSyncTime(): number | null {

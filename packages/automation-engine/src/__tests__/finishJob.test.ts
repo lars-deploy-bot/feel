@@ -117,7 +117,7 @@ function makeRunContext(opts: MockCtxOpts = {}) {
       action_target_page: null,
       action_format_prompt: null,
     },
-    hostname: "test.alive.best",
+    hostname: "test.test.example",
     runId: "run_abc",
     claimedAt: new Date().toISOString(),
     serverId: "srv_test",

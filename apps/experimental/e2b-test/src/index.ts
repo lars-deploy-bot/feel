@@ -1,9 +1,9 @@
-import { Sandbox } from "e2b"
 import { E2B_DEFAULT_TEMPLATE } from "@webalive/sandbox"
+import { Sandbox } from "e2b"
 
 const sandbox = await Sandbox.create(E2B_DEFAULT_TEMPLATE, {
   apiKey: process.env.E2B_API_KEY,
-  domain: "e2b.sonno.tech",
+  domain: process.env.E2B_DOMAIN,
 })
 
 console.log(`Sandbox ID: ${sandbox.sandboxId}`)

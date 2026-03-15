@@ -116,7 +116,7 @@ describe("Workspace Resolution", () => {
      * Critical regression test for workspace naming conventions.
      * This test prevents the bug where new sites with dots in directory names
      * (e.g., evermore.test.local) couldn't be found because the code
-     * was converting them to hyphens (evermore-alive-best).
+     * was converting them to hyphens (evermore-test-example).
      *
      * The system should support BOTH:
      * 1. New sites: domain.com → /srv/webalive/sites/domain.com/user
@@ -181,7 +181,7 @@ describe("Workspace Resolution", () => {
       if (result.success) {
         // Should prefer the dotted version (new convention)
         expect(result.workspace).toContain("evermore.test.local")
-        expect(result.workspace).not.toContain("evermore-alive-best")
+        expect(result.workspace).not.toContain("evermore-test-example")
       }
     })
   })
@@ -302,7 +302,7 @@ describe("Workspace Resolution", () => {
     })
 
     it("returns 404 when E2B scratch dir does not exist (confirms E2B path is taken)", async () => {
-      const domain = "e2b-exists.alive.best"
+      const domain = "e2b-exists.test.example"
 
       resolveDomainRuntimeMock.mockResolvedValue({
         execution_mode: "e2b",
@@ -331,7 +331,7 @@ describe("Workspace Resolution", () => {
     })
 
     it("resolves E2B scratch workspace when scratch dir exists", async () => {
-      const domain = "e2b-happy.alive.best"
+      const domain = "e2b-happy.test.example"
       const scratchRoot = await mkdtemp(path.join(tmpdir(), "workspace-retriever-"))
       const existingScratchDir = path.join(scratchRoot, "user")
       await mkdir(existingScratchDir, { recursive: true })
@@ -367,7 +367,7 @@ describe("Workspace Resolution", () => {
       resolveDomainRuntimeMock.mockRejectedValue(new Error("Supabase unavailable"))
 
       const result = await getWorkspace({
-        body: { workspace: "some-site.alive.best" },
+        body: { workspace: "some-site.test.example" },
         requestId: "test-e2b-003",
       })
 
@@ -383,7 +383,7 @@ describe("Workspace Resolution", () => {
       resolveDomainRuntimeMock.mockResolvedValue({
         execution_mode: "systemd",
         domain_id: "dom_systemd",
-        hostname: "systemd-site.alive.best",
+        hostname: "systemd-site.test.example",
         port: 3335,
         is_test_env: true,
         test_run_id: "run-123",
@@ -392,7 +392,7 @@ describe("Workspace Resolution", () => {
       })
 
       await getWorkspace({
-        body: { workspace: "systemd-site.alive.best" },
+        body: { workspace: "systemd-site.test.example" },
         requestId: "test-e2b-004",
       })
 
