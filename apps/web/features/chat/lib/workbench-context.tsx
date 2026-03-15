@@ -1,5 +1,5 @@
 "use client"
-import { createContext, type ReactNode, useCallback, useContext, useState } from "react"
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react"
 
 export interface WorkbenchEntry {
   id: string
@@ -19,6 +19,26 @@ export interface ElementSelection {
 
 /** View mode for the workbench */
 export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events" | "agents" | "photos"
+
+// ── Workbench View Contract ─────────────────────────────────────────────────
+
+/** Base props every workbench view receives from the Workbench dispatcher. */
+export interface WorkbenchViewProps {
+  workspace: string
+  worktree?: string | null
+}
+
+/** A keyboard shortcut registered by a workbench view. */
+export interface WorkbenchShortcut {
+  /** Unique identifier (for dedup/cleanup) */
+  id: string
+  /** Key to match (e.g., "Escape", "s", "f") */
+  key: string
+  /** Requires Ctrl (Win/Linux) or Cmd (Mac) */
+  ctrlOrMeta?: boolean
+  /** Handler called when the shortcut fires */
+  handler: (e: KeyboardEvent) => void
+}
 
 /** State for the workbench */
 export interface WorkbenchState {
@@ -69,6 +89,12 @@ interface WorkbenchContextType {
   toggleTreeCollapsed: () => void
   /** Set site preview path */
   setSitePath: (path: string) => void
+  /** Register keyboard shortcuts (returns cleanup function) */
+  registerShortcuts: (shortcuts: WorkbenchShortcut[]) => () => void
+  /** Get persisted view state (key must be a valid WorkbenchView) */
+  getViewState: <T>(viewName: WorkbenchView) => T | undefined
+  /** Set persisted view state (survives view switches, key must be a valid WorkbenchView) */
+  setViewState: (viewName: WorkbenchView, state: unknown) => void
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined)
@@ -179,6 +205,47 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     setWorkbenchState(prev => ({ ...prev, sitePath }))
   }, [])
 
+  // ── Keyboard Shortcuts ──────────────────────────────────────────────────
+  const shortcutsRef = useRef<Map<string, WorkbenchShortcut>>(new Map())
+
+  const registerShortcuts = useCallback((shortcuts: WorkbenchShortcut[]) => {
+    for (const s of shortcuts) {
+      shortcutsRef.current.set(s.id, s)
+    }
+    return () => {
+      for (const s of shortcuts) {
+        shortcutsRef.current.delete(s.id)
+      }
+    }
+  }, [])
+
+  // Central keydown listener — replaces per-view window.addEventListener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      for (const shortcut of shortcutsRef.current.values()) {
+        if (e.key.toLowerCase() !== shortcut.key.toLowerCase()) continue
+        const hasModifier = e.ctrlKey || e.metaKey
+        if (shortcut.ctrlOrMeta && !hasModifier) continue
+        if (!shortcut.ctrlOrMeta && hasModifier) continue
+        shortcut.handler(e)
+        return
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  // ── View State Persistence ──────────────────────────────────────────────
+  const viewStatesRef = useRef<Partial<Record<WorkbenchView, unknown>>>({})
+
+  const getViewState = useCallback(<T,>(viewName: WorkbenchView): T | undefined => {
+    return viewStatesRef.current[viewName] as T | undefined
+  }, [])
+
+  const setViewState = useCallback((viewName: WorkbenchView, state: unknown) => {
+    viewStatesRef.current[viewName] = state
+  }, [])
+
   return (
     <WorkbenchContext.Provider
       value={{
@@ -200,6 +267,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         setTreeWidth,
         toggleTreeCollapsed,
         setSitePath,
+        registerShortcuts,
+        getViewState,
+        setViewState,
       }}
     >
       {children}

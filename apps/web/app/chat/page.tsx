@@ -12,12 +12,15 @@ import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
-import { CollapsibleToolGroup } from "@/features/chat/components/message-renderers/CollapsibleToolGroup"
-import { MessageWrapper } from "@/features/chat/components/message-renderers/MessageWrapper"
 import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIndicator"
 import { ReadOnlyTranscriptBar } from "@/features/chat/components/ReadOnlyTranscriptBar"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
-import { Group as PanelGroup, Panel, Separator as PanelResizeHandle, type PanelImperativeHandle } from "react-resizable-panels"
+import {
+  Group as PanelGroup,
+  Panel,
+  Separator as PanelResizeHandle,
+  type PanelImperativeHandle,
+} from "react-resizable-panels"
 import { Workbench } from "@/features/chat/components/workbench/Workbench"
 import { CHAT_PANEL, RESIZE_HANDLE_ID, WORKBENCH_PANEL } from "@/lib/layout"
 import { WorkbenchMobile } from "@/features/chat/components/workbench/WorkbenchMobile"
@@ -28,8 +31,6 @@ import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
 import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
 import { ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
-import { groupToolMessages, type RenderItem } from "@/features/chat/lib/group-tool-messages"
-import { renderMessage, shouldRenderMessage } from "@/features/chat/lib/message-renderer"
 import { RetryProvider, useRetry } from "@/features/chat/lib/retry-context"
 import { useWorkbenchContext, WorkbenchProvider } from "@/features/chat/lib/workbench-context"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
@@ -50,10 +51,7 @@ import {
   trackGithubImportCompleted,
   trackWorkspaceSelected,
 } from "@/lib/analytics/events"
-import {
-  useDexieMessageActions,
-  useDexieSession,
-} from "@/lib/db/dexieMessageStore"
+import { useDexieMessageActions, useDexieSession } from "@/lib/db/dexieMessageStore"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useSessionHeartbeat } from "@/lib/hooks/useSessionHeartbeat"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
@@ -66,7 +64,7 @@ import { useTabActions, useTabDataStore } from "@/lib/stores/tabStore"
 import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 // Local components
-import { AgentManagerIndicator, ChatEmptyState, Nav, OfflineBanner, TabBar } from "./components"
+import { AgentManagerIndicator, ChatEmptyState, MessageList, Nav, OfflineBanner, TabBar } from "./components"
 import {
   useChatDragDrop,
   useChatMessaging,
@@ -450,7 +448,7 @@ function ChatPageContent() {
   // Stream cancellation hook - must be after useChatMessaging to get the refs
   // Uses sessionTabId from useTabIsolatedMessages (single source of truth)
   const { stopStreaming, isStopping } = useStreamCancellation({
-    tabId: sessionTabId ?? "",
+    tabId: sessionTabId,
     tabGroupId: sessionTabGroupId,
     workspace,
     worktree: requestWorktree,
@@ -810,7 +808,11 @@ function ChatPageContent() {
                   )}
 
                   {/* Messages */}
-                  <div ref={containerRef} data-panel-role="chat-messages-scroll" className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-8 flex flex-col">
+                  <div
+                    ref={containerRef}
+                    data-panel-role="chat-messages-scroll"
+                    className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-8 flex flex-col"
+                  >
                     <div className="p-4 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0 flex-1">
                       {messages.length === 0 && !busy && !isLoadingMessages && (
                         <ChatEmptyState
@@ -822,84 +824,15 @@ function ChatPageContent() {
                         />
                       )}
 
-                      {(() => {
-                        if (!sessionTabId) return null
-
-                        const filteredMessages = messages.filter((message, idx) => {
-                          if (message.type === "compacting") {
-                            const nextBoundary = messages.findIndex((m, i) => i > idx && m.type === "compact_boundary")
-                            if (nextBoundary >= 0) return false
-                          }
-                          return shouldRenderMessage(message, isDebugMode)
-                        })
-
-                        const renderItems: RenderItem[] = groupToolMessages(filteredMessages)
-
-                        return renderItems.map(item => {
-                          if (item.type === "group") {
-                            return (
-                              <MessageWrapper
-                                key={`group-${item.messages[0].id}`}
-                                messageId={item.messages[0].id}
-                                tabId={sessionTabId}
-                                canDelete={false}
-                              >
-                                <CollapsibleToolGroup
-                                  messages={item.messages}
-                                  trailingTaskResult={item.trailingTaskResult}
-                                  subagentSummary={item.subagentSummary}
-                                  tabId={sessionTabId}
-                                  onSubmitAnswer={sendMessage}
-                                />
-                              </MessageWrapper>
-                            )
-                          }
-
-                          const { message, index } = item
-                          const content = renderMessage(message, {
-                            onSubmitAnswer: sendMessage,
-                            tabId: sessionTabId,
-                          })
-                          if (!content) return null
-
-                          const canDelete =
-                            !isAutomationRun &&
-                            index > 0 &&
-                            (message.type === "user" || message.type === "sdk_message") &&
-                            filteredMessages.slice(0, index).some(m => {
-                              if (m.type !== "sdk_message") return false
-                              const sdkContent = m.content
-                              if (typeof sdkContent !== "object" || sdkContent === null) return false
-                              return (
-                                "type" in sdkContent &&
-                                sdkContent.type === "assistant" &&
-                                "uuid" in sdkContent &&
-                                !!sdkContent.uuid
-                              )
-                            })
-
-                          const isTextMessage =
-                            message.type === "user" ||
-                            (message.type === "sdk_message" &&
-                              typeof message.content === "object" &&
-                              message.content !== null &&
-                              "type" in message.content &&
-                              message.content.type === "assistant")
-
-                          return (
-                            <MessageWrapper
-                              key={message.id}
-                              messageId={message.id}
-                              tabId={sessionTabId}
-                              canDelete={canDelete}
-                              align={message.type === "user" ? "right" : "left"}
-                              showActions={isTextMessage}
-                            >
-                              {content}
-                            </MessageWrapper>
-                          )
-                        })
-                      })()}
+                      {sessionTabId && (
+                        <MessageList
+                          messages={messages}
+                          tabId={sessionTabId}
+                          isDebugMode={isDebugMode}
+                          isAutomationRun={isAutomationRun}
+                          onSubmitAnswer={sendMessage}
+                        />
+                      )}
 
                       {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
                       <PendingToolsIndicator tabId={sessionTabId} suppressThinking={isCompactionInProgress} />

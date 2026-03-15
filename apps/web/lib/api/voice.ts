@@ -1,4 +1,4 @@
-import type { TranscribeResponse, TranscribeResult } from "./types"
+import type { TranscribeError, TranscribeResult } from "./types"
 
 /**
  * Send recorded audio to /api/voice/transcribe.
@@ -12,7 +12,7 @@ export async function transcribeAudio(blob: Blob): Promise<TranscribeResult> {
   form.append("file", file)
 
   const res = await fetch("/api/voice/transcribe", { method: "POST", body: form })
-  const data: TranscribeResponse = await res.json()
+  const data: TranscribeResult | TranscribeError = await res.json()
 
   if (!res.ok || "error" in data) {
     const message = "error" in data ? data.error : `Transcription failed (${res.status})`

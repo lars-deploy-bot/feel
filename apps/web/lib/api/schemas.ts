@@ -668,6 +668,7 @@ export const apiSchemas = {
     query: z.object({
       org_id: z.string().min(1).optional(),
       site_id: z.string().min(1).optional(),
+      workspace: z.string().min(1).optional(),
       limit: z.coerce.number().int().min(1).max(100).optional().default(50),
     }),
     res: z.object({
@@ -1688,19 +1689,6 @@ export const apiSchemas = {
       ok: z.literal(true),
       images: z.array(z.unknown()),
       count: z.number(),
-    }),
-  },
-
-  /**
-   * Transcribe audio via mini-tools Groq Whisper proxy.
-   * No req schema — route receives multipart/form-data (audio file).
-   */
-  "voice/transcribe": {
-    res: z.object({
-      ok: z.literal(true),
-      text: z.string(),
-      duration: z.number().nullable(),
-      language: z.string().nullable(),
     }),
   },
 } as const

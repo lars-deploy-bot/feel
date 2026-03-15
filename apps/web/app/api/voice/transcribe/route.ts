@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import { alrighty } from "@/lib/api/server"
-import type { TranscribeError } from "@/lib/api/types"
+import type { TranscribeError, TranscribeResult } from "@/lib/api/types"
 import { miniToolsFetch } from "@/lib/clients/mini-tools"
 
 export async function POST(request: Request) {
@@ -25,7 +24,7 @@ export async function POST(request: Request) {
     return NextResponse.json<TranscribeError>({ error: data.error }, { status: response.status })
   }
 
-  return alrighty("voice/transcribe", {
+  return NextResponse.json<TranscribeResult>({
     text: data.text,
     duration: data.duration,
     language: data.language,

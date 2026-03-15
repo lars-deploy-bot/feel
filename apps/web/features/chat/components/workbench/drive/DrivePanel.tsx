@@ -4,17 +4,16 @@ import { PanelLeftClose, PanelLeftOpen, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { ConfirmModal } from "@/components/modals/ConfirmModal"
+import type { WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { trackDriveFileDeleted, trackDrivePanelOpened } from "@/lib/analytics/events"
+import { useWorkbenchShortcuts } from "../hooks/useWorkbenchShortcuts"
 import { PanelBar } from "../ui"
 import { DrivePreview } from "./DrivePreview"
 import { DriveTree, invalidateDriveCache } from "./DriveTree"
 import { DriveUpload } from "./DriveUpload"
 import { deleteDriveItem } from "./drive-api"
 
-interface DrivePanelProps {
-  workspace: string
-  worktree?: string | null
-}
+interface DrivePanelProps extends WorkbenchViewProps {}
 
 const MIN_TREE_WIDTH = 160
 const MAX_TREE_WIDTH = 500
@@ -110,17 +109,17 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
     }
   }, [isResizing])
 
-  // Escape to close file
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && selectedFile) {
+  // Escape to close file (scoped via workbench shortcut handler)
+  const handleDriveEscape = useCallback(
+    (e: KeyboardEvent) => {
+      if (selectedFile) {
         e.preventDefault()
         setSelectedFile(null)
       }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [selectedFile])
+    },
+    [selectedFile],
+  )
+  useWorkbenchShortcuts([{ id: "drive-escape", key: "Escape", handler: handleDriveEscape }])
 
   return (
     <div ref={containerRef} className={`h-full flex bg-white dark:bg-[#0d0d0d] ${isResizing ? "select-none" : ""}`}>

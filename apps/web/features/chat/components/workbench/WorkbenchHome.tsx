@@ -1,8 +1,7 @@
 "use client"
 
 import { ExternalLink } from "lucide-react"
-import type { WorkbenchView } from "@/features/chat/lib/workbench-context"
-import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
+import type { WorkbenchView, WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { getSiteUrl } from "@/lib/preview-utils"
 
 function SettingsRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -14,8 +13,10 @@ function SettingsRow({ label, children }: { label: string; children: React.React
   )
 }
 
-export function WorkbenchHome({ onSelectView: _ }: { onSelectView: (view: WorkbenchView) => void }) {
-  const { workspace } = useWorkspace({ allowEmpty: true })
+export function WorkbenchHome({
+  workspace,
+  onSelectView: _,
+}: WorkbenchViewProps & { onSelectView: (view: WorkbenchView) => void }) {
   const siteUrl = workspace ? getSiteUrl(workspace) : null
 
   return (

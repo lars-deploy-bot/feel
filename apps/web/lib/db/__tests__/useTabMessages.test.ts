@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto"
 import { act, renderHook, waitFor } from "@testing-library/react"
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 // Mock Sentry to avoid Next.js module resolution issues in test environment
 vi.mock("@sentry/nextjs", () => ({
@@ -69,6 +69,13 @@ describe("useTabMessages", () => {
     }
   })
 
+  beforeEach(() => {
+    // useTabMessages reads userId from useDexieSession() internally
+    useDexieMessageStore.setState({
+      session: { userId: TEST_USER_ID, orgId: "org-test" },
+    })
+  })
+
   afterEach(async () => {
     resetDexieStore()
     const db = getMessageDb(TEST_USER_ID)
@@ -90,7 +97,7 @@ describe("useTabMessages", () => {
       ])
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(3)
@@ -117,7 +124,7 @@ describe("useTabMessages", () => {
       })
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(1)
@@ -141,7 +148,7 @@ describe("useTabMessages", () => {
       ])
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(1)
@@ -165,7 +172,7 @@ describe("useTabMessages", () => {
       ])
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(1)
@@ -176,12 +183,15 @@ describe("useTabMessages", () => {
     expect(result.current![0].content).toBe("recent snapshot")
   })
 
-  it("returns empty array when tabId or userId is null", async () => {
-    const { result: noTab } = renderHook(() => useTabMessages(null, TEST_USER_ID))
+  it("returns empty array when tabId is null", async () => {
+    const { result: noTab } = renderHook(() => useTabMessages(null))
     // useLiveQuery may return undefined initially, then resolves to []
     await waitFor(() => expect(noTab.current).toEqual([]))
+  })
 
-    const { result: noUser } = renderHook(() => useTabMessages(TEST_TAB_ID, null))
+  it("returns empty array when userId is not set", async () => {
+    useDexieMessageStore.setState({ session: null })
+    const { result: noUser } = renderHook(() => useTabMessages(TEST_TAB_ID))
     await waitFor(() => expect(noUser.current).toEqual([]))
   })
 
@@ -193,7 +203,7 @@ describe("useTabMessages", () => {
       ])
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(1)

@@ -2,11 +2,7 @@
 
 import { Layers, MessageCircle, Settings } from "lucide-react"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
-import {
-  trackComponentsClicked,
-  trackFeedbackClicked,
-  trackSettingsClicked,
-} from "@/lib/analytics/events"
+import { trackComponentsClicked, trackFeedbackClicked, trackSettingsClicked } from "@/lib/analytics/events"
 
 interface NavProps {
   onFeedbackClick: () => void
@@ -35,7 +31,10 @@ export function Nav({
   const iconButtonStyle = `${buttonBase} w-8 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]`
 
   return (
-    <div data-testid="chat-nav-bar" className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]">
+    <div
+      data-testid="chat-nav-bar"
+      className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]"
+    >
       <div className="h-full flex items-center justify-between px-2">
         {/* Left side: sidebar toggle + workspace picker */}
         <div className="flex items-center gap-2 min-w-0 pl-1">
@@ -117,7 +116,6 @@ export function Nav({
           >
             <Layers size={16} strokeWidth={1.5} />
           </button>
-
         </div>
       </div>
     </div>

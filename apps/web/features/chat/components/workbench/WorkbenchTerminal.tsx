@@ -7,13 +7,11 @@ import { RotateCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import "@xterm/xterm/css/xterm.css"
 
-interface WorkbenchTerminalProps {
-  workspace: string
-}
+import type { WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 
 type TerminalState = "connecting" | "connected" | "disconnected" | "error"
 
-export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
+export function WorkbenchTerminal({ workspace }: WorkbenchViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)

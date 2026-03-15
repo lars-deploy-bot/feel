@@ -34,11 +34,11 @@ export function useVoiceInput({ onTranscript, onError }: UseVoiceInputOptions) {
 
   const mutation = useMutation<TranscribeResult, Error, Blob>({
     mutationFn: transcribeAudio,
-    onSuccess: (data) => {
+    onSuccess: data => {
       const text = data.text.trim()
       if (text) cbRef.current.onTranscript(text)
     },
-    onError: (err) => cbRef.current.onError(err.message),
+    onError: err => cbRef.current.onError(err.message),
   })
 
   const releaseStream = useCallback(() => {
@@ -83,7 +83,7 @@ export function useVoiceInput({ onTranscript, onError }: UseVoiceInputOptions) {
     recorderRef.current = recorder
     chunksRef.current = []
 
-    recorder.ondataavailable = (e) => {
+    recorder.ondataavailable = e => {
       if (e.data.size > 0) chunksRef.current.push(e.data)
     }
 

@@ -83,5 +83,3 @@ export interface TranscribeResult {
 export interface TranscribeError {
   error: string
 }
-
-export type TranscribeResponse = TranscribeResult | TranscribeError

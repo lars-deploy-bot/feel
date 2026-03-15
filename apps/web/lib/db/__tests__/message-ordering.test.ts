@@ -173,7 +173,6 @@ describe("message ordering", () => {
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
-
     // Fire off multiple operations concurrently (simulating race condition)
     // Note: With Promise.all, the ORDER within the batch is non-deterministic,
     // but each message should still get a UNIQUE seq number (no collisions).
@@ -205,7 +204,6 @@ describe("message ordering", () => {
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
-
     // User message 1
     await store.addMessage(userMessage("rapid-1", "Question 1"), tabId)
 
@@ -236,7 +234,6 @@ describe("message ordering", () => {
     const { tabId, conversationId } = await setupTab()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
-
 
     // Turn 1: User asks, AI responds with tools
     await store.addMessage(userMessage("turn1-user", "Build a website"), tabId)
