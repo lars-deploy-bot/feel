@@ -17,6 +17,10 @@ vi.mock("@/lib/storage", () => ({
   },
 }))
 
+vi.mock("@/lib/tenant-utils", () => ({
+  workspaceToTenantId: vi.fn().mockReturnValue("demo.alive.best"),
+}))
+
 const { GET } = await import("../route")
 const { getSessionUser, verifyWorkspaceAccess } = await import("@/features/auth/lib/auth")
 const { resolveWorkspace } = await import("@/features/workspace/lib/workspace-utils")
