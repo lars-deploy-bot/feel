@@ -200,6 +200,7 @@ function runTeardown(options: { killMode: "term-succeeds" | "stubborn" }) {
       TEST_SITE_USER: "site-testsite-alive-best",
       TEST_STATE_DIR: stateDir,
     },
+    timeout: 30_000,
   })
 
   return { tempDir, stateDir, targetDir, envFilePath, symlinkPath, result }
@@ -229,7 +230,7 @@ describe("99-teardown.sh", () => {
     expect(bunInvocations).toContain(`${join(run.tempDir, "stream-root", "scripts", "sync-generated-caddy.ts")}`)
   })
 
-  it("fails loudly and never reports success when user removal cannot complete", { timeout: 20_000 }, () => {
+  it("fails loudly and never reports success when user removal cannot complete", () => {
     const run = runTeardown({ killMode: "stubborn" })
     tempDirs.push(run.tempDir)
 
