@@ -154,9 +154,15 @@ export class SandboxManager {
     if (sandbox) {
       this.sandboxes.delete(domainId)
       try {
-        await sandbox.pause({ domain: this.domain })
-        await this.persistence.updateSandbox(domainId, sandbox.sandboxId, "paused")
-        console.error(`[sandbox-manager] Paused ${sandbox.sandboxId} for ${domainId}`)
+        const paused = await sandbox.pause({ domain: this.domain })
+        if (paused) {
+          await this.persistence.updateSandbox(domainId, sandbox.sandboxId, "paused")
+          console.error(`[sandbox-manager] Paused ${sandbox.sandboxId} for ${domainId}`)
+        } else {
+          // Already paused — update DB to match
+          await this.persistence.updateSandbox(domainId, sandbox.sandboxId, "paused")
+          console.error(`[sandbox-manager] ${sandbox.sandboxId} already paused for ${domainId}`)
+        }
       } catch {
         // Pause failed — sandbox may already be paused or dead
         console.error(`[sandbox-manager] Pause failed for ${sandbox.sandboxId}, marking dead`)
