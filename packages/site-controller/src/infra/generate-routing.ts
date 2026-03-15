@@ -243,12 +243,12 @@ export function renderCaddySites(
         "",
         ...(isEmbeddable
           ? [
-              "    # Template preview host: keep security headers but allow iframe embedding from alive.best",
+              `    # Template preview host: keep security headers but allow iframe embedding from ${cfg.domains.wildcard}`,
               "    header {",
               "        X-Content-Type-Options nosniff",
               '        X-XSS-Protection "1; mode=block"',
               "        Referrer-Policy strict-origin-when-cross-origin",
-              `        Content-Security-Policy "frame-ancestors 'self' https://*.alive.best https://alive.best"`,
+              `        Content-Security-Policy "frame-ancestors 'self' https://*.${cfg.domains.wildcard} https://${cfg.domains.wildcard}"`,
               "        -X-Frame-Options",
               "        -Server",
               "        -X-Powered-By",

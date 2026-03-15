@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { SiteLimitDetails } from "@/features/deployment/types/deploy-subdomain"
+import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 
 type StatusType = "success" | "error" | "loading"
@@ -34,6 +35,7 @@ export function DeploymentStatus({
   details,
   chatUrl,
 }: DeploymentStatusProps) {
+  const { contactEmail } = useDomainConfig()
   const [countdown, setCountdown] = useState(30)
   const [_copied, setCopied] = useState(false)
 
@@ -304,8 +306,8 @@ export function DeploymentStatus({
                 </p>
                 <p className="text-amber-800 dark:text-amber-200 text-sm leading-relaxed mt-2">
                   If you'd like to create more, you can get an additional website for just 5 euro. Drop us a message at{" "}
-                  <a href="mailto:team@alive.best" className="font-medium underline hover:no-underline">
-                    team@alive.best
+                  <a href={`mailto:${contactEmail}`} className="font-medium underline hover:no-underline">
+                    {contactEmail}
                   </a>{" "}
                   and we'll sort it out for you.
                 </p>
