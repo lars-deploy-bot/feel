@@ -174,7 +174,11 @@ export function Workbench() {
                   : `${INACTIVE_TEXT} hover:bg-black/[0.04] dark:hover:bg-white/[0.04]`
               }`}
             >
-              <Icon size={15} weight={active ? "fill" : "regular"} className={`shrink-0 w-[15px] ${active ? "" : inactiveColor}`} />
+              <Icon
+                size={15}
+                weight={active ? "fill" : "regular"}
+                className={`shrink-0 w-[15px] ${active ? "" : inactiveColor}`}
+              />
               <span>{label}</span>
             </button>
           )
