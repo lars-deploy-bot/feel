@@ -1,22 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { invalidateFileCache } from "../FileTree"
-import { notifyFileChange } from "../lib/file-events"
-import { getParentFilePath } from "../lib/file-paths"
-import { invalidateFileContentCache } from "./useFileContent"
+import { handleFSEvents } from "../lib/file-ops"
 
 type WatcherState = "connecting" | "connected" | "disconnected" | "error"
 
-interface FSEvent {
-  op: "modify" | "create" | "remove" | "rename"
-  path: string
-  isDir: boolean
-}
-
 interface WatchMessage {
   type: "connected" | "fs_event" | "error"
-  events?: FSEvent[]
+  events?: Array<{ op: "modify" | "create" | "remove" | "rename"; path: string; isDir: boolean }>
   watchRoot?: string
   message?: string
 }
@@ -100,7 +91,7 @@ export function useFileWatcher({ workspace, worktree }: UseFileWatcherOptions): 
 
             case "fs_event":
               if (msg.events) {
-                handleEvents(msg.events, workspace, worktree)
+                handleFSEvents(msg.events, workspace, worktree)
               }
               break
 
@@ -158,32 +149,4 @@ export function useFileWatcher({ workspace, worktree }: UseFileWatcherOptions): 
   }, [connect])
 
   return { state }
-}
-
-function handleEvents(events: FSEvent[], workspace: string, worktree: string | null | undefined): void {
-  let hasChanges = false
-
-  for (const ev of events) {
-    switch (ev.op) {
-      case "modify":
-        if (!ev.isDir) {
-          invalidateFileContentCache(workspace, worktree, ev.path)
-          hasChanges = true
-        }
-        break
-
-      case "create":
-      case "remove":
-      case "rename":
-        // Invalidate both the parent directory listing and the file content
-        invalidateFileCache(workspace, worktree, getParentFilePath(ev.path))
-        invalidateFileContentCache(workspace, worktree, ev.path)
-        hasChanges = true
-        break
-    }
-  }
-
-  if (hasChanges) {
-    notifyFileChange()
-  }
 }

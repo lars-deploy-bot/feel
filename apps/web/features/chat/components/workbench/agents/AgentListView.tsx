@@ -2,10 +2,10 @@
 
 import { Bot, ChevronDown, Play, RotateCw } from "lucide-react"
 import { useMemo, useState } from "react"
+import { ActionButton, RunDots, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
 import { agentsApi } from "./agents-api"
 import { dur, futTime, healthScore, relTime, trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
-import { ActionButton, RunDots, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
 
 export function AgentListView({
   jobs,

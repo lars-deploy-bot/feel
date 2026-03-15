@@ -2,10 +2,10 @@
 
 import { CheckCircle2, Copy, Mail, Pause, Pencil, Play, RotateCw, Trash2, XCircle } from "lucide-react"
 import { useState } from "react"
+import { ActionButton, RunDots, StatusDot, TrigIcon } from "./AgentUI"
 import { agentsApi } from "./agents-api"
 import { dur, futTime, relTime, trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
-import { ActionButton, RunDots, StatusDot, TrigIcon } from "./AgentUI"
 
 export function AgentDetailView({
   job,

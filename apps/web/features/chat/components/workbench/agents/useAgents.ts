@@ -1,8 +1,8 @@
 "use client"
 
 import { useCallback } from "react"
-import { fetcher, queryKeys, useQuery, useQueryClient } from "@/lib/tanstack"
 import type { Res } from "@/lib/api/schemas"
+import { fetcher, queryKeys, useQuery, useQueryClient } from "@/lib/tanstack"
 import type { EnrichedJob } from "./agents-types"
 
 type EnrichedResponse = Res<"automations/enriched">

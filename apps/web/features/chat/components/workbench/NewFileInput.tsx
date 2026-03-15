@@ -2,8 +2,7 @@
 
 import { File } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { writeFile } from "./lib/file-api"
-import { notifyFileChange } from "./lib/file-events"
+import { saveFile } from "./lib/file-ops"
 
 interface NewFileInputProps {
   workspace: string
@@ -57,12 +56,11 @@ export function NewFileInput({ workspace, worktree, onCreated, onCancel }: NewFi
     setSaving(true)
     setError(null)
 
-    const result = await writeFile(workspace, trimmed, "", worktree)
-    if (result.ok) {
-      notifyFileChange()
+    try {
+      await saveFile(workspace, trimmed, "", worktree)
       onCreated(trimmed)
-    } else {
-      setError(result.error)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create file")
       setSaving(false)
       isSubmittingRef.current = false
     }

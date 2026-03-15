@@ -1,6 +1,6 @@
 "use client"
 import { useCallback, useState } from "react"
-import { type ViewStateMap, useWorkbenchContext } from "@/features/chat/lib/workbench-context"
+import { useWorkbenchContext, type ViewStateMap } from "@/features/chat/lib/workbench-context"
 
 /**
  * Typed, persistent view state that survives view switches.
