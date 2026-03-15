@@ -19,13 +19,13 @@
     }
   },
   "scripts": {
-    "build": "tsc && bun run verify:node-entrypoints",
+    "build": "tsc && bun run verify:entrypoints",
     "dev": "tsc --watch",
     "type-check": "tsgo --noEmit",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "ci": "biome ci . && bun run verify:node-entrypoints",
-    "verify:node-entrypoints": "node ./scripts/verify-node-entrypoints.mjs",
+    "ci": "biome ci . && bun run verify:entrypoints",
+    "verify:entrypoints": "bun ./scripts/verify-entrypoints.ts",
     "gen:types": "bun run scripts/generate-types.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
-import { ApiError, createClient, type SchemaRegistry } from "../index.js"
+import { ApiError, createClient, type SchemaRegistry } from "../index"
 
 // Test schemas
 const schemas = {

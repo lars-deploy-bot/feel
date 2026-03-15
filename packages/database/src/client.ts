@@ -12,7 +12,7 @@ import type {
   IntegrationsDatabase,
   LockboxDatabase,
   PublicDatabase,
-} from "./index.js"
+} from "./index"
 
 export function createPublicClient(url: string, key: string) {
   return createClient<PublicDatabase, "public">(url, key, {

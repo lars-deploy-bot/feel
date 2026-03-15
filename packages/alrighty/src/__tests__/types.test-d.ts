@@ -11,7 +11,7 @@ import {
   type ReqInput,
   type Res,
   type SchemaRegistry,
-} from "../index.js"
+} from "../index"
 
 // Test schema registry
 const schemas = {

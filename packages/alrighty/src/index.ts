@@ -1,5 +1,5 @@
-export { createClient } from "./client.js"
-export { ApiError } from "./error.js"
+export { createClient } from "./client"
+export { ApiError } from "./error"
 export type {
   BodyReqEndpoint,
   ClientOptions,
@@ -17,4 +17,4 @@ export type {
   ResPayload,
   SchemaRegistry,
   UndefinedReqEndpoint,
-} from "./types.js"
+} from "./types"

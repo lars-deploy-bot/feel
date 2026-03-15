@@ -18,7 +18,7 @@
 
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres"
 import { Pool, type PoolConfig } from "pg"
-import * as schema from "./schema/index.js"
+import * as schema from "./schema/index"
 
 // ============================================================================
 // Types
@@ -170,4 +170,4 @@ export {
   sum,
 } from "drizzle-orm"
 // Re-export schema for convenience
-export * as schema from "./schema/index.js"
+export * as schema from "./schema/index"

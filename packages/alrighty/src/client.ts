@@ -1,5 +1,5 @@
 import { ZodError } from "zod"
-import { ApiError } from "./error.js"
+import { ApiError } from "./error"
 import type {
   BodyReqEndpoint,
   ClientOptions,
@@ -10,7 +10,7 @@ import type {
   Res,
   SchemaRegistry,
   UndefinedReqEndpoint,
-} from "./types.js"
+} from "./types"
 
 function resolvePath(
   basePath: string,

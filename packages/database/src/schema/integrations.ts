@@ -7,7 +7,7 @@ import { relations } from "drizzle-orm"
 import { boolean, foreignKey, index, jsonb, pgSchema, text, timestamp, unique, uuid } from "drizzle-orm/pg-core"
 
 // Import IAM schema for foreign keys
-import { users } from "./iam.js"
+import { users } from "./iam"
 
 // Define the Integrations schema
 export const integrationsSchema = pgSchema("integrations")

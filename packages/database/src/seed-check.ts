@@ -77,7 +77,7 @@ export async function checkSchema(supabaseUrl: string, supabaseKey: string): Pro
 }
 
 async function checkSchemaOnce(supabaseUrl: string, supabaseKey: string): Promise<SchemaCheckResult> {
-  const { createAppClient } = await import("./client.js")
+  const { createAppClient } = await import("./client")
   const app = createAppClient(supabaseUrl, supabaseKey)
   const missing: string[] = []
 
@@ -202,7 +202,7 @@ async function ensureServerRowOnce(
   supabaseKey: string,
   server: ServerIdentity,
 ): Promise<ServerCheckResult> {
-  const { createAppClient } = await import("./client.js")
+  const { createAppClient } = await import("./client")
   const app = createAppClient(supabaseUrl, supabaseKey)
 
   // Try to read first (fast path — row usually exists)

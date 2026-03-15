@@ -214,7 +214,7 @@ ${processedOutput}
     const generatedTypeImports = generatedSchemas
       .map(schema => {
         const capitalized = schema.charAt(0).toUpperCase() + schema.slice(1)
-        return `import type { Database as ${capitalized}Database } from "./${schema}.generated.js"`
+        return `import type { Database as ${capitalized}Database } from "./${schema}.generated"`
       })
       .join("\n")
 
@@ -233,7 +233,7 @@ ${processedOutput}
 ${generatedTypeImports}
 
 // Export generated constants (runtime enum values derived from DB)
-${generatedSchemas.includes("app") ? `export { Constants as AppConstants } from "./app.generated.js"` : "// App constants unavailable"}
+${generatedSchemas.includes("app") ? `export { Constants as AppConstants } from "./app.generated"` : "// App constants unavailable"}
 
 // Export automation enum types, guards, and runtime sets
 export {
@@ -256,10 +256,10 @@ export {
   type TerminalRunStatus,
   TRIGGER_TYPES,
   type TriggerType,
-} from "./automation-enums.js"
+} from "./automation-enums"
 ${
   generatedSchemas.includes("deploy")
-    ? `export { Constants as DeployConstants } from "./deploy.generated.js"
+    ? `export { Constants as DeployConstants } from "./deploy.generated"
 export {
   DEPLOY_ARTIFACT_KIND_DOCKER_IMAGE,
   DEPLOY_ARTIFACT_KINDS,
@@ -292,7 +292,7 @@ export {
   isDeployExecutorBackend,
   isDeployGitProvider,
   isDeployTaskStatus,
-} from "./deploy-enums.js"`
+} from "./deploy-enums"`
     : "// Deploy enums unavailable"
 }
 
@@ -306,7 +306,7 @@ ${
   Tables,
   TablesInsert,
   TablesUpdate,
-} from "./public.generated.js"`
+} from "./public.generated"`
     : generatedSchemas.includes("lockbox")
       ? `export {
   CompositeTypes,
@@ -315,7 +315,7 @@ ${
   Tables,
   TablesInsert,
   TablesUpdate,
-} from "./lockbox.generated.js"`
+} from "./lockbox.generated"`
       : "// No common types to export"
 }
 
@@ -332,7 +332,7 @@ export type Database = never`
 }
 
 // Export database client creators
-export * from "./client.js"
+export * from "./client"
 
 // Export startup verification (schema + server identity)
 export {
@@ -341,7 +341,7 @@ export {
   formatSchemaFailure,
   formatServerCheckFailure,
   type ServerIdentity,
-} from "./seed-check.js"
+} from "./seed-check"
 `
 
     const mainTypesPath = resolve(outputDir, "index.ts")

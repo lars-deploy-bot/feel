@@ -8,8 +8,8 @@
  * Regenerate the underlying constants with: bun run gen:types
  */
 
-import type { Database } from "./app.generated.js"
-import { Constants } from "./app.generated.js"
+import type { Database } from "./app.generated"
+import { Constants } from "./app.generated"
 
 // =============================================================================
 // Type Aliases (from generated DB enum types)
