@@ -132,7 +132,7 @@ export function AutomationsSettings() {
       setIsCreating(false)
     },
     onError: (err: ApiError) => {
-      toast.error(err.message || "Failed to save automation")
+      toast(err.message || "Couldn't save automation")
       Sentry.captureException(err)
     },
   })
@@ -153,7 +153,7 @@ export function AutomationsSettings() {
     },
     onError: (err, _id, context) => {
       if (context?.previous) queryClient.setQueryData(queryKeys.automations.list(queryFilter), context.previous)
-      toast.error(err.message || "Failed to delete automation")
+      toast(err.message || "Couldn't delete automation")
       Sentry.captureException(err)
     },
     onSuccess: () => {
@@ -173,7 +173,7 @@ export function AutomationsSettings() {
       queryClient.invalidateQueries({ queryKey: queryKeys.automations.all })
     },
     onError: (err: ApiError) => {
-      toast.error(err.message || "Failed to trigger automation")
+      toast(err.message || "Couldn't trigger automation")
       Sentry.captureException(err)
     },
   })
@@ -225,8 +225,8 @@ export function AutomationsSettings() {
 
   if (loading) {
     return (
-      <SettingsTabLayout title="Agents" description="Loading...">
-        <LoadingSpinner message="Loading agents..." />
+      <SettingsTabLayout title="Agents" description="">
+        <LoadingSpinner message="Loading" />
       </SettingsTabLayout>
     )
   }

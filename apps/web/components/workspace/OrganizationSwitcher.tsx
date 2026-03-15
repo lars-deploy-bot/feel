@@ -59,14 +59,14 @@ export function OrganizationSwitcher({ onOrgChange }: OrganizationSwitcherProps)
   if (error) {
     return (
       <div className="ml-3 flex items-center gap-2">
-        <span className="text-xs text-red-600 dark:text-red-400" title={error}>
-          error loading orgs
+        <span className="text-xs text-zinc-400 dark:text-zinc-500" title={error}>
+          couldn't load orgs
         </span>
         <button
           type="button"
           onClick={retry}
           disabled={loading}
-          className="px-2 py-0.5 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-2 py-0.5 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors disabled:opacity-40"
         >
           {loading ? "..." : "retry"}
         </button>
@@ -76,7 +76,7 @@ export function OrganizationSwitcher({ onOrgChange }: OrganizationSwitcherProps)
 
   if (organizations.length === 0) {
     return (
-      <span className="ml-3 text-xs text-orange-600 dark:text-orange-400" title="No organizations found">
+      <span className="ml-3 text-xs text-zinc-400 dark:text-zinc-500" title="No organizations found">
         no orgs
       </span>
     )

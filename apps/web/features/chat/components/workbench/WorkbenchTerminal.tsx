@@ -300,13 +300,13 @@ export function WorkbenchTerminal({ workspace }: WorkbenchViewProps) {
     <div className="relative h-full flex flex-col bg-[#1a1a1a]">
       <div ref={containerRef} className="flex-1 px-1 pt-1 min-h-0" />
       {(state === "disconnected" || state === "error") && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 border-t border-neutral-800">
-          {errorMsg && <span className="text-xs text-red-400 truncate">{errorMsg}</span>}
-          {state === "disconnected" && <span className="text-xs text-neutral-500">Disconnected</span>}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border-t border-zinc-800">
+          {errorMsg && <span className="text-xs text-zinc-500 truncate">{errorMsg}</span>}
+          {state === "disconnected" && <span className="text-xs text-zinc-500">Disconnected</span>}
           <button
             type="button"
             onClick={handleReconnect}
-            className="ml-auto flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-200 transition-colors"
+            className="ml-auto flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
           >
             <RotateCw size={11} strokeWidth={1.5} />
             Reconnect
@@ -315,7 +315,7 @@ export function WorkbenchTerminal({ workspace }: WorkbenchViewProps) {
       )}
       {state === "connecting" && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a1a]/80">
-          <span className="text-sm text-neutral-500">Connecting...</span>
+          <span className="text-sm text-zinc-500">Connecting</span>
         </div>
       )}
     </div>

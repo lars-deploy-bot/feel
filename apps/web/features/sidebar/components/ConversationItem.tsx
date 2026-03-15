@@ -81,14 +81,14 @@ export function ConversationItem({
     >
       <div
         className={`
-          flex items-center gap-2 px-3 py-1.5 mx-2 rounded-lg cursor-pointer
-          transition-colors duration-100
-          ${isActive ? "bg-black/[0.05] dark:bg-white/[0.06]" : "hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"}
+          flex items-center gap-2 px-3 py-2.5 mx-2 rounded-lg cursor-pointer
+          transition-all duration-150 ease-out
+          ${isActive ? "bg-[#4a7c59]/[0.08] dark:bg-[#7cb88a]/[0.08]" : "hover:bg-[#4a7c59]/[0.05] dark:hover:bg-[#7cb88a]/[0.05]"}
         `}
       >
         {isStreaming && <StreamingDot />}
         {conversation.source === "automation_run" && (
-          <Bot size={13} strokeWidth={1.75} className="shrink-0 text-black/25 dark:text-white/25" />
+          <Bot size={13} strokeWidth={1.75} className="shrink-0 text-[#b5afa3] dark:text-[#5c574d]" />
         )}
 
         <div className="flex-1 min-w-0">
@@ -101,18 +101,18 @@ export function ConversationItem({
               onBlur={handleSaveEdit}
               onKeyDown={handleEditKeyDown}
               onClick={e => e.stopPropagation()}
-              className="w-full text-[13px] text-black dark:text-white bg-transparent outline-none"
+              className="w-full text-[13px] text-[#2c2a26] dark:text-[#e8e4dc] bg-transparent outline-none"
             />
           ) : (
             <div className="flex items-center gap-2">
               <span
                 className={`text-[13px] truncate ${
-                  isActive ? "text-black dark:text-white font-medium" : "text-black/70 dark:text-white/70"
+                  isActive ? "text-[#2c2a26] dark:text-[#e8e4dc] font-medium" : "text-[#5c574d] dark:text-[#b5afa3]"
                 }`}
               >
                 {conversation.title}
               </span>
-              <span className="text-[11px] text-black/25 dark:text-white/25 shrink-0 tabular-nums">
+              <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">
                 {formatTimestamp(conversation.updatedAt)}
               </span>
             </div>
@@ -120,7 +120,7 @@ export function ConversationItem({
         </div>
 
         {!isEditing && (
-          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ease-out">
             {isConfirming && (
               <button
                 type="button"
@@ -128,10 +128,10 @@ export function ConversationItem({
                   e.stopPropagation()
                   onCancelArchive(e)
                 }}
-                className="size-5 rounded flex items-center justify-center text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 active:scale-90 transition-colors duration-100"
+                className="size-5 rounded-lg flex items-center justify-center text-[#b5afa3] dark:text-[#5c574d] hover:text-[#5c574d] dark:hover:text-[#b5afa3] active:scale-90 transition-all duration-150 ease-out"
                 aria-label="Cancel archive"
               >
-                <X size={12} strokeWidth={2.5} />
+                <X size={12} strokeWidth={2} />
               </button>
             )}
 
@@ -139,7 +139,7 @@ export function ConversationItem({
               <button
                 type="button"
                 onClick={handleStartEdit}
-                className="size-5 rounded flex items-center justify-center text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 active:scale-90 transition-colors duration-100"
+                className="size-5 rounded-lg flex items-center justify-center text-[#b5afa3] dark:text-[#5c574d] hover:text-[#5c574d] dark:hover:text-[#b5afa3] active:scale-90 transition-all duration-150 ease-out"
                 aria-label="Rename"
               >
                 <Pencil size={11} strokeWidth={1.75} />
@@ -152,14 +152,14 @@ export function ConversationItem({
                 e.stopPropagation()
                 onArchive(e, conversation)
               }}
-              className={`size-5 rounded flex items-center justify-center active:scale-90 transition-colors duration-100 ${
+              className={`size-5 rounded-lg flex items-center justify-center active:scale-90 transition-all duration-150 ease-out ${
                 isConfirming
-                  ? "bg-black/10 dark:bg-white/10 text-black dark:text-white"
-                  : "text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60"
+                  ? "bg-[#4a7c59]/[0.12] dark:bg-[#7cb88a]/[0.12] text-[#2c2a26] dark:text-[#e8e4dc]"
+                  : "text-[#b5afa3] dark:text-[#5c574d] hover:text-[#5c574d] dark:hover:text-[#b5afa3]"
               }`}
               aria-label={isConfirming ? "Confirm archive" : "Archive"}
             >
-              {isConfirming ? <Check size={11} strokeWidth={3} /> : <Archive size={11} strokeWidth={1.75} />}
+              {isConfirming ? <Check size={11} strokeWidth={2} /> : <Archive size={11} strokeWidth={1.75} />}
             </button>
           </div>
         )}

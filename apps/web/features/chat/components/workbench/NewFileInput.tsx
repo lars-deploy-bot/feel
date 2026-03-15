@@ -82,7 +82,7 @@ export function NewFileInput({ workspace, worktree, onCreated, onCancel }: NewFi
   return (
     <div className="px-2 py-1">
       <div className="flex items-center gap-1 h-7">
-        <File size={14} strokeWidth={1.5} className="shrink-0 text-neutral-400 dark:text-neutral-600" />
+        <File size={14} strokeWidth={1.5} className="shrink-0 text-zinc-400 dark:text-zinc-600" />
         <input
           ref={inputRef}
           type="text"
@@ -92,7 +92,7 @@ export function NewFileInput({ workspace, worktree, onCreated, onCancel }: NewFi
           onBlur={handleSubmit}
           disabled={saving}
           placeholder="path/to/file.ts"
-          className="flex-1 min-w-0 bg-transparent text-[13px] text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 dark:placeholder:text-neutral-600 outline-none border-b border-sky-500/50 pb-px"
+          className="flex-1 min-w-0 bg-transparent text-[13px] text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none border-b border-sky-500/50 pb-px"
         />
       </div>
       {error && <div className="text-[11px] text-red-500 mt-0.5 pl-[18px]">{error}</div>}

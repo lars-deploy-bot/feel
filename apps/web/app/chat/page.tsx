@@ -64,7 +64,7 @@ import { useTabActions, useTabDataStore } from "@/lib/stores/tabStore"
 import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 // Local components
-import { AgentManagerIndicator, ChatEmptyState, MessageList, Nav, OfflineBanner, TabBar } from "./components"
+import { AgentManagerIndicator, ChatEmptyState, MessageList, OfflineBanner, TabBar } from "./components"
 import {
   useChatDragDrop,
   useChatMessaging,
@@ -561,9 +561,9 @@ function ChatPageContent() {
 
     if (validated) {
       if (validated.status === "success" && validated.successMessage) {
-        toast.success(validated.successMessage)
+        toast(validated.successMessage)
       } else if (validated.status === "error" && validated.errorMessage) {
-        toast.error(validated.errorMessage)
+        toast(validated.errorMessage)
       }
       const cleanUrl = window.location.pathname + window.location.hash
       window.history.replaceState({}, "", cleanUrl)
@@ -588,7 +588,7 @@ function ChatPageContent() {
       setWorkspace(newWorkspace, targetOrgId)
       setWorktree(null)
       setGithubImportOpen(false)
-      toast.success(`Opened ${newWorkspace}`)
+      toast(`Switched to ${newWorkspace}`)
     },
     [selectedOrgId, organizations, setWorkspace, setWorktree],
   )
@@ -601,7 +601,7 @@ function ChatPageContent() {
     // startNewTabGroup creates a new tabGroup + first tab in tabStore
     const newTabId = startNewTabGroup()
     if (!newTabId) {
-      toast.error("Tab limit reached. Close a tab to open a new one.", { id: "tab-limit" })
+      toast("You have 10 tabs open — close one to make room", { id: "tab-limit" })
       return
     }
 
@@ -614,11 +614,11 @@ function ChatPageContent() {
 
   const handleNewWorktree = useCallback(() => {
     if (!workspace) {
-      toast.error("Select a site before creating a worktree.")
+      toast("Pick a site first")
       return
     }
     if (isSuperadminWorkspace) {
-      toast.error("Worktrees are not available in the Alive workspace.")
+      toast("Worktrees aren't available here")
       return
     }
     setWorktreeModalOpen(true)
@@ -738,24 +738,14 @@ function ChatPageContent() {
         onTemplatesClick={modals.openTemplates}
       />
 
-      {/* Main content column: nav + chat + workbench */}
+      {/* Main content column: chat + workbench */}
       <div data-panel-role="chat-main-column" className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Nav
-          onFeedbackClick={modals.openFeedback}
-          onTemplatesClick={modals.openTemplates}
-          workspace={workspace}
-          isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={toggleSidebar}
-          settingsMode={!!modals.settings}
-          onSettingsClick={handleNavSettingsClick}
-        />
-
         {/* Content area: chat + workbench side by side (or settings content) */}
         <div data-panel-role="chat-content-area" className="flex-1 overflow-hidden min-h-0 relative">
           {/* Settings content — shown when sidebar is in settings mode */}
           {modals.settings && (
             <section
-              className="absolute inset-0 z-20 overflow-y-auto overscroll-contain bg-zinc-50 dark:bg-zinc-950"
+              className="absolute inset-0 z-20 overflow-y-auto overscroll-contain bg-[#faf8f5] dark:bg-[#141311]"
               aria-label="Settings"
               data-panel-role="settings-overlay"
             >
@@ -804,6 +794,9 @@ function ChatPageContent() {
                       onTabRename={handleTabRename}
                       onTabReopen={handleTabReopen}
                       onAddTab={handleAddTab}
+                      workspace={workspace}
+                      isSidebarOpen={isSidebarOpen}
+                      onToggleSidebar={toggleSidebar}
                     />
                   )}
 
@@ -1027,11 +1020,19 @@ export default function ChatPage() {
       <Toaster
         position="top-center"
         toastOptions={{
-          duration: 5000,
+          duration: 4000,
+          style: { padding: "12px 16px", maxWidth: 420 },
+          className:
+            "!bg-white dark:!bg-zinc-900 !text-zinc-600 dark:!text-zinc-400 !text-[13px] !shadow-[0_2px_8px_rgba(0,0,0,0.06)] !border !border-zinc-200 dark:!border-zinc-800 !rounded-xl",
+          success: {
+            className:
+              "!bg-white dark:!bg-zinc-900 !text-zinc-600 dark:!text-zinc-400 !text-[13px] !shadow-[0_2px_8px_rgba(0,0,0,0.06)] !border !border-zinc-200 dark:!border-zinc-800 !rounded-xl",
+            iconTheme: { primary: "#a1a1aa", secondary: "#fff" },
+          },
           error: {
             className:
-              "!bg-red-50 !text-red-900 !border !border-red-200 dark:!bg-red-950/90 dark:!text-red-100 dark:!border-red-800/50",
-            iconTheme: { primary: "#dc2626", secondary: "#fff" },
+              "!bg-white dark:!bg-zinc-900 !text-zinc-600 dark:!text-zinc-400 !text-[13px] !shadow-[0_2px_8px_rgba(0,0,0,0.06)] !border !border-zinc-200 dark:!border-zinc-800 !rounded-xl",
+            iconTheme: { primary: "#a1a1aa", secondary: "#fff" },
           },
         }}
       />

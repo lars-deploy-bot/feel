@@ -142,13 +142,13 @@ function useOrgMembers() {
 
       if (data.ok) {
         setOrgMembers(prev => ({ ...prev, [orgId]: prev[orgId].filter(m => m.user_id !== userId) }))
-        toast.success(`Removed ${email} from organization`)
+        toast(`Removed ${email}`)
       } else {
-        toast.error(data.message || "Failed to remove member")
+        toast(data.message || "Couldn't remove member")
       }
     } catch (err) {
       console.error("Failed to remove member:", err)
-      toast.error("Failed to remove member")
+      toast("Couldn't remove member")
     } finally {
       setRemovingMember(null)
     }
@@ -212,14 +212,14 @@ function useOrgLeave() {
       const data = await res.json()
 
       if (data.ok) {
-        toast.success(`Left ${orgName}`)
+        toast(`Left ${orgName}`)
         window.location.reload()
       } else {
-        toast.error(data.message || "Failed to leave organization")
+        toast(data.message || "Couldn't leave organization")
       }
     } catch (err) {
       console.error("Failed to leave org:", err)
-      toast.error("Failed to leave organization")
+      toast("Couldn't leave organization")
     } finally {
       setLeavingOrg(null)
     }
@@ -262,7 +262,7 @@ export { useWorkspaceSwitch }
 export function WorkspaceSettings() {
   const { organizations, currentUserId, loading, error, refetch } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
-  const { setSelectedOrg } = useWorkspaceActions()
+
 
   // Use extracted hooks for clean state management
   const editor = useOrgEditor(refetch)
@@ -272,11 +272,6 @@ export function WorkspaceSettings() {
   // Invite state (TODO: Wire up invite UI)
   const [inviteEmail, setInviteEmail] = useState("")
   const [_inviting, setInviting] = useState(false)
-
-  const handleSelectOrg = (orgId: string) => {
-    setSelectedOrg(orgId)
-    editor.cancelEdit()
-  }
 
   // Auto-fetch members when org is selected
   useEffect(() => {
@@ -297,17 +292,22 @@ export function WorkspaceSettings() {
     try {
       // TODO: Implement actual invite API call
       await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success(`Invitation sent to ${inviteEmail}`)
+      toast(`Invite sent to ${inviteEmail}`)
       setInviteEmail("")
     } catch (_err) {
-      toast.error("Failed to send invitation")
+      toast("Couldn't send invite")
     } finally {
       setInviting(false)
     }
   }
 
+  const selectedOrg = organizations.find(org => org.org_id === selectedOrgId) ?? organizations[0] ?? null
+
   return (
-    <SettingsTabLayout title="Organization" description="Invite teammates and manage your organization">
+    <SettingsTabLayout
+      title={selectedOrg?.name ?? "Organization"}
+      description="Manage your team and organization settings"
+    >
       {/* Errors */}
       {error && (
         <div className="px-4 py-3 bg-red-500/5 dark:bg-red-500/5 border border-red-500/10 dark:border-red-500/10 rounded-xl space-y-2">
@@ -331,220 +331,184 @@ export function WorkspaceSettings() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
           <div className="w-8 h-8 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/60 dark:border-t-white/60 rounded-full animate-spin" />
-          <p className={text.muted}>Loading organizations...</p>
+          <p className={text.muted}>Loading</p>
         </div>
-      ) : organizations.length === 0 ? (
+      ) : !selectedOrg ? (
         <div className="text-center py-12">
           <Building2 size={48} strokeWidth={1} className="mx-auto mb-4 text-black/20 dark:text-white/20" />
-          <p className={`${text.description} mb-4`}>No organizations found</p>
-          <button type="button" className={primaryButton}>
-            Create Organization
-          </button>
+          <p className={`${text.description} mb-4`}>No organization selected</p>
         </div>
       ) : (
         <div className="space-y-5">
-          {/* Organization Selector */}
-          <div className="flex flex-wrap gap-2">
-            {organizations.map(org => (
-              <button
-                key={org.org_id}
-                type="button"
-                onClick={() => handleSelectOrg(org.org_id)}
-                className={`px-3 py-1.5 rounded-xl text-sm transition-all duration-150 active:scale-95 ${
-                  org.org_id === selectedOrgId
-                    ? "bg-black dark:bg-white text-white dark:text-black font-medium"
-                    : "bg-black/[0.04] dark:bg-white/[0.04] text-black/60 dark:text-white/60 hover:bg-black/[0.08] dark:hover:bg-white/[0.08] hover:text-black/80 dark:hover:text-white/80"
-                }`}
-              >
-                {org.name}
-              </button>
-            ))}
+          {/* Quick Summary Bar */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-black/50 dark:text-white/50">
+            <span>
+              <strong className="text-black/90 dark:text-white/90">{selectedOrg.credits.toFixed(2)}</strong> credits
+            </span>
+            <span className="hidden sm:inline text-black/20 dark:text-white/20">•</span>
+            <span>
+              <strong className="text-black/90 dark:text-white/90">{selectedOrg.workspace_count || 0}</strong> projects
+            </span>
+            <span className="hidden sm:inline text-black/20 dark:text-white/20">•</span>
+            <span>
+              <strong className="text-black/90 dark:text-white/90">
+                {members.orgMembers[selectedOrg.org_id]?.length || 0}
+              </strong>{" "}
+              members
+            </span>
           </div>
 
-          {/* Selected Organization Content */}
-          {selectedOrgId &&
-            (() => {
-              const selectedOrg = organizations.find(org => org.org_id === selectedOrgId)
-              if (!selectedOrg) return null
+          {/* PRIMARY: Invite Section */}
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className={text.label}>Invite teammates</h4>
+                <span className="px-2 py-0.5 bg-amber-500/10 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium rounded-lg">
+                  Coming soon
+                </span>
+              </div>
+              <p className={text.description}>
+                Give access to <strong>{selectedOrg.name}</strong> workspace and shared credits
+              </p>
+              <p className={`${text.muted} mt-1`}>Contact us to enable team invitations for your organization</p>
+            </div>
+            <div className="flex gap-2 opacity-40">
+              <input type="email" placeholder="email@example.com" disabled className={`flex-1 ${input}`} />
+              <button type="button" disabled className={primaryButton}>
+                Invite
+              </button>
+            </div>
+          </div>
 
-              return (
-                <div className="space-y-5">
-                  {/* Quick Summary Bar */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-black/50 dark:text-white/50">
-                    <span>
-                      <strong className="text-black/90 dark:text-white/90">{selectedOrg.credits.toFixed(2)}</strong>{" "}
-                      credits
-                    </span>
-                    <span className="hidden sm:inline text-black/20 dark:text-white/20">•</span>
-                    <span>
-                      <strong className="text-black/90 dark:text-white/90">{selectedOrg.workspace_count || 0}</strong>{" "}
-                      projects
-                    </span>
-                    <span className="hidden sm:inline text-black/20 dark:text-white/20">•</span>
-                    <span>
-                      <strong className="text-black/90 dark:text-white/90">
-                        {members.orgMembers[selectedOrg.org_id]?.length || 0}
-                      </strong>{" "}
-                      members
-                    </span>
-                  </div>
+          {/* Members List */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className={text.label}>Members</h4>
+            </div>
 
-                  {/* PRIMARY: Invite Section */}
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className={text.label}>Invite teammates</h4>
-                        <span className="px-2 py-0.5 bg-amber-500/10 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium rounded-lg">
-                          Coming soon
-                        </span>
-                      </div>
-                      <p className={text.description}>
-                        Give access to <strong>{selectedOrg.name}</strong> workspace and shared credits
-                      </p>
-                      <p className={`${text.muted} mt-1`}>
-                        Contact us to enable team invitations for your organization
-                      </p>
-                    </div>
-                    <div className="flex gap-2 opacity-40">
-                      <input type="email" placeholder="email@example.com" disabled className={`flex-1 ${input}`} />
-                      <button type="button" disabled className={primaryButton}>
-                        Invite
-                      </button>
-                    </div>
-                  </div>
+            {members.loadingMembers[selectedOrg.org_id] ? (
+              <div className="py-8 text-center">
+                <div className="inline-block w-5 h-5 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/60 dark:border-t-white/60 rounded-full animate-spin" />
+              </div>
+            ) : members.orgMembers[selectedOrg.org_id] && members.orgMembers[selectedOrg.org_id].length > 0 ? (
+              <div className="space-y-2">
+                {members.orgMembers[selectedOrg.org_id].map(member => {
+                  const currentUserRole = getCurrentUserRole(selectedOrg.org_id)
+                  const isCurrentUser = member.user_id === currentUserId
+                  const canRemove = canRemoveMember(currentUserRole, member.role, isCurrentUser)
 
-                  {/* Members List - Always Visible */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className={text.label}>Members</h4>
-                    </div>
-
-                    {members.loadingMembers[selectedOrg.org_id] ? (
-                      <div className="py-8 text-center">
-                        <div className="inline-block w-5 h-5 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/60 dark:border-t-white/60 rounded-full animate-spin" />
-                      </div>
-                    ) : members.orgMembers[selectedOrg.org_id] && members.orgMembers[selectedOrg.org_id].length > 0 ? (
-                      <div className="space-y-2">
-                        {members.orgMembers[selectedOrg.org_id].map(member => {
-                          const currentUserRole = getCurrentUserRole(selectedOrg.org_id)
-                          const isCurrentUser = member.user_id === currentUserId
-                          const canRemove = canRemoveMember(currentUserRole, member.role, isCurrentUser)
-
-                          return (
-                            <div
-                              key={member.user_id}
-                              className="flex items-start sm:items-center justify-between px-3 py-3 rounded-xl border border-black/[0.06] dark:border-white/[0.06] hover:border-black/[0.12] dark:hover:border-white/[0.12] transition-colors duration-150 gap-2"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-0.5">
-                                  <span className="text-sm font-medium text-black/90 dark:text-white/90 truncate max-w-[180px] sm:max-w-none">
-                                    {member.display_name || member.email}
-                                    {isCurrentUser && <span className={`ml-1 ${text.muted} font-normal`}>(you)</span>}
-                                  </span>
-                                  <span
-                                    className={`text-xs px-2 py-0.5 rounded-lg font-medium flex-shrink-0 ${
-                                      member.role === "owner"
-                                        ? "bg-violet-500/10 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400"
-                                        : member.role === "admin"
-                                          ? "bg-blue-500/10 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                                          : "bg-black/[0.04] dark:bg-white/[0.06] text-black/60 dark:text-white/60"
-                                    }`}
-                                  >
-                                    {member.role}
-                                  </span>
-                                </div>
-                                <div className={`${text.muted} truncate`}>{member.email}</div>
-                              </div>
-
-                              {canRemove && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    members.requestRemoveMember(selectedOrg.org_id, member.user_id, member.email)
-                                  }
-                                  disabled={members.removingMember === member.user_id}
-                                  className="flex-shrink-0 p-2 sm:p-1.5 text-red-500/70 dark:text-red-400/70 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 rounded-xl transition-colors duration-150 disabled:opacity-40"
-                                  title="Remove member"
-                                >
-                                  <UserMinus size={18} strokeWidth={1.75} className="sm:w-4 sm:h-4" />
-                                </button>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <div className={`py-8 text-center ${text.muted}`}>No members yet. Invite someone above!</div>
-                    )}
-                  </div>
-
-                  {/* Advanced Actions */}
-                  <details className="group">
-                    <summary className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] cursor-pointer transition-colors duration-150">
-                      <span className={text.label}>Advanced</span>
-                      <ChevronDown
-                        size={16}
-                        strokeWidth={1.75}
-                        className="text-black/40 dark:text-white/40 group-open:rotate-180 transition-transform duration-150"
-                      />
-                    </summary>
-                    <div className="mt-3 space-y-3 px-1">
-                      {/* Rename Organization */}
-                      <div>
-                        <label htmlFor="org-name-input" className={`block ${text.label} mb-2`}>
-                          Organization name
-                        </label>
-                        {editor.editingOrgId === selectedOrg.org_id ? (
-                          <div className="flex gap-2">
-                            <input
-                              id="org-name-input"
-                              type="text"
-                              value={editor.editOrgName}
-                              onChange={e => editor.setEditOrgName(e.target.value)}
-                              className={`flex-1 ${input}`}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => editor.saveEdit(selectedOrg.org_id)}
-                              disabled={!editor.editOrgName.trim() || editor.saving}
-                              className={primaryButton}
-                            >
-                              {editor.saving ? "..." : "Save"}
-                            </button>
-                            <button type="button" onClick={editor.cancelEdit} className={secondaryButton}>
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between px-3 py-2.5 bg-black/[0.03] dark:bg-white/[0.03] rounded-xl">
-                            <span className="text-sm text-black/80 dark:text-white/80">{selectedOrg.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => editor.startEdit(selectedOrg)}
-                              className={`${text.description} hover:text-black/80 dark:hover:text-white/80 transition-colors`}
-                            >
-                              Rename
-                            </button>
-                          </div>
-                        )}
+                  return (
+                    <div
+                      key={member.user_id}
+                      className="flex items-start sm:items-center justify-between px-3 py-3 rounded-xl border border-black/[0.06] dark:border-white/[0.06] hover:border-black/[0.12] dark:hover:border-white/[0.12] transition-colors duration-150 gap-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-0.5">
+                          <span className="text-sm font-medium text-black/90 dark:text-white/90 truncate max-w-[180px] sm:max-w-none">
+                            {member.display_name || member.email}
+                            {isCurrentUser && <span className={`ml-1 ${text.muted} font-normal`}>(you)</span>}
+                          </span>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-lg font-medium flex-shrink-0 ${
+                              member.role === "owner"
+                                ? "bg-violet-500/10 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                                : member.role === "admin"
+                                  ? "bg-blue-500/10 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                  : "bg-black/[0.04] dark:bg-white/[0.06] text-black/60 dark:text-white/60"
+                            }`}
+                          >
+                            {member.role}
+                          </span>
+                        </div>
+                        <div className={`${text.muted} truncate`}>{member.email}</div>
                       </div>
 
-                      {/* Leave Organization */}
-                      <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+                      {canRemove && (
                         <button
                           type="button"
-                          onClick={() => leave.requestLeave(selectedOrg.org_id, selectedOrg.name)}
-                          disabled={leave.leavingOrg === selectedOrg.org_id}
-                          className="text-xs text-red-500/60 dark:text-red-400/60 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-150 disabled:opacity-40"
+                          onClick={() =>
+                            members.requestRemoveMember(selectedOrg.org_id, member.user_id, member.email)
+                          }
+                          disabled={members.removingMember === member.user_id}
+                          className="flex-shrink-0 p-2 sm:p-1.5 text-red-500/70 dark:text-red-400/70 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 rounded-xl transition-colors duration-150 disabled:opacity-40"
+                          title="Remove member"
                         >
-                          {leave.leavingOrg === selectedOrg.org_id ? "Leaving..." : "Leave organization"}
+                          <UserMinus size={18} strokeWidth={1.75} className="sm:w-4 sm:h-4" />
                         </button>
-                      </div>
+                      )}
                     </div>
-                  </details>
-                </div>
-              )
-            })()}
+                  )
+                })}
+              </div>
+            ) : (
+              <div className={`py-8 text-center ${text.muted}`}>No members yet. Invite someone above!</div>
+            )}
+          </div>
+
+          {/* Advanced Actions */}
+          <details className="group">
+            <summary className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] cursor-pointer transition-colors duration-150">
+              <span className={text.label}>Advanced</span>
+              <ChevronDown
+                size={16}
+                strokeWidth={1.75}
+                className="text-black/40 dark:text-white/40 group-open:rotate-180 transition-transform duration-150"
+              />
+            </summary>
+            <div className="mt-3 space-y-3 px-1">
+              {/* Rename Organization */}
+              <div>
+                <label htmlFor="org-name-input" className={`block ${text.label} mb-2`}>
+                  Organization name
+                </label>
+                {editor.editingOrgId === selectedOrg.org_id ? (
+                  <div className="flex gap-2">
+                    <input
+                      id="org-name-input"
+                      type="text"
+                      value={editor.editOrgName}
+                      onChange={e => editor.setEditOrgName(e.target.value)}
+                      className={`flex-1 ${input}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => editor.saveEdit(selectedOrg.org_id)}
+                      disabled={!editor.editOrgName.trim() || editor.saving}
+                      className={primaryButton}
+                    >
+                      {editor.saving ? "..." : "Save"}
+                    </button>
+                    <button type="button" onClick={editor.cancelEdit} className={secondaryButton}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-3 py-2.5 bg-black/[0.03] dark:bg-white/[0.03] rounded-xl">
+                    <span className="text-sm text-black/80 dark:text-white/80">{selectedOrg.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => editor.startEdit(selectedOrg)}
+                      className={`${text.description} hover:text-black/80 dark:hover:text-white/80 transition-colors`}
+                    >
+                      Rename
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Leave Organization */}
+              <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => leave.requestLeave(selectedOrg.org_id, selectedOrg.name)}
+                  disabled={leave.leavingOrg === selectedOrg.org_id}
+                  className="text-xs text-red-500/60 dark:text-red-400/60 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-150 disabled:opacity-40"
+                >
+                  {leave.leavingOrg === selectedOrg.org_id ? "Leaving..." : "Leave organization"}
+                </button>
+              </div>
+            </div>
+          </details>
         </div>
       )}
 

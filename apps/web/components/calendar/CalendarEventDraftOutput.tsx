@@ -42,14 +42,14 @@ export function CalendarEventDraftOutput({
         const validated = validateRequest("google/calendar/create-event", payload)
         const result = await postty("google/calendar/create-event", validated)
 
-        toast.success(`"${payload.summary}" added to your calendar`)
+        toast(`"${payload.summary}" added to your calendar`)
 
         if (onSubmitAnswer) {
           onSubmitAnswer(`Event created successfully: ${result.htmlLink}`)
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to create event"
-        toast.error(message)
+        const message = error instanceof Error ? error.message : "Couldn't create event"
+        toast(message)
         throw error
       } finally {
         setIsLoading(false)

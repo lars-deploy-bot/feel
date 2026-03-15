@@ -1,13 +1,11 @@
 "use client"
 
 import { Layers, MessageCircle, Settings } from "lucide-react"
-import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { trackComponentsClicked, trackFeedbackClicked, trackSettingsClicked } from "@/lib/analytics/events"
 
 interface NavProps {
   onFeedbackClick: () => void
   onTemplatesClick: () => void
-  workspace: string | null
   isSidebarOpen: boolean
   onToggleSidebar: () => void
   settingsMode: boolean
@@ -17,7 +15,6 @@ interface NavProps {
 export function Nav({
   onFeedbackClick,
   onTemplatesClick,
-  workspace,
   isSidebarOpen,
   onToggleSidebar,
   settingsMode,
@@ -36,12 +33,13 @@ export function Nav({
       className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]"
     >
       <div className="h-full flex items-center justify-between px-2">
-        {/* Left side: sidebar toggle + workspace picker */}
+        {/* Left side: sidebar toggle */}
         <div className="flex items-center gap-2 min-w-0 pl-1">
+          {/* Sidebar toggle — mobile only (desktop has collapsed rail) */}
           <button
             type="button"
             onClick={onToggleSidebar}
-            className={`inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-200 ease-in-out overflow-hidden ${
+            className={`md:hidden inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-200 ease-in-out overflow-hidden ${
               isSidebarOpen ? "w-0 opacity-0 pointer-events-none" : "w-8 opacity-100"
             }`}
             data-testid="sidebar-toggle"
@@ -63,7 +61,6 @@ export function Nav({
               <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
             </svg>
           </button>
-          <OrganizationWorkspaceSwitcher workspace={workspace} wsOnly />
         </div>
 
         {/* Action buttons — desktop only. Mobile versions live in ConversationSidebar.tsx (search: "Mobile action buttons") */}

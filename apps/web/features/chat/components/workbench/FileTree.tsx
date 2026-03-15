@@ -100,11 +100,11 @@ function SearchResults({ workspace, worktree, query, activeFile, onSelectFile }:
   return (
     <div className="h-full overflow-y-auto text-[13px] py-1">
       {loading && results.length === 0 && (
-        <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">Searching...</div>
+        <div className="px-3 py-2 text-[13px] text-zinc-300 dark:text-zinc-700">Searching</div>
       )}
 
       {!loading && results.length === 0 && query && (
-        <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">No files found</div>
+        <div className="px-3 py-2 text-[13px] text-zinc-300 dark:text-zinc-700">No matches</div>
       )}
 
       {results.map(item => {
@@ -120,20 +120,20 @@ function SearchResults({ workspace, worktree, query, activeFile, onSelectFile }:
             className={`w-full flex items-center gap-1.5 px-2 py-1 text-left transition-colors ${
               isActive
                 ? "bg-black/[0.06] dark:bg-white/[0.08] text-black dark:text-white"
-                : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-neutral-800 dark:hover:text-neutral-300"
+                : "text-zinc-600 dark:text-zinc-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-zinc-800 dark:hover:text-zinc-300"
             }`}
           >
             <File size={14} strokeWidth={1.5} className={`shrink-0 ${getFileColor(item.name)}`} />
             <span className="truncate">
               <span>{item.name}</span>
-              {dir && <span className="text-neutral-400 dark:text-neutral-600 ml-1.5 text-[11px]">{dir}</span>}
+              {dir && <span className="text-zinc-400 dark:text-zinc-600 ml-1.5 text-[11px]">{dir}</span>}
             </span>
           </button>
         )
       })}
 
       {results.length > 0 && (
-        <div className="px-3 py-1.5 text-[11px] text-neutral-400 dark:text-neutral-600">
+        <div className="px-3 py-1.5 text-[11px] text-zinc-400 dark:text-zinc-600">
           {results.length} {results.length === 1 ? "file" : "files"}
         </div>
       )}
@@ -209,15 +209,15 @@ function TreeLevel({
   }, [workspace, worktree, path, key, changeVersion])
 
   if (loading && depth === 0) {
-    return <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">Loading...</div>
+    return <div className="px-3 py-2 text-[13px] text-zinc-300 dark:text-zinc-700">Loading</div>
   }
 
   if (error && depth === 0) {
-    return <div className="px-3 py-2 text-neutral-400 dark:text-neutral-500">{error}</div>
+    return <div className="px-3 py-2 text-[13px] text-zinc-400 dark:text-zinc-600">{error}</div>
   }
 
   if (files.length === 0 && depth === 0 && !loading) {
-    return <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">Empty</div>
+    return <div className="px-3 py-2 text-[13px] text-zinc-300 dark:text-zinc-700">No files</div>
   }
 
   return (
@@ -287,7 +287,7 @@ const TreeNode = memo(function TreeNode({
         className={`w-full h-7 flex items-center gap-1 text-left transition-colors ${
           isActive
             ? "bg-black/[0.06] dark:bg-white/[0.08] text-black dark:text-white"
-            : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-neutral-800 dark:hover:text-neutral-300"
+            : "text-zinc-600 dark:text-zinc-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-zinc-800 dark:hover:text-zinc-300"
         }`}
         style={{ paddingLeft }}
       >
@@ -295,7 +295,7 @@ const TreeNode = memo(function TreeNode({
           <ChevronRight
             size={14}
             strokeWidth={1.5}
-            className={`shrink-0 text-neutral-400 dark:text-neutral-600 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+            className={`shrink-0 text-zinc-400 dark:text-zinc-600 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
           />
         ) : (
           <span className="w-[14px] shrink-0" />

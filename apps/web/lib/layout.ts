@@ -24,3 +24,13 @@ export const WORKBENCH_PANEL = {
 } as const
 
 export const RESIZE_HANDLE_ID = "chat-workbench-handle"
+
+/** Sidebar collapsed rail layout — shared so adjacent content aligns vertically */
+export const SIDEBAR_RAIL = {
+  /** Vertical padding (px) of the rail container */
+  paddingY: 8,
+  /** Size of each rail icon button (px) */
+  iconSize: 36,
+  /** Gap between rail icon buttons (px) */
+  gap: 4,
+} as const

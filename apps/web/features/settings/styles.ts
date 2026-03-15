@@ -1,20 +1,15 @@
 /**
- * Shared style constants for settings UI
- * Following UI polish patterns: opacity scale, rounding scale, transitions
+ * Settings UI styles — warm, alive palette
+ *
+ * Inspired by natural materials: washi paper, unglazed clay, moss on stone.
+ * Colors are hand-picked, not from any Tailwind scale.
+ *
+ * Light backgrounds sit on #faf8f5 (kinari, unbleached cloth).
+ * Dark backgrounds sit on #141311 (sumi, warm charcoal).
+ *
+ * The green tint (#4a7c59 / emerald-ish) is "alive" — used at very low
+ * opacity for fills and borders. You feel it more than see it.
  */
-
-// =============================================================================
-// OPACITY SCALE (from UI polish guide)
-// =============================================================================
-// /[0.03-0.04] - barely visible fill (rest state backgrounds)
-// /[0.06-0.08] - subtle border/ring at rest
-// /[0.10-0.12] - hover/focus interactive feedback
-// /30 - whisper text (placeholders)
-// /40 - muted text (subtitles, icons at rest)
-// /50 - secondary text
-// /60 - description text
-// /70-80 - readable text (titles, icon hover)
-// /90 - primary text
 
 // =============================================================================
 // INTERACTIVE ELEMENTS
@@ -23,11 +18,11 @@
 /** Icon button (close, action icons) */
 export const iconButton = `
   inline-flex items-center justify-center size-9 rounded-xl
-  text-black/40 dark:text-white/40
-  hover:text-black/70 dark:hover:text-white/70
-  bg-black/[0.04] dark:bg-white/[0.04]
-  hover:bg-black/[0.08] dark:hover:bg-white/[0.08]
-  active:bg-black/[0.12] dark:active:bg-white/[0.12]
+  text-[#8a8578] dark:text-[#7a756b]
+  hover:text-[#5c574d] dark:hover:text-[#b5af a3]
+  bg-[#4a7c59]/[0.04] dark:bg-[#7cb88a]/[0.04]
+  hover:bg-[#4a7c59]/[0.08] dark:hover:bg-[#7cb88a]/[0.08]
+  active:bg-[#4a7c59]/[0.12] dark:active:bg-[#7cb88a]/[0.12]
   active:scale-95 transition-all duration-150
 `
   .replace(/\s+/g, " ")
@@ -36,11 +31,11 @@ export const iconButton = `
 /** Primary button (save, submit) */
 export const primaryButton = `
   inline-flex items-center justify-center h-10 px-4
-  bg-black dark:bg-white text-white dark:text-black
+  bg-[#2c2a26] dark:bg-[#e8e4dc] text-[#faf8f5] dark:text-[#1a1816]
   text-sm font-medium rounded-xl
-  hover:brightness-[0.85] active:brightness-75
+  hover:bg-[#3d3a34] dark:hover:bg-[#d4d0c8]
   active:scale-[0.98] transition-all duration-150
-  disabled:opacity-30 disabled:hover:brightness-100
+  disabled:opacity-30
 `
   .replace(/\s+/g, " ")
   .trim()
@@ -48,10 +43,10 @@ export const primaryButton = `
 /** Secondary button (clear, cancel) */
 export const secondaryButton = `
   inline-flex items-center justify-center h-10 px-4
-  bg-black/[0.04] dark:bg-white/[0.04] text-black/70 dark:text-white/70
+  bg-[#4a7c59]/[0.06] dark:bg-[#7cb88a]/[0.06] text-[#5c574d] dark:text-[#b5afa3]
   text-sm font-medium rounded-xl
-  hover:bg-black/[0.08] dark:hover:bg-white/[0.08]
-  active:bg-black/[0.12] dark:active:bg-white/[0.12]
+  hover:bg-[#4a7c59]/[0.10] dark:hover:bg-[#7cb88a]/[0.10]
+  active:bg-[#4a7c59]/[0.14] dark:active:bg-[#7cb88a]/[0.14]
   active:scale-[0.98] transition-all duration-150
 `
   .replace(/\s+/g, " ")
@@ -72,11 +67,11 @@ export const dangerButton = `
 /** Small button (inline actions like "Get more") */
 export const smallButton = `
   inline-flex items-center justify-center h-8 px-3
-  bg-black/[0.04] dark:bg-white/[0.04] text-black/60 dark:text-white/60
+  bg-[#4a7c59]/[0.06] dark:bg-[#7cb88a]/[0.06] text-[#6b6560] dark:text-[#9a958c]
   text-xs font-medium rounded-lg
-  hover:bg-black/[0.08] dark:hover:bg-white/[0.08]
-  hover:text-black/80 dark:hover:text-white/80
-  active:bg-black/[0.12] dark:active:bg-white/[0.12]
+  hover:bg-[#4a7c59]/[0.10] dark:hover:bg-[#7cb88a]/[0.10]
+  hover:text-[#3d3a34] dark:hover:text-[#d4d0c8]
+  active:bg-[#4a7c59]/[0.14] dark:active:bg-[#7cb88a]/[0.14]
   active:scale-95 transition-all duration-150
   disabled:opacity-30
 `
@@ -90,12 +85,12 @@ export const smallButton = `
 /** Text input / textarea */
 export const input = `
   w-full px-4 py-2.5
-  bg-black/[0.02] dark:bg-white/[0.02]
-  border border-black/[0.08] dark:border-white/[0.08]
-  rounded-xl text-sm text-black dark:text-white
-  placeholder:text-black/30 dark:placeholder:text-white/30
-  focus:outline-none focus:ring-2 focus:ring-black/[0.12] dark:focus:ring-white/[0.12]
-  focus:border-black/[0.12] dark:focus:border-white/[0.12]
+  bg-white/50 dark:bg-white/[0.03]
+  border border-[#4a7c59]/[0.12] dark:border-[#7cb88a]/[0.08]
+  rounded-xl text-sm text-[#2c2a26] dark:text-[#e8e4dc]
+  placeholder:text-[#b5afa3] dark:placeholder:text-[#5c574d]
+  focus:outline-none focus:ring-2 focus:ring-[#4a7c59]/[0.12] dark:focus:ring-[#7cb88a]/[0.10]
+  focus:border-[#4a7c59]/[0.20] dark:focus:border-[#7cb88a]/[0.18]
   transition-all duration-150
 `
   .replace(/\s+/g, " ")
@@ -104,11 +99,11 @@ export const input = `
 /** Select dropdown */
 export const select = `
   w-full px-4 py-2.5
-  bg-black/[0.02] dark:bg-white/[0.02]
-  border border-black/[0.08] dark:border-white/[0.08]
-  rounded-xl text-sm text-black dark:text-white
-  focus:outline-none focus:ring-2 focus:ring-black/[0.12] dark:focus:ring-white/[0.12]
-  focus:border-black/[0.12] dark:focus:border-white/[0.12]
+  bg-white/50 dark:bg-white/[0.03]
+  border border-[#4a7c59]/[0.12] dark:border-[#7cb88a]/[0.08]
+  rounded-xl text-sm text-[#2c2a26] dark:text-[#e8e4dc]
+  focus:outline-none focus:ring-2 focus:ring-[#4a7c59]/[0.12] dark:focus:ring-[#7cb88a]/[0.10]
+  focus:border-[#4a7c59]/[0.20] dark:focus:border-[#7cb88a]/[0.18]
   transition-all duration-150
   disabled:opacity-40 disabled:cursor-not-allowed
 `
@@ -118,9 +113,9 @@ export const select = `
 /** Read-only display field */
 export const readOnlyField = `
   w-full px-4 py-2.5
-  bg-black/[0.03] dark:bg-white/[0.03]
-  border border-black/[0.06] dark:border-white/[0.06]
-  rounded-xl text-sm text-black/80 dark:text-white/80
+  bg-[#4a7c59]/[0.03] dark:bg-[#7cb88a]/[0.03]
+  border border-[#4a7c59]/[0.08] dark:border-[#7cb88a]/[0.06]
+  rounded-xl text-sm text-[#5c574d] dark:text-[#b5afa3]
 `
   .replace(/\s+/g, " ")
   .trim()
@@ -132,8 +127,8 @@ export const readOnlyField = `
 /** Info card (tips, notices) */
 export const infoCard = `
   p-4 rounded-xl
-  bg-black/[0.02] dark:bg-white/[0.02]
-  border border-black/[0.06] dark:border-white/[0.06]
+  bg-[#4a7c59]/[0.03] dark:bg-[#7cb88a]/[0.03]
+  border border-[#4a7c59]/[0.08] dark:border-[#7cb88a]/[0.06]
 `
   .replace(/\s+/g, " ")
   .trim()
@@ -147,9 +142,9 @@ export const warningCard = `
   .replace(/\s+/g, " ")
   .trim()
 
-/** Section divider */
+/** Section divider — faint green-tinted line */
 export const sectionDivider = `
-  pt-5 mt-5 border-t border-black/[0.06] dark:border-white/[0.06]
+  pt-5 mt-5 border-t border-[#4a7c59]/[0.08] dark:border-[#7cb88a]/[0.06]
 `
   .replace(/\s+/g, " ")
   .trim()
@@ -162,8 +157,7 @@ export const sectionDivider = `
 export const selectionCardBase = `
   flex flex-col items-center justify-center gap-2 p-4
   min-h-[88px] rounded-xl
-  border border-black/[0.08] dark:border-white/[0.08]
-  transition-all duration-150 active:scale-[0.98]
+  border transition-all duration-150 active:scale-[0.98]
 `
   .replace(/\s+/g, " ")
   .trim()
@@ -171,9 +165,10 @@ export const selectionCardBase = `
 /** Selection card - inactive */
 export const selectionCardInactive = `
   ${selectionCardBase}
-  bg-black/[0.02] dark:bg-white/[0.02]
-  hover:bg-black/[0.04] dark:hover:bg-white/[0.04]
-  hover:border-black/[0.12] dark:hover:border-white/[0.12]
+  bg-white/30 dark:bg-white/[0.02]
+  border-[#4a7c59]/[0.08] dark:border-[#7cb88a]/[0.06]
+  hover:bg-white/60 dark:hover:bg-white/[0.04]
+  hover:border-[#4a7c59]/[0.16] dark:hover:border-[#7cb88a]/[0.12]
 `
   .replace(/\s+/g, " ")
   .trim()
@@ -181,9 +176,9 @@ export const selectionCardInactive = `
 /** Selection card - active */
 export const selectionCardActive = `
   ${selectionCardBase}
-  bg-black/[0.06] dark:bg-white/[0.06]
-  border-black/30 dark:border-white/30
-  ring-1 ring-black/10 dark:ring-white/10
+  bg-[#4a7c59]/[0.06] dark:bg-[#7cb88a]/[0.06]
+  border-[#4a7c59]/[0.20] dark:border-[#7cb88a]/[0.18]
+  ring-1 ring-[#4a7c59]/[0.08] dark:ring-[#7cb88a]/[0.06]
 `
   .replace(/\s+/g, " ")
   .trim()
@@ -193,12 +188,12 @@ export const selectionCardActive = `
 // =============================================================================
 
 export const text = {
-  /** Section label */
-  label: "text-sm font-medium text-black/90 dark:text-white/90",
+  /** Section label — warm dark, reads like ink on washi */
+  label: "text-sm font-medium text-[#2c2a26] dark:text-[#e8e4dc]",
   /** Helper/description text */
-  description: "text-xs text-black/50 dark:text-white/50",
+  description: "text-xs text-[#8a8578] dark:text-[#7a756b]",
   /** Muted secondary text */
-  muted: "text-xs text-black/40 dark:text-white/40",
+  muted: "text-xs text-[#b5afa3] dark:text-[#5c574d]",
   /** Success message */
   success: "text-xs text-emerald-600 dark:text-emerald-400",
   /** Error message */

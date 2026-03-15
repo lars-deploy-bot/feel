@@ -44,7 +44,7 @@ const SessionsSettings = lazy(() =>
 export function SettingsContent() {
   const { activeTab } = useSettingsTabContext()
   const isFixedTab = activeTab === "automations"
-  const isWideTab = activeTab === "websites" || activeTab === "integrations"
+  const isWideTab = activeTab === "integrations"
 
   return (
     <div
@@ -54,7 +54,7 @@ export function SettingsContent() {
     >
       <div className={isFixedTab ? "w-full h-full" : isWideTab ? "w-full" : "max-w-3xl"}>
         <Suspense
-          fallback={<div className="py-12 text-center text-black/30 dark:text-white/30 text-sm">Loading...</div>}
+          fallback={<div className="py-12 text-center text-zinc-300 dark:text-zinc-700 text-[13px]">Loading</div>}
         >
           {activeTab === "general" && <GeneralSettings />}
           {activeTab === "sessions" && <SessionsSettings />}

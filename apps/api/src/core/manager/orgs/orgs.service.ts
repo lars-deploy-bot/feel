@@ -1,10 +1,5 @@
+import { isOrgRole } from "@webalive/shared"
 import { domainsRepo, membersRepo, orgsRepo } from "../../../db/repos"
-
-const VALID_ORG_ROLES = new Set(["owner", "admin", "member"])
-function isOrgRole(role: unknown): boolean {
-  return typeof role === "string" && VALID_ORG_ROLES.has(role)
-}
-
 import type { DomainRow } from "../../../db/repos/domains.repo"
 import type { MemberRow } from "../../../db/repos/members.repo"
 import { eventBus } from "../../../infra/events"

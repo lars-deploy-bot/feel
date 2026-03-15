@@ -112,8 +112,8 @@ export function InviteModal({ onClose }: InviteModalProps) {
 
         {/* Error state */}
         {error && !isLoading && (
-          <div className="text-center text-sm text-red-500 py-4">
-            Failed to load invite link. Please try again later.
+          <div className="text-center text-[13px] text-zinc-400 dark:text-zinc-500 py-4">
+            Couldn't load invite link — try again
           </div>
         )}
 

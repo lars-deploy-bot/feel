@@ -77,12 +77,12 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
         >
           {/* Tree header */}
           <PanelBar className="justify-between">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Files</span>
+            <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Files</span>
             <div className="flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={() => setIsCreatingFile(true)}
-                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+                className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors"
                 title="New file"
               >
                 <FilePlus size={14} strokeWidth={1.5} />
@@ -90,7 +90,7 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
               <button
                 type="button"
                 onClick={toggleTreeCollapsed}
-                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+                className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors"
                 title="Collapse sidebar"
               >
                 <PanelLeftClose size={14} strokeWidth={1.5} />
@@ -101,7 +101,7 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
           {/* Search input — always visible */}
           <div className="px-2 py-1.5 border-b border-black/[0.06] dark:border-white/[0.04]">
             <div className="flex items-center gap-1.5 h-6 px-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.04]">
-              <Search size={12} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-600 shrink-0" />
+              <Search size={12} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600 shrink-0" />
               <input
                 ref={filterInputRef}
                 type="text"
@@ -115,13 +115,13 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
                   }
                 }}
                 placeholder="Search files..."
-                className="flex-1 min-w-0 bg-transparent text-[12px] text-neutral-800 dark:text-neutral-200 outline-none placeholder:text-neutral-400 dark:placeholder:text-neutral-600"
+                className="flex-1 min-w-0 bg-transparent text-[12px] text-zinc-800 dark:text-zinc-200 outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
               />
               {fileFilter && (
                 <button
                   type="button"
                   onClick={() => setFileFilter("")}
-                  className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors shrink-0"
+                  className="p-0.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors shrink-0"
                 >
                   <X size={11} strokeWidth={1.5} />
                 </button>
@@ -174,7 +174,7 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
             <button
               type="button"
               onClick={toggleTreeCollapsed}
-              className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+              className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 rounded transition-colors"
               title="Show sidebar"
             >
               <PanelLeftOpen size={14} strokeWidth={1.5} />
@@ -186,7 +186,7 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
         {filePath ? (
           <CodeViewer workspace={workspace} worktree={worktree} filePath={filePath} onClose={closeFile} />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-neutral-400 dark:text-neutral-600 text-sm">
+          <div className="flex-1 flex items-center justify-center text-zinc-400 dark:text-zinc-600 text-sm">
             <span>Select a file to view</span>
           </div>
         )}

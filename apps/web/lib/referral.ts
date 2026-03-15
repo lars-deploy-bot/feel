@@ -1,16 +1,9 @@
 import { REFERRAL } from "@webalive/shared"
 
-const STORAGE_KEY = "alive_referral"
+// Re-export from @webalive/org — single source of truth
+export { buildInviteLink } from "@webalive/org"
 
-/**
- * Build invite link from code (server-side only — called from API routes)
- * @param code - The invite code
- * @param baseUrl - The base URL (e.g. "https://app.alive.best")
- */
-export function buildInviteLink(code: string, baseUrl: string): string {
-  if (!baseUrl) throw new Error("[referral] baseUrl is required for invite link generation")
-  return `${baseUrl}/invite/${code}`
-}
+const STORAGE_KEY = "alive_referral"
 
 /**
  * Get stored referral code from localStorage (with expiry check)

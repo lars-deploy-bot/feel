@@ -108,13 +108,13 @@ export function PromptBarAttachmentGrid() {
               </span>
               {attachment.error ? (
                 <span
-                  className="text-[11px] text-red-500 dark:text-red-400 truncate max-w-[140px]"
+                  className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate max-w-[140px]"
                   title={attachment.error}
                 >
-                  Upload failed
+                  Couldn't upload
                 </span>
               ) : isUploading ? (
-                <span className="text-[11px] text-black/60 dark:text-white/60">Uploading...</span>
+                <span className="text-[11px] text-zinc-400 dark:text-zinc-500">Uploading</span>
               ) : (
                 <span className="text-[11px] text-black/60 dark:text-white/60">
                   {isSkillAttachment(attachment)
