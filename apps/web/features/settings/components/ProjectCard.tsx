@@ -2,8 +2,8 @@
 
 import { ExternalLink, Star, Trash2 } from "lucide-react"
 import { memo, useEffect, useState } from "react"
-import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
 import { getSiteUrl } from "@/lib/preview-utils"
+import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
 import { DeleteProjectModal } from "./DeleteProjectModal"
 
 // ---------------------------------------------------------------------------

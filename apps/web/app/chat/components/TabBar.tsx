@@ -5,7 +5,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { trackTabClosed, trackTabCreated, trackTabReopened } from "@/lib/analytics/events"
-import { SIDEBAR_RAIL } from "@/lib/layout"
 import type { Tab } from "@/lib/stores/tabStore"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

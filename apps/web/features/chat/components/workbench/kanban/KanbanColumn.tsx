@@ -1,9 +1,9 @@
 "use client"
 import { Plus } from "lucide-react"
 import { useState } from "react"
-import type { KanbanColumnDef } from "./types"
 import { KanbanCardItem } from "./KanbanCard"
 import { useKanban } from "./KanbanProvider"
+import type { KanbanColumnDef } from "./types"
 
 export function KanbanColumn({ column }: { column: KanbanColumnDef }) {
   const { cardsByColumn, setCreatingInColumn, moveCard, setDraggedId, draggedId } = useKanban()
