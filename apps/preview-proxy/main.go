@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"net/http"
@@ -532,13 +533,14 @@ func (h *previewHandler) verifySessionCookie(r *http.Request, hostname string) b
 }
 
 // notFoundHTML is the HTML template for domains that don't exist.
-// %s is replaced with the requested hostname.
+// Format args: %[1]s = requested hostname, %[2]s = base domain (e.g. "alive.best")
 const notFoundHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Site Not Found</title>
+<title>%[1]s — Not Found</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%%3E%%3Ccircle cx='16' cy='16' r='12' fill='%%2351FF8C'/%%3E%%3C/svg%%3E">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -547,53 +549,93 @@ const notFoundHTML = `<!DOCTYPE html>
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #fafafa;
-    color: #111;
+    background: #09090b;
+    color: #fafafa;
   }
   .container {
     text-align: center;
-    max-width: 460px;
-    padding: 2rem;
+    max-width: 480px;
+    padding: 2.5rem 2rem;
+  }
+  .icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1.5rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon svg {
+    width: 22px;
+    height: 22px;
+    color: #71717a;
   }
   h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.01em;
   }
-  p {
-    font-size: 1rem;
-    color: #666;
+  .subtitle {
+    font-size: 0.9rem;
+    color: #71717a;
     line-height: 1.6;
+    margin-bottom: 1.5rem;
   }
   .domain {
-    font-family: "SF Mono", "Fira Code", monospace;
-    background: #f0f0f0;
-    padding: 0.15em 0.4em;
-    border-radius: 4px;
-    font-size: 0.9em;
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.15em 0.45em;
+    border-radius: 5px;
+    font-size: 0.85em;
+    color: #a1a1aa;
   }
-  a {
-    color: #111;
-    text-decoration: underline;
-    text-underline-offset: 2px;
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.2rem;
+    background: #fafafa;
+    color: #09090b;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .cta:hover { opacity: 0.85; }
+  .cta svg {
+    width: 14px;
+    height: 14px;
   }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>Site not found</h1>
-  <p><span class="domain">%s</span> is not registered on this server.</p>
-  <p style="margin-top: 1rem;"><a href="https://alive.best">alive.best</a></p>
+  <div class="icon">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+  </div>
+  <h1>This site doesn't exist yet</h1>
+  <p class="subtitle"><span class="domain">%[1]s</span> isn't registered.</p>
+  <a class="cta" href="https://app.%[2]s">
+    Build on %[2]s
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+  </a>
 </div>
 </body>
 </html>`
 
 func (h *previewHandler) serveNotFound(w http.ResponseWriter, host string) {
 	// Sanitize host for safe HTML embedding (prevent XSS)
-	safe := strings.ReplaceAll(strings.ReplaceAll(host, "<", "&lt;"), ">", "&gt;")
+	safe := html.EscapeString(host)
+	baseDomain := html.EscapeString(h.cfg.PreviewBase)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprintf(w, notFoundHTML, safe)
+	fmt.Fprintf(w, notFoundHTML, safe, baseDomain)
 }
 
 func requireEnv(key string) string {
