@@ -117,7 +117,7 @@ function SearchResults({ workspace, worktree, query, activeFile, onSelectFile }:
             key={item.path}
             type="button"
             onClick={() => onSelectFile(item.path)}
-            className={`w-full flex items-center gap-1.5 px-2 py-1 text-left transition-colors ${
+            className={`w-full flex items-center gap-1.5 px-2 h-8 text-left transition-colors ${
               isActive
                 ? "bg-black/[0.06] dark:bg-white/[0.08] text-black dark:text-white"
                 : "text-zinc-600 dark:text-zinc-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-zinc-800 dark:hover:text-zinc-300"
@@ -126,14 +126,14 @@ function SearchResults({ workspace, worktree, query, activeFile, onSelectFile }:
             <File size={14} strokeWidth={1.5} className={`shrink-0 ${getFileColor(item.name)}`} />
             <span className="truncate">
               <span>{item.name}</span>
-              {dir && <span className="text-zinc-400 dark:text-zinc-600 ml-1.5 text-[11px]">{dir}</span>}
+              {dir && <span className="text-black/30 dark:text-white/25 ml-1.5 text-[11px]">{dir}</span>}
             </span>
           </button>
         )
       })}
 
       {results.length > 0 && (
-        <div className="px-3 py-1.5 text-[11px] text-zinc-400 dark:text-zinc-600">
+        <div className="px-3 py-1.5 text-[11px] text-black/30 dark:text-white/25">
           {results.length} {results.length === 1 ? "file" : "files"}
         </div>
       )}
@@ -213,7 +213,7 @@ function TreeLevel({
   }
 
   if (error && depth === 0) {
-    return <div className="px-3 py-2 text-[13px] text-zinc-400 dark:text-zinc-600">{error}</div>
+    return <div className="px-3 py-2 text-[13px] text-black/30 dark:text-white/25">{error}</div>
   }
 
   if (files.length === 0 && depth === 0 && !loading) {
@@ -284,7 +284,7 @@ const TreeNode = memo(function TreeNode({
       <button
         type="button"
         onClick={handleClick}
-        className={`w-full h-7 flex items-center gap-1 text-left transition-colors ${
+        className={`w-full h-8 flex items-center gap-1.5 text-left transition-colors ${
           isActive
             ? "bg-black/[0.06] dark:bg-white/[0.08] text-black dark:text-white"
             : "text-zinc-600 dark:text-zinc-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-zinc-800 dark:hover:text-zinc-300"
@@ -295,7 +295,7 @@ const TreeNode = memo(function TreeNode({
           <ChevronRight
             size={14}
             strokeWidth={1.5}
-            className={`shrink-0 text-zinc-400 dark:text-zinc-600 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+            className={`shrink-0 text-black/30 dark:text-white/25 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
           />
         ) : (
           <span className="w-[14px] shrink-0" />
@@ -309,16 +309,23 @@ const TreeNode = memo(function TreeNode({
       </button>
 
       {isFolder && isExpanded && (
-        <TreeLevel
-          workspace={workspace}
-          worktree={worktree}
-          path={item.path}
-          depth={depth + 1}
-          activeFile={activeFile}
-          expandedFolders={expandedFolders}
-          onToggleFolder={onToggleFolder}
-          onSelectFile={onSelectFile}
-        />
+        <div className="relative">
+          {/* Indent guide line */}
+          <div
+            className="absolute top-0 bottom-0 w-px bg-black/[0.06] dark:bg-white/[0.06]"
+            style={{ left: 8 + depth * 12 + 7 }}
+          />
+          <TreeLevel
+            workspace={workspace}
+            worktree={worktree}
+            path={item.path}
+            depth={depth + 1}
+            activeFile={activeFile}
+            expandedFolders={expandedFolders}
+            onToggleFolder={onToggleFolder}
+            onSelectFile={onSelectFile}
+          />
+        </div>
       )}
     </>
   )

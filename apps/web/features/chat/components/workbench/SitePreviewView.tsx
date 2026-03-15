@@ -83,17 +83,17 @@ export function SitePreviewView({ workspace }: WorkbenchViewProps) {
           <button
             type="button"
             onClick={refresh}
-            className="p-0.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors shrink-0"
+            className="p-0.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 transition-colors shrink-0"
             title="Refresh"
           >
-            <RotateCw size={13} strokeWidth={1.5} />
+            <RotateCw size={14} strokeWidth={1.5} />
           </button>
           <input
             ref={inputRef}
             type="text"
             defaultValue={path}
             onKeyDown={handlePathSubmit}
-            className="flex-1 min-w-0 bg-transparent text-[13px] text-zinc-600 dark:text-zinc-400 outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
+            className="flex-1 min-w-0 bg-transparent text-[13px] text-black/60 dark:text-white/50 outline-none placeholder:text-black/20 dark:placeholder:text-white/15"
             placeholder="/"
           />
         </div>
@@ -101,10 +101,10 @@ export function SitePreviewView({ workspace }: WorkbenchViewProps) {
           href={getSiteUrl(workspace, path)}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors shrink-0"
+          className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 transition-colors shrink-0"
           title="Open in new tab"
         >
-          <ExternalLink size={14} strokeWidth={1.5} />
+          <ExternalLink size={15} strokeWidth={1.5} />
         </a>
       </div>
 

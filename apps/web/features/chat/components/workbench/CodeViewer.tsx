@@ -170,11 +170,11 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <PanelBar className="px-3 gap-2">
+      <PanelBar className="px-3 gap-1.5">
         <span className={`${getFileColor(filename)}`}>
           <svg
-            width="14"
-            height="14"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -186,7 +186,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             <polyline points="14 2 14 8 20 8" />
           </svg>
         </span>
-        <span className="text-[13px] text-zinc-700 dark:text-zinc-300 truncate flex-1">
+        <span className="text-[13px] text-black/70 dark:text-white/70 truncate flex-1">
           {filename}
           {hasChanges && <span className="text-amber-500 ml-1">*</span>}
         </span>
@@ -196,10 +196,10 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-1 px-2 h-6 text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 rounded transition-colors disabled:opacity-40"
+            className="flex items-center gap-1 px-2.5 h-7 text-[12px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-colors disabled:opacity-40"
             title="Save (Ctrl+S)"
           >
-            <Save size={12} strokeWidth={1.5} />
+            <Save size={13} strokeWidth={1.5} />
             {saving ? "Saving..." : "Save"}
           </button>
         )}
@@ -208,14 +208,14 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
           <button
             type="button"
             onClick={() => setPreviewing(p => !p)}
-            className={`p-1 rounded transition-colors ${
+            className={`p-1.5 rounded-lg transition-colors ${
               previewing
-                ? "text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300"
-                : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300"
+                ? "text-sky-500 dark:text-sky-400 bg-sky-500/[0.06]"
+                : "text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
             }`}
             title={previewing ? "Edit source" : `Preview ${isCsv ? "table" : "markdown"}`}
           >
-            {previewing ? <Code size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
+            {previewing ? <Code size={15} strokeWidth={1.5} /> : <Eye size={15} strokeWidth={1.5} />}
           </button>
         )}
 
@@ -226,58 +226,58 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
               setEditing(e => !e)
               if (!editing) requestAnimationFrame(() => textareaRef.current?.focus())
             }}
-            className={`p-1 rounded transition-colors ${
+            className={`p-1.5 rounded-lg transition-colors ${
               editing
-                ? "text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300"
-                : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300"
+                ? "text-sky-500 dark:text-sky-400 bg-sky-500/[0.06]"
+                : "text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
             }`}
             title={editing ? "View highlighted" : "Edit"}
           >
-            {editing ? <Eye size={14} strokeWidth={1.5} /> : <Pencil size={14} strokeWidth={1.5} />}
+            {editing ? <Eye size={15} strokeWidth={1.5} /> : <Pencil size={15} strokeWidth={1.5} />}
           </button>
         )}
 
         <button
           type="button"
           onClick={openSearch}
-          className={`p-1 rounded transition-colors ${
+          className={`p-1.5 rounded-lg transition-colors ${
             searchOpen
-              ? "text-sky-500 dark:text-sky-400"
-              : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300"
+              ? "text-sky-500 dark:text-sky-400 bg-sky-500/[0.06]"
+              : "text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
           }`}
           title="Search (Ctrl+F)"
         >
-          <Search size={14} strokeWidth={1.5} />
+          <Search size={15} strokeWidth={1.5} />
         </button>
 
         <button
           type="button"
           onClick={handleCopy}
           disabled={!editContent && editContent !== ""}
-          className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors disabled:opacity-30"
+          className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors disabled:opacity-30"
           title={copied ? "Copied!" : "Copy"}
         >
           {copied ? (
-            <Check size={14} strokeWidth={1.5} className="text-emerald-500" />
+            <Check size={15} strokeWidth={1.5} className="text-emerald-500" />
           ) : (
-            <Copy size={14} strokeWidth={1.5} />
+            <Copy size={15} strokeWidth={1.5} />
           )}
         </button>
 
         <button
           type="button"
           onClick={onClose}
-          className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors"
+          className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
           title="Close (Esc)"
         >
-          <X size={14} strokeWidth={1.5} />
+          <X size={15} strokeWidth={1.5} />
         </button>
       </PanelBar>
 
       {/* Search bar */}
       {searchOpen && (
-        <div className="h-9 px-3 flex items-center gap-2 border-b border-black/[0.06] dark:border-white/[0.04] bg-zinc-50/50 dark:bg-zinc-900/30 shrink-0">
-          <Search size={13} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600 shrink-0" />
+        <div className="h-9 px-3 flex items-center gap-2 border-b border-black/[0.06] dark:border-white/[0.04] bg-black/[0.015] dark:bg-white/[0.02] shrink-0">
+          <Search size={14} strokeWidth={1.5} className="text-black/30 dark:text-white/25 shrink-0" />
           <input
             ref={searchInputRef}
             type="text"
@@ -295,10 +295,10 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
               }
             }}
             placeholder="Find..."
-            className="flex-1 min-w-0 bg-transparent text-[13px] text-zinc-800 dark:text-zinc-200 outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
+            className="flex-1 min-w-0 bg-transparent text-[13px] text-black/80 dark:text-white/80 outline-none placeholder:text-black/25 dark:placeholder:text-white/20"
           />
           {searchQuery && (
-            <span className="text-[11px] text-zinc-400 dark:text-zinc-600 tabular-nums shrink-0">
+            <span className="text-[11px] text-black/35 dark:text-white/30 tabular-nums shrink-0">
               {searchMatches.length === 0 ? "No results" : `${searchIndex + 1} of ${searchMatches.length}`}
             </span>
           )}
@@ -306,34 +306,34 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             type="button"
             onClick={() => handleSearchNav(-1)}
             disabled={searchMatches.length === 0}
-            className="p-0.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors disabled:opacity-30"
+            className="p-1 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 rounded-lg transition-colors disabled:opacity-30"
             title="Previous (Shift+Enter)"
           >
-            <ChevronUp size={14} strokeWidth={1.5} />
+            <ChevronUp size={15} strokeWidth={1.5} />
           </button>
           <button
             type="button"
             onClick={() => handleSearchNav(1)}
             disabled={searchMatches.length === 0}
-            className="p-0.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors disabled:opacity-30"
+            className="p-1 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 rounded-lg transition-colors disabled:opacity-30"
             title="Next (Enter)"
           >
-            <ChevronDown size={14} strokeWidth={1.5} />
+            <ChevronDown size={15} strokeWidth={1.5} />
           </button>
           <button
             type="button"
             onClick={closeSearch}
-            className="p-0.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors"
+            className="p-1 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 rounded-lg transition-colors"
             title="Close (Esc)"
           >
-            <X size={13} strokeWidth={1.5} />
+            <X size={15} strokeWidth={1.5} />
           </button>
         </div>
       )}
 
       {/* Save error */}
       {saveError && (
-        <div className="px-3 py-1.5 text-[12px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-white/[0.04]">
+        <div className="px-3 py-1.5 text-[12px] text-red-600 dark:text-red-400 border-b border-black/[0.06] dark:border-white/[0.04]">
           {saveError}
         </div>
       )}

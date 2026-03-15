@@ -31,16 +31,16 @@ export function DrivePreview({ workspace, worktree, filePath, onClose }: DrivePr
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <PanelBar className="px-3 gap-2">
-        <File size={14} strokeWidth={1.5} className={getFileColor(filename)} />
-        <span className="text-[13px] text-zinc-700 dark:text-zinc-300 truncate flex-1">{filename}</span>
+      <PanelBar className="px-3 gap-1.5">
+        <File size={15} strokeWidth={1.5} className={getFileColor(filename)} />
+        <span className="text-[13px] text-black/70 dark:text-white/70 truncate flex-1">{filename}</span>
         <button
           type="button"
           onClick={onClose}
-          className="p-1 text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 rounded transition-colors"
+          className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
           title="Close"
         >
-          <X size={14} strokeWidth={1.5} />
+          <X size={15} strokeWidth={1.5} />
         </button>
       </PanelBar>
 

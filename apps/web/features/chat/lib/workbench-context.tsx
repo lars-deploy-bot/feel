@@ -118,7 +118,7 @@ interface WorkbenchContextType {
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined)
 
-const DEFAULT_TREE_WIDTH = 200
+const DEFAULT_TREE_WIDTH = 260
 
 const DEFAULT_WORKBENCH_STATE: WorkbenchState = {
   view: "site",
