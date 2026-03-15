@@ -1,4 +1,4 @@
-import { STREAM_MODE_KEYS } from "@webalive/shared"
+import { STREAM_MODE_KEYS, VOICE_LANGUAGE_CODES } from "@webalive/shared"
 import bcrypt from "bcrypt"
 import { z } from "zod"
 
@@ -25,6 +25,8 @@ export const BodySchema = z.object({
   tabGroupId: z.string().uuid(), // Tab group ID - groups tabs in sidebar, part of lock key
   tabId: z.string().uuid(), // Tab ID - primary session key (maps to Claude SDK session)
   model: z.string().optional(),
+  // ISO 639-1 language code for voice transcription and response language
+  voiceLanguage: z.enum(VOICE_LANGUAGE_CODES).optional(),
   // Optional fields for system prompt context
   projectId: z.string().optional(),
   userId: z.string().optional(),

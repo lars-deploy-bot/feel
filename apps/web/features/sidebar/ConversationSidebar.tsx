@@ -225,26 +225,28 @@ export function ConversationSidebar({
               </button>
             </>
           )}
-          {!settingsMode && <button
-            type="button"
-            onClick={closeSidebar}
-            className="inline-flex items-center justify-center size-7 rounded-lg text-black/30 dark:text-white/30 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-100"
-            aria-label="Close sidebar"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.25"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {!settingsMode && (
+            <button
+              type="button"
+              onClick={closeSidebar}
+              className="inline-flex items-center justify-center size-7 rounded-lg text-black/30 dark:text-white/30 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-100"
+              aria-label="Close sidebar"
             >
-              <rect x="1.5" y="2.5" width="13" height="11" rx="2" />
-              <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
-            </svg>
-          </button>}
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="1.5" y="2.5" width="13" height="11" rx="2" />
+                <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -303,7 +305,9 @@ export function ConversationSidebar({
                         className={`shrink-0 transition-transform duration-200 ease-out ${olderExpanded ? "rotate-90" : ""}`}
                       />
                       <span className="truncate">Older</span>
-                      <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">{olderConversations.length}</span>
+                      <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">
+                        {olderConversations.length}
+                      </span>
                     </button>
                     {olderExpanded &&
                       olderConversations.map(conversation => (
@@ -337,7 +341,9 @@ export function ConversationSidebar({
                       />
                       <Bot size={13} strokeWidth={1.75} className="shrink-0" />
                       <span className="truncate">Agents</span>
-                      <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">{agentConversations.length}</span>
+                      <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">
+                        {agentConversations.length}
+                      </span>
                     </button>
                     {agentsExpanded &&
                       agentConversations.map(conversation => (
@@ -373,7 +379,9 @@ export function ConversationSidebar({
                   className={`shrink-0 transition-transform duration-200 ease-out ${archivedExpanded ? "rotate-90" : ""}`}
                 />
                 <span className="truncate">Archived</span>
-                <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">{archivedConversations.length}</span>
+                <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">
+                  {archivedConversations.length}
+                </span>
               </button>
               {archivedExpanded && (
                 <div className="max-h-40 overflow-y-auto pb-1">
@@ -400,7 +408,12 @@ export function ConversationSidebar({
         {/* User account — always at bottom */}
         {userDisplay && (
           <div className="border-t border-black/[0.04] dark:border-white/[0.04]">
-            <AccountMenu onSettingsClick={onSettingsClick} onFeedbackClick={onFeedbackClick} inline userDisplay={userDisplay} />
+            <AccountMenu
+              onSettingsClick={onSettingsClick}
+              onFeedbackClick={onFeedbackClick}
+              inline
+              userDisplay={userDisplay}
+            />
           </div>
         )}
 
@@ -449,7 +462,8 @@ export function ConversationSidebar({
       <button
         type="button"
         onClick={openSidebar}
-        className={railIconClass} style={railIconStyle}
+        className={railIconClass}
+        style={railIconStyle}
         aria-label="Open sidebar"
       >
         <svg
@@ -471,7 +485,8 @@ export function ConversationSidebar({
       <button
         type="button"
         onClick={onNewConversation}
-        className={railIconClass} style={railIconStyle}
+        className={railIconClass}
+        style={railIconStyle}
         aria-label="New chat"
       >
         <Plus size={16} strokeWidth={1.5} />
@@ -484,7 +499,8 @@ export function ConversationSidebar({
       <button
         type="button"
         onClick={onTemplatesClick}
-        className={railIconClass} style={railIconStyle}
+        className={railIconClass}
+        style={railIconStyle}
         aria-label="Components"
       >
         <Layers size={16} strokeWidth={1.5} />
@@ -492,7 +508,8 @@ export function ConversationSidebar({
       <button
         type="button"
         onClick={onFeedbackClick}
-        className={railIconClass} style={railIconStyle}
+        className={railIconClass}
+        style={railIconStyle}
         aria-label="Feedback"
       >
         <MessageCircle size={16} strokeWidth={1.5} />

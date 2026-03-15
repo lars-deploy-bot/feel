@@ -1,6 +1,7 @@
 "use client"
 
 import { useMutation } from "@tanstack/react-query"
+import type { VoiceLanguage } from "@webalive/shared"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { TranscribeResult } from "@/lib/api/types"
 import { transcribeAudio } from "@/lib/api/voice"
@@ -9,6 +10,8 @@ import type { VoiceState } from "../types/voice"
 interface UseVoiceInputOptions {
   onTranscript: (text: string) => void
   onError: (message: string) => void
+  /** ISO 639-1 language code for transcription */
+  language?: VoiceLanguage
 }
 
 function pickMimeType(): string {
@@ -19,21 +22,27 @@ function pickMimeType(): string {
 
 /**
  * Voice input: record → transcribe → callback.
- * Uses TanStack mutation for the transcription fetch.
+ *
+ * Exposes `startRecording` / `stopRecording` for hold-to-speak
+ * and `toggle` for click-to-toggle.
+ *
+ * Recording state uses a ref as source of truth to avoid stale closures
+ * in callbacks. The useState is only for triggering re-renders.
  */
-export function useVoiceInput({ onTranscript, onError }: UseVoiceInputOptions) {
+export function useVoiceInput({ onTranscript, onError, language }: UseVoiceInputOptions) {
   const [recording, setRecording] = useState(false)
-  const lockRef = useRef(false) // sync guard for async getUserMedia gap
+  // Ref is the source of truth — avoids stale closure in stopRecording/toggle
+  const recordingRef = useRef(false)
+  const lockRef = useRef(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
-  // Stable callback refs
-  const cbRef = useRef({ onTranscript, onError })
-  cbRef.current = { onTranscript, onError }
+  const cbRef = useRef({ onTranscript, onError, language })
+  cbRef.current = { onTranscript, onError, language }
 
   const mutation = useMutation<TranscribeResult, Error, Blob>({
-    mutationFn: transcribeAudio,
+    mutationFn: (blob: Blob) => transcribeAudio(blob, cbRef.current.language),
     onSuccess: data => {
       const text = data.text.trim()
       if (text) cbRef.current.onTranscript(text)
@@ -50,20 +59,22 @@ export function useVoiceInput({ onTranscript, onError }: UseVoiceInputOptions) {
     chunksRef.current = []
   }, [])
 
-  // Release mic on unmount
   useEffect(() => releaseStream, [releaseStream])
 
-  const toggle = useCallback(async () => {
-    // --- stop ---
-    if (recording) {
-      recorderRef.current?.stop()
-      setRecording(false)
-      lockRef.current = false
-      return
-    }
+  const setRecordingState = useCallback((value: boolean) => {
+    recordingRef.current = value
+    setRecording(value)
+  }, [])
 
-    // --- start ---
-    if (lockRef.current || mutation.isPending) return
+  const stopRecording = useCallback(() => {
+    if (!recordingRef.current) return
+    recorderRef.current?.stop()
+    setRecordingState(false)
+    lockRef.current = false
+  }, [setRecordingState])
+
+  const startRecording = useCallback(async () => {
+    if (recordingRef.current || lockRef.current || mutation.isPending) return
     lockRef.current = true
 
     let stream: MediaStream
@@ -94,10 +105,18 @@ export function useVoiceInput({ onTranscript, onError }: UseVoiceInputOptions) {
     }
 
     recorder.start()
-    setRecording(true)
-  }, [recording, mutation, releaseStream])
+    setRecordingState(true)
+  }, [mutation, releaseStream, setRecordingState])
+
+  const toggle = useCallback(async () => {
+    if (recordingRef.current) {
+      stopRecording()
+    } else {
+      await startRecording()
+    }
+  }, [startRecording, stopRecording])
 
   const state: VoiceState = mutation.isPending ? "transcribing" : recording ? "recording" : "idle"
 
-  return { state, toggle } as const
+  return { state, toggle, startRecording, stopRecording } as const
 }

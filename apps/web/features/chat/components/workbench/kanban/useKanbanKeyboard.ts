@@ -46,7 +46,10 @@ export function useKanbanKeyboard() {
             // Focus first card of first non-empty column
             for (const col of columns) {
               const cc = cardsByColumn.get(col.id) ?? []
-              if (cc.length > 0) { setFocus({ columnId: col.id, cardId: cc[0].id }); break }
+              if (cc.length > 0) {
+                setFocus({ columnId: col.id, cardId: cc[0].id })
+                break
+              }
             }
           } else {
             const next = colCards[cardIndex + 1]
@@ -136,8 +139,16 @@ export function useKanbanKeyboard() {
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
   }, [
-    modalOpen, focus, columns, cardsByColumn,
-    setFocus, toggleSelect, moveCard, setEditingCardId,
-    setCreatingInColumn, setShowShortcuts, deleteCard,
+    modalOpen,
+    focus,
+    columns,
+    cardsByColumn,
+    setFocus,
+    toggleSelect,
+    moveCard,
+    setEditingCardId,
+    setCreatingInColumn,
+    setShowShortcuts,
+    deleteCard,
   ])
 }

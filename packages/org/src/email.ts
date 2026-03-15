@@ -2,6 +2,7 @@
  * Referral invite email sending via Loops.so.
  *
  * Server-only. Takes API key as a parameter — no env var access.
+ * Does NOT log — callers own observability.
  */
 
 import { retryAsync } from "@webalive/shared"
@@ -17,7 +18,7 @@ export interface SendReferralInviteConfig {
   templateId: string
 }
 
-interface LoopsResponse {
+export interface LoopsResponse {
   success: boolean
   id?: string
 }
@@ -68,8 +69,8 @@ export async function sendReferralInvite(
       })
 
       if (!response.ok) {
-        const error = await response.text()
-        throw new Error(`Loops API error: ${response.status} - ${error}`)
+        const body = await response.text()
+        throw new Error(`Loops API error: ${response.status} - ${body}`)
       }
 
       return response.json() as Promise<LoopsResponse>
@@ -80,12 +81,6 @@ export async function sendReferralInvite(
       maxDelayMs: 10000,
       jitter: 0.2,
       shouldRetry: isRetryableEmailError,
-      onRetry: ({ attempt, delayMs, err }) => {
-        console.log(
-          `[email] Retry ${attempt}/3 sending to ${params.to} in ${delayMs}ms:`,
-          err instanceof Error ? err.message : err,
-        )
-      },
     },
   )
 }

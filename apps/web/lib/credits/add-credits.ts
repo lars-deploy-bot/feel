@@ -17,13 +17,15 @@ async function buildCreditOps(): Promise<CreditOps> {
   const iam = await createIamClient("service")
   return {
     async findPrimaryOrgId(userId: string) {
-      const { data } = await iam
+      const { data, error } = await iam
         .from("org_memberships")
         .select("org_id")
         .eq("user_id", userId)
         .order("created_at", { ascending: true })
         .limit(1)
         .single()
+      // PGRST116 = no rows found (user has no org) — that's a valid null
+      if (error && error.code !== "PGRST116") throw error
       return data?.org_id ?? null
     },
     async addCredits(orgId: string, amount: number) {
@@ -32,7 +34,8 @@ async function buildCreditOps(): Promise<CreditOps> {
         p_amount: amount,
       })
       if (error) throw error
-      return data as number
+      if (typeof data !== "number") throw new Error(`add_credits returned non-number: ${data}`)
+      return data
     },
   }
 }

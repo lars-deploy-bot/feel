@@ -53,15 +53,19 @@ export function DeleteProjectModal({ hostname, confirmName, onConfirm, onClose }
               <div>
                 <h3 className="text-base font-semibold text-[#2c2a26] dark:text-[#e8e4dc]">Delete project</h3>
                 <p className="text-sm text-[#8a8578] dark:text-[#7a756b] mt-0.5">
-                  This will permanently delete <strong className="text-[#2c2a26] dark:text-[#e8e4dc]">{hostname}</strong> and
-                  all its files. This cannot be undone.
+                  This will permanently delete{" "}
+                  <strong className="text-[#2c2a26] dark:text-[#e8e4dc]">{hostname}</strong> and all its files. This
+                  cannot be undone.
                 </p>
               </div>
             </div>
 
             {/* Confirmation input */}
             <div className="mt-5">
-              <label htmlFor="delete-confirm" className="block text-xs font-medium text-[#8a8578] dark:text-[#7a756b] mb-2">
+              <label
+                htmlFor="delete-confirm"
+                className="block text-xs font-medium text-[#8a8578] dark:text-[#7a756b] mb-2"
+              >
                 Type <strong className="text-[#2c2a26] dark:text-[#e8e4dc]">{confirmName}</strong> to confirm
               </label>
               <input

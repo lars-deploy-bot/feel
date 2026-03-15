@@ -17,7 +17,12 @@ interface AccountMenuProps {
   userDisplay?: string | null
 }
 
-export function AccountMenu({ onSettingsClick, onFeedbackClick, inline, userDisplay: externalUserDisplay }: AccountMenuProps) {
+export function AccountMenu({
+  onSettingsClick,
+  onFeedbackClick,
+  inline,
+  userDisplay: externalUserDisplay,
+}: AccountMenuProps) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)

@@ -12,6 +12,7 @@ import { type UseMutationOptions, useMutation, useQueryClient } from "@tanstack/
 import toast from "react-hot-toast"
 import { type ApiError, delly, patchy, postty } from "@/lib/api/api-client"
 import { type Res, validateRequest } from "@/lib/api/schemas"
+import { trackTeammateInvited } from "@/lib/analytics/events"
 import { queryKeys } from "./queryKeys"
 
 // ============================================
@@ -104,6 +105,37 @@ export function useCreateWebsite(
 // Member Mutations
 // ============================================
 
+interface AddMemberParams {
+  orgId: string
+  email: string
+}
+
+/**
+ * Add member to organization by email
+ * Invalidates member cache on success
+ */
+export function useAddOrgMember(
+  options?: UseMutationOptions<Res<"auth/org-members/create">, ApiError, AddMemberParams, MutationContext<unknown>>,
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ orgId, email }: AddMemberParams) => {
+      const body = validateRequest("auth/org-members/create", { orgId, email })
+      return postty("auth/org-members/create", body)
+    },
+    onSuccess: (data, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.orgMembers.forOrg(orgId) })
+      trackTeammateInvited(orgId)
+      toast.success(`${data.member.email} added to the team`)
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || "Failed to invite")
+    },
+    ...options,
+  })
+}
+
 interface RemoveMemberParams {
   orgId: string
   userId: string
@@ -128,7 +160,6 @@ export function useRemoveOrgMember(
       return delly("auth/org-members/delete", body, undefined, "/api/auth/org-members")
     },
     onSuccess: (_, { orgId }) => {
-      // Invalidate member queries for this org
       queryClient.invalidateQueries({ queryKey: queryKeys.orgMembers.forOrg(orgId) })
       toast("Member removed")
     },

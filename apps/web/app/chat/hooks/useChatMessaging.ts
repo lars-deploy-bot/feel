@@ -1,6 +1,6 @@
 "use client"
 
-import { isRetryableNetworkError, retryAsync } from "@webalive/shared"
+import { DEFAULT_VOICE_LANGUAGE, isRetryableNetworkError, retryAsync } from "@webalive/shared"
 import { useCallback, useRef } from "react"
 import toast from "react-hot-toast"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
@@ -23,7 +23,7 @@ import { useAttachmentStore } from "@/lib/stores/attachmentStore"
 import { authStore } from "@/lib/stores/authStore"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useBuilding, useGoal, useTargetUsers } from "@/lib/stores/goalStore"
-import { useModel } from "@/lib/stores/llmStore"
+import { useLLMActions, useModel, useVoiceLanguage } from "@/lib/stores/llmStore"
 import { clearAbortController, setAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 import { getPlanModeState, getStreamModeState } from "@/lib/stores/streamModeStore"
 
@@ -136,6 +136,8 @@ export function useChatMessaging({
   // Store hooks
   const streamingActions = useStreamingActions()
   const userModel = useModel()
+  const voiceLanguage = useVoiceLanguage()
+  const { consumeVoiceUsed } = useLLMActions()
   const { addEvent: addDevEvent } = useDevTerminal()
 
   // Agent supervisor state
@@ -163,11 +165,14 @@ export function useChatMessaging({
       const resumeSessionAt = dexieState.resumeSessionAtByTab[tabId] || undefined
 
       const currentMode = getStreamModeState().mode
+      // Only include voiceLanguage when this message actually used voice input
+      const wasVoice = consumeVoiceUsed(tabId)
       const baseBody = {
         message,
         tabId,
         tabGroupId,
         model: userModel,
+        voiceLanguage: wasVoice && voiceLanguage !== DEFAULT_VOICE_LANGUAGE ? voiceLanguage : undefined,
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
         // Read stream mode directly from store to avoid stale closure
         streamMode: currentMode !== "default" ? currentMode : undefined, // Only send if non-default
@@ -177,7 +182,7 @@ export function useChatMessaging({
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [tabId, tabGroupId, userModel, isTerminal, workspace, requestWorktree],
+    [tabId, tabGroupId, userModel, voiceLanguage, isTerminal, workspace, requestWorktree],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {

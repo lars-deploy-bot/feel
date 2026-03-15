@@ -135,7 +135,7 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
             <div className="w-10 h-10 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
               <Image size={16} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600" />
             </div>
-            <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">No photos yet</p>
+            <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">No photos in this project yet</p>
             <p className="text-[12px] text-zinc-400 dark:text-zinc-600">Drop images here or upload</p>
             <button
               type="button"
@@ -149,7 +149,7 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
                 flex items-center gap-2"
             >
               <Plus size={14} strokeWidth={1.5} />
-              Add photos
+              Upload photos
             </button>
           </div>
         ) : (

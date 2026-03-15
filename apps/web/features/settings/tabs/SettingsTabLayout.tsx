@@ -31,7 +31,9 @@ export function SettingsTabLayout({
       {/* Header with title */}
       <div className="pb-3 flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-lg font-medium text-[#2c2a26] dark:text-[#e8e4dc] mb-0.5 sm:mb-1">{title}</h3>
+          <h3 className="text-base sm:text-lg font-medium text-[#2c2a26] dark:text-[#e8e4dc] mb-0.5 sm:mb-1">
+            {title}
+          </h3>
           {description && <div className={`${text.description} sm:text-sm leading-relaxed`}>{description}</div>}
         </div>
         {action && (

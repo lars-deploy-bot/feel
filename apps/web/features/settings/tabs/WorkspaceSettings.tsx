@@ -7,8 +7,9 @@ import toast from "react-hot-toast"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
-import { canRemoveMember } from "@/lib/permissions/org-permissions"
+import { canInviteMembers, canRemoveMember } from "@/lib/permissions/org-permissions"
 import { useCurrentWorkspace, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import { useAddOrgMember } from "@/lib/tanstack"
 import { input, primaryButton, secondaryButton, smallButton, text } from "../styles"
 import { SettingsTabLayout } from "./SettingsTabLayout"
 
@@ -165,6 +166,7 @@ function useOrgMembers() {
       memberToRemove,
       toggleMembers,
       ensureMembers,
+      fetchMembers,
       requestRemoveMember,
       confirmRemoveMember,
       cancelRemoveMember,
@@ -177,6 +179,7 @@ function useOrgMembers() {
       memberToRemove,
       toggleMembers,
       ensureMembers,
+      fetchMembers,
       requestRemoveMember,
       confirmRemoveMember,
       cancelRemoveMember,
@@ -263,15 +266,18 @@ export function WorkspaceSettings() {
   const { organizations, currentUserId, loading, error, refetch } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
 
-
   // Use extracted hooks for clean state management
   const editor = useOrgEditor(refetch)
   const members = useOrgMembers()
   const leave = useOrgLeave()
 
-  // Invite state (TODO: Wire up invite UI)
   const [inviteEmail, setInviteEmail] = useState("")
-  const [_inviting, setInviting] = useState(false)
+  const addMember = useAddOrgMember({
+    onSuccess: () => {
+      setInviteEmail("")
+      if (selectedOrgId) members.fetchMembers(selectedOrgId)
+    },
+  })
 
   // Auto-fetch members when org is selected
   useEffect(() => {
@@ -282,23 +288,13 @@ export function WorkspaceSettings() {
 
   const getCurrentUserRole = (orgId: string): OrgRole | null => {
     const org = organizations.find(o => o.org_id === orgId)
-    return org?.role || null
+    return org?.role ?? null
   }
 
-  const _handleInvite = async () => {
-    if (!inviteEmail.trim() || !selectedOrgId) return
-
-    setInviting(true)
-    try {
-      // TODO: Implement actual invite API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast(`Invite sent to ${inviteEmail}`)
-      setInviteEmail("")
-    } catch (_err) {
-      toast("Couldn't send invite")
-    } finally {
-      setInviting(false)
-    }
+  const handleInvite = () => {
+    const email = inviteEmail.trim()
+    if (!email || !selectedOrgId) return
+    addMember.mutate({ orgId: selectedOrgId, email })
   }
 
   const selectedOrg = organizations.find(org => org.org_id === selectedOrgId) ?? organizations[0] ?? null
@@ -359,26 +355,35 @@ export function WorkspaceSettings() {
           </div>
 
           {/* PRIMARY: Invite Section */}
-          <div className="space-y-3">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
+          {canInviteMembers(getCurrentUserRole(selectedOrg.org_id)) && (
+            <div className="space-y-3">
+              <div>
                 <h4 className={text.label}>Invite teammates</h4>
-                <span className="px-2 py-0.5 bg-amber-500/10 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium rounded-lg">
-                  Coming soon
-                </span>
+                <p className={text.description}>
+                  Give access to <strong>{selectedOrg.name}</strong> workspace and shared credits
+                </p>
               </div>
-              <p className={text.description}>
-                Give access to <strong>{selectedOrg.name}</strong> workspace and shared credits
-              </p>
-              <p className={`${text.muted} mt-1`}>Contact us to enable team invitations for your organization</p>
+              <form
+                className="flex gap-2"
+                onSubmit={e => {
+                  e.preventDefault()
+                  handleInvite()
+                }}
+              >
+                <input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  disabled={addMember.isPending}
+                  className={`flex-1 ${input}`}
+                />
+                <button type="submit" disabled={addMember.isPending || !inviteEmail.trim()} className={primaryButton}>
+                  {addMember.isPending ? "Inviting..." : "Invite"}
+                </button>
+              </form>
             </div>
-            <div className="flex gap-2 opacity-40">
-              <input type="email" placeholder="email@example.com" disabled className={`flex-1 ${input}`} />
-              <button type="button" disabled className={primaryButton}>
-                Invite
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* Members List */}
           <div className="space-y-3">
@@ -426,9 +431,7 @@ export function WorkspaceSettings() {
                       {canRemove && (
                         <button
                           type="button"
-                          onClick={() =>
-                            members.requestRemoveMember(selectedOrg.org_id, member.user_id, member.email)
-                          }
+                          onClick={() => members.requestRemoveMember(selectedOrg.org_id, member.user_id, member.email)}
                           disabled={members.removingMember === member.user_id}
                           className="flex-shrink-0 p-2 sm:p-1.5 text-red-500/70 dark:text-red-400/70 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 rounded-xl transition-colors duration-150 disabled:opacity-40"
                           title="Remove member"

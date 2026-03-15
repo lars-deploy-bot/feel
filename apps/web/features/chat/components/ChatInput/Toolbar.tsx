@@ -19,6 +19,7 @@ import {
 import { useTabMessages } from "@/lib/db/useTabMessages"
 import { useAllSkills, useSkillsLoading } from "@/lib/providers/SkillsStoreProvider"
 import { useWorkbench, useWorkbenchMinimized } from "@/lib/stores/debug-store"
+import { useLLMActions, useVoiceLanguage } from "@/lib/stores/llmStore"
 import type { Skill } from "@/lib/stores/skillsStore"
 import { useStreamMode, useStreamModeActions } from "@/lib/stores/streamModeStore"
 import { useChatInput } from "./ChatInputContext"
@@ -42,15 +43,18 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
   // Ref avoids stale closure (message changes while recording)
   const messageRef = useRef(message)
   messageRef.current = message
+  const { markVoiceUsed } = useLLMActions()
   const handleTranscript = useCallback(
     (text: string) => {
       const current = messageRef.current
       setMessage(current ? `${current} ${text}` : text)
+      markVoiceUsed(tabId)
     },
-    [setMessage],
+    [setMessage, markVoiceUsed],
   )
   const handleVoiceError = useCallback((msg: string) => toast(msg), [])
-  const voice = useVoiceInput({ onTranscript: handleTranscript, onError: handleVoiceError })
+  const voiceLanguage = useVoiceLanguage()
+  const voice = useVoiceInput({ onTranscript: handleTranscript, onError: handleVoiceError, language: voiceLanguage })
   const skills = useAllSkills()
   const isLoading = useSkillsLoading()
   const messages = useTabMessages(tabId)
@@ -228,8 +232,13 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
         }}
       />
 
-      {/* Voice input */}
-      <VoiceButton state={voice.state} onToggle={voice.toggle} />
+      {/* Voice input — hold to speak or tap to toggle */}
+      <VoiceButton
+        state={voice.state}
+        onToggle={voice.toggle}
+        onStartRecording={voice.startRecording}
+        onStopRecording={voice.stopRecording}
+      />
 
       <button
         type="button"

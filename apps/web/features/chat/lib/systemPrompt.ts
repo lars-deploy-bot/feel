@@ -1,3 +1,4 @@
+import { DEFAULT_VOICE_LANGUAGE, getLanguageDisplayName, type VoiceLanguage } from "@webalive/shared"
 import { coreInstructionsReminder } from "./work"
 
 /** Email providers that can be connected via OAuth */
@@ -9,6 +10,8 @@ interface SystemPromptParams {
   /** Connected email providers (replaces gmail-only hasGmailAccess) */
   connectedEmailProviders?: EmailProvider[]
   additionalContext?: string
+  /** When set to a non-English language, instructs Claude to respond in that language */
+  voiceLanguage?: VoiceLanguage
 }
 
 /** MCP compose tool name per email provider */
@@ -24,12 +27,17 @@ const EMAIL_COMPOSE_TOOL: Record<EmailProvider, string> = {
 const EMAIL_COMPOSE_PIPELINE_READY = new Set<EmailProvider>(["gmail", "outlook"])
 
 export function getSystemPrompt(params: SystemPromptParams = {}): string {
-  const { projectId, hasStripeMcpAccess, connectedEmailProviders = [], additionalContext } = params
+  const { projectId, hasStripeMcpAccess, connectedEmailProviders = [], additionalContext, voiceLanguage } = params
 
   const now = new Date()
   const currentDate = `${now.getDate()} ${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][now.getMonth()]} ${now.getFullYear()}`
 
   let prompt = `Date: ${currentDate}. Current time: ${now.toISOString()}. Read the current project structure before making changes. The user is usually looking at a specific page — find which one.`
+
+  if (voiceLanguage && voiceLanguage !== DEFAULT_VOICE_LANGUAGE) {
+    const langName = getLanguageDisplayName(voiceLanguage)
+    prompt += ` LANGUAGE: The user's preferred language is ${langName} (${voiceLanguage}). You MUST respond in ${langName}. All explanations, questions, and commentary must be in ${langName}. Code, file paths, and technical identifiers stay in English.`
+  }
 
   if (hasStripeMcpAccess) {
     prompt +=

@@ -60,9 +60,7 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
           <Bot size={20} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600" />
         </div>
         <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1">No agents yet</p>
-        <p className="text-[12px] text-zinc-400 dark:text-zinc-600 text-center">
-          Ask in the chat to set one up
-        </p>
+        <p className="text-[12px] text-zinc-400 dark:text-zinc-600 text-center">Ask in the chat to set one up</p>
       </div>
     )
   }

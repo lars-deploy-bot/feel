@@ -194,25 +194,28 @@ export function WebsitesSettings() {
   // Superadmin
   const isSuperadmin = useSuperadmin()
 
-  const handleDelete = useCallback(async (hostname: string) => {
-    try {
-      const res = await fetch("/api/manager", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ domain: hostname }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        toast(`Deleted ${hostname}`)
-        refetch()
-      } else {
-        toast(data?.error ?? "Failed to delete project")
+  const handleDelete = useCallback(
+    async (hostname: string) => {
+      try {
+        const res = await fetch("/api/manager", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ domain: hostname }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          toast(`Deleted ${hostname}`)
+          refetch()
+        } else {
+          toast(data?.error ?? "Failed to delete project")
+        }
+      } catch {
+        toast("Failed to delete project")
       }
-    } catch {
-      toast("Failed to delete project")
-    }
-  }, [refetch])
+    },
+    [refetch],
+  )
   const [showAllWebsites, setShowAllWebsites] = useState(false)
   const [allWebsitesData, setAllWebsitesData] = useState<AllWebsitesData | null>(null)
   const [allWebsitesLoading, setAllWebsitesLoading] = useState(false)
@@ -377,9 +380,7 @@ export function WebsitesSettings() {
         {!loading && !currentWorkspace && totalProjects > 0 && !showAllWebsites && (
           <div className="flex items-start gap-3 p-3 bg-amber-500/[0.05] border border-amber-500/15 rounded-xl">
             <AlertTriangle size={15} className="text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-[#8a8578] dark:text-[#7a756b]">
-              No project selected. Open one below to start.
-            </p>
+            <p className="text-sm text-[#8a8578] dark:text-[#7a756b]">No project selected. Open one below to start.</p>
           </div>
         )}
 
@@ -454,7 +455,9 @@ function NewProjectButton({
         New project
       </button>
       {!isSuperadmin && (
-        <span className={`text-xs ${atLimit ? "text-red-500 dark:text-red-400" : "text-[#b5afa3] dark:text-[#5c574d]"}`}>
+        <span
+          className={`text-xs ${atLimit ? "text-red-500 dark:text-red-400" : "text-[#b5afa3] dark:text-[#5c574d]"}`}
+        >
           {atLimit ? "Limit reached" : `${remaining} left`}
         </span>
       )}
@@ -464,14 +467,20 @@ function NewProjectButton({
           <div className="p-1">
             <button
               type="button"
-              onClick={() => { setOpen(false); onGithub() }}
+              onClick={() => {
+                setOpen(false)
+                onGithub()
+              }}
               className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-[#2c2a26] dark:text-[#e8e4dc] hover:bg-[#4a7c59]/[0.06] dark:hover:bg-[#7cb88a]/[0.06] transition-colors"
             >
               From GitHub
             </button>
             <button
               type="button"
-              onClick={() => { setOpen(false); onTemplate() }}
+              onClick={() => {
+                setOpen(false)
+                onTemplate()
+              }}
               className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-[#2c2a26] dark:text-[#e8e4dc] hover:bg-[#4a7c59]/[0.06] dark:hover:bg-[#7cb88a]/[0.06] transition-colors"
             >
               From template

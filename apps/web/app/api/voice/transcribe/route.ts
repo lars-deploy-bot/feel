@@ -16,8 +16,13 @@ export async function POST(request: Request) {
     return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 400 })
   }
 
+  const language = formData.get("language")
+
   const upstream = new FormData()
   upstream.append("file", file, file.name)
+  if (typeof language === "string" && language.length > 0) {
+    upstream.append("language", language)
+  }
 
   const response = await miniToolsFetch("/groq/transcribe", { method: "POST", body: upstream })
   const data = await response.json()
