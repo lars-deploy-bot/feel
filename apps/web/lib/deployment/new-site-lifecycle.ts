@@ -80,7 +80,9 @@ export function buildNewSiteSuccessPayload(params: {
     domain: params.domain,
     orgId: params.orgId,
     executionMode: params.executionMode,
-    chatUrl: `/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(params.domain)}`,
+    chatUrl: params.orgId
+      ? `/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(params.domain)}&${QUERY_KEYS.org}=${encodeURIComponent(params.orgId)}`
+      : `/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(params.domain)}`,
   }
 }
 

@@ -186,17 +186,19 @@ function ChatPageContent() {
   const [wtParam, setWtParam] = useQueryState(QUERY_KEYS.worktree)
   const worktreesEnabled = useFeatureFlag("WORKTREES")
   const requestWorktree = worktreesEnabled ? worktree : null
-  const wkConsumedRef = useRef(false)
+  const wkConsumedRef = useRef<string | null>(null)
   const queryClient = useQueryClient()
+  const [orgParam, setOrgParam] = useQueryState(QUERY_KEYS.org)
   const { setSelectedOrg, setDeepLinkPending } = useWorkspaceActions()
   useEffect(() => {
-    if (!mounted || !wkParam || wkConsumedRef.current) return
-    wkConsumedRef.current = true
+    if (!mounted || !wkParam || wkConsumedRef.current === wkParam) return
+    wkConsumedRef.current = wkParam
     if (wkParam !== workspace) {
       console.log("[ChatPage] Setting workspace from URL param:", wkParam)
 
-      // Resolve orgId for this workspace so the org picker updates correctly
-      const resolvedOrgId = resolveOrgForWorkspace(wkParam, queryClient)
+      // If ?org= is provided (e.g., from deploy flow), use it directly (I3).
+      // Otherwise, attempt to resolve from cached data.
+      const resolvedOrgId = orgParam || resolveOrgForWorkspace(wkParam, queryClient)
 
       if (resolvedOrgId) {
         setSelectedOrg(resolvedOrgId)
@@ -209,7 +211,19 @@ function ChatPageContent() {
       }
     }
     void setWkParam(null, { shallow: true })
-  }, [mounted, wkParam, workspace, setWorkspace, setWkParam, queryClient, setSelectedOrg, setDeepLinkPending])
+    if (orgParam) void setOrgParam(null, { shallow: true })
+  }, [
+    mounted,
+    wkParam,
+    orgParam,
+    workspace,
+    setWorkspace,
+    setWkParam,
+    setOrgParam,
+    queryClient,
+    setSelectedOrg,
+    setDeepLinkPending,
+  ])
 
   // Bidirectional sync between ?wt= URL param and worktree store.
   // Refs track previous values so each effect only reacts to its own source changing,
@@ -426,6 +440,8 @@ function ChatPageContent() {
   // Enabled only when orgs are loaded; shares cache with useOrganizationsQuery's fire-and-forget fetch.
   const { data: allWorkspaces } = useAllWorkspacesQuery(organizations)
   const deepLinkPending = useWorkspaceStoreBase(s => s.deepLinkPending)
+  const intentVersion = useWorkspaceStoreBase(s => s.intentVersion)
+  const intentVersionAtLoad = useRef(intentVersion)
 
   // Sync Dexie session once we have a user + org (required before storing messages)
   useEffect(() => {
@@ -442,21 +458,54 @@ function ChatPageContent() {
 
   // Deferred deep link org resolution: when ?wk= was consumed before org data was
   // available, resolve the orgId once the all-workspaces query completes.
+  //
+  // Also corrects org-workspace coherence: if ?org= hint was wrong (tampering,
+  // stale link, project transfer), the authoritative allWorkspaces data wins.
+  //
+  // Intent versioning: the coherence correction (Case 2) only applies if no
+  // newer user intent has occurred since this effect last captured the version.
+  // This prevents a slow allWorkspaces response from overwriting a manual switch
+  // that happened while the fetch was in flight.
   useEffect(() => {
-    if (!deepLinkPending || !allWorkspaces) return
+    if (!allWorkspaces) return
 
-    for (const [orgId, workspaces] of Object.entries(allWorkspaces)) {
-      if (workspaces.some(w => w.hostname === deepLinkPending)) {
-        setSelectedOrg(orgId)
-        setWorkspace(deepLinkPending, orgId)
-        setDeepLinkPending(null)
-        return
+    // Case 1: deepLinkPending — resolve deferred intent (always applies)
+    if (deepLinkPending) {
+      for (const [orgId, workspaces] of Object.entries(allWorkspaces)) {
+        if (workspaces.some(w => w.hostname === deepLinkPending)) {
+          setSelectedOrg(orgId)
+          setWorkspace(deepLinkPending, orgId)
+          setDeepLinkPending(null)
+          return
+        }
       }
+      // Workspace not found in any org — clear pending so validator can clean up.
+      setDeepLinkPending(null)
+      return
     }
-    // allWorkspaces loaded but workspace not found — workspace genuinely doesn't exist.
-    // Clear the pending flag so validateWorkspaceAvailability can clean up.
-    setDeepLinkPending(null)
-  }, [deepLinkPending, allWorkspaces, setSelectedOrg, setWorkspace, setDeepLinkPending])
+
+    // Case 2: no pending, but check coherence of current pair.
+    // Only apply if no newer user intent has occurred since the query was triggered.
+    const currentVersion = useWorkspaceStoreBase.getState().intentVersion
+    if (currentVersion !== intentVersionAtLoad.current) {
+      // User acted since allWorkspaces was fetched — their intent wins.
+      intentVersionAtLoad.current = currentVersion
+      return
+    }
+
+    if (workspace && selectedOrgId) {
+      for (const [orgId, workspaces] of Object.entries(allWorkspaces)) {
+        if (workspaces.some(w => w.hostname === workspace)) {
+          if (orgId !== selectedOrgId) {
+            console.log(`[ChatPage] Correcting org mismatch: ${selectedOrgId} → ${orgId} for ${workspace}`)
+            setSelectedOrg(orgId)
+          }
+          return
+        }
+      }
+      // Workspace not found in any org — let validateWorkspaceAvailability handle it.
+    }
+  }, [deepLinkPending, allWorkspaces, workspace, selectedOrgId, setSelectedOrg, setWorkspace, setDeepLinkPending])
 
   // Fetch conversations from server when workspace changes
   const { syncFromServer } = useDexieMessageActions()

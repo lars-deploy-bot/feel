@@ -100,18 +100,24 @@ export async function syncFromServer(): Promise<boolean> {
       return false
     }
 
-    // Merge strategy
+    // Merge strategy — workspace and org are set atomically to prevent
+    // incoherent pairs where workspace belongs to a different org (I6).
     let didUpdate = false
+    const atomicUpdate: Partial<{ currentWorkspace: string | null; selectedOrgId: string | null }> = {}
 
-    // Current workspace: use server if local is null
     if (!store.currentWorkspace && server.currentWorkspace) {
-      useWorkspaceStoreBase.setState({ currentWorkspace: server.currentWorkspace })
-      didUpdate = true
+      atomicUpdate.currentWorkspace = server.currentWorkspace
+      // If setting workspace from server, also take server's orgId —
+      // they're a pair that must stay coherent.
+      if (server.selectedOrgId) {
+        atomicUpdate.selectedOrgId = server.selectedOrgId
+      }
+    } else if (!store.selectedOrgId && server.selectedOrgId) {
+      atomicUpdate.selectedOrgId = server.selectedOrgId
     }
 
-    // Selected org: use server if local is null
-    if (!store.selectedOrgId && server.selectedOrgId) {
-      useWorkspaceStoreBase.setState({ selectedOrgId: server.selectedOrgId })
+    if (Object.keys(atomicUpdate).length > 0) {
+      useWorkspaceStoreBase.setState(atomicUpdate)
       didUpdate = true
     }
 

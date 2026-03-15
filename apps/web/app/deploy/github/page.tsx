@@ -100,7 +100,7 @@ export default function DeployGithubPage() {
         const data = await parseImportResponse(response)
 
         if (response.ok && data.ok && data.domain) {
-          router.push(`/chat?wk=${encodeURIComponent(data.domain)}`)
+          router.push(data.chatUrl ?? `/chat?wk=${encodeURIComponent(data.domain)}`)
           return
         }
 
