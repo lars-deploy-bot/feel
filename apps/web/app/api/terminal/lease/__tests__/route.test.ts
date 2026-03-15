@@ -18,6 +18,14 @@ import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
 // Track fetch calls for shell server
 const mockFetchImpl = vi.fn()
+const mockResolveDomainRuntime = vi.fn()
+
+const mockEnv = {
+  SHELL_PASSWORD: "test-shell-password",
+  SHELL_HOST: "go.test.local",
+  SHELL_UPSTREAM: "http://localhost:3888",
+  E2B_SHELL_UPSTREAM: "http://localhost:5075",
+}
 
 // Mock auth
 vi.mock("@/features/auth/lib/auth", async () => {
@@ -39,19 +47,33 @@ vi.mock("@/lib/api/responses", async () => {
 // Mock env
 vi.mock("@webalive/env/server", () => ({
   env: {
-    SHELL_PASSWORD: "test-shell-password",
+    get SHELL_PASSWORD() {
+      return mockEnv.SHELL_PASSWORD
+    },
   },
 }))
 
 // Mock shared config
 vi.mock("@webalive/shared", () => ({
-  DOMAINS: { SHELL_HOST: "go.test.local" },
+  DOMAINS: {
+    get SHELL_HOST() {
+      return mockEnv.SHELL_HOST
+    },
+  },
+  SHELL: {
+    get UPSTREAM() {
+      return mockEnv.SHELL_UPSTREAM
+    },
+    get E2B_UPSTREAM() {
+      return mockEnv.E2B_SHELL_UPSTREAM
+    },
+  },
   SUPERADMIN: { WORKSPACE_NAME: "alive" },
 }))
 
 // Mock domain runtime — tests use systemd path (domain = null)
 vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
-  resolveDomainRuntime: vi.fn().mockResolvedValue(null),
+  resolveDomainRuntime: (...args: unknown[]) => mockResolveDomainRuntime(...args),
 }))
 
 // Mock global fetch for shell server calls
@@ -59,7 +81,7 @@ vi.stubGlobal(
   "fetch",
   vi.fn((...args: Parameters<typeof fetch>) => {
     const [url] = args
-    if (typeof url === "string" && url.includes("localhost:3888")) {
+    if (typeof url === "string" && (url.includes("localhost:3888") || url.includes("localhost:5075"))) {
       return mockFetchImpl(...args)
     }
     // Fallback
@@ -82,6 +104,11 @@ function makeRequest(body: Record<string, unknown> = { workspace: "example.com" 
 
 afterEach(() => {
   vi.clearAllMocks()
+  mockEnv.SHELL_PASSWORD = "test-shell-password"
+  mockEnv.SHELL_HOST = "go.test.local"
+  mockEnv.SHELL_UPSTREAM = "http://localhost:3888"
+  mockEnv.E2B_SHELL_UPSTREAM = "http://localhost:5075"
+  mockResolveDomainRuntime.mockResolvedValue(null)
 })
 
 describe("POST /api/terminal/lease", () => {
@@ -157,5 +184,70 @@ describe("POST /api/terminal/lease", () => {
 
     const res = await POST(makeRequest())
     expect(res.status).toBe(502)
+  })
+
+  it("returns 500 when shell upstream is not configured", async () => {
+    mockEnv.SHELL_UPSTREAM = ""
+    vi.mocked(validateRequest).mockResolvedValue({
+      data: { user: MOCK_USER, body: { workspace: "example.com" }, workspace: "example.com" },
+    })
+
+    const res = await POST(makeRequest())
+    expect(res.status).toBe(500)
+  })
+
+  it("returns 503 when e2b sandbox is not ready", async () => {
+    mockResolveDomainRuntime.mockResolvedValue({
+      domain_id: "domain-123",
+      hostname: "example.com",
+      execution_mode: "e2b",
+      sandbox_id: null,
+      sandbox_status: "dead",
+    })
+    vi.mocked(validateRequest).mockResolvedValue({
+      data: { user: MOCK_USER, body: { workspace: "example.com" }, workspace: "example.com" },
+    })
+
+    const res = await POST(makeRequest())
+    expect(res.status).toBe(503)
+    expect(mockFetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("uses the e2b terminal bridge for e2b workspaces", async () => {
+    mockResolveDomainRuntime.mockResolvedValue({
+      domain_id: "domain-123",
+      hostname: "example.com",
+      execution_mode: "e2b",
+      sandbox_id: "sandbox-123",
+      sandbox_status: "running",
+    })
+    vi.mocked(validateRequest).mockResolvedValue({
+      data: { user: MOCK_USER, body: { workspace: "example.com" }, workspace: "example.com" },
+    })
+    mockFetchImpl.mockResolvedValue(
+      new Response(JSON.stringify({ lease: "e2b-lease", workspace: "example.com", expiresAt: Date.now() + 90000 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    const res = await POST(makeRequest())
+    expect(res.status).toBe(200)
+
+    const data = await res.json()
+    expect(data.ok).toBe(true)
+    expect(data.wsUrl).toBe("wss://go.test.local/e2b/ws?lease=e2b-lease")
+
+    const [url, options] = mockFetchImpl.mock.calls[0]
+    expect(url).toBe("http://localhost:5075/internal/lease")
+    expect(JSON.parse(String(options.body))).toEqual({
+      workspace: "example.com",
+      sandboxDomain: {
+        domain_id: "domain-123",
+        hostname: "example.com",
+        sandbox_id: "sandbox-123",
+        sandbox_status: "running",
+      },
+    })
   })
 })

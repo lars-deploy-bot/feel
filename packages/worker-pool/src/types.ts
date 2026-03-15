@@ -6,7 +6,7 @@
 
 import type { ChildProcess } from "node:child_process"
 import type { Socket } from "node:net"
-import type { ExecutionMode, SandboxDomain } from "@webalive/sandbox"
+import type { RuntimeAccessDecision } from "@webalive/runtime-auth"
 import { type QueueReason, STREAM_TYPES, type StreamType } from "@webalive/shared"
 
 // Re-export for convenience (canonical source: @webalive/shared)
@@ -237,10 +237,8 @@ export interface AgentRequest {
    * Worker sets process.env.ALIVE_SESSION_COOKIE from this value.
    */
   sessionCookie?: string
-  /** Execution mode for the domain: 'systemd' (local fs) or 'e2b' (remote sandbox). */
-  executionMode?: ExecutionMode
-  /** Domain info for E2B sandbox routing. Only present when executionMode is 'e2b'. */
-  sandboxDomain?: SandboxDomain
+  /** Runtime permission decision derived by the web edge for this workspace/user pair. */
+  runtimeAccess: RuntimeAccessDecision
 }
 
 /** Workspace credentials for privilege dropping */

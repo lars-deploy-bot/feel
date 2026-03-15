@@ -184,7 +184,8 @@ if [ "$DEPLOY_DEPLOYER" = true ]; then
 
     log_info "Restarting alive-deployer..."
     systemctl daemon-reload
-    systemctl enable --now alive-deployer
+    systemctl enable alive-deployer
+    systemctl restart alive-deployer
 
     if wait_for_service_active "alive-deployer" "$SERVICE_READY_TIMEOUT_SECONDS" "$SERVICE_READY_POLL_INTERVAL_SECONDS"; then
         if wait_for_http_health "$DEPLOYER_HEALTH_URL" "$SERVICE_READY_TIMEOUT_SECONDS" "$SERVICE_READY_POLL_INTERVAL_SECONDS"; then

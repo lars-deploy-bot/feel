@@ -5,6 +5,12 @@
  */
 
 import { oauthAudit } from "./audit"
+import {
+  buildStoredOAuthConnection,
+  mergeProviderMetadata,
+  parseStoredOAuthConnection,
+  type StoredOAuthConnection,
+} from "./oauth-connection"
 import { isRefreshable, isRevocable, isUserInfoProvider } from "./providers/base"
 import { getProvider } from "./providers/index"
 import { createRefreshLockManager, type IRefreshLockManager } from "./refresh-lock"
@@ -14,6 +20,7 @@ import {
   type OAuthManagerConfig,
   type OAuthTokens,
   type ProviderConfig,
+  type SaveTokensContext,
   USER_ENV_KEYS_NAMESPACE,
 } from "./types"
 
@@ -186,6 +193,77 @@ export class OAuthManager {
     await Promise.all(names.map(name => this.storage.delete(tenantUserId, "provider_config", name)))
   }
 
+  private async resolveProviderConfig(
+    provider: string,
+    tenantUserId?: string | null,
+    credentialProviderOverride?: string,
+    redirectUriOverride?: string,
+  ): Promise<ProviderConfig | null> {
+    let config: ProviderConfig | null = null
+
+    if (typeof tenantUserId === "string" && tenantUserId.length > 0) {
+      config = await this.getProviderConfig(tenantUserId, provider)
+    }
+
+    const credentialProvider =
+      typeof credentialProviderOverride === "string" && credentialProviderOverride.length > 0
+        ? credentialProviderOverride
+        : resolveCredentialProvider(provider)
+
+    if (!config) {
+      const envClientId = process.env[`${credentialProvider.toUpperCase()}_CLIENT_ID`]
+      const envClientSecret = process.env[`${credentialProvider.toUpperCase()}_CLIENT_SECRET`]
+      const envRedirectUri = process.env[`${credentialProvider.toUpperCase()}_REDIRECT_URI`]
+
+      if (envClientId && envClientSecret) {
+        config = {
+          client_id: envClientId,
+          client_secret: envClientSecret,
+          redirect_uri: typeof envRedirectUri === "string" && envRedirectUri.length > 0 ? envRedirectUri : undefined,
+        }
+      }
+    }
+
+    if (config && typeof redirectUriOverride === "string" && redirectUriOverride.length > 0) {
+      config.redirect_uri = redirectUriOverride
+    }
+
+    return config
+  }
+
+  private parseStoredConnection(tokenBlob: string, provider: string): StoredOAuthConnection {
+    let tokenData: unknown
+
+    try {
+      tokenData = JSON.parse(tokenBlob)
+    } catch (error) {
+      throw new Error(
+        `Failed to parse token data for '${provider}': ${error instanceof Error ? error.message : "Unknown error"}`,
+      )
+    }
+
+    try {
+      return parseStoredOAuthConnection(tokenData, {
+        provider,
+        fallbackCredentialProvider: resolveCredentialProvider(provider),
+      })
+    } catch (error) {
+      throw new Error(
+        `Failed to parse token data for '${provider}': ${error instanceof Error ? error.message : "Unknown error"}`,
+      )
+    }
+  }
+
+  private async readStoredConnection(userId: string, provider: string): Promise<StoredOAuthConnection | null> {
+    const tokenBlob = await this.storage.get(userId, OAUTH_TOKENS_NAMESPACE, provider)
+
+    if (!tokenBlob) {
+      return null
+    }
+
+    return this.parseStoredConnection(tokenBlob, provider)
+  }
+
   // ------------------------------------------------------------------
   // USER AUTHENTICATION FLOW
   // ------------------------------------------------------------------
@@ -224,33 +302,8 @@ export class OAuthManager {
     const correlationId = oauthAudit.authInitiated(provider, authenticatingUserId, tenantUserId)
 
     try {
-      // 1. Get OAuth app credentials - try database first, then env vars
-      let config = await this.getProviderConfig(tenantUserId, provider)
       const credentialProvider = resolveCredentialProvider(provider)
-
-      // Fall back to environment variables for system-wide OAuth apps
-      if (!config) {
-        const envClientId = process.env[`${credentialProvider.toUpperCase()}_CLIENT_ID`]
-        const envClientSecret = process.env[`${credentialProvider.toUpperCase()}_CLIENT_SECRET`]
-        const envRedirectUri = process.env[`${credentialProvider.toUpperCase()}_REDIRECT_URI`]
-
-        if (envClientId && envClientSecret) {
-          config = {
-            client_id: envClientId,
-            client_secret: envClientSecret,
-            // Use override redirect URI (from request context) or fall back to env var
-            redirect_uri: redirectUriOverride || envRedirectUri || undefined,
-          }
-        }
-      }
-
-      // If config exists but no redirect URI, use override
-      if (config && redirectUriOverride && !config.redirect_uri) {
-        config.redirect_uri = redirectUriOverride
-      } else if (config && redirectUriOverride && config.redirect_uri !== redirectUriOverride) {
-        // Override takes precedence - this happens when app.sonno.tech calls but env has different domain
-        config.redirect_uri = redirectUriOverride
-      }
+      const config = await this.resolveProviderConfig(provider, tenantUserId, credentialProvider, redirectUriOverride)
 
       if (!config) {
         const error = `OAuth not configured for '${provider}'. Set environment variables or configure in database.`
@@ -305,7 +358,12 @@ export class OAuthManager {
       }
 
       // 5. Store tokens for the authenticating user (with email if available)
-      await this.saveTokens(authenticatingUserId, provider, tokens, userEmail)
+      await this.saveTokens(authenticatingUserId, provider, tokens, {
+        email: userEmail,
+        tenantUserId,
+        credentialProvider,
+        redirectUri: config.redirect_uri,
+      })
 
       // Audit: auth completed
       oauthAudit.authCompleted(provider, authenticatingUserId, {
@@ -345,44 +403,28 @@ export class OAuthManager {
    * });
    */
   async getAccessToken(userId: string, provider: string): Promise<string> {
-    // Read encrypted JSON blob
-    const tokenBlob = await this.storage.get(userId, OAUTH_TOKENS_NAMESPACE, provider)
+    const storedConnection = await this.readStoredConnection(userId, provider)
 
-    if (!tokenBlob) {
+    if (!storedConnection) {
       throw new Error(`User ${userId} is not connected to '${provider}'`)
-    }
-
-    // Parse token data
-    let tokenData: {
-      access_token: string
-      refresh_token: string | null
-      expires_at: string | null
-      scope?: string | null
-      token_type?: string
-    }
-
-    try {
-      tokenData = JSON.parse(tokenBlob)
-    } catch (error) {
-      throw new Error(
-        `Failed to parse token data for '${provider}': ${error instanceof Error ? error.message : "Unknown error"}`,
-      )
     }
 
     // Check if token needs refresh
     // Note: expires_at now stores "should refresh at" time (already includes buffer)
     const now = Date.now()
 
-    if (tokenData.expires_at) {
-      const shouldRefreshAt = new Date(tokenData.expires_at).getTime()
+    if (storedConnection.expires_at) {
+      const shouldRefreshAt = new Date(storedConnection.expires_at).getTime()
 
       if (now >= shouldRefreshAt) {
         // Token expired or expiring soon - attempt refresh
-        if (!tokenData.refresh_token) {
+        if (!storedConnection.refresh_token) {
           throw new Error(
             `Access token for '${provider}' has expired and no refresh token is available. User must re-authenticate.`,
           )
         }
+
+        const refreshToken = storedConnection.refresh_token
 
         // Get provider instance to refresh token
         const oauthProvider = getProvider(provider)
@@ -392,19 +434,21 @@ export class OAuthManager {
           throw new Error(`Provider '${provider}' does not support token refresh. User must re-authenticate.`)
         }
 
-        // Get provider config (client credentials)
-        // Note: For system-wide OAuth apps, we'd use env vars here instead
-        // For now, assume we have LINEAR_CLIENT_ID and LINEAR_CLIENT_SECRET in env
-        const credentialProvider = resolveCredentialProvider(provider)
-        const credentialPrefix = credentialProvider.toUpperCase()
-        const clientId = process.env[`${credentialPrefix}_CLIENT_ID`]
-        const clientSecret = process.env[`${credentialPrefix}_CLIENT_SECRET`]
+        const config = await this.resolveProviderConfig(
+          provider,
+          storedConnection.tenant_user_id,
+          storedConnection.credential_provider,
+        )
 
-        if (!clientId || !clientSecret) {
+        if (!config) {
+          const credentialPrefix = storedConnection.credential_provider.toUpperCase()
           throw new Error(
             `Missing OAuth credentials for '${provider}'. Set ${credentialPrefix}_CLIENT_ID and ${credentialPrefix}_CLIENT_SECRET.`,
           )
         }
+
+        const clientId = config.client_id
+        const clientSecret = config.client_secret
 
         // Use lock manager to prevent concurrent refresh attempts
         const lockKey = `${userId}:${provider}`
@@ -418,7 +462,7 @@ export class OAuthManager {
             const recentTokenBlob = await this.storage.get(userId, OAUTH_TOKENS_NAMESPACE, provider)
             if (recentTokenBlob) {
               try {
-                const recentTokenData = JSON.parse(recentTokenBlob)
+                const recentTokenData = this.parseStoredConnection(recentTokenBlob, provider)
                 if (recentTokenData.expires_at) {
                   const shouldRefreshAt = new Date(recentTokenData.expires_at).getTime()
                   if (Date.now() < shouldRefreshAt) {
@@ -432,17 +476,32 @@ export class OAuthManager {
             }
 
             // Proceed with refresh (we already checked it's refreshable above)
-            const newTokens = await oauthProvider.refreshToken(tokenData.refresh_token!, clientId, clientSecret)
+            const newTokens = await oauthProvider.refreshToken(refreshToken, clientId, clientSecret)
 
             // CRITICAL: Preserve the original refresh token if provider doesn't return a new one
             // Google OAuth does NOT return a new refresh_token on refresh - we must keep the original
-            const refreshTokenToStore = newTokens.refresh_token || tokenData.refresh_token || undefined
+            const refreshTokenToStore = newTokens.refresh_token !== undefined ? newTokens.refresh_token : refreshToken
+            const providerMetadata = mergeProviderMetadata(
+              storedConnection.provider_metadata,
+              newTokens.provider_metadata,
+            )
 
             // Save the new tokens atomically, preserving refresh token
-            await this.saveTokens(userId, provider, {
-              ...newTokens,
-              refresh_token: refreshTokenToStore,
-            })
+            await this.saveTokens(
+              userId,
+              provider,
+              {
+                ...newTokens,
+                refresh_token: refreshTokenToStore,
+                provider_metadata: providerMetadata,
+              },
+              {
+                email: storedConnection.cached_email ?? undefined,
+                tenantUserId: storedConnection.tenant_user_id ?? undefined,
+                credentialProvider: storedConnection.credential_provider,
+                redirectUri: storedConnection.redirect_uri ?? undefined,
+              },
+            )
 
             // Return the new access token
             return newTokens.access_token
@@ -463,7 +522,7 @@ export class OAuthManager {
     }
 
     // Token is still valid, return it
-    return tokenData.access_token
+    return storedConnection.access_token
   }
 
   /**
@@ -485,8 +544,34 @@ export class OAuthManager {
    * @param tokens - OAuth tokens to store
    * @param email - Optional user email for debugging
    */
-  async saveTokens(userId: string, provider: string, tokens: OAuthTokens, email?: string): Promise<void> {
+  async saveTokens(
+    userId: string,
+    provider: string,
+    tokens: OAuthTokens,
+    emailOrContext?: string | SaveTokensContext,
+  ): Promise<void> {
     const now = Date.now()
+    const context: SaveTokensContext = {}
+
+    if (typeof emailOrContext === "string") {
+      context.email = emailOrContext
+    } else if (emailOrContext) {
+      if (emailOrContext.email !== undefined) {
+        context.email = emailOrContext.email
+      }
+      if (emailOrContext.tenantUserId !== undefined) {
+        context.tenantUserId = emailOrContext.tenantUserId
+      }
+      if (emailOrContext.credentialProvider !== undefined) {
+        context.credentialProvider = emailOrContext.credentialProvider
+      }
+      if (emailOrContext.redirectUri !== undefined) {
+        context.redirectUri = emailOrContext.redirectUri
+      }
+      if (emailOrContext.providerMetadata !== undefined) {
+        context.providerMetadata = emailOrContext.providerMetadata
+      }
+    }
 
     // Calculate expiry timestamp with buffer (OpenClaw pattern)
     // This stores the time when we SHOULD refresh, not when token actually expires
@@ -494,18 +579,21 @@ export class OAuthManager {
       ? new Date(OAuthManager.coerceExpiresAt(tokens.expires_in, now)).toISOString()
       : null
 
-    // Create atomic JSON blob containing all token data
-    const tokenData = {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token || null,
-      expires_at: expiresAt,
-      scope: tokens.scope || null,
-      token_type: tokens.token_type || "Bearer",
-      // Store when token was saved for debugging
-      saved_at: new Date(now).toISOString(),
-      // Store email for debugging (pattern from Google Calendar MCP)
-      cached_email: email || null,
-    }
+    const credentialProvider =
+      typeof context.credentialProvider === "string" && context.credentialProvider.length > 0
+        ? context.credentialProvider
+        : resolveCredentialProvider(provider)
+    const tokenData = buildStoredOAuthConnection({
+      provider,
+      credentialProvider,
+      tenantUserId: context.tenantUserId,
+      redirectUri: context.redirectUri,
+      email: context.email,
+      providerMetadata: context.providerMetadata,
+      expiresAt,
+      now,
+      tokens,
+    })
 
     // Save as single encrypted JSON blob
     await this.storage.save(
@@ -524,15 +612,13 @@ export class OAuthManager {
    * @returns Refresh token or null
    */
   async getRefreshToken(userId: string, provider: string): Promise<string | null> {
-    const tokenBlob = await this.storage.get(userId, OAUTH_TOKENS_NAMESPACE, provider)
-
-    if (!tokenBlob) {
-      return null
-    }
-
     try {
-      const tokenData = JSON.parse(tokenBlob)
-      return tokenData.refresh_token || null
+      const storedConnection = await this.readStoredConnection(userId, provider)
+      if (!storedConnection) {
+        return null
+      }
+
+      return storedConnection.refresh_token
     } catch {
       return null
     }
@@ -571,23 +657,10 @@ export class OAuthManager {
    * @param provider - Provider name
    */
   async revoke(tenantUserId: string, userId: string, provider: string): Promise<void> {
-    // 1. Get OAuth app credentials - try database first, then env vars
-    let config = await this.getProviderConfig(tenantUserId, provider)
-    const credentialProvider = resolveCredentialProvider(provider)
-    const credentialPrefix = credentialProvider.toUpperCase()
-
-    // Fall back to environment variables for system-wide OAuth apps (e.g., Linear)
-    if (!config) {
-      const envClientId = process.env[`${credentialPrefix}_CLIENT_ID`]
-      const envClientSecret = process.env[`${credentialPrefix}_CLIENT_SECRET`]
-
-      if (envClientId && envClientSecret) {
-        config = {
-          client_id: envClientId,
-          client_secret: envClientSecret,
-        }
-      }
-    }
+    const storedConnection = await this.readStoredConnection(userId, provider)
+    const configTenantUserId = storedConnection?.tenant_user_id ?? tenantUserId
+    const credentialProvider = storedConnection?.credential_provider
+    const config = await this.resolveProviderConfig(provider, configTenantUserId, credentialProvider)
 
     if (!config) {
       throw new Error(`OAuth not configured for '${provider}'. Set environment variables or configure in database.`)
@@ -599,14 +672,19 @@ export class OAuthManager {
     // 3. Revoke with provider (if supported)
     const oauthProvider = getProvider(provider)
     if (isRevocable(oauthProvider)) {
-      await oauthProvider.revokeToken(token, config.client_id, config.client_secret)
+      await oauthProvider.revokeToken(
+        token,
+        config.client_id,
+        config.client_secret,
+        storedConnection?.provider_metadata,
+      )
     }
 
     // 4. Remove from local storage
     await this.disconnect(userId, provider)
 
     // Audit: token revoked
-    oauthAudit.tokenRevoked(provider, userId, { tenantId: tenantUserId })
+    oauthAudit.tokenRevoked(provider, userId, { tenantId: configTenantUserId })
   }
 
   // ------------------------------------------------------------------
@@ -626,9 +704,9 @@ export class OAuthManager {
    */
   async setUserEnvKey(userId: string, keyName: string, keyValue: string): Promise<void> {
     // Validate key name format (alphanumeric + underscores, must start with letter)
-    if (!/^[A-Z][A-Z0-9_]*$/.test(keyName)) {
+    if (!/^[A-Z][A-Z0-9_]{0,127}$/.test(keyName)) {
       throw new Error(
-        `Invalid key name '${keyName}'. Must be uppercase, start with a letter, and contain only letters, numbers, and underscores.`,
+        `Invalid key name '${keyName}'. Must be uppercase, start with a letter, contain only letters, numbers, and underscores, and be at most 128 characters.`,
       )
     }
 
@@ -722,25 +800,7 @@ export class OAuthManager {
    * // Redirect user to authUrl
    */
   async getAuthUrl(tenantUserId: string, provider: string, scope: string, state?: string): Promise<string> {
-    // Try database config first, then fall back to environment variables
-    let config = await this.getProviderConfig(tenantUserId, provider)
-    const credentialProvider = resolveCredentialProvider(provider)
-    const credentialPrefix = credentialProvider.toUpperCase()
-
-    // Fall back to environment variables for system-wide OAuth apps
-    if (!config) {
-      const envClientId = process.env[`${credentialPrefix}_CLIENT_ID`]
-      const envClientSecret = process.env[`${credentialPrefix}_CLIENT_SECRET`]
-      const envRedirectUri = process.env[`${credentialPrefix}_REDIRECT_URI`]
-
-      if (envClientId && envClientSecret) {
-        config = {
-          client_id: envClientId,
-          client_secret: envClientSecret,
-          redirect_uri: envRedirectUri || undefined,
-        }
-      }
-    }
+    const config = await this.resolveProviderConfig(provider, tenantUserId)
 
     if (!config) {
       throw new Error(`OAuth not configured for '${provider}'. Set environment variables or configure in database.`)
@@ -877,9 +937,12 @@ export type {
   EncryptedPayload,
   LockManagerConfig,
   OAuthManagerConfig,
+  OAuthProviderMetadata,
+  OAuthProviderMetadataValue,
   OAuthTokens,
   OAuthTokensWithMetadata,
   ProviderConfig,
+  SaveTokensContext,
   SecretNamespace,
   TokenRotationResult,
   UserSecret,

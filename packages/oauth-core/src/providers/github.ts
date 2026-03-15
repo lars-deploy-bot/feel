@@ -9,7 +9,7 @@
  */
 
 import { fetchWithRetry } from "../fetch-with-retry"
-import type { OAuthTokens } from "../types"
+import type { OAuthProviderMetadata, OAuthTokens } from "../types"
 import type { OAuthProviderCore, OAuthRevocable, PKCEOptions, TokenExchangeOptions } from "./base"
 
 export class GitHubProvider implements OAuthProviderCore, OAuthRevocable {
@@ -80,7 +80,12 @@ export class GitHubProvider implements OAuthProviderCore, OAuthRevocable {
    *
    * Note: GitHub doesn't support token refresh for OAuth Apps (only GitHub Apps)
    */
-  async revokeToken(token: string, clientId: string, clientSecret: string): Promise<void> {
+  async revokeToken(
+    token: string,
+    clientId: string,
+    clientSecret: string,
+    _providerMetadata?: OAuthProviderMetadata,
+  ): Promise<void> {
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64")
 
     const res = await fetchWithRetry(

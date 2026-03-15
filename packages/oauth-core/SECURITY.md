@@ -66,11 +66,11 @@ Encrypted data stored as `BYTEA` type with hex encoding:
 **Enabled on `lockbox.user_secrets`:**
 
 ```sql
--- Users can only read their own secrets (when using anon key)
-CREATE POLICY "Users can read own secrets"
-  ON lockbox.user_secrets FOR SELECT
-  USING (clerk_id = auth.uid());
+CREATE POLICY rls_user_secrets_select_self ON lockbox.user_secrets
+  FOR SELECT USING (user_id = lockbox.sub());
 ```
+
+`@webalive/oauth-core` itself uses service-role-backed public RPCs (`lockbox_get`, `lockbox_save`, `lockbox_delete`, `lockbox_list`, `lockbox_exists`) rather than direct authenticated table access.
 
 **Write Operations:**
 - Require service key (bypasses RLS)
@@ -80,7 +80,7 @@ CREATE POLICY "Users can read own secrets"
 ### Foreign Key Constraints
 
 ```sql
-clerk_id UUID REFERENCES iam.users(user_id) ON DELETE CASCADE
+user_id TEXT REFERENCES iam.users(user_id) ON DELETE CASCADE
 ```
 
 **Benefits:**
@@ -91,14 +91,10 @@ clerk_id UUID REFERENCES iam.users(user_id) ON DELETE CASCADE
 ### Check Constraints
 
 ```sql
--- Namespace validation
-CHECK (namespace IN ('provider_config', 'oauth_tokens'))
-
--- IV size validation (12 bytes)
 CHECK (octet_length(iv) = 12)
-
--- Auth tag size validation (16 bytes)
 CHECK (octet_length(auth_tag) = 16)
+CHECK (version > 0)
+CHECK ((char_length(name) >= 1) AND (char_length(name) <= 128))
 ```
 
 **Benefits:**
@@ -110,26 +106,50 @@ CHECK (octet_length(auth_tag) = 16)
 
 ### Tenant Model
 
-**Two types of secrets:**
+**Three types of secrets:**
 
 1. **Provider Config** (`provider_config` namespace)
    - OAuth app credentials (client ID/secret)
    - Owned by tenant (organization owner)
    - Used for all users under that tenant
 
-2. **User Tokens** (`oauth_tokens` namespace)
+2. **User Tokens** (`oauth_connections` namespace)
    - Access/refresh tokens
    - Owned by individual users
    - Isolated per user
+
+3. **User Env Keys** (`user_env_keys` namespace)
+   - User-provided API keys for MCP or provider access
+   - Owned by individual users
+   - Isolated per user
+
+#### `user_env_keys` Security Considerations
+
+**Input Validation:**
+Key names must be validated before storage. Only uppercase alphanumeric characters and underscores are accepted (`^[A-Z][A-Z0-9_]{0,127}$`). Reject keys containing hyphens, shell metacharacters, whitespace, or null bytes to prevent injection when keys are interpolated into environment blocks.
+
+**Format Validation:**
+Values are stored as opaque encrypted blobs, but key names must conform to environment variable naming conventions (`^[A-Z][A-Z0-9_]{0,127}$`). The 128-character `CHECK` constraint on `name` enforces an upper bound, but callers must also reject empty or malformed names before reaching the database.
+
+**Scope Limitation:**
+User env keys are injected into MCP server processes scoped to a single workspace session. They must never be propagated to other users, other workspaces, or persisted into build artifacts. The isolation boundary is the per-session process environment.
+
+**Revocation Complexity:**
+Unlike OAuth tokens, user env keys have no provider-side revocation. Deleting a key from the lockbox removes it from future sessions, but any running process that already received the key retains it until the process exits. Users should rotate keys at the upstream provider after deletion.
+
+**Exposure Risk:**
+User env keys bypass the OAuth token refresh lifecycle. A leaked key grants indefinite access until the user rotates it at the provider. Audit logging (when implemented) should track key reads, not just writes, to detect unauthorized access patterns.
 
 ### Access Control Matrix
 
 | Operation | Namespace | Who Can Access | Key Required |
 |-----------|-----------|----------------|--------------|
-| Write provider config | `provider_config` | Tenant owner | Service key |
-| Read provider config | `provider_config` | Tenant owner | Service key |
-| Write user tokens | `oauth_tokens` | System (on behalf of user) | Service key |
-| Read user tokens | `oauth_tokens` | Token owner | Anon key (RLS) or Service key |
+| Write provider config | `provider_config` | Package backend | Service-role RPC |
+| Read provider config | `provider_config` | Package backend | Service-role RPC |
+| Write user tokens | `oauth_connections` | Package backend | Service-role RPC |
+| Read user tokens | `oauth_connections` | Package backend | Service-role RPC |
+| Write user env keys | `user_env_keys` | Package backend | Service-role RPC |
+| Read user env keys | `user_env_keys` | Package backend | Service-role RPC |
 
 ## Threat Model
 
@@ -191,7 +211,7 @@ const authUrl = await oauth.getAuthUrl(tenantId, 'github', 'repo', state);
 **Access Tokens:**
 - Encrypted with AES-256-GCM
 - Short-lived (typically 1-8 hours)
-- Stored in `oauth_tokens` namespace
+- Stored in `oauth_connections` namespace
 
 **Refresh Tokens:**
 - Also encrypted
@@ -201,7 +221,7 @@ const authUrl = await oauth.getAuthUrl(tenantId, 'github', 'repo', state);
 **Best Practice:**
 ```typescript
 // Always check token expiration
-const expiresAt = await oauth.storage.get(userId, 'oauth_tokens', 'github_expires_at');
+const expiresAt = await oauth.storage.get(userId, 'oauth_connections', 'github_expires_at');
 if (new Date(expiresAt) < new Date()) {
   // Refresh token
 }
@@ -261,7 +281,7 @@ await supabase.from('iam.users').delete().eq('user_id', userId);
 -- Audit log table (future enhancement)
 CREATE TABLE lockbox.audit_log (
   log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  clerk_id UUID NOT NULL,
+  user_id TEXT NOT NULL,
   action VARCHAR(50) NOT NULL,  -- 'encrypt', 'decrypt', 'delete'
   secret_name VARCHAR(100),
   ip_address INET,

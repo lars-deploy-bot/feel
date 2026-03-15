@@ -1,6 +1,7 @@
 import { realpath, stat } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { RuntimePathValidationError, resolveSandboxWorkspacePath } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -10,7 +11,8 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { connectSandbox, SANDBOX_WORKSPACE_ROOT, SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { writeE2bTextFile } from "@/lib/sandbox/e2b-file-runtime"
 
 const MAX_CONTENT_SIZE = 1024 * 1024
 
@@ -24,11 +26,6 @@ interface WriteRequestBody {
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error
-}
-
-function isInvalidRelativeWritePath(filePath: string): boolean {
-  const normalized = path.normalize(filePath)
-  return normalized === "." || normalized === "" || normalized.startsWith("..") || path.isAbsolute(normalized)
 }
 
 export async function POST(request: NextRequest) {
@@ -156,19 +153,25 @@ async function handleE2bWrite(
   content: string,
   requestId: string,
 ): Promise<NextResponse> {
-  if (isInvalidRelativeWritePath(targetPath)) {
-    return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
-      status: 403,
-      details: { requestId },
-    })
+  try {
+    resolveSandboxWorkspacePath(targetPath, { allowWorkspaceRoot: false })
+  } catch (err) {
+    if (err instanceof RuntimePathValidationError) {
+      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, { status: 403, details: { requestId } })
+    }
+    throw err
   }
 
   try {
-    const sandbox = await connectSandbox(domain)
-    const sandboxPath = path.join(SANDBOX_WORKSPACE_ROOT, targetPath)
-    await sandbox.files.write(sandboxPath, content)
+    await writeE2bTextFile(domain, targetPath, content)
     return NextResponse.json({ ok: true, path: targetPath })
   } catch (error) {
+    if (error instanceof RuntimePathValidationError) {
+      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
+        status: 403,
+        details: { requestId },
+      })
+    }
     if (error instanceof SandboxNotReadyError) {
       return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
     }

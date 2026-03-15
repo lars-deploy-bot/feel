@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { RuntimePathValidationError, resolveSandboxWorkspacePath } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -9,7 +10,8 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { connectSandbox, SANDBOX_WORKSPACE_ROOT, SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
+import { readE2bTextFile } from "@/lib/sandbox/e2b-file-runtime"
 
 // Max file size to read (1MB)
 const MAX_FILE_SIZE = 1024 * 1024
@@ -200,20 +202,17 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleE2bRead(domain: ResolvedDomain, filePath: string, requestId: string): Promise<NextResponse> {
-  // Path traversal check for E2B
-  const normalized = path.normalize(filePath)
-  if (normalized.startsWith("..") || path.isAbsolute(normalized)) {
-    console.warn(`[Files/Read ${requestId}] E2B path traversal blocked: ${filePath}`)
-    return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
-      status: 403,
-      details: { requestId },
-    })
+  try {
+    resolveSandboxWorkspacePath(filePath, { allowWorkspaceRoot: false })
+  } catch (err) {
+    if (err instanceof RuntimePathValidationError) {
+      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, { status: 403, details: { requestId } })
+    }
+    throw err
   }
 
   try {
-    const sandbox = await connectSandbox(domain)
-    const sandboxPath = path.join(SANDBOX_WORKSPACE_ROOT, filePath)
-    const content = await sandbox.files.read(sandboxPath)
+    const content = await readE2bTextFile(domain, filePath)
 
     if (content.length > MAX_FILE_SIZE) {
       return structuredErrorResponse(ErrorCodes.FILE_TOO_LARGE_TO_READ, {
@@ -234,6 +233,13 @@ async function handleE2bRead(domain: ResolvedDomain, filePath: string, requestId
       size: content.length,
     })
   } catch (err) {
+    if (err instanceof RuntimePathValidationError) {
+      console.warn(`[Files/Read ${requestId}] E2B path traversal blocked: ${filePath}`)
+      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
+        status: 403,
+        details: { requestId },
+      })
+    }
     if (err instanceof SandboxNotReadyError) {
       return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
     }

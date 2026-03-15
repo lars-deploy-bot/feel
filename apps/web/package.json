@@ -62,6 +62,7 @@
     "@webalive/images": "workspace:*",
     "@webalive/oauth-core": "workspace:*",
     "@webalive/redis": "workspace:*",
+    "@webalive/runtime-auth": "workspace:*",
     "@webalive/sandbox": "workspace:*",
     "@webalive/shared": "workspace:*",
     "@webalive/site-controller": "workspace:*",
