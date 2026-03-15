@@ -28,6 +28,7 @@ readonly -a STANDALONE_PACKAGES=(
     worker-pool
     site-controller
     database
+    runtime-auth
 )
 
 # shellcheck disable=SC2034
