@@ -1,3 +1,4 @@
+import type { SandboxStatus } from "@webalive/database"
 import { SANDBOX_WORKSPACE_ROOT, SandboxManager } from "@webalive/sandbox"
 import { assignPort } from "@webalive/site-controller"
 import type { Sandbox } from "e2b"
@@ -12,7 +13,7 @@ export interface E2bSiteDeploymentResult {
   scratchWorkspace: string
 }
 
-async function updateSandboxState(domainId: string, sandboxId: string, status: "creating" | "running" | "dead") {
+async function updateSandboxState(domainId: string, sandboxId: string, status: SandboxStatus) {
   const app = await createAppClient("service")
   const { error } = await app
     .from("domains")

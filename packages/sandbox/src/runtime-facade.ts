@@ -181,7 +181,7 @@ export async function connectRunningSandbox(
   domain: SandboxDomain,
   config: ConnectRunningSandboxConfig,
 ): Promise<Sandbox> {
-  if (!domain.sandbox_id || domain.sandbox_status !== "running") {
+  if (!domain.sandbox_id || (domain.sandbox_status !== "running" && domain.sandbox_status !== "paused")) {
     throw new RuntimeNotReadyError(domain.hostname, domain.sandbox_status)
   }
 
