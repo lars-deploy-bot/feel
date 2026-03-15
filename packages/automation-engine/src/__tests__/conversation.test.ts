@@ -84,7 +84,7 @@ function makeCtx(supabase: unknown): RunContext {
       action_target_page: null,
       action_format_prompt: null,
     },
-    hostname: "test.alive.best",
+    hostname: "test.test.example",
     runId: "run_456",
     claimedAt: "2026-02-28T12:00:00Z",
     serverId: "srv_test",
@@ -119,7 +119,7 @@ describe("bootstrapRunConversation", () => {
     const conv = inserted.conversations[0]
     expect(conv.user_id).toBe("user_abc")
     expect(conv.org_id).toBe("org_xyz")
-    expect(conv.workspace).toBe("test.alive.best")
+    expect(conv.workspace).toBe("test.test.example")
     expect(conv.source).toBe("automation_run")
     expect(conv.visibility).toBe("private")
     expect(conv.conversation_id).toBe(result?.conversationId)

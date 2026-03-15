@@ -31,7 +31,7 @@ const addCorsHeadersMock = vi.fn()
 
 const REQUEST_ID = "req-123"
 const USER_ID = "user-1"
-const WORKSPACE = "demo.alive.best"
+const WORKSPACE = "demo.test.example"
 const TAB_GROUP_ID = "tab-group-1"
 const TAB_ID = "tab-1"
 

@@ -16,9 +16,9 @@ const isDomainRegisteredMock = vi.fn<(hostname: string) => Promise<boolean>>(asy
 const unregisterDomainMock = vi.fn<(hostname: string) => Promise<boolean>>(async () => true)
 const deploySiteMock = vi.fn<(input: unknown) => Promise<{ domain: string; port: number; serviceName: string }>>(
   async () => ({
-    domain: "testsite.alive.best",
+    domain: "testsite.test.example",
     port: 3700,
-    serviceName: "site@testsite-alive-best.service",
+    serviceName: "site@testsite-test-example.service",
   }),
 )
 const registerDomainMock = vi.fn<(input: unknown) => Promise<void>>(async () => undefined)
@@ -30,8 +30,8 @@ const prepareE2bSiteDeploymentMock = vi.fn<
   (input: unknown) => Promise<{ port: number; serviceName: string; scratchWorkspace: string }>
 >(async () => ({
   port: 3701,
-  serviceName: "e2b-site@testsite.alive.best",
-  scratchWorkspace: `${MOCK_E2B_SCRATCH}/testsite.alive.best/user`,
+  serviceName: "e2b-site@testsite.test.example",
+  scratchWorkspace: `${MOCK_E2B_SCRATCH}/testsite.test.example/user`,
 }))
 const createInitialSiteSandboxMock = vi.fn<(domain: unknown, scratchWorkspace: string) => Promise<void>>(
   async () => undefined,
@@ -160,9 +160,9 @@ describe("runStrictDeployment", () => {
 
     deploySiteMock.mockReset()
     deploySiteMock.mockResolvedValue({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       port: 3700,
-      serviceName: "site@testsite-alive-best.service",
+      serviceName: "site@testsite-test-example.service",
     })
 
     registerDomainMock.mockReset()
@@ -177,8 +177,8 @@ describe("runStrictDeployment", () => {
     prepareE2bSiteDeploymentMock.mockReset()
     prepareE2bSiteDeploymentMock.mockResolvedValue({
       port: 3701,
-      serviceName: "e2b-site@testsite.alive.best",
-      scratchWorkspace: `${MOCK_E2B_SCRATCH}/testsite.alive.best/user`,
+      serviceName: "e2b-site@testsite.test.example",
+      scratchWorkspace: `${MOCK_E2B_SCRATCH}/testsite.test.example/user`,
     })
 
     createInitialSiteSandboxMock.mockReset()
@@ -210,23 +210,23 @@ describe("runStrictDeployment", () => {
     pathExists.mockReturnValue(false)
 
     const result = await runStrictDeployment({
-      domain: "TestSite.Alive.Best",
+      domain: "TestSite.Test.Example",
       email: "owner@example.com",
       orgId: "org-1",
       templatePath: "/srv/webalive/templates/blank.alive.best",
     })
 
     expect(result).toMatchObject({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       port: 3700,
-      serviceName: "site@testsite-alive-best.service",
+      serviceName: "site@testsite-test-example.service",
       executionMode: "systemd",
     })
 
     expect(callOrder).toEqual(["deploySite", "registerDomain", "configureCaddy"])
     expect(configureCaddyMock).toHaveBeenCalledOnce()
     expect(configureCaddyMock.mock.calls[0][0]).toMatchObject({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       port: 3700,
     })
   })
@@ -248,14 +248,14 @@ describe("runStrictDeployment", () => {
 
   it("fails when deploy returns an out-of-range port", async () => {
     deploySiteMock.mockResolvedValueOnce({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       port: 9999,
-      serviceName: "site@testsite-alive-best.service",
+      serviceName: "site@testsite-test-example.service",
     })
 
     await expect(
       runStrictDeployment({
-        domain: "testsite.alive.best",
+        domain: "testsite.test.example",
         email: "owner@example.com",
         templatePath: "/srv/webalive/templates/blank.alive.best",
       }),
@@ -265,7 +265,7 @@ describe("runStrictDeployment", () => {
 
     expect(registerDomainMock).not.toHaveBeenCalled()
     expect(configureCaddyMock).not.toHaveBeenCalled()
-    expect(teardownMock).toHaveBeenCalledWith("testsite.alive.best", {
+    expect(teardownMock).toHaveBeenCalledWith("testsite.test.example", {
       removeFiles: true,
       removeUser: true,
     })
@@ -277,12 +277,12 @@ describe("runStrictDeployment", () => {
     pathExists.mockImplementation(filePath => filePath === filteredPath)
 
     await runStrictDeployment({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       email: "owner@example.com",
       templatePath: "/srv/webalive/templates/blank.alive.best",
     })
 
-    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", filteredPath)
+    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.test.example", filteredPath)
   })
 
   it("skips routing verification when filtered file does not exist", async () => {
@@ -290,7 +290,7 @@ describe("runStrictDeployment", () => {
     pathExists.mockReturnValue(false)
 
     await runStrictDeployment({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       email: "owner@example.com",
       templatePath: "/srv/webalive/templates/blank.alive.best",
     })
@@ -304,25 +304,25 @@ describe("runStrictDeployment", () => {
     pathExists.mockImplementation(filePath => filePath === filteredPath)
 
     await runStrictDeployment({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       email: "owner@example.com",
       templatePath: "/srv/webalive/templates/blank.alive.best",
     })
 
-    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.alive.best", filteredPath)
+    expect(checkDomainInCaddyMock).toHaveBeenCalledWith("testsite.test.example", filteredPath)
   })
 
   it("rolls back infrastructure when registerDomain fails for a new deployment", async () => {
     isDomainRegisteredMock.mockResolvedValueOnce(false).mockResolvedValueOnce(false)
     registerDomainMock.mockRejectedValueOnce(
       new DomainRegistrationError(ErrorCodes.DEPLOYMENT_FAILED, "db write failed", {
-        domain: "testsite.alive.best",
+        domain: "testsite.test.example",
       }),
     )
 
     await expect(
       runStrictDeployment({
-        domain: "testsite.alive.best",
+        domain: "testsite.test.example",
         email: "owner@example.com",
         templatePath: "/srv/webalive/templates/blank.alive.best",
       }),
@@ -331,7 +331,7 @@ describe("runStrictDeployment", () => {
     })
 
     expect(unregisterDomainMock).not.toHaveBeenCalled()
-    expect(teardownMock).toHaveBeenCalledWith("testsite.alive.best", {
+    expect(teardownMock).toHaveBeenCalledWith("testsite.test.example", {
       removeFiles: true,
       removeUser: true,
     })
@@ -344,14 +344,14 @@ describe("runStrictDeployment", () => {
 
     await expect(
       runStrictDeployment({
-        domain: "testsite.alive.best",
+        domain: "testsite.test.example",
         email: "owner@example.com",
         templatePath: "/srv/webalive/templates/blank.alive.best",
       }),
     ).rejects.toThrow("caddy reload failed")
 
-    expect(unregisterDomainMock).toHaveBeenCalledWith("testsite.alive.best")
-    expect(teardownMock).toHaveBeenCalledWith("testsite.alive.best", {
+    expect(unregisterDomainMock).toHaveBeenCalledWith("testsite.test.example")
+    expect(teardownMock).toHaveBeenCalledWith("testsite.test.example", {
       removeFiles: true,
       removeUser: true,
     })
@@ -367,7 +367,7 @@ describe("runStrictDeployment", () => {
 
     await expect(
       runStrictDeployment({
-        domain: "testsite.alive.best",
+        domain: "testsite.test.example",
         email: "owner@example.com",
         templatePath: "/srv/webalive/templates/blank.alive.best",
       }),
@@ -375,8 +375,8 @@ describe("runStrictDeployment", () => {
       errorCode: ErrorCodes.DEPLOYMENT_FAILED,
     })
 
-    expect(unregisterDomainMock).toHaveBeenCalledWith("testsite.alive.best")
-    expect(teardownMock).toHaveBeenCalledWith("testsite.alive.best", {
+    expect(unregisterDomainMock).toHaveBeenCalledWith("testsite.test.example")
+    expect(teardownMock).toHaveBeenCalledWith("testsite.test.example", {
       removeFiles: true,
       removeUser: true,
     })
@@ -384,13 +384,13 @@ describe("runStrictDeployment", () => {
 
   it("does not teardown pre-existing infrastructure on post-deploy failure", async () => {
     process.env.STREAM_ENV = "production"
-    pathExists.mockImplementation(filePath => filePath.includes(`${PATHS.SITES_ROOT}/existing.alive.best`))
+    pathExists.mockImplementation(filePath => filePath.includes(`${PATHS.SITES_ROOT}/existing.test.example`))
     isDomainRegisteredMock.mockResolvedValueOnce(true)
     configureCaddyMock.mockRejectedValueOnce(new Error("reload failed"))
 
     await expect(
       runStrictDeployment({
-        domain: "existing.alive.best",
+        domain: "existing.test.example",
         email: "owner@example.com",
         templatePath: "/srv/webalive/templates/blank.alive.best",
       }),
@@ -404,36 +404,36 @@ describe("runStrictDeployment", () => {
     getNewSiteExecutionModeMock.mockReturnValueOnce("e2b")
 
     const result = await runStrictDeployment({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       email: "owner@example.com",
       orgId: "org-1",
       templatePath: "/srv/webalive/templates/blank.alive.best",
     })
 
     expect(result).toEqual({
-      domain: "testsite.alive.best",
+      domain: "testsite.test.example",
       port: 3701,
-      serviceName: "e2b-site@testsite.alive.best",
+      serviceName: "e2b-site@testsite.test.example",
       executionMode: "e2b",
     })
     expect(callOrder).toEqual(["prepareE2bSiteDeployment", "registerDomain", "createInitialSiteSandbox"])
     expect(deploySiteMock).not.toHaveBeenCalled()
     expect(configureCaddyMock).not.toHaveBeenCalled()
     expect(registerDomainMock).toHaveBeenCalledWith({
-      hostname: "testsite.alive.best",
+      hostname: "testsite.test.example",
       email: "owner@example.com",
       password: undefined,
       port: 3701,
       executionMode: "e2b",
       orgId: "org-1",
     })
-    expect(resolveDomainRuntimeMock).toHaveBeenCalledWith("testsite.alive.best")
+    expect(resolveDomainRuntimeMock).toHaveBeenCalledWith("testsite.test.example")
     expect(createInitialSiteSandboxMock).toHaveBeenCalledWith(
       expect.objectContaining({
         domain_id: "dom_123",
-        hostname: "testsite.alive.best",
+        hostname: "testsite.test.example",
       }),
-      `${MOCK_E2B_SCRATCH}/testsite.alive.best/user`,
+      `${MOCK_E2B_SCRATCH}/testsite.test.example/user`,
     )
   })
 
@@ -444,14 +444,14 @@ describe("runStrictDeployment", () => {
 
     await expect(
       runStrictDeployment({
-        domain: "testsite.alive.best",
+        domain: "testsite.test.example",
         email: "owner@example.com",
         templatePath: "/srv/webalive/templates/blank.alive.best",
       }),
     ).rejects.toThrow("sandbox bootstrap failed")
 
-    expect(unregisterDomainMock).toHaveBeenCalledWith("testsite.alive.best")
-    expect(rmMock).toHaveBeenCalledWith(`${MOCK_E2B_SCRATCH}/testsite.alive.best`, {
+    expect(unregisterDomainMock).toHaveBeenCalledWith("testsite.test.example")
+    expect(rmMock).toHaveBeenCalledWith(`${MOCK_E2B_SCRATCH}/testsite.test.example`, {
       recursive: true,
       force: true,
     })

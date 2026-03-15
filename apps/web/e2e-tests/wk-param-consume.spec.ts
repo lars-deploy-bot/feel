@@ -33,7 +33,7 @@ test.describe("?wk= URL param consume-once (#343)", () => {
   })
 
   test("switching workspace after deep link does NOT revert (#343)", async ({ authenticatedPage, workerTenant }) => {
-    const SECOND_WORKSPACE = "switched-workspace.alive.best"
+    const SECOND_WORKSPACE = "switched-workspace.test.example"
 
     // Mock all-workspaces to include both workspaces
     await authenticatedPage.route("**/api/auth/all-workspaces**", async route => {

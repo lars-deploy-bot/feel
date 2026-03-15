@@ -60,7 +60,7 @@ const AGENTS: Agent[] = [
   {
     id: "1",
     name: "Daily News Digest",
-    hostname: "techblog.alive.best",
+    hostname: "techblog.test.example",
     is_active: true,
     trigger_type: "cron",
     cron_schedule: "0 9 * * 1-5",
@@ -80,11 +80,11 @@ const AGENTS: Agent[] = [
   {
     id: "2",
     name: "Customer Email Responder",
-    hostname: "shop.alive.best",
+    hostname: "shop.test.example",
     is_active: true,
     trigger_type: "email",
     cron_schedule: null,
-    email_address: "support-agent-x7k@in.alive.best",
+    email_address: "support-agent-x7k@in.test.example",
     last_run_at: new Date(Date.now() - 15 * 60000).toISOString(),
     last_run_status: "success",
     next_run_at: null,
@@ -100,7 +100,7 @@ const AGENTS: Agent[] = [
   {
     id: "3",
     name: "Weekly Analytics Report",
-    hostname: "dashboard.alive.best",
+    hostname: "dashboard.test.example",
     is_active: true,
     trigger_type: "cron",
     cron_schedule: "0 8 * * 1",
@@ -120,7 +120,7 @@ const AGENTS: Agent[] = [
   {
     id: "4",
     name: "Deployment Smoke Tests",
-    hostname: "api.alive.best",
+    hostname: "api.test.example",
     is_active: false,
     trigger_type: "webhook",
     cron_schedule: null,
@@ -140,7 +140,7 @@ const AGENTS: Agent[] = [
   {
     id: "5",
     name: "Content Calendar Sync",
-    hostname: "blog.alive.best",
+    hostname: "blog.test.example",
     is_active: true,
     trigger_type: "cron",
     cron_schedule: "0 6 * * *",
@@ -159,7 +159,7 @@ const AGENTS: Agent[] = [
   {
     id: "6",
     name: "Nightly DB Backup Check",
-    hostname: "infra.alive.best",
+    hostname: "infra.test.example",
     is_active: true,
     trigger_type: "cron",
     cron_schedule: "0 3 * * *",

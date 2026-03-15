@@ -3,7 +3,7 @@ import { authorizeRuntimeAccess, RuntimePermissionError } from "../policy.js"
 
 const baseFacts = {
   userId: "user-1",
-  workspace: "example.alive.best",
+  workspace: "example.test.example",
   hasWorkspaceAccess: true,
   isAdmin: false,
   isSuperadmin: false,

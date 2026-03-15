@@ -106,7 +106,9 @@ export class SandboxManager {
       throw new Error("[SandboxManager] FATAL: E2B_API_KEY env var is missing. Cannot authenticate with E2B.")
     }
     if (!config.domain) {
-      throw new Error("[SandboxManager] FATAL: E2B domain is required. Set E2B_DOMAIN env var (e.g. 'e2b.sonno.tech').")
+      throw new Error(
+        "[SandboxManager] FATAL: E2B domain is required. Set E2B_DOMAIN env var (e.g. 'e2b.test.example').",
+      )
     }
     this.persistence = config.persistence
     this.template = config.template ?? E2B_DEFAULT_TEMPLATE
@@ -388,7 +390,6 @@ async function detectInstallCommand(sandbox: Sandbox): Promise<string | null> {
   const lockChecks = [
     { file: "bun.lock", cmd: "bun install" },
     { file: "bun.lockb", cmd: "bun install" },
-    { file: "pnpm-lock.yaml", cmd: "pnpm install" },
   ]
 
   for (const { file, cmd } of lockChecks) {

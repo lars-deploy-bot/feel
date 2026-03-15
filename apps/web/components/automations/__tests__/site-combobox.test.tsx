@@ -7,14 +7,14 @@ import { getInitialSiteSelection, SiteCombobox, type SiteOption } from "../SiteC
 
 describe("getInitialSiteSelection", () => {
   const sites: SiteOption[] = [
-    { id: "s1", hostname: "alpha.alive.best" },
-    { id: "s2", hostname: "beta.alive.best" },
+    { id: "s1", hostname: "alpha.test.example" },
+    { id: "s2", hostname: "beta.test.example" },
   ]
 
   it("returns matching site when defaultSiteId is valid", () => {
     expect(getInitialSiteSelection(sites, "s2")).toEqual({
       siteId: "s2",
-      siteSearch: "beta.alive.best",
+      siteSearch: "beta.test.example",
     })
   })
 
@@ -22,7 +22,7 @@ describe("getInitialSiteSelection", () => {
     const single = [sites[0]!]
     expect(getInitialSiteSelection(single)).toEqual({
       siteId: "s1",
-      siteSearch: "alpha.alive.best",
+      siteSearch: "alpha.test.example",
     })
   })
 
@@ -51,7 +51,7 @@ describe("getInitialSiteSelection", () => {
     const single = [sites[0]!]
     expect(getInitialSiteSelection(single, "wrong-id")).toEqual({
       siteId: "s1",
-      siteSearch: "alpha.alive.best",
+      siteSearch: "alpha.test.example",
     })
   })
 })
@@ -60,9 +60,9 @@ describe("getInitialSiteSelection", () => {
 
 describe("SiteCombobox", () => {
   const sites: SiteOption[] = [
-    { id: "s1", hostname: "alpha.alive.best" },
-    { id: "s2", hostname: "beta.alive.best" },
-    { id: "s3", hostname: "gamma.alive.best" },
+    { id: "s1", hostname: "alpha.test.example" },
+    { id: "s2", hostname: "beta.test.example" },
+    { id: "s3", hostname: "gamma.test.example" },
   ]
 
   function renderCombobox(overrides: Partial<Parameters<typeof SiteCombobox>[0]> = {}) {
@@ -96,8 +96,8 @@ describe("SiteCombobox", () => {
   it("calls onSelect when an option is clicked", () => {
     const { onSelect } = renderCombobox()
     fireEvent.focus(screen.getByRole("combobox"))
-    fireEvent.mouseDown(screen.getByRole("option", { name: "beta.alive.best" }))
-    expect(onSelect).toHaveBeenCalledWith("s2", "beta.alive.best")
+    fireEvent.mouseDown(screen.getByRole("option", { name: "beta.test.example" }))
+    expect(onSelect).toHaveBeenCalledWith("s2", "beta.test.example")
   })
 
   it("calls onSearchChange when typing", () => {
@@ -116,13 +116,13 @@ describe("SiteCombobox", () => {
     renderCombobox({ searchValue: "beta" })
     fireEvent.focus(screen.getByRole("combobox"))
     expect(screen.getAllByRole("option")).toHaveLength(1)
-    expect(screen.getByRole("option", { name: "beta.alive.best" })).toBeDefined()
+    expect(screen.getByRole("option", { name: "beta.test.example" })).toBeDefined()
   })
 
   it("shows max 8 results", () => {
     const manySites = Array.from({ length: 12 }, (_, i) => ({
       id: `s${i}`,
-      hostname: `site${i}.alive.best`,
+      hostname: `site${i}.test.example`,
     }))
     renderCombobox({ sites: manySites })
     fireEvent.focus(screen.getByRole("combobox"))
@@ -132,13 +132,13 @@ describe("SiteCombobox", () => {
   it("uses renderLabel for custom display", () => {
     renderCombobox({ renderLabel: s => `Custom: ${s.hostname}` })
     fireEvent.focus(screen.getByRole("combobox"))
-    expect(screen.getByRole("option", { name: "Custom: alpha.alive.best" })).toBeDefined()
+    expect(screen.getByRole("option", { name: "Custom: alpha.test.example" })).toBeDefined()
   })
 
   it("marks the selected option with aria-selected", () => {
     renderCombobox({ selectedId: "s2" })
     fireEvent.focus(screen.getByRole("combobox"))
-    const selected = screen.getByRole("option", { name: "beta.alive.best" })
+    const selected = screen.getByRole("option", { name: "beta.test.example" })
     expect(selected.getAttribute("aria-selected")).toBe("true")
   })
 })

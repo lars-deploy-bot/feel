@@ -6,6 +6,7 @@ export interface DomainConfig {
   wildcard: string
   main: string
   previewBase: string
+  contactEmail: string
 }
 
 const DomainConfigContext = createContext<DomainConfig | null>(null)

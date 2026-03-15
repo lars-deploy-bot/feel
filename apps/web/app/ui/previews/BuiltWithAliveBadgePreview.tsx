@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
 
 /**
  * Preview for the "Built with Alive" badge widget.
@@ -26,8 +27,9 @@ const STYLES = `
   }
 `
 
-function AliveBadge({ hostname = "example.alive.best" }: { hostname?: string }) {
+function AliveBadge({ hostname, appDomain }: { hostname?: string; appDomain: string }) {
   const [isOpen, setIsOpen] = useState(false)
+  const displayHostname = hostname ?? `example.${appDomain}`
 
   return (
     <div className="relative inline-flex flex-col items-end">
@@ -57,7 +59,7 @@ function AliveBadge({ hostname = "example.alive.best" }: { hostname?: string }) 
                 </p>
                 <div className="mt-5 space-y-2" style={{ animation: "aliveReveal 300ms ease-out 500ms both" }}>
                   <a
-                    href={`https://app.alive.best/chat?wk=${hostname}`}
+                    href={`https://app.${appDomain}/chat?wk=${displayHostname}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group/cta flex items-center justify-between w-full px-4 py-3 sm:py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 active:bg-emerald-500/20 transition-colors duration-200 no-underline"
@@ -82,7 +84,7 @@ function AliveBadge({ hostname = "example.alive.best" }: { hostname?: string }) 
                     </svg>
                   </a>
                   <a
-                    href="https://app.alive.best/chat"
+                    href={`https://app.${appDomain}/chat`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group/b flex items-center justify-between w-full px-4 py-3 sm:py-2.5 rounded-xl hover:bg-white/[0.03] active:bg-white/[0.05] transition-colors duration-200 no-underline"
@@ -141,6 +143,7 @@ function AliveBadge({ hostname = "example.alive.best" }: { hostname?: string }) 
 // --- Preview ---
 
 export function BuiltWithAliveBadgePreview() {
+  const { main } = useDomainConfig()
   return (
     <div className="space-y-12">
       {/* Light background */}
@@ -155,7 +158,7 @@ export function BuiltWithAliveBadgePreview() {
             <div className="h-24 w-full bg-zinc-100 rounded-lg mt-4" />
           </div>
           <div className="flex justify-end mt-6">
-            <AliveBadge hostname="loodgieter.alive.best" />
+            <AliveBadge hostname={`loodgieter.${main}`} appDomain={main} />
           </div>
         </div>
       </section>
@@ -172,7 +175,7 @@ export function BuiltWithAliveBadgePreview() {
             <div className="h-24 w-full bg-zinc-900 rounded-lg mt-4" />
           </div>
           <div className="flex justify-end mt-6">
-            <AliveBadge hostname="loodgieter.alive.best" />
+            <AliveBadge hostname={`loodgieter.${main}`} appDomain={main} />
           </div>
         </div>
       </section>

@@ -71,7 +71,7 @@ describe("automation tools runtime validation", { timeout: 15_000 }, () => {
       if (url.endsWith("/api/sites")) {
         return jsonResponse({
           ok: true,
-          sites: [{ id: "site_owned", hostname: "owned.alive.best", org_id: "org_1" }],
+          sites: [{ id: "site_owned", hostname: "owned.test.example", org_id: "org_1" }],
         })
       }
 
@@ -102,7 +102,7 @@ describe("automation tools runtime validation", { timeout: 15_000 }, () => {
       if (url.endsWith("/api/sites")) {
         return jsonResponse({
           ok: true,
-          sites: [{ id: "site_owned", hostname: "owned.alive.best", org_id: "org_1" }],
+          sites: [{ id: "site_owned", hostname: "owned.test.example", org_id: "org_1" }],
         })
       }
 
@@ -119,7 +119,7 @@ describe("automation tools runtime validation", { timeout: 15_000 }, () => {
 
     const { listAutomations } = await import("../src/tools/automations/list-automations.js")
 
-    const result = await listAutomations({ site_id: "owned.alive.best" })
+    const result = await listAutomations({ site_id: "owned.test.example" })
 
     expect(result.isError).toBe(false)
     expect(result.content[0]?.text).toContain("No automations found")

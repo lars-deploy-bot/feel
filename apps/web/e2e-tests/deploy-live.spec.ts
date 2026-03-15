@@ -258,7 +258,7 @@ async function resolveTemplateId(request: APIRequestContext): Promise<string> {
 }
 
 async function hasDeleteSiteEndpoint(request: APIRequestContext): Promise<boolean> {
-  const probeBody = CleanupDeployedSiteRequestSchema.parse({ domain: "probe-delete-endpoint.sonno.tech" })
+  const probeBody = CleanupDeployedSiteRequestSchema.parse({ domain: "probe-delete-endpoint.test.example" })
   const response = await request.delete("/api/test/delete-site", {
     data: probeBody,
     headers: buildE2ETestHeaders(),

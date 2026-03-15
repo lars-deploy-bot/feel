@@ -183,7 +183,7 @@ describe("GET /api/health", () => {
       vi.mocked(getSessionUser).mockResolvedValue(
         createMockSessionUser({
           id: "admin-1",
-          email: "admin@alive.best",
+          email: "admin@test.example",
           name: "Super Admin",
           isSuperadmin: true,
           isAdmin: true,

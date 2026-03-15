@@ -243,12 +243,12 @@ export function renderCaddySites(
         "",
         ...(isEmbeddable
           ? [
-              "    # Template preview host: keep security headers but allow iframe embedding from alive.best",
+              `    # Template preview host: keep security headers but allow iframe embedding from ${cfg.domains.wildcard}`,
               "    header {",
               "        X-Content-Type-Options nosniff",
               '        X-XSS-Protection "1; mode=block"',
               "        Referrer-Policy strict-origin-when-cross-origin",
-              `        Content-Security-Policy "frame-ancestors 'self' https://*.alive.best https://alive.best"`,
+              `        Content-Security-Policy "frame-ancestors 'self' https://*.${cfg.domains.wildcard} https://${cfg.domains.wildcard}"`,
               "        -X-Frame-Options",
               "        -Server",
               "        -X-Powered-By",
@@ -552,7 +552,7 @@ if (import.meta.main) {
       console.error("     Each environment needs: key, port, subdomain\n")
     } else if (msg.includes("domains.main")) {
       console.error("\x1b[33mFix:\x1b[0m Add domains.main to server-config.json")
-      console.error('     Example: "domains": { "main": "sonno.tech" }\n')
+      console.error('     Example: "domains": { "main": "test.example" }\n')
     }
 
     console.error("Run \x1b[36mbun run --cwd packages/site-controller setup:validate\x1b[0m for full diagnostics.\n")

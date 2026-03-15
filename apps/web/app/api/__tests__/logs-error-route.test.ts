@@ -66,7 +66,7 @@ describe("POST /api/logs/error", () => {
         message: "OAuth failed",
         details: { code: "bad_state" },
         stack: "stack",
-        url: "https://terminal.alive.best/oauth/callback",
+        url: "https://terminal.test.example/oauth/callback",
       }),
     })
 
