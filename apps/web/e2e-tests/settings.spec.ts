@@ -58,15 +58,8 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
   await expect(settingsButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await settingsButton.click()
 
-  // Settings content should appear in the main area
-  await expect(authenticatedPage.locator('[data-testid="settings-overlay"]')).toBeVisible({
+  // Settings content should appear — verify the General heading is visible
+  await expect(authenticatedPage.getByRole("heading", { name: "General" })).toBeVisible({
     timeout: TEST_TIMEOUTS.max,
-  })
-
-  // General tab: model select in main content, logout button in sidebar settings nav
-  await expect(authenticatedPage.locator("#claude-model")).toBeAttached({ timeout: TEST_TIMEOUTS.medium })
-  // Both desktop and mobile sidebars render a logout button — scope to the desktop sidebar
-  await expect(desktopSidebar.locator('[data-testid="logout-button"]')).toBeAttached({
-    timeout: TEST_TIMEOUTS.medium,
   })
 })

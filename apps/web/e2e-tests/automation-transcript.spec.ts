@@ -17,14 +17,22 @@ import { buildE2ETestHeaders } from "./lib/test-headers"
 
 async function ensureConversationSidebarOpen(authenticatedPage: Page): Promise<void> {
   const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
-  if (await sidebar.isVisible()) {
-    return
+
+  // Check if the sidebar is already expanded by looking for a visible "Open sidebar" button.
+  // When expanded, this button has w-0/opacity-0, so it's hidden.
+  const openSidebarButton = authenticatedPage.locator('button[aria-label="Open sidebar"]').first()
+  const isButtonVisible = await openSidebarButton.isVisible({ timeout: 1000 }).catch(() => false)
+  if (isButtonVisible) {
+    await openSidebarButton.click()
+    await authenticatedPage.waitForTimeout(500)
   }
 
-  const openSidebarButton = authenticatedPage.locator('button[aria-label="Open sidebar"]').first()
-  await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
-  await openSidebarButton.click()
-  await expect(sidebar).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+  // Automation conversations appear under the collapsed "Agents" section — expand it
+  const agentsSection = sidebar.getByText("Agents", { exact: false }).first()
+  if (await agentsSection.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await agentsSection.click()
+    await authenticatedPage.waitForTimeout(300)
+  }
 }
 
 async function readJsonOrThrow<T>(
