@@ -13,6 +13,7 @@ import {
 import { trackGithubImportFailed, trackGithubImportOpened, trackGithubImportStarted } from "@/lib/analytics/events"
 import { ErrorCodes } from "@/lib/error-codes"
 import { useAuthModalActions } from "@/lib/stores/authModalStore"
+import { QUERY_KEYS } from "@/lib/url/queryState"
 
 const MAX_IMPORT_ATTEMPTS = 3
 
@@ -100,7 +101,7 @@ export default function DeployGithubPage() {
         const data = await parseImportResponse(response)
 
         if (response.ok && data.ok && data.domain) {
-          router.push(data.chatUrl ?? `/chat?wk=${encodeURIComponent(data.domain)}`)
+          router.push(data.chatUrl ?? `/chat?${QUERY_KEYS.workspace}=${encodeURIComponent(data.domain)}`)
           return
         }
 

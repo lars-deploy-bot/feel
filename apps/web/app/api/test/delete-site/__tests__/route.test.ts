@@ -84,10 +84,11 @@ vi.mock("@/lib/deployment/site-occupancy", () => ({
   inspectSiteOccupancy: (slug: string) => mockInspectSiteOccupancy(slug),
 }))
 
+const MOCK_WILDCARD = "alive.best"
 vi.mock("@/lib/config", () => ({
-  WILDCARD_DOMAIN: "alive.best",
+  WILDCARD_DOMAIN: MOCK_WILDCARD,
   extractSlugFromDomain: (domain: string) => {
-    const suffix = ".alive.best"
+    const suffix = `.${MOCK_WILDCARD}`
     if (domain.endsWith(suffix)) return domain.replace(suffix, "")
     return null
   },
