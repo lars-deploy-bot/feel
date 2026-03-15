@@ -35,6 +35,10 @@ vi.mock("@/lib/analytics/events", () => ({
   trackSidebarOpened: () => undefined,
 }))
 
+vi.mock("@/lib/db/conversationSync", () => ({
+  fetchConversations: vi.fn(),
+}))
+
 vi.mock("@/lib/db/dexieMessageStore", () => ({
   useDexieArchivedConversations: () => [],
   useDexieConversations: () => [{ id: "conv-1" }],
