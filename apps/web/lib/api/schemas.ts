@@ -668,7 +668,6 @@ export const apiSchemas = {
     query: z.object({
       org_id: z.string().min(1).optional(),
       site_id: z.string().min(1).optional(),
-      workspace: z.string().min(1).optional(),
       limit: z.coerce.number().int().min(1).max(100).optional().default(50),
     }),
     res: z.object({

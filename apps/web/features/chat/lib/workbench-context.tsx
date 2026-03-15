@@ -40,6 +40,26 @@ export interface WorkbenchShortcut {
   handler: (e: KeyboardEvent) => void
 }
 
+/**
+ * Type-safe view state registry. Views that need persistent state (survives
+ * view switches) declare their shape here. Using `useViewState("foo", ...)`
+ * without declaring "foo" in this map is a compiler error.
+ *
+ * @example
+ * // 1. Declare the shape in ViewStateMap:
+ * export interface ViewStateMap {
+ *   drive: { selectedFile: string | null; treeWidth: number }
+ * }
+ * // 2. Use in the view:
+ * const state = useViewState("drive", { selectedFile: null, treeWidth: 240 })
+ * state.value.selectedFile  // string | null — fully typed, zero assertions
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: views extend this as they adopt useViewState
+export interface ViewStateMap {}
+
+/** Internal typed storage — maps each declared view key to its state. */
+type ViewStateStorage = { [K in keyof ViewStateMap]?: ViewStateMap[K] }
+
 /** State for the workbench */
 export interface WorkbenchState {
   view: WorkbenchView
@@ -91,10 +111,8 @@ interface WorkbenchContextType {
   setSitePath: (path: string) => void
   /** Register keyboard shortcuts (returns cleanup function) */
   registerShortcuts: (shortcuts: WorkbenchShortcut[]) => () => void
-  /** Get persisted view state (key must be a valid WorkbenchView) */
-  getViewState: <T>(viewName: WorkbenchView) => T | undefined
-  /** Set persisted view state (survives view switches, key must be a valid WorkbenchView) */
-  setViewState: (viewName: WorkbenchView, state: unknown) => void
+  /** Typed view state storage — accessed via useViewState hook, not directly */
+  viewStatesRef: React.RefObject<ViewStateStorage>
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined)
@@ -236,15 +254,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // ── View State Persistence ──────────────────────────────────────────────
-  const viewStatesRef = useRef<Partial<Record<WorkbenchView, unknown>>>({})
-
-  const getViewState = useCallback(<T,>(viewName: WorkbenchView): T | undefined => {
-    return viewStatesRef.current[viewName] as T | undefined
-  }, [])
-
-  const setViewState = useCallback((viewName: WorkbenchView, state: unknown) => {
-    viewStatesRef.current[viewName] = state
-  }, [])
+  const viewStatesRef = useRef<ViewStateStorage>({})
 
   return (
     <WorkbenchContext.Provider
@@ -268,8 +278,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         toggleTreeCollapsed,
         setSitePath,
         registerShortcuts,
-        getViewState,
-        setViewState,
+        viewStatesRef,
       }}
     >
       {children}

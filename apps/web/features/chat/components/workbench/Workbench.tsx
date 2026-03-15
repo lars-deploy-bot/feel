@@ -36,16 +36,23 @@ import { WorkbenchPhotos } from "./WorkbenchPhotos"
 import { WorkbenchTerminal } from "./WorkbenchTerminal"
 
 // ── View Registry ─────────────────────────────────────────────────────────────
-// Type-safe: every entry MUST accept WorkbenchViewProps. The compiler rejects
-// any component whose props don't include { workspace, worktree? }.
-// "Simple" views only need WorkbenchViewProps. Views with extra props (code, home, site)
-// are rendered explicitly below.
-const SIMPLE_VIEWS: Partial<Record<WorkbenchView, ComponentType<WorkbenchViewProps>>> = {
-  terminal: WorkbenchTerminal,
-  agents: WorkbenchAgents,
-  photos: WorkbenchPhotos,
-  events: WorkbenchEvents,
-  drive: DrivePanel,
+// Exhaustive: every WorkbenchView MUST have an entry. Adding a new view to the
+// union without registering it here is a compiler error.
+// "simple" views only need WorkbenchViewProps — the component type is enforced.
+// "custom" views have extra props and are rendered explicitly in the dispatcher.
+type ViewRegistration =
+  | { kind: "simple"; component: ComponentType<WorkbenchViewProps> }
+  | { kind: "custom" }
+
+const VIEW_REGISTRY: Record<WorkbenchView, ViewRegistration> = {
+  home: { kind: "custom" },
+  site: { kind: "custom" },
+  code: { kind: "custom" },
+  terminal: { kind: "simple", component: WorkbenchTerminal },
+  drive: { kind: "simple", component: DrivePanel },
+  agents: { kind: "simple", component: WorkbenchAgents },
+  photos: { kind: "simple", component: WorkbenchPhotos },
+  events: { kind: "simple", component: WorkbenchEvents },
 }
 
 export function Workbench() {
@@ -252,9 +259,9 @@ export function Workbench() {
 }
 
 // ── View Dispatcher ──────────────────────────────────────────────────────────
-// Routes to the correct view component. Simple views go through the type-safe
-// SIMPLE_VIEWS registry (enforces WorkbenchViewProps). Complex views with extra
-// props are handled explicitly.
+// Routes to the correct view component. Simple views go through the exhaustive
+// VIEW_REGISTRY (enforces WorkbenchViewProps). Custom views with extra props
+// are handled explicitly in the switch.
 
 function WorkbenchViewDispatcher({
   view,
@@ -285,10 +292,11 @@ function WorkbenchViewDispatcher({
   toggleTreeCollapsed: () => void
   onSelectView: (view: WorkbenchView) => void
 }) {
-  // Simple views — dispatched from the type-safe registry
-  const SimpleView = SIMPLE_VIEWS[view]
-  if (SimpleView) {
-    return <SimpleView workspace={workspace} worktree={worktree} />
+  // Simple views — dispatched from the exhaustive registry
+  const registration = VIEW_REGISTRY[view]
+  if (registration.kind === "simple") {
+    const Component = registration.component
+    return <Component workspace={workspace} worktree={worktree} />
   }
 
   // Complex views — have extra props beyond WorkbenchViewProps
