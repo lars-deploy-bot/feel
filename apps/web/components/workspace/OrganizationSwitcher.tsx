@@ -14,7 +14,7 @@ export function OrganizationSwitcher({ onOrgChange }: OrganizationSwitcherProps)
   const [isOpen, setIsOpen] = useState(false)
   const selectedOrgId = useSelectedOrgId()
   const hasHydrated = useAppHydrated()
-  const { setSelectedOrg } = useWorkspaceActions()
+  const { setSelectedOrg, setCurrentWorkspace } = useWorkspaceActions()
 
   const { data, loading, error, retry } = useFetch<{ ok: boolean; organizations: Organization[] }>({
     url: "/api/auth/organizations",
@@ -37,6 +37,9 @@ export function OrganizationSwitcher({ onOrgChange }: OrganizationSwitcherProps)
   }, [hasHydrated, loading, organizations, selectedOrgId, setSelectedOrg, onOrgChange])
 
   function handleSelectOrg(orgId: string) {
+    if (orgId !== selectedOrgId) {
+      setCurrentWorkspace(null, orgId)
+    }
     setSelectedOrg(orgId)
     setIsOpen(false)
     onOrgChange?.(orgId)

@@ -63,7 +63,7 @@ import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 import { useLastSeenStreamSeq, useStreamingActions } from "@/lib/stores/streamingStore"
 import { useTabActions, useTabDataStore } from "@/lib/stores/tabStore"
-import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
+import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 // Local components
 import { AgentManagerIndicator, ChatEmptyState, Nav, OfflineBanner, TabBar } from "./components"
@@ -120,6 +120,7 @@ function ChatPageContent() {
 
   const { user } = useAuth()
   const selectedOrgId = useSelectedOrgId()
+  const { setSelectedOrg } = useWorkspaceActions()
   const _isAdmin = user?.isAdmin ?? false
 
   // Tabs are on by default for all users
@@ -160,23 +161,29 @@ function ChatPageContent() {
     claimRunId: automationMeta?.claim_run_id ?? null,
   })
 
-  // Handle ?wk= URL parameter to pre-select workspace (e.g., from widget "Edit me" button)
-  // This is a one-time deep-link intent: consume the param, set the workspace, then clear it
-  // so it doesn't fight back when the user switches org/project later.
+  // Handle ?wk= and ?org= URL parameters to pre-select workspace (e.g., from deploy or widget "Edit me" button)
+  // Consume-once per value: tracks consumed wk value so a second deep link with a different workspace takes effect.
   const [wkParam, setWkParam] = useQueryState(QUERY_KEYS.workspace)
+  const [orgParam, setOrgParam] = useQueryState(QUERY_KEYS.org)
   const [wtParam, setWtParam] = useQueryState(QUERY_KEYS.worktree)
   const worktreesEnabled = useFeatureFlag("WORKTREES")
   const requestWorktree = worktreesEnabled ? worktree : null
-  const wkConsumedRef = useRef(false)
+  const wkConsumedRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!mounted || !wkParam || wkConsumedRef.current) return
-    wkConsumedRef.current = true
+    if (!mounted || !wkParam || wkConsumedRef.current === wkParam) return
+    wkConsumedRef.current = wkParam
     if (wkParam !== workspace) {
       console.log("[ChatPage] Setting workspace from URL param:", wkParam)
-      setWorkspace(wkParam)
+      setWorkspace(wkParam, orgParam ?? undefined)
+      if (orgParam) {
+        setSelectedOrg(orgParam)
+      }
     }
     void setWkParam(null, { shallow: true })
-  }, [mounted, wkParam, workspace, setWorkspace, setWkParam])
+    if (orgParam) {
+      void setOrgParam(null, { shallow: true })
+    }
+  }, [mounted, wkParam, orgParam, workspace, setWorkspace, setWkParam, setOrgParam, setSelectedOrg])
 
   // Bidirectional sync between ?wt= URL param and worktree store.
   // Refs track previous values so each effect only reacts to its own source changing,
