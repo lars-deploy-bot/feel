@@ -22,6 +22,10 @@ vi.mock("@/features/deployment/hooks/useAuth", () => ({
   }),
 }))
 
+vi.mock("../components/AccountMenu", () => ({
+  AccountMenu: () => <div data-testid="account-menu">Account</div>,
+}))
+
 vi.mock("@/features/settings/SettingsNav", () => ({
   SettingsNav: () => <div data-testid="settings-nav">Settings Navigation</div>,
 }))
@@ -99,7 +103,8 @@ describe("ConversationSidebar", () => {
     expect(screen.getAllByLabelText("Conversation history")).toHaveLength(2)
     expect(screen.getAllByText("conv-1")).toHaveLength(2)
     expect(screen.getAllByTestId("workspace-switcher")).toHaveLength(2)
-    expect(screen.getAllByTestId("settings-button")).toHaveLength(2)
+    // Settings button uses aria-label, rendered in both desktop and mobile via header
+    expect(screen.getAllByLabelText("Settings")).toHaveLength(2)
     expect(screen.getByRole("button", { name: "Feedback" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Components" })).toBeTruthy()
   })

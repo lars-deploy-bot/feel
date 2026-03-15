@@ -51,8 +51,8 @@ function createTestTab(overrides: Partial<Tab> = {}): Tab {
 // ============================================================================
 
 describe("tabModel constants", () => {
-  it("MAX_TABS_PER_GROUP is 5", () => {
-    expect(MAX_TABS_PER_GROUP).toBe(5)
+  it("MAX_TABS_PER_GROUP is 10", () => {
+    expect(MAX_TABS_PER_GROUP).toBe(10)
   })
 
   it("CLOSED_TAB_TTL_MS is 7 days", () => {
