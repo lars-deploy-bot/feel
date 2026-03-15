@@ -21,6 +21,23 @@ interface FileInfo {
   path: string
 }
 
+/** Entries hidden from the file tree — noise that users should never browse into */
+const HIDDEN_ENTRIES = new Set([
+  ".git",
+  "node_modules",
+  ".next",
+  ".turbo",
+  ".cache",
+  ".bun",
+  ".vite",
+  "__pycache__",
+  ".DS_Store",
+  "Thumbs.db",
+  ".env",
+  ".env.local",
+  ".env.production",
+])
+
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request)
 
@@ -71,13 +88,15 @@ export async function POST(request: NextRequest) {
     try {
       const entries = await readdir(fullPath, { withFileTypes: true })
 
-      const files: FileInfo[] = entries.map(entry => ({
-        name: entry.name,
-        type: entry.isDirectory() ? "directory" : "file",
-        size: 0,
-        modified: "",
-        path: path.join(targetPath, entry.name),
-      }))
+      const files: FileInfo[] = entries
+        .filter(entry => !HIDDEN_ENTRIES.has(entry.name))
+        .map(entry => ({
+          name: entry.name,
+          type: entry.isDirectory() ? "directory" : "file",
+          size: 0,
+          modified: "",
+          path: path.join(targetPath, entry.name),
+        }))
 
       return NextResponse.json({
         ok: true,
@@ -123,13 +142,15 @@ async function handleE2bList(domain: ResolvedDomain, targetPath: string, request
   try {
     const entries = await listE2bDirectory(domain, targetPath)
 
-    const files: FileInfo[] = entries.map(entry => ({
-      name: entry.name,
-      type: entry.kind,
-      size: 0,
-      modified: "",
-      path: entry.path,
-    }))
+    const files: FileInfo[] = entries
+      .filter(entry => !HIDDEN_ENTRIES.has(entry.name))
+      .map(entry => ({
+        name: entry.name,
+        type: entry.kind,
+        size: 0,
+        modified: "",
+        path: entry.path,
+      }))
 
     return NextResponse.json({
       ok: true,

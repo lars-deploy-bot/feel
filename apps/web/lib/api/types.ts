@@ -69,3 +69,19 @@ export interface ReferralData {
     creditsEarned: number
   }
 }
+
+// ============================================================================
+// Voice / Transcription API Types
+// ============================================================================
+
+export interface TranscribeResult {
+  text: string
+  duration: number | null
+  language: string | null
+}
+
+export interface TranscribeError {
+  error: string
+}
+
+export type TranscribeResponse = TranscribeResult | TranscribeError

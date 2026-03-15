@@ -17,7 +17,9 @@ import { MessageWrapper } from "@/features/chat/components/message-renderers/Mes
 import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIndicator"
 import { ReadOnlyTranscriptBar } from "@/features/chat/components/ReadOnlyTranscriptBar"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle, type PanelImperativeHandle } from "react-resizable-panels"
 import { Workbench } from "@/features/chat/components/workbench/Workbench"
+import { CHAT_PANEL, RESIZE_HANDLE_ID, WORKBENCH_PANEL } from "@/lib/layout"
 import { WorkbenchMobile } from "@/features/chat/components/workbench/WorkbenchMobile"
 // useTabSession removed - now using useActiveSession via useTabIsolatedMessages
 import { useAutomationTranscriptPoll } from "@/features/chat/hooks/useAutomationTranscriptPoll"
@@ -126,6 +128,7 @@ function ChatPageContent() {
   // Tabs are on by default for all users
   const chatInputRef = useRef<ChatInputHandle | null>(null)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
+  const workbenchPanelRef = useRef<PanelImperativeHandle>(null)
   const showWorkbenchRaw = useWorkbench()
   const isWorkbenchFullscreen = useWorkbenchFullscreen()
   const isDebugMode = useDebugVisible()
@@ -142,6 +145,7 @@ function ChatPageContent() {
     tabId: sessionTabId,
     tabGroupId: sessionTabGroupId,
     isReady: sessionReady,
+    isLoadingMessages,
     activeTab,
     workspaceTabs,
     actions: sessionActions,
@@ -306,6 +310,17 @@ function ChatPageContent() {
   // Superadmin workspace (alive) shows terminal & code views only
   const isSuperadminWorkspace = workspace === SUPERADMIN_WORKSPACE_NAME
   const showWorkbench = showWorkbenchRaw // Show for all workspaces
+
+  // Sync workbench toggle → panel collapse/expand (no layout shift)
+  useEffect(() => {
+    const panel = workbenchPanelRef.current
+    if (!panel) return
+    if (showWorkbench) {
+      panel.expand()
+    } else {
+      panel.collapse()
+    }
+  }, [showWorkbench])
 
   const streamingActions = useStreamingActions()
   const lastSeenStreamSeq = useLastSeenStreamSeq(sessionTabId)
@@ -761,7 +776,7 @@ function ChatPageContent() {
       />
 
       {/* Main content column: nav + chat + workbench */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div data-panel-role="chat-main-column" className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Nav
           onFeedbackClick={modals.openFeedback}
           onTemplatesClick={modals.openTemplates}
@@ -778,13 +793,13 @@ function ChatPageContent() {
         />
 
         {/* Content area: chat + workbench side by side (or settings content) */}
-        <div className="flex-1 flex flex-row overflow-hidden min-h-0 relative">
+        <div data-panel-role="chat-content-area" className="flex-1 overflow-hidden min-h-0 relative">
           {/* Settings content — shown when sidebar is in settings mode */}
           {modals.settings && (
             <section
-              className="flex-1 min-w-0 h-full overflow-y-auto overscroll-contain bg-zinc-50 dark:bg-zinc-950"
+              className="absolute inset-0 z-20 overflow-y-auto overscroll-contain bg-zinc-50 dark:bg-zinc-950"
               aria-label="Settings"
-              data-testid="settings-overlay"
+              data-panel-role="settings-overlay"
             >
               <Suspense fallback={null}>
                 <SettingsContent />
@@ -792,224 +807,240 @@ function ChatPageContent() {
             </section>
           )}
 
-          <section
-            className={`flex-1 flex flex-col overflow-hidden relative min-w-0 ${modals.settings || (showWorkbench && isWorkbenchFullscreen) ? "hidden" : ""}`}
-            aria-label="Chat area"
-            onDragEnter={handleChatDragEnter}
-            onDragLeave={handleChatDragLeave}
-            onDragOver={handleChatDragOver}
-            onDrop={handleChatDrop}
-          >
-            <OfflineBanner isOnline={isOnline} />
-            <ChatDropOverlay isDragging={isDragging} />
-            <Suspense fallback={null}>
-              <SubdomainInitializer
-                onInitialize={handleSubdomainInitialize}
-                onInitialized={handleSubdomainInitialized}
-                isInitialized={subdomainInitialized}
-                isMounted={mounted}
-              />
-            </Suspense>
-            <div className="flex-1 min-h-0 flex flex-col">
-              {/* Tabs - shown when there are tabs, or when there are closed tabs to reopen */}
-              {(tabs.length > 0 || closedTabs.length > 0) && (
-                <TabBar
-                  tabs={tabs}
-                  closedTabs={closedTabs}
-                  activeTabId={activeTabInGroup?.id ?? null}
-                  onTabSelect={handleTabSelect}
-                  onTabClose={handleTabClose}
-                  onTabRename={handleTabRename}
-                  onTabReopen={handleTabReopen}
-                  onAddTab={handleAddTab}
-                />
-              )}
-
-              {/* Messages */}
-              <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-8 flex flex-col">
-                <div className="p-4 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0 flex-1">
-                  {messages.length === 0 && !busy && (
-                    <ChatEmptyState
-                      workspace={workspace}
-                      totalDomainCount={totalDomainCount}
-                      isLoading={organizationsLoading}
-                      onImportGithub={() => setGithubImportOpen(true)}
-                      onSelectSite={() => modals.openSettings("websites")}
+          <PanelGroup orientation="horizontal" className="h-full">
+            {/* Chat panel — always present, always dominant */}
+            <Panel
+              id={CHAT_PANEL.id}
+              minSize={CHAT_PANEL.min}
+              defaultSize={CHAT_PANEL.default}
+              className={modals.settings || (showWorkbench && isWorkbenchFullscreen) ? "hidden" : ""}
+            >
+              <section
+                data-panel-role="chat-area"
+                className="flex flex-col overflow-hidden relative h-full"
+                aria-label="Chat area"
+                onDragEnter={handleChatDragEnter}
+                onDragLeave={handleChatDragLeave}
+                onDragOver={handleChatDragOver}
+                onDrop={handleChatDrop}
+              >
+                <OfflineBanner isOnline={isOnline} />
+                <ChatDropOverlay isDragging={isDragging} />
+                <Suspense fallback={null}>
+                  <SubdomainInitializer
+                    onInitialize={handleSubdomainInitialize}
+                    onInitialized={handleSubdomainInitialized}
+                    isInitialized={subdomainInitialized}
+                    isMounted={mounted}
+                  />
+                </Suspense>
+                <div data-panel-role="chat-main-content" className="flex-1 min-h-0 flex flex-col">
+                  {/* Tabs - shown when there are tabs, or when there are closed tabs to reopen */}
+                  {(tabs.length > 0 || closedTabs.length > 0) && (
+                    <TabBar
+                      tabs={tabs}
+                      closedTabs={closedTabs}
+                      activeTabId={activeTabInGroup?.id ?? null}
+                      onTabSelect={handleTabSelect}
+                      onTabClose={handleTabClose}
+                      onTabRename={handleTabRename}
+                      onTabReopen={handleTabReopen}
+                      onAddTab={handleAddTab}
                     />
                   )}
 
-                  {(() => {
-                    const filteredMessages = messages.filter((message, idx) => {
-                      // Hide "compacting" spinner once its compaction cycle completes
-                      // (a compact_boundary exists AFTER this compacting message)
-                      if (message.type === "compacting") {
-                        const nextBoundary = messages.findIndex((m, i) => i > idx && m.type === "compact_boundary")
-                        if (nextBoundary >= 0) return false
-                      }
-                      return shouldRenderMessage(message, isDebugMode)
-                    })
+                  {/* Messages */}
+                  <div ref={containerRef} data-panel-role="chat-messages-scroll" className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-8 flex flex-col">
+                    <div className="p-4 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0 flex-1">
+                      {messages.length === 0 && !busy && !isLoadingMessages && (
+                        <ChatEmptyState
+                          workspace={workspace}
+                          totalDomainCount={totalDomainCount}
+                          isLoading={organizationsLoading}
+                          onImportGithub={() => setGithubImportOpen(true)}
+                          onSelectSite={() => modals.openSettings("websites")}
+                        />
+                      )}
 
-                    // Group consecutive exploration tool results (Read, Glob, Grep)
-                    const renderItems: RenderItem[] = groupToolMessages(filteredMessages)
+                      {(() => {
+                        if (!sessionTabId) return null
 
-                    return renderItems.map(item => {
-                      if (item.type === "group") {
-                        return (
-                          <MessageWrapper
-                            key={`group-${item.messages[0].id}`}
-                            messageId={item.messages[0].id}
-                            tabId={sessionTabId ?? ""}
-                            canDelete={false}
-                          >
-                            <CollapsibleToolGroup
-                              messages={item.messages}
-                              trailingTaskResult={item.trailingTaskResult}
-                              subagentSummary={item.subagentSummary}
-                              tabId={sessionTabId ?? undefined}
-                              onSubmitAnswer={sendMessage}
-                            />
-                          </MessageWrapper>
-                        )
-                      }
-
-                      const { message, index } = item
-                      const content = renderMessage(message, {
-                        onSubmitAnswer: sendMessage,
-                        tabId: sessionTabId ?? undefined,
-                      })
-                      // Skip rendering wrapper if component returns null
-                      if (!content) return null
-
-                      // Determine if this message can be deleted:
-                      // - Must have a previous assistant message with UUID to resume from
-                      // - Only user messages and assistant messages with visible content can be deleted
-                      // - NEVER deletable in read-only automation transcripts
-                      const canDelete =
-                        !isAutomationRun &&
-                        sessionTabId != null &&
-                        index > 0 &&
-                        (message.type === "user" || message.type === "sdk_message") &&
-                        // Check if there's any previous assistant message with a UUID
-                        filteredMessages.slice(0, index).some(m => {
-                          if (m.type !== "sdk_message") return false
-                          const sdkContent = m.content
-                          if (typeof sdkContent !== "object" || sdkContent === null) return false
-                          return (
-                            "type" in sdkContent &&
-                            sdkContent.type === "assistant" &&
-                            "uuid" in sdkContent &&
-                            !!sdkContent.uuid
-                          )
+                        const filteredMessages = messages.filter((message, idx) => {
+                          if (message.type === "compacting") {
+                            const nextBoundary = messages.findIndex((m, i) => i > idx && m.type === "compact_boundary")
+                            if (nextBoundary >= 0) return false
+                          }
+                          return shouldRenderMessage(message, isDebugMode)
                         })
 
-                      const isTextMessage =
-                        message.type === "user" ||
-                        (message.type === "sdk_message" &&
-                          typeof message.content === "object" &&
-                          message.content !== null &&
-                          "type" in message.content &&
-                          message.content.type === "assistant")
+                        const renderItems: RenderItem[] = groupToolMessages(filteredMessages)
 
-                      return (
-                        <MessageWrapper
-                          key={message.id}
-                          messageId={message.id}
-                          tabId={sessionTabId ?? ""}
-                          canDelete={canDelete}
-                          align={message.type === "user" ? "right" : "left"}
-                          showActions={isTextMessage}
-                        >
-                          {content}
-                        </MessageWrapper>
-                      )
-                    })
-                  })()}
+                        return renderItems.map(item => {
+                          if (item.type === "group") {
+                            return (
+                              <MessageWrapper
+                                key={`group-${item.messages[0].id}`}
+                                messageId={item.messages[0].id}
+                                tabId={sessionTabId}
+                                canDelete={false}
+                              >
+                                <CollapsibleToolGroup
+                                  messages={item.messages}
+                                  trailingTaskResult={item.trailingTaskResult}
+                                  subagentSummary={item.subagentSummary}
+                                  tabId={sessionTabId}
+                                  onSubmitAnswer={sendMessage}
+                                />
+                              </MessageWrapper>
+                            )
+                          }
 
-                  {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
-                  <PendingToolsIndicator tabId={sessionTabId} suppressThinking={isCompactionInProgress} />
+                          const { message, index } = item
+                          const content = renderMessage(message, {
+                            onSubmitAnswer: sendMessage,
+                            tabId: sessionTabId,
+                          })
+                          if (!content) return null
 
-                  {!isAutomationRun && (
-                    <AgentManagerIndicator
-                      isEvaluating={isEvaluatingProgress}
-                      message={msg}
-                      workspace={workspace}
-                      agentManagerAbortRef={agentManagerAbortRef}
-                      agentManagerTimeoutRef={agentManagerTimeoutRef}
-                      onCancel={() => {
-                        if (msg.startsWith("agentmanager>")) setMsg("")
-                        // isEvaluatingProgress is managed by useChatMessaging hook
-                      }}
-                    />
-                  )}
+                          const canDelete =
+                            !isAutomationRun &&
+                            index > 0 &&
+                            (message.type === "user" || message.type === "sdk_message") &&
+                            filteredMessages.slice(0, index).some(m => {
+                              if (m.type !== "sdk_message") return false
+                              const sdkContent = m.content
+                              if (typeof sdkContent !== "object" || sdkContent === null) return false
+                              return (
+                                "type" in sdkContent &&
+                                sdkContent.type === "assistant" &&
+                                "uuid" in sdkContent &&
+                                !!sdkContent.uuid
+                              )
+                            })
 
-                  {/* Scroll anchor - Intersection Observer watches this to detect if user is at bottom */}
-                  <div ref={anchorRef} className="h-px" />
-                </div>
-              </div>
+                          const isTextMessage =
+                            message.type === "user" ||
+                            (message.type === "sdk_message" &&
+                              typeof message.content === "object" &&
+                              message.content !== null &&
+                              "type" in message.content &&
+                              message.content.type === "assistant")
 
-              {/* Input */}
-              <div className="relative mx-auto w-full md:max-w-2xl">
-                {/* Jump to bottom button - positioned above input, transparent background */}
-                {isHydrated && (
-                  <AnimatePresence>
-                    {isScrolledAway && messages.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute left-0 right-0 bottom-full mb-2 z-10 flex justify-center pointer-events-none"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => forceScrollToBottom()}
-                          className="pointer-events-auto px-3 py-1.5 rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black text-sm font-medium shadow-lg hover:bg-black dark:hover:bg-white transition-colors active:scale-95"
-                        >
-                          ↓ New messages
-                        </button>
-                      </motion.div>
+                          return (
+                            <MessageWrapper
+                              key={message.id}
+                              messageId={message.id}
+                              tabId={sessionTabId}
+                              canDelete={canDelete}
+                              align={message.type === "user" ? "right" : "left"}
+                              showActions={isTextMessage}
+                            >
+                              {content}
+                            </MessageWrapper>
+                          )
+                        })
+                      })()}
+
+                      {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
+                      <PendingToolsIndicator tabId={sessionTabId} suppressThinking={isCompactionInProgress} />
+
+                      {!isAutomationRun && (
+                        <AgentManagerIndicator
+                          isEvaluating={isEvaluatingProgress}
+                          message={msg}
+                          workspace={workspace}
+                          agentManagerAbortRef={agentManagerAbortRef}
+                          agentManagerTimeoutRef={agentManagerTimeoutRef}
+                          onCancel={() => {
+                            if (msg.startsWith("agentmanager>")) setMsg("")
+                            // isEvaluatingProgress is managed by useChatMessaging hook
+                          }}
+                        />
+                      )}
+
+                      {/* Scroll anchor - Intersection Observer watches this to detect if user is at bottom */}
+                      <div ref={anchorRef} className="h-px" />
+                    </div>
+                  </div>
+
+                  {/* Input */}
+                  <div className="relative mx-auto w-full md:max-w-2xl">
+                    {/* Jump to bottom button - positioned above input, transparent background */}
+                    {isHydrated && (
+                      <AnimatePresence>
+                        {isScrolledAway && messages.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute left-0 right-0 bottom-full mb-2 z-10 flex justify-center pointer-events-none"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => forceScrollToBottom()}
+                              className="pointer-events-auto px-3 py-1.5 rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black text-sm font-medium shadow-lg hover:bg-black dark:hover:bg-white transition-colors active:scale-95"
+                            >
+                              ↓ New messages
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     )}
-                  </AnimatePresence>
-                )}
-                {isAutomationRun ? (
-                  <ReadOnlyTranscriptBar />
-                ) : (
-                  <ChatInput
-                    ref={chatInputRef}
-                    message={msg}
-                    setMessage={setMsg}
-                    busy={busy}
-                    isReady={isChatReady && !!workspace}
-                    isStopping={isStopping}
-                    onSubmit={sendMessage}
-                    onStop={stopStreaming}
-                    onOpenTemplates={modals.openTemplates}
-                    tabId={tabId}
-                    config={{
-                      enableAttachments: true,
-                      enableCamera: true,
-                      maxAttachments: 5,
-                      maxFileSize: 20 * 1024 * 1024,
-                      workspace: workspace ?? undefined,
-                      worktree: requestWorktree,
-                      placeholder:
-                        !workspace && mounted && !organizationsLoading
-                          ? "Select a site to start chatting..."
-                          : "Tell me what to change...",
-                      onAttachmentUpload: handleAttachmentUpload,
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-          </section>
+                    {isAutomationRun ? (
+                      <ReadOnlyTranscriptBar />
+                    ) : tabId ? (
+                      <ChatInput
+                        ref={chatInputRef}
+                        message={msg}
+                        setMessage={setMsg}
+                        busy={busy}
+                        isReady={isChatReady && !!workspace}
+                        isStopping={isStopping}
+                        onSubmit={sendMessage}
+                        onStop={stopStreaming}
+                        onOpenTemplates={modals.openTemplates}
+                        tabId={tabId}
+                        config={{
+                          enableAttachments: true,
+                          enableCamera: true,
+                          maxAttachments: 5,
+                          maxFileSize: 20 * 1024 * 1024,
+                          workspace: workspace ?? undefined,
+                          worktree: requestWorktree,
+                          placeholder:
+                            !workspace && mounted && !organizationsLoading
+                              ? "Select a site to start chatting..."
+                              : "Tell me what to change...",
+                          onAttachmentUpload: handleAttachmentUpload,
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+            </Panel>
 
-          {/* Workbench - desktop only, hidden when settings open */}
-          {showWorkbench && !modals.settings && (
-            <div className={`hidden md:flex h-full overflow-hidden ${isWorkbenchFullscreen ? "flex-1" : ""}`}>
+            {/* Resize handle */}
+            <PanelResizeHandle
+              id={RESIZE_HANDLE_ID}
+              className={`hidden md:flex w-[2px] items-center justify-center cursor-col-resize transition-colors hover:bg-blue-500/40 data-[resize-handle-active]:bg-blue-500/60 ${!showWorkbench || modals.settings ? "!hidden" : ""}`}
+              style={{ touchAction: "none" }}
+            />
+
+            {/* Workbench panel — always rendered, collapsed when hidden */}
+            <Panel
+              id={WORKBENCH_PANEL.id}
+              panelRef={workbenchPanelRef}
+              collapsible
+              collapsedSize={WORKBENCH_PANEL.collapsedSize}
+              minSize={WORKBENCH_PANEL.min}
+              defaultSize={showWorkbench ? WORKBENCH_PANEL.default : WORKBENCH_PANEL.collapsedSize}
+              className={`hidden md:flex h-full overflow-hidden border-l border-black/[0.08] dark:border-white/[0.04] ${isWorkbenchFullscreen ? "!flex flex-1" : ""}`}
+            >
               <Workbench />
-            </div>
-          )}
+            </Panel>
+          </PanelGroup>
         </div>
       </div>
 
@@ -1025,7 +1056,7 @@ function ChatPageContent() {
             >
               {isAutomationRun ? (
                 <ReadOnlyTranscriptBar />
-              ) : (
+              ) : tabId ? (
                 <ChatInput
                   ref={chatInputRef}
                   message={msg}
@@ -1048,7 +1079,7 @@ function ChatPageContent() {
                     onAttachmentUpload: handleAttachmentUpload,
                   }}
                 />
-              )}
+              ) : null}
             </WorkbenchMobile>
           )}
         </AnimatePresence>

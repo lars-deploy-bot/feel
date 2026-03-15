@@ -177,6 +177,8 @@ export type AddSkillFn = (
 
 export interface ChatInputContextValue extends ChatInputState, ChatInputActions {
   config: ChatInputConfig
+  /** Current tab ID — single source of truth from useActiveSession */
+  tabId: string
   /** Register the textarea ref for focus management */
   registerTextareaRef: (ref: HTMLTextAreaElement | null) => void
   /** Add a skill as an attachment (for @mention autocomplete and toolbar) */
@@ -192,7 +194,7 @@ export interface ChatInputProps extends ChatInputActions {
   isReady?: boolean
   config?: ChatInputConfig
   /** Current tab ID — scopes attachments to this tab in the store */
-  tabId: string | null
+  tabId: string
   children?: ReactNode
   onOpenTemplates?: () => void
   hideToolbar?: boolean

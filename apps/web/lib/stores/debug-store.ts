@@ -25,7 +25,6 @@ interface DebugState {
   showWorkbench: boolean
   isWorkbenchMinimized: boolean
   isWorkbenchFullscreen: boolean
-  workbenchWidth: number | null // null = use default (half viewport)
 }
 
 // Actions interface - grouped under stable object (Guide §14.3)
@@ -39,7 +38,6 @@ interface DebugActions {
     setWorkbench: (show: boolean) => void
     setWorkbenchMinimized: (minimized: boolean) => void
     setWorkbenchFullscreen: (fullscreen: boolean) => void
-    setWorkbenchWidth: (width: number) => void
   }
 }
 
@@ -70,14 +68,12 @@ export const useDebugStoreBase = create<DebugStore>()(
         setWorkbench: (show: boolean) => set({ showWorkbench: show }),
         setWorkbenchMinimized: (minimized: boolean) => set({ isWorkbenchMinimized: minimized }),
         setWorkbenchFullscreen: (fullscreen: boolean) => set({ isWorkbenchFullscreen: fullscreen }),
-        setWorkbenchWidth: (width: number) => set({ workbenchWidth: width }),
       }
       return {
         isDebugView: false,
         showWorkbench: true,
         isWorkbenchMinimized: true,
         isWorkbenchFullscreen: false,
-        workbenchWidth: null,
         actions,
       }
     },
@@ -88,7 +84,6 @@ export const useDebugStoreBase = create<DebugStore>()(
         showWorkbench: state.showWorkbench,
         isWorkbenchMinimized: state.isWorkbenchMinimized,
         isWorkbenchFullscreen: state.isWorkbenchFullscreen,
-        workbenchWidth: state.workbenchWidth,
       }),
       skipHydration: true,
     },
@@ -106,9 +101,6 @@ export const useWorkbenchMinimized = () => useDebugStoreBase(state => state.isWo
 
 // Atomic selector: Workbench fullscreen state (Guide §14.1)
 export const useWorkbenchFullscreen = () => useDebugStoreBase(state => state.isWorkbenchFullscreen)
-
-// Atomic selector: Workbench width (Guide §14.1)
-export const useWorkbenchWidth = () => useDebugStoreBase(state => state.workbenchWidth)
 
 // Actions hook - stable reference (Guide §14.3)
 export const useDebugActions = () => useDebugStoreBase(state => state.actions)

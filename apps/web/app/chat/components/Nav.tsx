@@ -50,7 +50,7 @@ export function Nav({
   const iconButtonStyle = `${buttonBase} w-8 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]`
 
   return (
-    <div className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]">
+    <div data-testid="chat-nav-bar" className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]">
       <div className="h-full flex items-center justify-between px-2">
         {/* Left side: sidebar toggle + workspace picker */}
         <div className="flex items-center gap-2 min-w-0 pl-1">
@@ -60,6 +60,7 @@ export function Nav({
             className={`inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-200 ease-in-out overflow-hidden ${
               isSidebarOpen ? "w-0 opacity-0 pointer-events-none" : "w-8 opacity-100"
             }`}
+            data-testid="sidebar-toggle"
             aria-label="Open sidebar"
             tabIndex={isSidebarOpen ? -1 : 0}
           >
@@ -110,6 +111,7 @@ export function Nav({
               onFeedbackClick()
             }}
             className={iconButtonStyle}
+            data-testid="feedback-button"
             aria-label="Send Feedback"
             title="Send Feedback"
           >
@@ -124,6 +126,7 @@ export function Nav({
               onTemplatesClick()
             }}
             className={iconButtonStyle}
+            data-testid="templates-button"
             aria-label="Components"
             title="Components"
           >
@@ -140,6 +143,7 @@ export function Nav({
                 onPhotoMenuToggle()
               }}
               className={iconButtonStyle}
+              data-testid="photos-button"
               aria-label="Photos"
               title="Photos"
             >

@@ -5,6 +5,8 @@
  *
  * Inspired by: GitHub Actions timeline, Datadog service list, SpaceX telemetry.
  * Core idea: health-first. Healthy = quiet. Problems = loud. Click to expand inline.
+ *
+ * Wired to real API: GET /api/manager/automations (enriched jobs with runs/stats)
  */
 
 import {
@@ -15,6 +17,7 @@ import {
   Copy,
   Flame,
   Globe,
+  Loader2,
   Mail,
   Pause,
   Pencil,
@@ -26,183 +29,102 @@ import {
   XCircle,
   Zap,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useAdminUser } from "@/hooks/use-superadmin"
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Types (matches manager API response) ───────────────────────────────────
+
+type Run = {
+  id: string
+  status: string
+  started_at: string
+  completed_at: string | null
+  duration_ms: number | null
+  error: string | null
+  triggered_by: string | null
+}
 
 type Agent = {
   id: string
   name: string
+  description: string | null
   hostname: string
   is_active: boolean
+  status: string
   trigger_type: "cron" | "email" | "webhook" | "one-time"
   cron_schedule: string | null
+  cron_timezone: string | null
   email_address: string | null
   last_run_at: string | null
-  last_run_status: "success" | "failure" | "running" | null
+  last_run_status: string | null
+  last_run_error: string | null
   next_run_at: string | null
-  action_prompt: string
-  model: string
-  total_runs: number
+  consecutive_failures: number | null
+  action_prompt: string | null
+  action_model: string | null
+  action_target_page: string | null
+  skills: string[] | null
+  runs_30d: number
+  success_runs_30d: number
+  failure_runs_30d: number
+  avg_duration_ms: number | null
+  estimated_weekly_cost_usd: number
+  recent_runs: Run[]
+  // Computed client-side
   success_rate: number
-  avg_duration_ms: number
-  skills: string[]
-  streak: number // consecutive successes
+  streak: number
 }
 
-type Run = {
-  id: string
-  status: "success" | "failure" | "running"
-  started_at: string
-  duration_ms: number
-  triggered_by: string
-  summary: string | null
-  cost_usd: number
-  error: string | null
+type OrgSummary = {
+  org_id: string
+  org_name: string
+  jobs: Agent[]
+  total_jobs: number
+  active_jobs: number
 }
 
-// ─── Stub Data ──────────────────────────────────────────────────────────────
+// ─── API ────────────────────────────────────────────────────────────────────
 
-const AGENTS: Agent[] = [
-  {
-    id: "1",
-    name: "Daily News Digest",
-    hostname: "techblog.alive.best",
-    is_active: true,
-    trigger_type: "cron",
-    cron_schedule: "0 9 * * 1-5",
-    email_address: null,
-    last_run_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-    last_run_status: "success",
-    next_run_at: new Date(Date.now() + 14 * 3600000).toISOString(),
-    action_prompt: "Scan the top tech news sites and create a curated digest blog post with summaries and analysis.",
-    model: "Sonnet 4",
-    total_runs: 47,
-    success_rate: 96,
-    avg_duration_ms: 45000,
-    skills: ["web-search", "content-writer"],
-    streak: 8,
-  },
-  {
-    id: "2",
-    name: "Customer Email Responder",
-    hostname: "shop.alive.best",
-    is_active: true,
-    trigger_type: "email",
-    cron_schedule: null,
-    email_address: "support-x7k@in.alive.best",
-    last_run_at: new Date(Date.now() - 15 * 60000).toISOString(),
-    last_run_status: "success",
-    next_run_at: null,
-    action_prompt: "Read incoming customer email, draft a helpful response, check knowledge base.",
-    model: "Haiku 4.5",
-    total_runs: 312,
-    success_rate: 99,
-    avg_duration_ms: 8000,
-    skills: ["email-responder"],
-    streak: 54,
-  },
-  {
-    id: "3",
-    name: "Weekly Analytics Report",
-    hostname: "dashboard.alive.best",
-    is_active: true,
-    trigger_type: "cron",
-    cron_schedule: "0 8 * * 1",
-    email_address: null,
-    last_run_at: new Date(Date.now() - 3 * 86400000).toISOString(),
-    last_run_status: "success",
-    next_run_at: new Date(Date.now() + 4 * 86400000).toISOString(),
-    action_prompt: "Pull analytics data, generate charts and insights, publish the weekly report.",
-    model: "Sonnet 4",
-    total_runs: 12,
-    success_rate: 92,
-    avg_duration_ms: 120000,
-    skills: ["analytics"],
-    streak: 3,
-  },
-  {
-    id: "4",
-    name: "Deployment Smoke Tests",
-    hostname: "api.alive.best",
-    is_active: true,
-    trigger_type: "webhook",
-    cron_schedule: null,
-    email_address: null,
-    last_run_at: new Date(Date.now() - 45 * 60000).toISOString(),
-    last_run_status: "failure",
-    next_run_at: null,
-    action_prompt: "Run smoke tests against staging, report results to Slack.",
-    model: "Haiku 4.5",
-    total_runs: 89,
-    success_rate: 85,
-    avg_duration_ms: 32000,
-    skills: ["testing", "slack-notify"],
-    streak: 0,
-  },
-  {
-    id: "5",
-    name: "Content Calendar Sync",
-    hostname: "blog.alive.best",
-    is_active: true,
-    trigger_type: "cron",
-    cron_schedule: "0 6 * * *",
-    email_address: null,
-    last_run_at: new Date(Date.now() - 90000).toISOString(),
-    last_run_status: "running",
-    next_run_at: new Date(Date.now() + 6 * 3600000).toISOString(),
-    action_prompt: "Sync content calendar from Notion, prepare drafts for today's posts.",
-    model: "Sonnet 4",
-    total_runs: 156,
-    success_rate: 98,
-    avg_duration_ms: 15000,
-    skills: ["notion-sync"],
-    streak: 22,
-  },
-  {
-    id: "6",
-    name: "Nightly DB Backup Check",
-    hostname: "infra.alive.best",
-    is_active: false,
-    trigger_type: "cron",
-    cron_schedule: "0 3 * * *",
-    email_address: null,
-    last_run_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-    last_run_status: "success",
-    next_run_at: null,
-    action_prompt: "Verify nightly database backup completed. Check file size and integrity.",
-    model: "Haiku 4.5",
-    total_runs: 210,
-    success_rate: 100,
-    avg_duration_ms: 5000,
-    skills: ["db-check"],
-    streak: 210,
-  },
-]
+async function fetchAgents(): Promise<Agent[]> {
+  const res = await fetch("/api/automations/enriched", { credentials: "include" })
+  if (!res.ok) throw new Error("Failed to fetch")
+  const json = await res.json()
+  const jobs: Agent[] = (json.jobs ?? []).map((job: Agent) => {
+    const successRate = job.runs_30d > 0 ? Math.round((job.success_runs_30d / job.runs_30d) * 100) : 0
+    let streak = 0
+    for (const run of job.recent_runs) {
+      if (run.status === "success") streak++
+      else break
+    }
+    return { ...job, success_rate: successRate, streak }
+  })
+  return jobs
+}
 
-function makeRuns(agent: Agent): Run[] {
-  const statuses: Run["status"][] =
-    agent.last_run_status === "failure"
-      ? ["failure", "success", "success", "failure", "success"]
-      : ["success", "success", "success", "failure", "success"]
+async function apiToggleActive(id: string, isActive: boolean): Promise<void> {
+  const res = await fetch(`/api/manager/automations/${id}/active`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_active: isActive }),
+  })
+  if (!res.ok) throw new Error("Failed to toggle")
+}
 
-  return statuses.map((status, i) => ({
-    id: `${agent.id}-r${i}`,
-    status,
-    started_at: new Date(Date.now() - (i + 1) * (agent.trigger_type === "email" ? 3600000 : 86400000)).toISOString(),
-    duration_ms: agent.avg_duration_ms + (Math.random() - 0.5) * agent.avg_duration_ms * 0.4,
-    triggered_by:
-      agent.trigger_type === "email"
-        ? "email"
-        : agent.trigger_type === "webhook"
-          ? "webhook"
-          : i === 3
-            ? "manual"
-            : "cron",
-    summary: status === "success" ? "Completed successfully" : null,
-    cost_usd: 0.01 + Math.random() * 0.05,
-    error: status === "failure" ? "Unexpected error during execution" : null,
-  }))
+async function apiTrigger(id: string): Promise<void> {
+  const res = await fetch(`/api/automations/${id}/trigger`, {
+    method: "POST",
+    credentials: "include",
+  })
+  if (!res.ok) throw new Error("Failed to trigger")
+}
+
+async function apiDelete(id: string): Promise<void> {
+  const res = await fetch(`/api/manager/automations/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  })
+  if (!res.ok) throw new Error("Failed to delete")
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -229,7 +151,8 @@ function futTime(d: string | null): string {
   return `${Math.floor(h / 24)}d`
 }
 
-function dur(ms: number): string {
+function dur(ms: number | null): string {
+  if (ms === null) return "—"
   if (ms < 1000) return `${Math.round(ms)}ms`
   const s = ms / 1000
   if (s < 60) return `${s.toFixed(1)}s`
@@ -272,10 +195,9 @@ function TrigIcon({ type }: { type: Agent["trigger_type"] }) {
 // ─── Sortable / health score ────────────────────────────────────────────────
 
 function healthScore(a: Agent): number {
-  // Lower = needs more attention = shown first
-  if (!a.is_active) return 100 // paused at the bottom
+  if (!a.is_active) return 100
   if (a.last_run_status === "failure") return 0
-  if (a.last_run_status === "running") return 10
+  if (a.status === "running") return 10
   return 50 + a.success_rate * 0.5
 }
 
@@ -289,7 +211,7 @@ function StatusPill({ agent }: { agent: Agent }) {
       </span>
     )
   }
-  if (agent.last_run_status === "running") {
+  if (agent.status === "running") {
     return (
       <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
         <span className="relative flex h-1.5 w-1.5">
@@ -330,24 +252,15 @@ function StreakBadge({ streak }: { streak: number }) {
   )
 }
 
-// ─── Mini run dots (last 10 runs) ───────────────────────────────────────────
+// ─── Run dots (from real recent_runs) ───────────────────────────────────────
 
 function RunDots({ agent }: { agent: Agent }) {
-  // Generate a deterministic pattern from success_rate
   const dots = useMemo(() => {
-    const count = Math.min(agent.total_runs, 12)
-    const result: ("success" | "failure")[] = []
-    // Use streak to determine recent pattern
-    for (let i = 0; i < count; i++) {
-      if (i < agent.streak) {
-        result.push("success")
-      } else {
-        result.push(Math.random() > 0.3 ? "success" : "failure")
-      }
-    }
-    return result.reverse() // most recent first (left)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agent.id])
+    // Use actual recent_runs, reversed so most recent is on the right
+    return [...agent.recent_runs].reverse().map(r => r.status === "success" ? "success" as const : "failure" as const)
+  }, [agent.recent_runs])
+
+  if (dots.length === 0) return <span className="text-[11px] text-zinc-300 dark:text-zinc-700">—</span>
 
   return (
     <div className="flex items-center gap-[3px]">
@@ -365,8 +278,56 @@ function RunDots({ agent }: { agent: Agent }) {
 
 // ─── Agent Row ──────────────────────────────────────────────────────────────
 
-function AgentRow({ agent, isExpanded, onToggle }: { agent: Agent; isExpanded: boolean; onToggle: () => void }) {
-  const runs = useMemo(() => makeRuns(agent), [agent])
+function AgentRow({
+  agent,
+  isExpanded,
+  onToggle,
+  onChanged,
+}: {
+  agent: Agent
+  isExpanded: boolean
+  onToggle: () => void
+  onChanged: () => void
+}) {
+  const [toggling, setToggling] = useState(false)
+  const [triggering, setTriggering] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  async function handleToggle() {
+    setToggling(true)
+    try {
+      await apiToggleActive(agent.id, !agent.is_active)
+      onChanged()
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  async function handleTrigger() {
+    setTriggering(true)
+    try {
+      await apiTrigger(agent.id)
+      setTimeout(onChanged, 1500)
+    } finally {
+      setTriggering(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    setDeleting(true)
+    try {
+      await apiDelete(agent.id)
+      onChanged()
+    } finally {
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
 
   return (
     <div
@@ -429,27 +390,31 @@ function AgentRow({ agent, isExpanded, onToggle }: { agent: Agent; isExpanded: b
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
-                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-all active:scale-[0.97] ${
+                  disabled={toggling}
+                  onClick={handleToggle}
+                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-all active:scale-[0.97] disabled:opacity-40 ${
                     agent.is_active
                       ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/15"
                       : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/15"
                   }`}
                 >
-                  {agent.is_active ? (
-                    <>
-                      <Pause size={12} /> Pause
-                    </>
+                  {toggling ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : agent.is_active ? (
+                    <Pause size={12} />
                   ) : (
-                    <>
-                      <Play size={12} /> Resume
-                    </>
+                    <Play size={12} />
                   )}
+                  {agent.is_active ? "Pause" : "Resume"}
                 </button>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors active:scale-[0.97]"
+                  disabled={triggering}
+                  onClick={handleTrigger}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors active:scale-[0.97] disabled:opacity-40"
                 >
-                  <Play size={12} /> Run now
+                  {triggering ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
+                  Run now
                 </button>
                 <button
                   type="button"
@@ -457,27 +422,51 @@ function AgentRow({ agent, isExpanded, onToggle }: { agent: Agent; isExpanded: b
                 >
                   <Pencil size={12} /> Edit
                 </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors active:scale-[0.97] ml-auto"
-                >
-                  <Trash2 size={12} />
-                </button>
+                {confirmDelete ? (
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <button
+                      type="button"
+                      disabled={deleting}
+                      onClick={handleDelete}
+                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-500/10 text-red-600 hover:bg-red-100 dark:hover:bg-red-500/15 transition-colors active:scale-[0.97] disabled:opacity-40"
+                    >
+                      {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                      Confirm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="h-8 px-3 rounded-lg text-xs font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors active:scale-[0.97] ml-auto"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </div>
 
               {/* Prompt */}
-              <div>
-                <div className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
-                  Prompt
+              {agent.action_prompt && (
+                <div>
+                  <div className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
+                    Prompt
+                  </div>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{agent.action_prompt}</p>
                 </div>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{agent.action_prompt}</p>
-              </div>
+              )}
 
               {/* Config grid */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="py-2.5 px-3 rounded-lg bg-white dark:bg-white/[0.02] border border-zinc-100 dark:border-zinc-800">
                   <p className="text-xs text-zinc-400 dark:text-zinc-500">Model</p>
-                  <p className="text-sm font-medium text-zinc-900 dark:text-white mt-0.5">{agent.model}</p>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white mt-0.5">{agent.action_model ?? "default"}</p>
                 </div>
                 <div className="py-2.5 px-3 rounded-lg bg-white dark:bg-white/[0.02] border border-zinc-100 dark:border-zinc-800">
                   <p className="text-xs text-zinc-400 dark:text-zinc-500">Avg time</p>
@@ -496,7 +485,7 @@ function AgentRow({ agent, isExpanded, onToggle }: { agent: Agent; isExpanded: b
               </div>
 
               {/* Skills */}
-              {agent.skills.length > 0 && (
+              {agent.skills && agent.skills.length > 0 && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] text-zinc-400 dark:text-zinc-500 mr-1">Skills</span>
                   {agent.skills.map(s => (
@@ -518,10 +507,19 @@ function AgentRow({ agent, isExpanded, onToggle }: { agent: Agent; isExpanded: b
                   </code>
                   <button
                     type="button"
+                    onClick={() => navigator.clipboard.writeText(agent.email_address ?? "")}
                     className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
                   >
                     <Copy size={12} />
                   </button>
+                </div>
+              )}
+
+              {/* Last error */}
+              {agent.last_run_error && (
+                <div>
+                  <div className="text-[11px] font-medium text-red-400 uppercase tracking-wider mb-1">Last error</div>
+                  <p className="text-xs text-red-500 dark:text-red-400">{agent.last_run_error}</p>
                 </div>
               )}
             </div>
@@ -531,36 +529,39 @@ function AgentRow({ agent, isExpanded, onToggle }: { agent: Agent; isExpanded: b
               <div className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-3">
                 Recent runs
               </div>
-              <div className="space-y-0">
-                {runs.map((run, _i) => (
-                  <div key={run.id} className="flex items-start gap-2.5 py-2 group/run">
-                    {/* Status icon */}
-                    <div className="mt-0.5 shrink-0">
-                      {run.status === "success" ? (
-                        <CheckCircle2 size={14} className="text-emerald-500" />
-                      ) : run.status === "failure" ? (
-                        <XCircle size={14} className="text-red-500" />
-                      ) : (
-                        <RotateCw size={14} className="text-blue-500 animate-spin" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-zinc-400 tabular-nums">{relTime(run.started_at)} ago</span>
-                        <span className="text-[10px] text-zinc-300 dark:text-zinc-600 tabular-nums">
-                          {dur(run.duration_ms)}
-                        </span>
+              {agent.recent_runs.length === 0 ? (
+                <p className="text-xs text-zinc-400 dark:text-zinc-600">No runs yet</p>
+              ) : (
+                <div className="space-y-0">
+                  {agent.recent_runs.map(run => (
+                    <div key={run.id} className="flex items-start gap-2.5 py-2 group/run">
+                      <div className="mt-0.5 shrink-0">
+                        {run.status === "success" ? (
+                          <CheckCircle2 size={14} className="text-emerald-500" />
+                        ) : run.status === "failure" ? (
+                          <XCircle size={14} className="text-red-500" />
+                        ) : (
+                          <RotateCw size={14} className="text-blue-500 animate-spin" />
+                        )}
                       </div>
-                      {run.summary && (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">{run.summary}</p>
-                      )}
-                      {run.error && (
-                        <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 truncate">{run.error}</p>
-                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-zinc-400 tabular-nums">{relTime(run.started_at)} ago</span>
+                          <span className="text-[10px] text-zinc-300 dark:text-zinc-600 tabular-nums">
+                            {dur(run.duration_ms)}
+                          </span>
+                        </div>
+                        {run.triggered_by && (
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{run.triggered_by}</p>
+                        )}
+                        {run.error && (
+                          <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 truncate">{run.error}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -598,17 +599,71 @@ function EmptyState() {
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function AgentsV2Page() {
+  const { loading: authLoading, isSuperadmin } = useAdminUser()
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [showEmpty, setShowEmpty] = useState(false)
 
-  const agents = showEmpty ? [] : AGENTS
+  const refresh = useCallback(async () => {
+    try {
+      const data = await fetchAgents()
+      setAgents(data)
+      setError(null)
+    } catch {
+      setError("Failed to load agents")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!authLoading && isSuperadmin) {
+      refresh()
+    } else if (!authLoading && !isSuperadmin) {
+      setLoading(false)
+    }
+  }, [authLoading, isSuperadmin, refresh])
 
   // Sort: problems first, then running, then healthy, then paused
   const sorted = useMemo(() => [...agents].sort((a, b) => healthScore(a) - healthScore(b)), [agents])
 
   const activeCount = agents.filter(a => a.is_active).length
   const failCount = agents.filter(a => a.is_active && a.last_run_status === "failure").length
-  const runningCount = agents.filter(a => a.last_run_status === "running").length
+  const runningCount = agents.filter(a => a.status === "running").length
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
+        <Loader2 size={20} className="animate-spin text-zinc-400" />
+      </div>
+    )
+  }
+
+  if (!isSuperadmin) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
+        <p className="text-sm text-zinc-400">Not authorized</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-sm text-red-500 mb-3">{error}</p>
+          <button
+            type="button"
+            onClick={refresh}
+            className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950">
@@ -640,13 +695,10 @@ export default function AgentsV2Page() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                setShowEmpty(!showEmpty)
-                setExpandedId(null)
-              }}
+              onClick={refresh}
               className="h-8 px-3 rounded-lg text-xs font-medium text-zinc-500 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
             >
-              {showEmpty ? "Show agents" : "Show empty"}
+              <RotateCw size={12} />
             </button>
             <button
               type="button"
@@ -691,6 +743,7 @@ export default function AgentsV2Page() {
                 agent={agent}
                 isExpanded={expandedId === agent.id}
                 onToggle={() => setExpandedId(prev => (prev === agent.id ? null : agent.id))}
+                onChanged={refresh}
               />
             ))}
           </div>

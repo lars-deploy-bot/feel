@@ -125,9 +125,9 @@ describe("useTabMessages", () => {
       expect(result.current).toHaveLength(1)
     })
 
-    expect(result.current[0].content).toBe("live buffer text")
-    expect(result.current[0].isStreaming).toBe(true)
-    expect(result.current[0].status).toBe("streaming")
+    expect(result.current![0].content).toBe("live buffer text")
+    expect(result.current![0].isStreaming).toBe(true)
+    expect(result.current![0].status).toBe("streaming")
   })
 
   it("marks stale streaming messages as interrupted when no buffer exists", async () => {
@@ -149,9 +149,9 @@ describe("useTabMessages", () => {
       expect(result.current).toHaveLength(1)
     })
 
-    expect(result.current[0].status).toBe("interrupted")
-    expect(result.current[0].isStreaming).toBe(false)
-    expect(result.current[0].content).toBe("stale snapshot")
+    expect(result.current![0].status).toBe("interrupted")
+    expect(result.current![0].isStreaming).toBe(false)
+    expect(result.current![0].content).toBe("stale snapshot")
   })
 
   it("keeps recent streaming messages in streaming state without buffer", async () => {
@@ -173,17 +173,18 @@ describe("useTabMessages", () => {
       expect(result.current).toHaveLength(1)
     })
 
-    expect(result.current[0].status).toBe("streaming")
-    expect(result.current[0].isStreaming).toBe(true)
-    expect(result.current[0].content).toBe("recent snapshot")
+    expect(result.current![0].status).toBe("streaming")
+    expect(result.current![0].isStreaming).toBe(true)
+    expect(result.current![0].content).toBe("recent snapshot")
   })
 
   it("returns empty array when tabId or userId is null", async () => {
     const { result: noTab } = renderHook(() => useTabMessages(null, TEST_USER_ID))
-    expect(noTab.current).toEqual([])
+    // useLiveQuery may return undefined initially, then resolves to []
+    await waitFor(() => expect(noTab.current).toEqual([]))
 
     const { result: noUser } = renderHook(() => useTabMessages(TEST_TAB_ID, null))
-    expect(noUser.current).toEqual([])
+    await waitFor(() => expect(noUser.current).toEqual([]))
   })
 
   it("filters out soft-deleted messages", async () => {
@@ -200,7 +201,7 @@ describe("useTabMessages", () => {
       expect(result.current).toHaveLength(1)
     })
 
-    expect(result.current[0].id).toBe("alive")
+    expect(result.current![0].id).toBe("alive")
   })
 
   it("exposes active stream state and streaming text per tab", async () => {

@@ -1,10 +1,12 @@
 "use client"
 
-import { Check, Copy, X } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Code, Copy, Eye, Save, Search, X } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { TOKEN_COLORS, type Token, tokenizeLine } from "@/lib/utils/syntax"
-import { useFileContent } from "./hooks/useFileContent"
+import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { invalidateFileContentCache, useFileContent } from "./hooks/useFileContent"
+import { writeFile } from "./lib/file-api"
 import { getFileColor } from "./lib/file-colors"
+import { notifyFileChange } from "./lib/file-events"
 import { getFileName } from "./lib/file-path"
 import { ErrorMessage, LoadingSpinner, PanelBar } from "./ui"
 
@@ -15,52 +17,123 @@ interface CodeViewerProps {
   onClose: () => void
 }
 
-// Line height in pixels (must match CSS)
-const LINE_HEIGHT = 21 // 13px font * 1.6 line-height ≈ 21px
-// Buffer lines above/below viewport
-const OVERSCAN = 10
-// Virtualization threshold - only virtualize files with more lines
-const VIRTUALIZATION_THRESHOLD = 200
-
 export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewerProps) {
   const { file, loading, error } = useFileContent(workspace, filePath, worktree)
   const [copied, setCopied] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [scrollTop, setScrollTop] = useState(0)
-  const [containerHeight, setContainerHeight] = useState(0)
+  const [editContent, setEditContent] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [previewing, setPreviewing] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchIndex, setSearchIndex] = useState(0)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Reset scroll on file change
+  const filename = getFileName(filePath)
+  const lang = file?.language ?? ""
+  const isMarkdown = lang === "markdown"
+  const isCsv = lang === "csv" || lang === "tsv"
+  const hasPreview = isMarkdown || isCsv
+
+  // Sync editor content when file loads or changes
   useEffect(() => {
-    scrollRef.current?.scrollTo(0, 0)
-    setScrollTop(0)
+    if (file) setEditContent(file.content)
+  }, [file])
+
+  // Reset state on file change
+  useEffect(() => {
+    setSaveError(null)
+    setSearchOpen(false)
+    setSearchQuery("")
   }, [filePath])
 
-  // Track container height
+  // Preview tracks whether the file type supports it — always on for previewable files
   useEffect(() => {
-    const container = scrollRef.current
-    if (!container) return
+    setPreviewing(hasPreview)
+  }, [hasPreview, filePath])
 
-    const observer = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setContainerHeight(entry.contentRect.height)
+  const hasChanges = file !== null && editContent !== file.content
+
+  // --- Search ---
+
+  const searchMatches = useMemo(() => {
+    if (!searchQuery) return []
+    const matches: number[] = []
+    const lower = editContent.toLowerCase()
+    const queryLower = searchQuery.toLowerCase()
+    let pos = 0
+    while (pos < lower.length) {
+      const idx = lower.indexOf(queryLower, pos)
+      if (idx === -1) break
+      matches.push(idx)
+      pos = idx + 1
+    }
+    return matches
+  }, [editContent, searchQuery])
+
+  // Reset index when matches change
+  useEffect(() => {
+    setSearchIndex(0)
+  }, [searchMatches.length, searchQuery])
+
+  // Select match in textarea
+  useEffect(() => {
+    if (searchMatches.length === 0 || !textareaRef.current || previewing) return
+    const matchPos = searchMatches[searchIndex]
+    if (matchPos === undefined) return
+    const ta = textareaRef.current
+    ta.focus()
+    ta.setSelectionRange(matchPos, matchPos + searchQuery.length)
+
+    // Scroll textarea to show the match
+    // Calculate approximate line number and scroll to it
+    const textBefore = editContent.substring(0, matchPos)
+    const lineNumber = textBefore.split("\n").length - 1
+    const lineHeight = 21 // 13px * 1.6
+    const scrollTarget = lineNumber * lineHeight - ta.clientHeight / 2
+    ta.scrollTop = Math.max(0, scrollTarget)
+  }, [searchIndex, searchMatches, searchQuery, editContent, previewing])
+
+  const handleSearchNav = useCallback(
+    (direction: 1 | -1) => {
+      if (searchMatches.length === 0) return
+      setSearchIndex(prev => (prev + direction + searchMatches.length) % searchMatches.length)
+    },
+    [searchMatches.length],
+  )
+
+  const openSearch = useCallback(() => {
+    // If in preview mode, switch to source first
+    if (previewing) setPreviewing(false)
+    setSearchOpen(true)
+    requestAnimationFrame(() => searchInputRef.current?.focus())
+  }, [previewing])
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false)
+    setSearchQuery("")
+    textareaRef.current?.focus()
+  }, [])
+
+  // Ctrl+F to open search, Escape to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "f") {
+        e.preventDefault()
+        openSearch()
       }
-    })
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [openSearch])
 
-    observer.observe(container)
-    setContainerHeight(container.clientHeight)
-
-    return () => observer.disconnect()
-  }, [])
-
-  // Handle scroll for virtualization
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop)
-  }, [])
+  // --- Save ---
 
   const handleCopy = async () => {
-    if (!file?.content) return
+    if (!editContent && editContent !== "") return
     try {
-      await navigator.clipboard.writeText(file.content)
+      await navigator.clipboard.writeText(editContent)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -68,29 +141,30 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     }
   }
 
-  const lines = useMemo(() => file?.content.split("\n") || [], [file?.content])
-  const lineNumberWidth = Math.max(3, String(lines.length).length)
-  const filename = getFileName(filePath)
-  const language = file?.language || "plaintext"
-
-  // Memoize tokenization for all lines
-  const tokenizedLines = useMemo(() => {
-    return lines.map(line => tokenizeLine(line, language))
-  }, [lines, language])
-
-  // Calculate visible range for virtualization
-  const shouldVirtualize = lines.length > VIRTUALIZATION_THRESHOLD
-  const totalHeight = lines.length * LINE_HEIGHT
-
-  const visibleRange = useMemo(() => {
-    if (!shouldVirtualize) {
-      return { start: 0, end: lines.length }
+  const handleSave = useCallback(async () => {
+    setSaving(true)
+    setSaveError(null)
+    const result = await writeFile(workspace, filePath, editContent, worktree)
+    setSaving(false)
+    if (result.ok) {
+      invalidateFileContentCache(workspace, worktree, filePath)
+      notifyFileChange()
+    } else {
+      setSaveError(result.error)
     }
-    const start = Math.max(0, Math.floor(scrollTop / LINE_HEIGHT) - OVERSCAN)
-    const visibleCount = Math.ceil(containerHeight / LINE_HEIGHT)
-    const end = Math.min(lines.length, start + visibleCount + OVERSCAN * 2)
-    return { start, end }
-  }, [scrollTop, containerHeight, lines.length, shouldVirtualize])
+  }, [workspace, filePath, editContent, worktree])
+
+  // Ctrl+S / Cmd+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault()
+        if (hasChanges) handleSave()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [handleSave, hasChanges])
 
   return (
     <div className="h-full flex flex-col">
@@ -111,12 +185,56 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             <polyline points="14 2 14 8 20 8" />
           </svg>
         </span>
-        <span className="text-[13px] text-neutral-700 dark:text-neutral-300 truncate flex-1">{filename}</span>
+        <span className="text-[13px] text-neutral-700 dark:text-neutral-300 truncate flex-1">
+          {filename}
+          {hasChanges && <span className="text-amber-500 ml-1">*</span>}
+        </span>
+
+        {hasChanges && (
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1 px-2 h-6 text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 rounded transition-colors disabled:opacity-40"
+            title="Save (Ctrl+S)"
+          >
+            <Save size={12} strokeWidth={1.5} />
+            {saving ? "Saving..." : "Save"}
+          </button>
+        )}
+
+        {hasPreview && (
+          <button
+            type="button"
+            onClick={() => setPreviewing(p => !p)}
+            className={`p-1 rounded transition-colors ${
+              previewing
+                ? "text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300"
+                : "text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300"
+            }`}
+            title={previewing ? "Edit source" : `Preview ${isCsv ? "table" : "markdown"}`}
+          >
+            {previewing ? <Code size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={openSearch}
+          className={`p-1 rounded transition-colors ${
+            searchOpen
+              ? "text-sky-500 dark:text-sky-400"
+              : "text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300"
+          }`}
+          title="Search (Ctrl+F)"
+        >
+          <Search size={14} strokeWidth={1.5} />
+        </button>
 
         <button
           type="button"
           onClick={handleCopy}
-          disabled={!file?.content}
+          disabled={!editContent && editContent !== ""}
           className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors disabled:opacity-30"
           title={copied ? "Copied!" : "Copy"}
         >
@@ -137,78 +255,202 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
         </button>
       </PanelBar>
 
+      {/* Search bar */}
+      {searchOpen && (
+        <div className="h-9 px-3 flex items-center gap-2 border-b border-black/[0.06] dark:border-white/[0.04] bg-neutral-50/50 dark:bg-neutral-900/30 shrink-0">
+          <Search size={13} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-600 shrink-0" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Escape") {
+                e.preventDefault()
+                e.stopPropagation()
+                closeSearch()
+              }
+              if (e.key === "Enter") {
+                e.preventDefault()
+                handleSearchNav(e.shiftKey ? -1 : 1)
+              }
+            }}
+            placeholder="Find..."
+            className="flex-1 min-w-0 bg-transparent text-[13px] text-neutral-800 dark:text-neutral-200 outline-none placeholder:text-neutral-300 dark:placeholder:text-neutral-700"
+          />
+          {searchQuery && (
+            <span className="text-[11px] text-neutral-400 dark:text-neutral-600 tabular-nums shrink-0">
+              {searchMatches.length === 0 ? "No results" : `${searchIndex + 1} of ${searchMatches.length}`}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => handleSearchNav(-1)}
+            disabled={searchMatches.length === 0}
+            className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors disabled:opacity-30"
+            title="Previous (Shift+Enter)"
+          >
+            <ChevronUp size={14} strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSearchNav(1)}
+            disabled={searchMatches.length === 0}
+            className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors disabled:opacity-30"
+            title="Next (Enter)"
+          >
+            <ChevronDown size={14} strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            onClick={closeSearch}
+            className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors"
+            title="Close (Esc)"
+          >
+            <X size={13} strokeWidth={1.5} />
+          </button>
+        </div>
+      )}
+
+      {/* Save error */}
+      {saveError && (
+        <div className="px-3 py-1.5 text-[12px] text-red-500 bg-red-500/5 border-b border-red-500/10">{saveError}</div>
+      )}
+
       {/* Content */}
-      <div ref={scrollRef} className="flex-1 overflow-auto" onScroll={shouldVirtualize ? handleScroll : undefined}>
-        {loading ? (
+      {loading ? (
+        <div className="flex-1 overflow-auto">
           <LoadingSpinner />
-        ) : error ? (
+        </div>
+      ) : error ? (
+        <div className="flex-1 overflow-auto">
           <ErrorMessage message={error} />
-        ) : shouldVirtualize ? (
-          // Virtualized rendering for large files
-          <div style={{ height: totalHeight, position: "relative" }}>
-            <table
-              className="font-mono text-[13px] leading-[1.6] w-full border-collapse absolute"
-              style={{ top: visibleRange.start * LINE_HEIGHT }}
-            >
-              <tbody>
-                {tokenizedLines.slice(visibleRange.start, visibleRange.end).map((tokens, i) => (
-                  <CodeLine
-                    key={visibleRange.start + i}
-                    lineNumber={visibleRange.start + i + 1}
-                    tokens={tokens}
-                    lineNumberWidth={lineNumberWidth}
-                    originalLine={lines[visibleRange.start + i]}
-                  />
-                ))}
-              </tbody>
-            </table>
+        </div>
+      ) : previewing && isMarkdown ? (
+        <div className="flex-1 overflow-auto">
+          <div className="p-5">
+            <MarkdownDisplay content={file?.content ?? ""} className="text-[14px]" />
           </div>
-        ) : (
-          // Regular rendering for small files
-          <table className="font-mono text-[13px] leading-[1.6] w-full border-collapse">
-            <tbody>
-              {tokenizedLines.map((tokens, index) => (
-                <CodeLine
-                  key={index}
-                  lineNumber={index + 1}
-                  tokens={tokens}
-                  lineNumberWidth={lineNumberWidth}
-                  originalLine={lines[index]}
-                />
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+        </div>
+      ) : previewing && isCsv ? (
+        <CsvTable content={file?.content ?? ""} delimiter={lang === "tsv" ? "\t" : ","} />
+      ) : (
+        <textarea
+          ref={textareaRef}
+          value={editContent}
+          onChange={e => setEditContent(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === "Tab") {
+              e.preventDefault()
+              const target = e.currentTarget
+              const start = target.selectionStart
+              const end = target.selectionEnd
+              const value = target.value
+              setEditContent(`${value.substring(0, start)}  ${value.substring(end)}`)
+              requestAnimationFrame(() => {
+                target.selectionStart = start + 2
+                target.selectionEnd = start + 2
+              })
+            }
+          }}
+          spellCheck={false}
+          className="flex-1 w-full resize-none bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono text-neutral-800 dark:text-neutral-200 p-4 outline-none border-none"
+          style={{ tabSize: 2 }}
+        />
+      )}
     </div>
   )
 }
 
-interface CodeLineProps {
-  lineNumber: number
-  tokens: Token[]
-  lineNumberWidth: number
-  originalLine: string
+// --- CSV Table Viewer ---
+
+function parseCsvLine(line: string, delimiter: string): string[] {
+  const cells: string[] = []
+  let current = ""
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"'
+          i++ // skip escaped quote
+        } else {
+          inQuotes = false
+        }
+      } else {
+        current += ch
+      }
+    } else if (ch === '"') {
+      inQuotes = true
+    } else if (ch === delimiter) {
+      cells.push(current)
+      current = ""
+    } else {
+      current += ch
+    }
+  }
+  cells.push(current)
+  return cells
 }
 
-// Memoize individual lines to prevent re-renders
-const CodeLine = memo(function CodeLine({ lineNumber, tokens, lineNumberWidth, originalLine }: CodeLineProps) {
+interface CsvTableProps {
+  content: string
+  delimiter: string
+}
+
+const CsvTable = memo(function CsvTable({ content, delimiter }: CsvTableProps) {
+  const { headers, rows } = useMemo(() => {
+    const lines = content.split("\n").filter(l => l.trim() !== "")
+    if (lines.length === 0) return { headers: [], rows: [] }
+    return {
+      headers: parseCsvLine(lines[0], delimiter),
+      rows: lines.slice(1).map(line => parseCsvLine(line, delimiter)),
+    }
+  }, [content, delimiter])
+
+  if (headers.length === 0) return null
+
   return (
-    <tr className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
-      <td
-        className="px-3 text-right text-neutral-400 dark:text-neutral-700 select-none align-top sticky left-0 bg-white dark:bg-[#0d0d0d]"
-        style={{ width: `${lineNumberWidth + 2}ch`, minWidth: `${lineNumberWidth + 2}ch` }}
-      >
-        {lineNumber}
-      </td>
-      <td className="pl-4 pr-4 whitespace-pre">
-        {tokens.map((token, i) => (
-          <span key={i} className={TOKEN_COLORS[token.type]}>
-            {token.value}
-          </span>
-        ))}
-        {originalLine === "" && "\u00A0"}
-      </td>
-    </tr>
+    <div className="flex-1 overflow-auto">
+      <table className="w-full border-collapse text-[13px] font-mono">
+        <thead className="sticky top-0 z-10">
+          <tr>
+            <th className="px-3 py-1.5 text-right text-[11px] text-neutral-400 dark:text-neutral-600 bg-neutral-50 dark:bg-neutral-900 border-b border-black/[0.06] dark:border-white/[0.06] w-10">
+              #
+            </th>
+            {headers.map((h, i) => (
+              <th
+                key={i}
+                className="px-3 py-1.5 text-left font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-50 dark:bg-neutral-900 border-b border-black/[0.06] dark:border-white/[0.06] whitespace-nowrap"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+              <td className="px-3 py-1 text-right text-[11px] text-neutral-400 dark:text-neutral-600 border-b border-black/[0.03] dark:border-white/[0.03]">
+                {ri + 1}
+              </td>
+              {headers.map((_, ci) => (
+                <td
+                  key={ci}
+                  className="px-3 py-1 text-neutral-800 dark:text-neutral-200 border-b border-black/[0.03] dark:border-white/[0.03] whitespace-nowrap"
+                >
+                  {row[ci] ?? ""}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="px-3 py-2 text-[11px] text-neutral-400 dark:text-neutral-600 border-t border-black/[0.06] dark:border-white/[0.06]">
+        {rows.length} rows, {headers.length} columns
+      </div>
+    </div>
   )
 })

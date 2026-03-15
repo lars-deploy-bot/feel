@@ -1,6 +1,6 @@
 "use client"
 
-import { FilePlus, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { FilePlus, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { CodeViewer } from "./CodeViewer"
 import { FileTree, invalidateFileCache } from "./FileTree"
@@ -41,6 +41,8 @@ export function WorkbenchCodeView({
 }: WorkbenchCodeViewProps) {
   const [isResizing, setIsResizing] = useState(false)
   const [isCreatingFile, setIsCreatingFile] = useState(false)
+  const [fileFilter, setFileFilter] = useState("")
+  const filterInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Live file watching — invalidates caches and triggers re-renders on file changes
@@ -120,6 +122,37 @@ export function WorkbenchCodeView({
             </div>
           </PanelBar>
 
+          {/* Search input — always visible */}
+          <div className="px-2 py-1.5 border-b border-black/[0.06] dark:border-white/[0.04]">
+            <div className="flex items-center gap-1.5 h-6 px-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.04]">
+              <Search size={12} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-600 shrink-0" />
+              <input
+                ref={filterInputRef}
+                type="text"
+                value={fileFilter}
+                onChange={e => setFileFilter(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Escape" && fileFilter) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setFileFilter("")
+                  }
+                }}
+                placeholder="Search files..."
+                className="flex-1 min-w-0 bg-transparent text-[12px] text-neutral-800 dark:text-neutral-200 outline-none placeholder:text-neutral-400 dark:placeholder:text-neutral-600"
+              />
+              {fileFilter && (
+                <button
+                  type="button"
+                  onClick={() => setFileFilter("")}
+                  className="p-0.5 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors shrink-0"
+                >
+                  <X size={11} strokeWidth={1.5} />
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Tree content */}
           <div className="flex-1 overflow-hidden">
             {isCreatingFile && (
@@ -141,6 +174,7 @@ export function WorkbenchCodeView({
               expandedFolders={expandedFolders}
               onToggleFolder={onToggleFolder}
               onSelectFile={onSelectFile}
+              filter={fileFilter}
             />
           </div>
         </div>
