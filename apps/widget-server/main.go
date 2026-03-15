@@ -10,7 +10,7 @@ import (
 
 const widget = `/**
  * Alive Badge Widget — "The Secret"
- * Usage: <script src="https://alive.best/widget.js" defer></script>
+ * Usage: <script src="https://widget.alive.best/widget.js" defer></script>
  */
 ;(function () {
   "use strict"
