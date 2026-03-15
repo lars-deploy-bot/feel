@@ -631,7 +631,7 @@ const notFoundHTML = `<!DOCTYPE html>
 
 func (h *previewHandler) serveNotFound(w http.ResponseWriter, host string) {
 	// Sanitize host for safe HTML embedding (prevent XSS)
-	safe := strings.ReplaceAll(strings.ReplaceAll(host, "<", "&lt;"), ">", "&gt;")
+	safe := html.EscapeString(host)
 	baseDomain := html.EscapeString(h.cfg.PreviewBase)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"html"
 )
 
 // testRewrite exercises the same Rewrite function used in ServeHTTP.
@@ -187,6 +188,63 @@ func TestRewrite_SetsProxyHeaders(t *testing.T) {
 	}
 	if out.Header.Get("Accept-Encoding") != "" {
 		t.Errorf("expected Accept-Encoding stripped, got %q", out.Header.Get("Accept-Encoding"))
+	}
+}
+
+// --- serveNotFound tests ---
+
+func TestServeNotFound_RendersCorrectly(t *testing.T) {
+	h := &previewHandler{cfg: config{PreviewBase: "alive.best"}}
+	w := httptest.NewRecorder()
+
+	h.serveNotFound(w, "unknown.alive.best")
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "unknown.alive.best") {
+		t.Error("expected body to contain the domain")
+	}
+	if !strings.Contains(body, "alive.best") {
+		t.Error("expected body to contain base domain")
+	}
+	if !strings.Contains(body, "This site doesn") {
+		t.Error("expected body to contain heading text")
+	}
+}
+
+func TestServeNotFound_EscapesXSS(t *testing.T) {
+	h := &previewHandler{cfg: config{PreviewBase: "alive.best"}}
+	w := httptest.NewRecorder()
+
+	malicious := `<script>alert("xss")</script>.alive.best`
+	h.serveNotFound(w, malicious)
+
+	body := w.Body.String()
+	if strings.Contains(body, "<script>") {
+		t.Error("XSS: unescaped <script> tag found in 404 page")
+	}
+	escaped := html.EscapeString(malicious)
+	if !strings.Contains(body, escaped) {
+		t.Errorf("expected escaped host %q in body", escaped)
+	}
+}
+
+func TestServeNotFound_EscapesAmpersandAndQuotes(t *testing.T) {
+	h := &previewHandler{cfg: config{PreviewBase: "alive.best"}}
+	w := httptest.NewRecorder()
+
+	// Test the chars that strings.ReplaceAll("<",">") missed but html.EscapeString covers
+	host := `a&b"c'<d>.alive.best`
+	h.serveNotFound(w, host)
+
+	body := w.Body.String()
+	if strings.Contains(body, `a&b"`) {
+		t.Error("unescaped & and \" found — html.EscapeString not applied")
+	}
+	if strings.Contains(body, "<d>") {
+		t.Error("unescaped angle brackets found")
 	}
 }
 
