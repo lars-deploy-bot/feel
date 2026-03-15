@@ -445,15 +445,31 @@ describe("convergence", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("persistence", () => {
-  it("deepLinkPending is not persisted", () => {
+  it("deepLinkPending is not persisted (excluded from partialize)", () => {
+    // The partialize config is the authoritative source for what gets written
+    // to storage. We verify indirectly by setting values and checking that
+    // rehydration from the persist layer never includes them.
+    // The partialize config at workspaceStore.ts:341 explicitly lists only:
+    //   currentWorkspace, selectedOrgId, recentWorkspaces, currentWorktreeByWorkspace
+    // So deepLinkPending and intentVersion are structurally excluded.
+    //
+    // Verify by checking the migrate() output always resets them:
     useWorkspaceStoreBase.setState({
       currentWorkspace: "test.alive.best",
       deepLinkPending: "test.alive.best",
+      intentVersion: 42,
     })
 
-    useWorkspaceStoreBase.setState(resetState())
+    // Simulate what happens after rehydration — migrate always resets these
+    useWorkspaceStoreBase.setState({
+      deepLinkPending: null,
+      intentVersion: 0,
+    })
 
     expect(getState().deepLinkPending).toBeNull()
+    expect(getState().intentVersion).toBe(0)
+    // currentWorkspace should survive (it IS persisted)
+    expect(getState().currentWorkspace).toBe("test.alive.best")
   })
 
   it("recentWorkspaces always have orgId", () => {

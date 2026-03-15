@@ -117,7 +117,17 @@ export async function syncFromServer(): Promise<boolean> {
     }
 
     if (Object.keys(atomicUpdate).length > 0) {
-      useWorkspaceStoreBase.setState(atomicUpdate)
+      useWorkspaceStoreBase.setState(state => {
+        const updates: Partial<typeof state> = { ...atomicUpdate }
+        const nextWorkspace = atomicUpdate.currentWorkspace
+        if (nextWorkspace && state.currentWorktreeByWorkspace[nextWorkspace] === undefined) {
+          updates.currentWorktreeByWorkspace = {
+            ...state.currentWorktreeByWorkspace,
+            [nextWorkspace]: null,
+          }
+        }
+        return updates
+      })
       didUpdate = true
     }
 
