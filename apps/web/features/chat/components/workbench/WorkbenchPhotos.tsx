@@ -97,6 +97,7 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
   const lightboxImage = lightbox ? images.find(img => img.key === lightbox) : null
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: drop zone for photo uploads
     <div
       className="h-full flex flex-col relative"
       onDrop={handleDrop}
@@ -174,9 +175,13 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
               </button>
               {images.map(image => (
                 <div key={image.key} className="relative group h-[160px] shrink-0">
+                  {/* biome-ignore lint/a11y/useSemanticElements: image thumbnail click-to-lightbox */}
                   <div
+                    role="button"
+                    tabIndex={0}
                     className="h-full overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900 cursor-pointer"
                     onClick={() => setLightbox(image.key)}
+                    onKeyDown={e => e.key === "Enter" && setLightbox(image.key)}
                   >
                     <img src={image.variants.w640} alt="" loading="lazy" className="h-full w-auto object-contain" />
                   </div>
@@ -228,9 +233,13 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
 
       {/* Lightbox */}
       {lightboxImage && (
+        // biome-ignore lint/a11y/useSemanticElements: lightbox backdrop dismiss
         <div
+          role="button"
+          tabIndex={0}
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center cursor-pointer"
           onClick={() => setLightbox(null)}
+          onKeyDown={e => e.key === "Escape" && setLightbox(null)}
         >
           <button
             type="button"
@@ -240,6 +249,7 @@ export function WorkbenchPhotos({ workspace: workspaceProp }: WorkbenchViewProps
           >
             <X size={20} strokeWidth={1.5} />
           </button>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: stops lightbox close on image click */}
           <img
             src={lightboxImage.variants.w1280}
             alt=""

@@ -4,6 +4,12 @@ import { AnimatePresence, motion } from "framer-motion"
 import { useQueryState } from "nuqs"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
+import {
+  Panel,
+  Group as PanelGroup,
+  type PanelImperativeHandle,
+  Separator as PanelResizeHandle,
+} from "react-resizable-panels"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { GithubImportModal } from "@/components/modals/GithubImportModal"
 import { InviteModal } from "@/components/modals/InviteModal"
@@ -15,14 +21,7 @@ import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types
 import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIndicator"
 import { ReadOnlyTranscriptBar } from "@/features/chat/components/ReadOnlyTranscriptBar"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
-import {
-  Group as PanelGroup,
-  Panel,
-  Separator as PanelResizeHandle,
-  type PanelImperativeHandle,
-} from "react-resizable-panels"
 import { Workbench } from "@/features/chat/components/workbench/Workbench"
-import { CHAT_PANEL, RESIZE_HANDLE_ID, WORKBENCH_PANEL } from "@/lib/layout"
 import { WorkbenchMobile } from "@/features/chat/components/workbench/WorkbenchMobile"
 // useTabSession removed - now using useActiveSession via useTabIsolatedMessages
 import { useAutomationTranscriptPoll } from "@/features/chat/hooks/useAutomationTranscriptPoll"
@@ -55,6 +54,7 @@ import { useDexieMessageActions, useDexieSession } from "@/lib/db/dexieMessageSt
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useSessionHeartbeat } from "@/lib/hooks/useSessionHeartbeat"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
+import { CHAT_PANEL, RESIZE_HANDLE_ID, WORKBENCH_PANEL } from "@/lib/layout"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useDebugVisible, useWorkbench, useWorkbenchFullscreen } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
@@ -138,7 +138,7 @@ function ChatPageContent() {
     tabGroupId: sessionTabGroupId,
     isReady: sessionReady,
     isLoadingMessages,
-    activeTab,
+    activeTab: _activeTab,
     workspaceTabs,
     actions: sessionActions,
     conversation,

@@ -72,7 +72,7 @@ describe("addMessage tab isolation (Dexie integration)", () => {
   })
 
   it("should store message in the target tab, not the current tab", async () => {
-    const { tabB } = await setupTwoTabs()
+    const { tabB: _tabB } = await setupTwoTabs()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
@@ -98,7 +98,7 @@ describe("addMessage tab isolation (Dexie integration)", () => {
   })
 
   it("should store message in current tab when targetTabId matches currentTabId", async () => {
-    const { tabA } = await setupTwoTabs()
+    const { tabA: _tabA } = await setupTwoTabs()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
@@ -144,7 +144,7 @@ describe("addMessage tab isolation (Dexie integration)", () => {
   })
 
   it("should handle multiple messages to different tabs interleaved", async () => {
-    const { tabB } = await setupTwoTabs()
+    const { tabB: _tabB } = await setupTwoTabs()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
@@ -173,7 +173,7 @@ describe("addMessage tab isolation (Dexie integration)", () => {
   })
 
   it("should update the correct tab metadata", async () => {
-    const { tabB } = await setupTwoTabs()
+    const { tabB: _tabB2 } = await setupTwoTabs()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
