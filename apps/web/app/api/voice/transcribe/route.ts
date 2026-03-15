@@ -1,11 +1,21 @@
 import { isValidVoiceLanguage } from "@webalive/shared"
 import { NextResponse } from "next/server"
+import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import type { TranscribeResult } from "@/lib/api/types"
 import { miniToolsFetch } from "@/lib/clients/mini-tools"
 import { ErrorCodes } from "@/lib/error-codes"
 
 export async function POST(request: Request) {
+  try {
+    await requireSessionUser()
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return structuredErrorResponse(ErrorCodes.AUTH_REQUIRED, { status: 401 })
+    }
+    throw error
+  }
+
   const contentType = request.headers.get("content-type") ?? ""
   if (!contentType.includes("multipart/form-data")) {
     return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, { status: 400 })
