@@ -41,13 +41,13 @@ if [[ ! -d "$SEEDS_DIR" ]]; then
   exit 1
 fi
 
-# Pass SEED_PASSWORD to psql as a custom GUC so SQL can read it
-# via current_setting('seed.password', true).
-PSQL_OPTIONS=""
+# Pass SEED_PASSWORD to psql via a SET command piped before each seed file.
+# PGOPTIONS with special chars (+, =, /) gets mangled by bash — use SQL SET instead.
+SEED_GUC_SQL=""
 if [[ -n "${SEED_PASSWORD:-}" ]]; then
-  # Quote the value and escape single quotes (PostgreSQL GUC syntax)
+  # Escape single quotes for SQL string literal
   ESCAPED_PASSWORD="${SEED_PASSWORD//\'/\'\'}"
-  PSQL_OPTIONS="-c seed.password='${ESCAPED_PASSWORD}'"
+  SEED_GUC_SQL="SET seed.password = '${ESCAPED_PASSWORD}';"
   echo "[seed] SEED_PASSWORD is set — staging users will be seeded"
 fi
 
@@ -55,7 +55,7 @@ seed_count=0
 for seed in $(find "$SEEDS_DIR" -maxdepth 1 -type f -name '*.sql' | sort -V); do
   name=$(basename "$seed")
   echo "[seed] Applying $name"
-  PGOPTIONS="$PSQL_OPTIONS" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$seed" > /dev/null
+  { echo "$SEED_GUC_SQL"; cat "$seed"; } | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 > /dev/null
   seed_count=$((seed_count + 1))
 done
 
