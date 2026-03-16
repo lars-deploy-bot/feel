@@ -1,11 +1,11 @@
 /**
  * Unit tests for the infrastructure services registry.
- * Ensures no duplicate hostnames, valid ports, and no overlap with environments.
+ * Validates data integrity: no duplicates, valid ports, no overlap with environments.
  */
 
 import { describe, expect, it } from "vitest"
 import { environments } from "../environments.js"
-import { getCaddyServices, getDirectServices, INFRASTRUCTURE_SERVICES } from "../infrastructure-services.js"
+import { INFRASTRUCTURE_SERVICES } from "../infrastructure-services.js"
 
 describe("INFRASTRUCTURE_SERVICES", () => {
   it("has no duplicate hostnames", () => {
@@ -39,30 +39,11 @@ describe("INFRASTRUCTURE_SERVICES", () => {
       expect(svc.displayName.length).toBeGreaterThan(0)
     }
   })
-})
 
-describe("getDirectServices", () => {
-  it("returns only services with routeVia=direct", () => {
-    const direct = getDirectServices()
-    expect(direct.length).toBeGreaterThan(0)
-    for (const svc of direct) {
-      expect(svc.routeVia).toBe("direct")
-    }
-  })
-
-  it("includes widget.alive.best", () => {
-    const direct = getDirectServices()
-    const widget = direct.find(s => s.hostname === "widget.alive.best")
+  it("includes widget.alive.best as direct", () => {
+    const widget = INFRASTRUCTURE_SERVICES.find(s => s.hostname === "widget.alive.best")
     expect(widget).toBeDefined()
     expect(widget?.port).toBe(5050)
-  })
-})
-
-describe("getCaddyServices", () => {
-  it("returns only services with routeVia=caddy", () => {
-    const caddy = getCaddyServices()
-    for (const svc of caddy) {
-      expect(svc.routeVia).toBe("caddy")
-    }
+    expect(widget?.routeVia).toBe("direct")
   })
 })

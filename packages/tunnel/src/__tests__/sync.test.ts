@@ -1,10 +1,16 @@
 /**
- * Unit tests for sync.ts — static route building, Caddyfile generation,
- * hostname validation, and site count guard.
+ * Unit tests for sync.ts — Caddyfile generation (pure function),
+ * hostname validation (standalone predicate), and site count guard.
  */
 
 import { describe, expect, it } from "vitest"
 import { generateCaddyInternal, HOSTNAME_REGEX, isValidHostname, MIN_EXPECTED_SITES } from "../sync.js"
+
+/** Minimal infra services fixture — no dependency on @webalive/shared data */
+const TEST_INFRA = [
+  { hostname: "widget.alive.best", port: 5050, routeVia: "direct" as const },
+  { hostname: "dl1.alive.best", port: 8444, routeVia: "caddy" as const },
+]
 
 // ---------------------------------------------------------------------------
 // isValidHostname
@@ -44,7 +50,7 @@ describe("isValidHostname", () => {
 })
 
 // ---------------------------------------------------------------------------
-// generateCaddyInternal
+// generateCaddyInternal — pure function, no side effects
 // ---------------------------------------------------------------------------
 
 describe("generateCaddyInternal", () => {
@@ -54,7 +60,7 @@ describe("generateCaddyInternal", () => {
       ["blank.alive.best", 3594],
     ])
 
-    const output = generateCaddyInternal(sites, 5055)
+    const output = generateCaddyInternal(sites, [], 5055)
 
     expect(output).toContain(":8444 {")
     expect(output).toContain("map {host} {site_upstream}")
@@ -74,7 +80,7 @@ describe("generateCaddyInternal", () => {
       ["middle.alive.best", 3003],
     ])
 
-    const output = generateCaddyInternal(sites, 5055)
+    const output = generateCaddyInternal(sites, [], 5055)
     const lines = output.split("\n")
     const siteLines = lines.filter(l => l.includes(".alive.best") && l.includes('"localhost:300'))
     expect(siteLines[0]).toContain("alpha.alive.best")
@@ -82,46 +88,54 @@ describe("generateCaddyInternal", () => {
     expect(siteLines[2]).toContain("zebra.alive.best")
   })
 
-  it("skips invalid hostnames", () => {
+  it("skips invalid hostnames and reports them via callback", () => {
     const sites = new Map([
       ["good.alive.best", 3001],
       ['evil"; drop table', 3002],
     ])
+    const skipped: string[] = []
 
-    const output = generateCaddyInternal(sites, 5055)
+    const output = generateCaddyInternal(sites, [], 5055, h => skipped.push(h))
     expect(output).toContain("good.alive.best")
     expect(output).not.toContain("evil")
-    expect(output).not.toContain("drop table")
+    expect(skipped).toEqual(['evil"; drop table'])
   })
 
   it("uses provided preview proxy port", () => {
-    const sites = new Map([["test.alive.best", 3001]])
-    const output = generateCaddyInternal(sites, 9999)
+    const output = generateCaddyInternal(new Map([["test.alive.best", 3001]]), [], 9999)
     expect(output).toContain('*.alive.best "localhost:9999"')
     expect(output).toContain('default "localhost:9999"')
   })
 
   it("handles empty sites map", () => {
-    const output = generateCaddyInternal(new Map(), 5055)
+    const output = generateCaddyInternal(new Map(), [], 5055)
     expect(output).toContain(":8444 {")
     expect(output).toContain('*.alive.best "localhost:5055"')
     expect(output).toContain('default "localhost:5055"')
   })
 
   it("includes AUTO-GENERATED header", () => {
-    const output = generateCaddyInternal(new Map(), 5055)
+    const output = generateCaddyInternal(new Map(), [], 5055)
     expect(output).toContain("AUTO-GENERATED")
     expect(output).toContain("DO NOT EDIT MANUALLY")
   })
 
+  it("includes direct infra services in map for wildcard fallback", () => {
+    const output = generateCaddyInternal(new Map(), TEST_INFRA, 5055)
+    // Direct service gets a map entry
+    expect(output).toContain('widget.alive.best "localhost:5050"')
+    // Caddy-routed service does NOT get a map entry (it goes through :8444 already)
+    expect(output).not.toContain('dl1.alive.best "localhost:8444"')
+  })
+
   it("includes image serving with immutable cache header", () => {
-    const output = generateCaddyInternal(new Map(), 5055)
+    const output = generateCaddyInternal(new Map(), [], 5055)
     expect(output).toContain("/srv/webalive/storage")
     expect(output).toContain("immutable")
   })
 
   it("includes per-site file serving", () => {
-    const output = generateCaddyInternal(new Map(), 5055)
+    const output = generateCaddyInternal(new Map(), [], 5055)
     expect(output).toContain("/srv/webalive/sites/{host}/user/.alive/files")
     expect(output).toContain("no-cache")
   })

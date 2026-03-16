@@ -87,17 +87,3 @@ export const INFRASTRUCTURE_SERVICES: readonly InfrastructureService[] = [
     displayName: "Infra Placeholder",
   },
 ] as const
-
-/**
- * Get infrastructure services that route directly via tunnel (bypass Caddy).
- */
-export function getDirectServices(): InfrastructureService[] {
-  return INFRASTRUCTURE_SERVICES.filter(s => s.routeVia === "direct")
-}
-
-/**
- * Get infrastructure services that route via internal Caddy (:8444).
- */
-export function getCaddyServices(): InfrastructureService[] {
-  return INFRASTRUCTURE_SERVICES.filter(s => s.routeVia === "caddy")
-}
