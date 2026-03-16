@@ -10,24 +10,30 @@
  *   - scripts/maintenance/routing-smoke.sh (health checks)
  *   - E2E routing tests
  *
+ * IMPORTANT: Subdomains are stored WITHOUT the base domain. Consumers must
+ * call resolveHostname(svc, baseDomain) to get the full hostname.
+ * This keeps the registry server-agnostic (alive.best vs sonno.tech).
+ *
  * Route types:
  *   "direct"  — cloudflared routes directly to the service port (no Caddy interception)
  *   "caddy"   — cloudflared routes to internal Caddy :8444, which proxies to the service
  *
  * ┌─────────────────────────────────────────────────────────────────┐
  * │  TUNNEL INGRESS                                                │
- * │    direct:  hostname → localhost:{port}                        │
- * │    caddy:   hostname → localhost:8444 → Caddy map → :{port}   │
+ * │    direct:  subdomain.baseDomain → localhost:{port}            │
+ * │    caddy:   subdomain.baseDomain → localhost:8444 → :{port}   │
  * └─────────────────────────────────────────────────────────────────┘
  */
 
+export type InfraRouteVia = "direct" | "caddy"
+
 export interface InfrastructureService {
-  /** Hostname (e.g. "widget.alive.best") */
-  hostname: string
+  /** Subdomain (e.g. "widget"). Full hostname = subdomain + "." + baseDomain */
+  subdomain: string
   /** Local port the service listens on */
   port: number
   /** How the tunnel routes to this service */
-  routeVia: "direct" | "caddy"
+  routeVia: InfraRouteVia
   /** Human-readable name for logs and smoke tests */
   displayName: string
   /** Optional: path to check for health (e.g. "/widget.js", "/health") */
@@ -46,7 +52,7 @@ export interface InfrastructureService {
  */
 export const INFRASTRUCTURE_SERVICES: readonly InfrastructureService[] = [
   {
-    hostname: "widget.alive.best",
+    subdomain: "widget",
     port: 5050,
     routeVia: "direct",
     displayName: "Widget Server",
@@ -54,34 +60,34 @@ export const INFRASTRUCTURE_SERVICES: readonly InfrastructureService[] = [
     healthContentType: "application/javascript",
   },
   {
-    hostname: "mg.alive.best",
+    subdomain: "mg",
     port: 5090,
     routeVia: "direct",
     displayName: "Manager",
     healthPath: "/",
   },
   {
-    hostname: "oc.alive.best",
+    subdomain: "oc",
     port: 18789,
     routeVia: "direct",
     displayName: "OpenClaw",
     healthPath: "/health",
   },
   {
-    hostname: "services.alive.best",
+    subdomain: "services",
     port: 1200,
     routeVia: "direct",
     displayName: "Linkding",
     healthPath: "/",
   },
   {
-    hostname: "dl1.alive.best",
+    subdomain: "dl1",
     port: 8444,
     routeVia: "caddy",
     displayName: "E2E Test Domain",
   },
   {
-    hostname: "infra.alive.best",
+    subdomain: "infra",
     port: 8444,
     routeVia: "caddy",
     displayName: "Infra Placeholder",

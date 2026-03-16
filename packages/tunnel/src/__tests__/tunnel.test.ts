@@ -119,14 +119,10 @@ describe("TunnelManager", () => {
       const sdkError = new Error("Rate limited")
       cf.zeroTrust.tunnels.cloudflared.configurations.get.mockRejectedValue(sdkError)
 
-      try {
-        await manager.getIngress()
-        expect.fail("should have thrown")
-      } catch (err) {
-        expect(err).toBeInstanceOf(TunnelApiError)
-        expect((err as TunnelApiError).message).toContain("Rate limited")
-        expect((err as TunnelApiError).cause).toBe(sdkError)
-      }
+      const thrown = await manager.getIngress().catch((e: unknown) => e)
+      expect(thrown).toBeInstanceOf(TunnelApiError)
+      expect(thrown).toHaveProperty("message", expect.stringContaining("Rate limited"))
+      expect(thrown).toHaveProperty("cause", sdkError)
     })
   })
 
@@ -393,16 +389,16 @@ describe("TunnelManager", () => {
       })
 
       await expect(manager.addRoute("test.alive.best", 3500)).rejects.toThrow(TunnelDnsError)
-      await expect(
-        // re-setup for second assertion
-        (async () => {
-          mockIngressResponse(cf, [{ service: "http_status:404" }])
-          cf.dns.records.list.mockResolvedValue({
-            result: [{ id: undefined, content: "old.cfargotunnel.com" }],
-          })
-          return manager.addRoute("test.alive.best", 3500)
-        })(),
-      ).rejects.toThrow(/has no id/)
+    })
+
+    it("includes 'has no id' in error message for id-less DNS records", async () => {
+      const { manager, cf } = createManager()
+      mockIngressResponse(cf, [{ service: "http_status:404" }])
+      cf.dns.records.list.mockResolvedValue({
+        result: [{ id: undefined, content: "old.cfargotunnel.com" }],
+      })
+
+      await expect(manager.addRoute("test.alive.best", 3500)).rejects.toThrow(/has no id/)
     })
   })
 

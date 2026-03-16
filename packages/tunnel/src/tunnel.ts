@@ -10,7 +10,7 @@
 
 import Cloudflare from "cloudflare"
 import type { TunnelConfig } from "./config.js"
-import { TunnelApiError, TunnelDnsError } from "./errors.js"
+import { errorMsg, TunnelApiError, TunnelDnsError } from "./errors.js"
 
 type SdkOriginRequest = Cloudflare.ZeroTrust.Tunnels.Cloudflared.ConfigurationGetResponse.Config.Ingress.OriginRequest
 
@@ -51,10 +51,9 @@ export class TunnelManager {
         account_id: this.config.accountId,
       })
     } catch (err) {
-      throw new TunnelApiError(
-        `Failed to get tunnel config for ${this.config.tunnelId}: ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
-      )
+      throw new TunnelApiError(`Failed to get tunnel config for ${this.config.tunnelId}: ${errorMsg(err)}`, {
+        cause: err,
+      })
     }
 
     if (!result.config) {
@@ -199,7 +198,7 @@ export class TunnelManager {
       const result = dnsResults[i]
       if (result.status === "rejected") {
         const hostname = dnsPromises[i].hostname
-        const reason = result.reason instanceof Error ? result.reason.message : String(result.reason)
+        const reason = errorMsg(result.reason)
         dnsErrors.push(`${hostname}: ${reason}`)
       }
     }
@@ -229,10 +228,9 @@ export class TunnelManager {
         config: { ingress: [...typedIngress, { hostname: "", service: catchAllService }] },
       })
     } catch (err) {
-      throw new TunnelApiError(
-        `Failed to update tunnel ingress (${hostnameRules.length} rules): ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
-      )
+      throw new TunnelApiError(`Failed to update tunnel ingress (${hostnameRules.length} rules): ${errorMsg(err)}`, {
+        cause: err,
+      })
     }
   }
 
@@ -250,10 +248,7 @@ export class TunnelManager {
         type: "CNAME",
       })
       .catch((err: unknown) => {
-        throw new TunnelDnsError(
-          `Failed to list DNS records for ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
-          { cause: err },
-        )
+        throw new TunnelDnsError(`Failed to list DNS records for ${hostname}: ${errorMsg(err)}`, { cause: err })
       })
 
     if (existing.result.length > 0) {
@@ -272,10 +267,7 @@ export class TunnelManager {
             ttl: 1,
           })
         } catch (err) {
-          throw new TunnelDnsError(
-            `Failed to update DNS record for ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
-            { cause: err },
-          )
+          throw new TunnelDnsError(`Failed to update DNS record for ${hostname}: ${errorMsg(err)}`, { cause: err })
         }
       }
       return
@@ -291,10 +283,7 @@ export class TunnelManager {
         ttl: 1,
       })
     } catch (err) {
-      throw new TunnelDnsError(
-        `Failed to create DNS record for ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
-      )
+      throw new TunnelDnsError(`Failed to create DNS record for ${hostname}: ${errorMsg(err)}`, { cause: err })
     }
   }
 
@@ -308,10 +297,9 @@ export class TunnelManager {
         type: "CNAME",
       })
       .catch((err: unknown) => {
-        throw new TunnelDnsError(
-          `Failed to list DNS records for removal of ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
-          { cause: err },
-        )
+        throw new TunnelDnsError(`Failed to list DNS records for removal of ${hostname}: ${errorMsg(err)}`, {
+          cause: err,
+        })
       })
 
     // Delete in parallel — order doesn't matter for independent records
@@ -319,10 +307,9 @@ export class TunnelManager {
       .filter((record): record is typeof record & { id: string } => typeof record.id === "string")
       .map(record =>
         this.cf.dns.records.delete(record.id, { zone_id: this.config.zoneId }).catch((err: unknown) => {
-          throw new TunnelDnsError(
-            `Failed to delete DNS record ${record.id} for ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
-            { cause: err },
-          )
+          throw new TunnelDnsError(`Failed to delete DNS record ${record.id} for ${hostname}: ${errorMsg(err)}`, {
+            cause: err,
+          })
         }),
       )
 

@@ -30,13 +30,13 @@ import { createClient } from "@supabase/supabase-js"
 import {
   environments,
   INFRASTRUCTURE_SERVICES,
+  type InfrastructureService,
   isAliveWorkspace,
-  parseServerConfig,
   requireEnv,
   type ServerConfig,
 } from "@webalive/shared"
-import { tunnelConfigFromServerConfig } from "./config.js"
-import { TunnelSyncError } from "./errors.js"
+import { loadServerConfig, tunnelConfigFromServerConfig } from "./config.js"
+import { errorMsg, TunnelSyncError } from "./errors.js"
 import { type IngressRule, localService, TunnelManager } from "./tunnel.js"
 
 const LOG_PREFIX = "[tunnel:sync]"
@@ -54,13 +54,8 @@ function log(msg: string): void {
   process.stderr.write(`${LOG_PREFIX} ${msg}\n`)
 }
 
-interface StaticRoute {
-  hostname: string
-  service: string
-}
-
-function buildStaticRoutes(serverCfg: ServerConfig): StaticRoute[] {
-  const routes: StaticRoute[] = []
+function buildStaticRoutes(serverCfg: ServerConfig): IngressRule[] {
+  const routes: IngressRule[] = []
 
   // Environment routes (production, staging, dev) — direct to port
   for (const env of Object.values(environments)) {
@@ -85,16 +80,17 @@ function buildStaticRoutes(serverCfg: ServerConfig): StaticRoute[] {
   }
 
   // Infrastructure services (widget, manager, OpenClaw, etc.)
+  const baseDomain = serverCfg.domains.main
   for (const svc of INFRASTRUCTURE_SERVICES) {
-    if (svc.routeVia === "direct") {
-      routes.push({ hostname: svc.hostname, service: localService(svc.port) })
-    } else {
-      // "caddy" services route to internal Caddy port
-      routes.push({ hostname: svc.hostname, service: localService(svc.port) })
-    }
+    routes.push({ hostname: `${svc.subdomain}.${baseDomain}`, service: localService(svc.port) })
   }
 
   return routes
+}
+
+interface SiteDomainRow {
+  hostname: string
+  port: number
 }
 
 async function querySiteDomains(serverCfg: ServerConfig): Promise<Map<string, number>> {
@@ -108,6 +104,7 @@ async function querySiteDomains(serverCfg: ServerConfig): Promise<Map<string, nu
     .eq("server_id", serverCfg.serverId)
     .is("is_test_env", false)
     .order("hostname", { ascending: true })
+    .returns<SiteDomainRow[]>()
 
   if (error) throw new TunnelSyncError(`DB query failed: ${error.message}`)
 
@@ -132,16 +129,12 @@ function isValidHostname(hostname: string): boolean {
  *
  * Takes all data as arguments — no side effects, no global imports.
  * This is the ONLY way Caddyfile.internal should be produced — never edit it manually.
- *
- * @param sites           - hostname→port map from DB
- * @param infraServices   - infrastructure services to include in the Caddy map
- * @param previewProxyPort - port for preview-proxy fallback
- * @param onInvalidHostname - callback for skipped hostnames (logging without side effects in the pure fn)
  */
 function generateCaddyInternal(
   sites: Map<string, number>,
-  infraServices: ReadonlyArray<{ hostname: string; port: number; routeVia: "direct" | "caddy" }>,
+  infraServices: ReadonlyArray<InfrastructureService>,
   previewProxyPort: number,
+  baseDomain: string,
   onInvalidHostname?: (hostname: string) => void,
 ): string {
   const lines: string[] = [
@@ -149,7 +142,7 @@ function generateCaddyInternal(
     "# Regenerate: bun run --cwd packages/tunnel sync",
     "#",
     "# Internal Caddy — image serving + reverse proxy for tunnel-backed sites",
-    "# cloudflared routes *.alive.best site traffic here on :8444",
+    `# cloudflared routes *.${baseDomain} site traffic here on :8444`,
     "# This layer intercepts /_images/* and /files/* before proxying to the site.",
     "",
     ":8444 {",
@@ -157,7 +150,7 @@ function generateCaddyInternal(
   ]
 
   // Wildcard entry first (Caddy map uses first-match, but explicit hostnames take precedence)
-  lines.push(`        *.alive.best "localhost:${previewProxyPort}"`)
+  lines.push(`        *.${baseDomain} "localhost:${previewProxyPort}"`)
 
   // Site domains
   const sortedSites = [...sites.entries()].sort(([a], [b]) => a.localeCompare(b))
@@ -173,8 +166,9 @@ function generateCaddyInternal(
   // (in case traffic arrives at :8444 via wildcard instead of direct tunnel route)
   for (const svc of infraServices) {
     if (svc.routeVia === "caddy") continue
-    if (!isValidHostname(svc.hostname)) continue
-    lines.push(`        ${svc.hostname} "localhost:${svc.port}"`)
+    const infraHostname = `${svc.subdomain}.${baseDomain}`
+    if (!isValidHostname(infraHostname)) continue
+    lines.push(`        ${infraHostname} "localhost:${svc.port}"`)
   }
 
   lines.push(`        default "localhost:${previewProxyPort}"`)
@@ -206,8 +200,17 @@ function generateCaddyInternal(
  * Write Caddyfile.internal, validate, and reload Caddy.
  * On failure: restore backup and throw.
  */
+const EXEC_OPTS: { stdio: ["pipe", "pipe", "pipe"]; timeout: number } = {
+  stdio: ["pipe", "pipe", "pipe"],
+  timeout: 15_000,
+}
+
 function writeCaddyWithRollback(content: string): void {
   const backupPath = `${CADDY_INTERNAL_PATH}.backup`
+
+  const restoreBackup = () => {
+    if (existsSync(backupPath)) copyFileSync(backupPath, CADDY_INTERNAL_PATH)
+  }
 
   // 1. Backup current file (if it exists)
   if (existsSync(CADDY_INTERNAL_PATH)) {
@@ -219,38 +222,25 @@ function writeCaddyWithRollback(content: string): void {
 
   // 3. Validate
   try {
-    execSync("caddy validate --config /etc/caddy/Caddyfile", {
-      stdio: ["pipe", "pipe", "pipe"],
-      timeout: 15_000,
-    })
+    execSync("caddy validate --config /etc/caddy/Caddyfile", EXEC_OPTS)
   } catch (err) {
     log("ERROR: Caddy validation failed — rolling back Caddyfile.internal")
-    if (existsSync(backupPath)) {
-      copyFileSync(backupPath, CADDY_INTERNAL_PATH)
-    }
-    const msg = err instanceof Error ? err.message : String(err)
-    throw new TunnelSyncError(`Caddy validation failed: ${msg}`)
+    restoreBackup()
+    throw new TunnelSyncError(`Caddy validation failed: ${errorMsg(err)}`)
   }
 
   // 4. Reload
   try {
-    execSync("systemctl reload caddy", {
-      stdio: ["pipe", "pipe", "pipe"],
-      timeout: 15_000,
-    })
+    execSync("systemctl reload caddy", EXEC_OPTS)
   } catch (err) {
     log("ERROR: Caddy reload failed — rolling back Caddyfile.internal")
-    if (existsSync(backupPath)) {
-      copyFileSync(backupPath, CADDY_INTERNAL_PATH)
-      // Try to reload with backup
-      try {
-        execSync("systemctl reload caddy", { stdio: ["pipe", "pipe", "pipe"], timeout: 15_000 })
-      } catch {
-        log("ERROR: Caddy reload of backup also failed — manual intervention required")
-      }
+    restoreBackup()
+    try {
+      execSync("systemctl reload caddy", EXEC_OPTS)
+    } catch {
+      log("ERROR: Caddy reload of backup also failed — manual intervention required")
     }
-    const msg = err instanceof Error ? err.message : String(err)
-    throw new TunnelSyncError(`Caddy reload failed: ${msg}`)
+    throw new TunnelSyncError(`Caddy reload failed: ${errorMsg(err)}`)
   }
 
   log("Caddy validated and reloaded successfully")
@@ -261,9 +251,7 @@ function writeCaddyWithRollback(content: string): void {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const configPath = requireEnv("SERVER_CONFIG_PATH")
-  const raw = await Bun.file(configPath).text()
-  const serverCfg = parseServerConfig(raw)
+  const serverCfg = loadServerConfig()
   const tunnelCfg = tunnelConfigFromServerConfig(serverCfg)
 
   log(`Server: ${serverCfg.serverId}`)
@@ -315,9 +303,13 @@ async function main() {
   }
 
   // Generate and write Caddyfile.internal
-  const previewProxyPort = serverCfg.previewProxy?.port ?? 5055
-  const caddyContent = generateCaddyInternal(sites, INFRASTRUCTURE_SERVICES, previewProxyPort, h =>
-    log(`WARNING: Skipping invalid hostname for Caddy config: ${h}`),
+  const previewProxyPort = serverCfg.previewProxy.port
+  const caddyContent = generateCaddyInternal(
+    sites,
+    INFRASTRUCTURE_SERVICES,
+    previewProxyPort,
+    serverCfg.domains.main,
+    h => log(`WARNING: Skipping invalid hostname for Caddy config: ${h}`),
   )
   log(`Generated Caddyfile.internal: ${sites.size} site entries`)
 
@@ -331,8 +323,7 @@ async function main() {
         await tunnel.syncRoutes(new Map(), previousIngress)
         log("Tunnel ingress rolled back successfully")
       } catch (rollbackErr) {
-        const msg = rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr)
-        log(`ERROR: Tunnel rollback also failed: ${msg}`)
+        log(`ERROR: Tunnel rollback also failed: ${errorMsg(rollbackErr)}`)
       }
     }
     throw caddyErr
@@ -355,11 +346,4 @@ if (import.meta.main) {
 }
 
 // Exported for testing
-export {
-  buildStaticRoutes,
-  generateCaddyInternal,
-  isValidHostname,
-  MIN_EXPECTED_SITES,
-  HOSTNAME_REGEX,
-  type StaticRoute,
-}
+export { buildStaticRoutes, generateCaddyInternal, isValidHostname, MIN_EXPECTED_SITES, HOSTNAME_REGEX }

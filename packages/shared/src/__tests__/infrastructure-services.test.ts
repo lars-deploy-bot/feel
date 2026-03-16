@@ -8,10 +8,10 @@ import { environments } from "../environments.js"
 import { INFRASTRUCTURE_SERVICES } from "../infrastructure-services.js"
 
 describe("INFRASTRUCTURE_SERVICES", () => {
-  it("has no duplicate hostnames", () => {
-    const hostnames = INFRASTRUCTURE_SERVICES.map(s => s.hostname)
-    const unique = new Set(hostnames)
-    expect(unique.size).toBe(hostnames.length)
+  it("has no duplicate subdomains", () => {
+    const subdomains = INFRASTRUCTURE_SERVICES.map(s => s.subdomain)
+    const unique = new Set(subdomains)
+    expect(unique.size).toBe(subdomains.length)
   })
 
   it("all ports are in valid range", () => {
@@ -21,10 +21,21 @@ describe("INFRASTRUCTURE_SERVICES", () => {
     }
   })
 
-  it("no hostname overlaps with environment domains", () => {
-    const envDomains = new Set(Object.values(environments).map(e => e.domain))
+  it("subdomains are lowercase DNS labels (no dots, no special chars)", () => {
     for (const svc of INFRASTRUCTURE_SERVICES) {
-      expect(envDomains.has(svc.hostname)).toBe(false)
+      expect(svc.subdomain).toMatch(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/)
+    }
+  })
+
+  it("no subdomain overlaps with environment subdomains", () => {
+    // Extract subdomain part from environment domains (e.g. "app" from "app.alive.best")
+    const envSubdomains = new Set(
+      Object.values(environments)
+        .map(e => e.domain.split(".")[0])
+        .filter(Boolean),
+    )
+    for (const svc of INFRASTRUCTURE_SERVICES) {
+      expect(envSubdomains.has(svc.subdomain)).toBe(false)
     }
   })
 
@@ -40,8 +51,8 @@ describe("INFRASTRUCTURE_SERVICES", () => {
     }
   })
 
-  it("includes widget.alive.best as direct", () => {
-    const widget = INFRASTRUCTURE_SERVICES.find(s => s.hostname === "widget.alive.best")
+  it("includes widget as direct", () => {
+    const widget = INFRASTRUCTURE_SERVICES.find(s => s.subdomain === "widget")
     expect(widget).toBeDefined()
     expect(widget?.port).toBe(5050)
     expect(widget?.routeVia).toBe("direct")
