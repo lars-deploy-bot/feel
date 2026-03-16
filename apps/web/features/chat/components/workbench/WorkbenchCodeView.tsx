@@ -1,46 +1,25 @@
 "use client"
 
-import { FilePlus, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { FilePlus, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { CodeViewer } from "./CodeViewer"
-import { FileTree, invalidateFileCache } from "./FileTree"
+import { FileTree } from "./FileTree"
 import { useFileWatcher } from "./hooks/useFileWatcher"
-import { getParentFilePath } from "./lib/file-paths"
+import { useWorkbenchShortcuts } from "./hooks/useWorkbenchShortcuts"
 import { NewFileInput } from "./NewFileInput"
 import { PanelBar } from "./ui"
 
-interface WorkbenchCodeViewProps {
-  workspace: string
-  worktree?: string | null
-  filePath: string | null
-  expandedFolders: Set<string>
-  treeWidth: number
-  treeCollapsed: boolean
-  onSelectFile: (path: string) => void
-  onCloseFile: () => void
-  onToggleFolder: (path: string) => void
-  onSetTreeWidth: (width: number) => void
-  onToggleTreeCollapsed: () => void
-}
-
-const MIN_TREE_WIDTH = 120
+const MIN_TREE_WIDTH = 160
 const MAX_TREE_WIDTH = 400
 
-export function WorkbenchCodeView({
-  workspace,
-  worktree,
-  filePath,
-  expandedFolders,
-  treeWidth,
-  treeCollapsed,
-  onSelectFile,
-  onCloseFile,
-  onToggleFolder,
-  onSetTreeWidth,
-  onToggleTreeCollapsed,
-}: WorkbenchCodeViewProps) {
+export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
+  const { workbench, openFile, closeFile, toggleFolder, setTreeWidth, toggleTreeCollapsed } = useWorkbenchContext()
+  const { filePath, expandedFolders, treeWidth, treeCollapsed } = workbench
   const [isResizing, setIsResizing] = useState(false)
   const [isCreatingFile, setIsCreatingFile] = useState(false)
+  const [fileFilter, setFileFilter] = useState("")
+  const filterInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Live file watching — invalidates caches and triggers re-renders on file changes
@@ -60,7 +39,7 @@ export function WorkbenchCodeView({
       const containerRect = containerRef.current.getBoundingClientRect()
       const newWidth = e.clientX - containerRect.left
       const clampedWidth = Math.max(MIN_TREE_WIDTH, Math.min(MAX_TREE_WIDTH, newWidth))
-      onSetTreeWidth(clampedWidth)
+      setTreeWidth(clampedWidth)
     }
 
     const handleMouseUp = () => {
@@ -74,20 +53,19 @@ export function WorkbenchCodeView({
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
     }
-  }, [isResizing, onSetTreeWidth])
+  }, [isResizing, setTreeWidth])
 
-  // Keyboard: Escape closes file
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && filePath) {
+  // Keyboard: Escape closes file (scoped via workbench shortcut handler)
+  const handleEscapeClose = useCallback(
+    (e: KeyboardEvent) => {
+      if (filePath) {
         e.preventDefault()
-        onCloseFile()
+        closeFile()
       }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [filePath, onCloseFile])
+    },
+    [filePath, closeFile],
+  )
+  useWorkbenchShortcuts([{ id: "codeview-escape", key: "Escape", handler: handleEscapeClose }])
 
   return (
     <div ref={containerRef} className={`h-full flex bg-white dark:bg-[#0d0d0d] ${isResizing ? "select-none" : ""}`}>
@@ -97,28 +75,47 @@ export function WorkbenchCodeView({
           className="flex flex-col shrink-0 border-r border-black/[0.08] dark:border-white/[0.04]"
           style={{ width: treeWidth }}
         >
-          {/* Tree header */}
-          <PanelBar className="justify-between">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Files</span>
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => setIsCreatingFile(true)}
-                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
-                title="New file"
-              >
-                <FilePlus size={14} strokeWidth={1.5} />
-              </button>
-              <button
-                type="button"
-                onClick={onToggleTreeCollapsed}
-                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose size={14} strokeWidth={1.5} />
-              </button>
-            </div>
+          {/* Tree header — actions only, no label (the tab already says "Files") */}
+          <PanelBar className="justify-end gap-1">
+            <button
+              type="button"
+              onClick={() => setIsCreatingFile(true)}
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
+              title="New file"
+            >
+              <FilePlus size={15} strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              onClick={toggleTreeCollapsed}
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose size={15} strokeWidth={1.5} />
+            </button>
           </PanelBar>
+
+          {/* Search input — always visible */}
+          <div className="px-2.5 py-2 border-b border-black/[0.06] dark:border-white/[0.04]">
+            <div className="flex items-center gap-2 h-8 px-2.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.04] focus-within:border-black/[0.1] dark:focus-within:border-white/[0.1] transition-colors">
+              <Search size={14} strokeWidth={1.5} className="text-black/30 dark:text-white/25 shrink-0" />
+              <input
+                ref={filterInputRef}
+                type="text"
+                value={fileFilter}
+                onChange={e => setFileFilter(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Escape" && fileFilter) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setFileFilter("")
+                  }
+                }}
+                placeholder="Search files..."
+                className="flex-1 min-w-0 bg-transparent text-[13px] text-zinc-800 dark:text-zinc-200 outline-none placeholder:text-black/25 dark:placeholder:text-white/20"
+              />
+            </div>
+          </div>
 
           {/* Tree content */}
           <div className="flex-1 overflow-hidden">
@@ -126,10 +123,9 @@ export function WorkbenchCodeView({
               <NewFileInput
                 workspace={workspace}
                 worktree={worktree}
-                onCreated={filePath => {
+                onCreated={createdPath => {
                   setIsCreatingFile(false)
-                  invalidateFileCache(workspace, worktree, getParentFilePath(filePath))
-                  onSelectFile(filePath)
+                  openFile(createdPath)
                 }}
                 onCancel={() => setIsCreatingFile(false)}
               />
@@ -139,8 +135,9 @@ export function WorkbenchCodeView({
               worktree={worktree}
               activeFile={filePath}
               expandedFolders={expandedFolders}
-              onToggleFolder={onToggleFolder}
-              onSelectFile={onSelectFile}
+              onToggleFolder={toggleFolder}
+              onSelectFile={openFile}
+              filter={fileFilter}
             />
           </div>
         </div>
@@ -164,20 +161,20 @@ export function WorkbenchCodeView({
           <PanelBar>
             <button
               type="button"
-              onClick={onToggleTreeCollapsed}
-              className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+              onClick={toggleTreeCollapsed}
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
               title="Show sidebar"
             >
-              <PanelLeftOpen size={14} strokeWidth={1.5} />
+              <PanelLeftOpen size={15} strokeWidth={1.5} />
             </button>
           </PanelBar>
         )}
 
         {/* Code content */}
         {filePath ? (
-          <CodeViewer workspace={workspace} worktree={worktree} filePath={filePath} onClose={onCloseFile} />
+          <CodeViewer workspace={workspace} worktree={worktree} filePath={filePath} onClose={closeFile} />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-neutral-400 dark:text-neutral-600 text-sm">
+          <div className="flex-1 flex items-center justify-center text-zinc-400 dark:text-zinc-600 text-sm">
             <span>Select a file to view</span>
           </div>
         )}

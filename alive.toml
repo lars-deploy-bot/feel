@@ -86,6 +86,16 @@ source = "/etc/group"
 target = "/etc/group"
 read_only = false
 
+[[runtime.bind_mounts]]
+source = "/etc/shadow"
+target = "/etc/shadow"
+read_only = false
+
+[[runtime.bind_mounts]]
+source = "/etc/gshadow"
+target = "/etc/gshadow"
+read_only = false
+
 # Site environment files (systemd reads these on the host)
 [[runtime.bind_mounts]]
 source = "/etc/sites"

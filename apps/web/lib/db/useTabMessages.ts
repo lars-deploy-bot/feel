@@ -15,7 +15,7 @@
 
 import { useMemo } from "react"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
-import { useDexieMessageStore } from "./dexieMessageStore"
+import { useDexieMessageStore, useDexieSession } from "./dexieMessageStore"
 import { toUIMessage } from "./messageAdapters"
 import { useMessages } from "./useMessageDb"
 
@@ -50,22 +50,23 @@ export interface TabMessage extends UIMessage {
 /**
  * Get messages for a tab, merging persisted + streaming state.
  *
- * Features:
- * - Orders messages by seq (sequence number) for reliable ordering
- * - Merges live streaming buffers with Dexie snapshots
- * - Detects stale streams (page refresh during streaming)
- * - Returns empty array if tabId or userId is null
+ * Returns `undefined` while the Dexie query is resolving (loading),
+ * `[]` when resolved with no messages, or `TabMessage[]` with data.
  *
- * @param tabId - The tab ID to get messages for
- * @param userId - The user ID (required for Dexie database access)
- * @returns Array of TabMessage objects ready for UI rendering
+ * userId is sourced internally from useDexieSession.
+ *
+ * @param tabId - The tab ID to get messages for (null = no messages)
  */
-export function useTabMessages(tabId: string | null, userId: string | null): TabMessage[] {
+export function useTabMessages(tabId: string | null): TabMessage[] | undefined {
+  const userId = useDexieSession()?.userId ?? null
   const dbMessages = useMessages(tabId, userId)
   const streamingBuffers = useDexieMessageStore(s => s.streamingBuffers)
 
   return useMemo(() => {
-    if (!dbMessages || dbMessages.length === 0) return []
+    // undefined = Dexie query hasn't resolved yet (loading)
+    // [] = query resolved with no messages (genuinely empty)
+    if (dbMessages === undefined) return undefined
+    if (dbMessages.length === 0) return []
 
     const now = Date.now()
 

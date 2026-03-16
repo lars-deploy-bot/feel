@@ -39,7 +39,7 @@ export const ICON_SIZE = 12
 export const monoText = "font-diatype-mono"
 
 /** Filled background for chips/containers */
-export const filledBg = "bg-black/[0.04] dark:bg-white/[0.06]"
+export const filledBg = "bg-black/[0.06] dark:bg-white/[0.06]"
 
 /** Standard rounding for containers */
 export const roundedContainer = "rounded-xl"

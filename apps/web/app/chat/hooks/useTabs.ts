@@ -63,10 +63,10 @@ export function useTabsManagement({
   const streamingActions = useStreamingActions()
 
   const notifyTabLimit = useCallback(() => {
-    toast.error("Tab limit reached. Close a tab to open a new one.", { id: "tab-limit" })
+    toast("You have 10 tabs open — close one to make room", { id: "tab-limit" })
   }, [])
   const notifyTabOpenFailed = useCallback(() => {
-    toast.error("Failed to open tab. Please try again.", { id: "tab-open-failed" })
+    toast("Couldn't open that tab — try again", { id: "tab-open-failed" })
   }, [])
 
   const initializeAndSwitchTab = useCallback(

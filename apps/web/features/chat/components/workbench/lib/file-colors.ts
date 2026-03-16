@@ -21,20 +21,25 @@ const FILE_TYPE_COLORS: Record<string, string> = {
   scss: "text-pink-300",
   // Markup
   html: "text-orange-300",
-  md: "text-neutral-400",
-  mdx: "text-neutral-400",
+  md: "text-zinc-400",
+  mdx: "text-zinc-400",
   // Images
   svg: "text-emerald-400",
   png: "text-violet-400/70",
   jpg: "text-violet-400/70",
   jpeg: "text-violet-400/70",
   webp: "text-violet-400/70",
+  // LaTeX
+  tex: "text-teal-400",
+  bib: "text-teal-300/70",
+  sty: "text-teal-300/70",
+  cls: "text-teal-300/70",
   // Config
-  toml: "text-neutral-500",
-  lock: "text-neutral-600",
+  toml: "text-zinc-500",
+  lock: "text-zinc-600",
 }
 
-const DEFAULT_COLOR = "text-neutral-500"
+const DEFAULT_COLOR = "text-zinc-500"
 
 export function getFileColor(filename: string): string {
   const ext = getExtension(filename)

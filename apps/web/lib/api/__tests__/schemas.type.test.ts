@@ -39,6 +39,7 @@ describe("API Schema Type System", () => {
         | "deploy-subdomain"
         | "import-repo"
         | "automations"
+        | "automations/enriched"
         | "automations/create"
         | "automations/get-by-id"
         | "automations/delete"

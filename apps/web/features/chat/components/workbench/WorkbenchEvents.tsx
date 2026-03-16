@@ -1,5 +1,6 @@
 "use client"
 import { useRef, useState } from "react"
+import type { WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { truncateDeep } from "@/lib/utils"
 import { useDevTerminal } from "../../lib/dev-terminal-context"
 import { BridgeStreamType } from "../../lib/streaming/ndjson"
@@ -16,7 +17,7 @@ function getEventColor(eventName: string): string {
   return "text-red-400 font-semibold"
 }
 
-export function WorkbenchEvents() {
+export function WorkbenchEvents(_props: WorkbenchViewProps) {
   const { events, clearEvents } = useDevTerminal()
   const [collapsedMessages, setCollapsedMessages] = useState<Set<number>>(new Set())
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
@@ -101,7 +102,7 @@ export function WorkbenchEvents() {
       {/* Events list */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {visibleEvents.length === 0 ? (
-          <div className="text-green-700">No events yet...</div>
+          <div className="text-[13px] text-zinc-300 dark:text-zinc-700">Nothing here yet</div>
         ) : (
           visibleEvents.map((devEvent, index) => {
             let displayContent: string

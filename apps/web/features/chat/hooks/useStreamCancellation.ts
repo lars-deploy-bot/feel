@@ -11,8 +11,8 @@ import { clearAbortController, getAbortController, useStreamingActions } from "@
 import { CANCEL_ENDPOINT_STATUS, type CancelEndpointStatus } from "@/lib/stream/cancel-status"
 
 interface UseStreamCancellationOptions {
-  /** Current tab ID (session key for Claude SDK) */
-  tabId: string
+  /** Current tab ID (session key for Claude SDK). Null when no active session. */
+  tabId: string | null
   /** Current tab group ID */
   tabGroupId: string | null
   /** Current workspace */
@@ -110,6 +110,8 @@ export function useStreamCancellation({
   const requestWorktree = worktreesEnabled ? worktree || undefined : undefined
 
   const stopStreaming = useCallback(() => {
+    // No tab = nothing to stop
+    if (!tabId) return
     // Guard against double-clicks (ref for immediate check)
     if (isStoppingRef.current) return
     isStoppingRef.current = true

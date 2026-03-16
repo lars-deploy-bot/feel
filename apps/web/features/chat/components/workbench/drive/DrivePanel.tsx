@@ -4,17 +4,16 @@ import { PanelLeftClose, PanelLeftOpen, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { ConfirmModal } from "@/components/modals/ConfirmModal"
+import type { WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { trackDriveFileDeleted, trackDrivePanelOpened } from "@/lib/analytics/events"
+import { useWorkbenchShortcuts } from "../hooks/useWorkbenchShortcuts"
 import { PanelBar } from "../ui"
 import { DrivePreview } from "./DrivePreview"
 import { DriveTree, invalidateDriveCache } from "./DriveTree"
 import { DriveUpload } from "./DriveUpload"
 import { deleteDriveItem } from "./drive-api"
 
-interface DrivePanelProps {
-  workspace: string
-  worktree?: string | null
-}
+interface DrivePanelProps extends WorkbenchViewProps {}
 
 const MIN_TREE_WIDTH = 160
 const MAX_TREE_WIDTH = 500
@@ -70,7 +69,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
       invalidateDriveCache(workspace, worktree)
       setRefreshKey(k => k + 1)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Delete failed")
+      toast(err instanceof Error ? err.message : "Couldn't delete that")
     }
   }, [pendingDelete, workspace, worktree, selectedFile])
 
@@ -110,17 +109,17 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
     }
   }, [isResizing])
 
-  // Escape to close file
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && selectedFile) {
+  // Escape to close file (scoped via workbench shortcut handler)
+  const handleDriveEscape = useCallback(
+    (e: KeyboardEvent) => {
+      if (selectedFile) {
         e.preventDefault()
         setSelectedFile(null)
       }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [selectedFile])
+    },
+    [selectedFile],
+  )
+  useWorkbenchShortcuts([{ id: "drive-escape", key: "Escape", handler: handleDriveEscape }])
 
   return (
     <div ref={containerRef} className={`h-full flex bg-white dark:bg-[#0d0d0d] ${isResizing ? "select-none" : ""}`}>
@@ -131,26 +130,23 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
           style={{ width: treeWidth }}
         >
           {/* Header */}
-          <PanelBar className="justify-between">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Drive</span>
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={handleRefresh}
-                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw size={12} strokeWidth={1.5} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setTreeCollapsed(true)}
-                className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose size={14} strokeWidth={1.5} />
-              </button>
-            </div>
+          <PanelBar className="justify-end gap-1">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw size={15} strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setTreeCollapsed(true)}
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose size={15} strokeWidth={1.5} />
+            </button>
           </PanelBar>
 
           {/* Tree */}
@@ -190,10 +186,10 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
             <button
               type="button"
               onClick={() => setTreeCollapsed(false)}
-              className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-600 dark:hover:text-neutral-400 rounded transition-colors"
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
               title="Show sidebar"
             >
-              <PanelLeftOpen size={14} strokeWidth={1.5} />
+              <PanelLeftOpen size={15} strokeWidth={1.5} />
             </button>
           </PanelBar>
         )}
@@ -201,18 +197,17 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
         {selectedFile ? (
           <DrivePreview workspace={workspace} worktree={worktree} filePath={selectedFile} onClose={handleCloseFile} />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-neutral-400 dark:text-neutral-600 text-sm">
-            <span>Select a file to preview</span>
+          <div className="flex-1 flex items-center justify-center text-zinc-300 dark:text-zinc-700 text-[13px]">
+            Pick a file from the left
           </div>
         )}
       </div>
 
       {pendingDelete && (
         <ConfirmModal
-          title={`Delete ${pendingDelete.isDir ? "directory" : "file"}`}
-          message={`Are you sure you want to delete "${pendingDelete.path}"?`}
+          title={`Delete ${pendingDelete.path}`}
+          message="This can't be undone."
           confirmText="Delete"
-          confirmStyle="danger"
           onConfirm={confirmDelete}
           onCancel={() => setPendingDelete(null)}
         />

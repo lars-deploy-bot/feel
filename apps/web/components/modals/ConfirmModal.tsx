@@ -15,7 +15,7 @@ interface ConfirmModalProps {
 export function ConfirmModal({
   title,
   message,
-  confirmText = "Confirm",
+  confirmText = "Continue",
   cancelText = "Cancel",
   confirmStyle = "primary",
   onConfirm,
@@ -23,40 +23,38 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   const confirmButtonClass =
     confirmStyle === "danger"
-      ? "bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-500 text-white"
-      : confirmStyle === "warning"
-        ? "bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-500 text-white"
-        : "bg-black hover:bg-black/80 dark:bg-white dark:hover:bg-white/80 text-white dark:text-black"
+      ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
+      : "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-xl shadow-xl shadow-black/10 dark:shadow-black/40 border border-black/5 dark:border-white/10 w-full max-w-md animate-in fade-in-0 slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
+        className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-sm"
         onClick={e => e.stopPropagation()}
         role="document"
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-black dark:text-white mb-2">{title}</h3>
-          <div className="text-sm text-black/60 dark:text-white/60 leading-relaxed">{message}</div>
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
+          <div className="text-[13px] text-zinc-400 dark:text-zinc-500 mt-2 leading-relaxed">{message}</div>
         </div>
 
-        <div className="px-6 pb-6 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+        <div className="px-6 pb-6 flex gap-2 justify-end">
           <button
             type="button"
             onClick={onCancel}
-            className="px-5 py-3 sm:py-2.5 text-sm font-medium text-black dark:text-white bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-all active:scale-[0.98]"
+            className="h-9 px-4 text-[13px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg transition-colors duration-100"
           >
             {cancelText}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`px-5 py-3 sm:py-2.5 text-sm font-medium rounded-lg transition-all active:scale-[0.98] ${confirmButtonClass}`}
+            className={`h-9 px-5 text-[13px] font-medium rounded-lg transition-colors duration-100 ${confirmButtonClass}`}
           >
             {confirmText}
           </button>

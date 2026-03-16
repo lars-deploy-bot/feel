@@ -1,6 +1,6 @@
 "use client"
 
-import { useQueryState } from "nuqs"
+import { parseAsString, useQueryStates } from "nuqs"
 import { useCallback, useMemo, useState } from "react"
 import type { SettingsTab } from "@/features/settings/settings-tabs"
 import { isSettingsTab } from "@/features/settings/settings-tabs"
@@ -12,7 +12,6 @@ interface ModalState {
   invite: boolean
   settings: { initialTab?: SettingsTab } | null
   templates: boolean
-  photoMenu: boolean
   mobilePreview: boolean
 }
 
@@ -26,8 +25,6 @@ interface ModalActions {
   toggleSettings: () => void
   openTemplates: () => void
   closeTemplates: () => void
-  togglePhotoMenu: () => void
-  closePhotoMenu: () => void
   openMobilePreview: () => void
   closeMobilePreview: () => void
 }
@@ -36,10 +33,17 @@ interface ModalActions {
  * Hook to manage all modal visibility state in one place.
  * Settings open/close state is synced to the URL via ?settings= query param
  * so it persists across page reloads.
+ *
+ * Uses useQueryStates to batch both settings params into a single URL update,
+ * preventing flicker from intermediate states.
  */
 export function useModals(): ModalState & ModalActions {
-  const [settingsParam, setSettingsParam] = useQueryState(QUERY_KEYS.settings)
-  const [, setSettingsTabParam] = useQueryState(QUERY_KEYS.settingsTab)
+  const [settingsParams, setSettingsParams] = useQueryStates({
+    [QUERY_KEYS.settings]: parseAsString,
+    [QUERY_KEYS.settingsTab]: parseAsString,
+  })
+
+  const settingsParam = settingsParams[QUERY_KEYS.settings]
 
   // Derive settings state from URL param
   const settingsFromUrl: { initialTab?: SettingsTab } | null = settingsParam
@@ -50,7 +54,6 @@ export function useModals(): ModalState & ModalActions {
     feedback: false,
     invite: false,
     templates: false,
-    photoMenu: false,
     mobilePreview: false,
   })
 
@@ -63,29 +66,24 @@ export function useModals(): ModalState & ModalActions {
   const openSettings = useCallback(
     (initialTab?: SettingsTab) => {
       trackSettingsOpened(initialTab)
-      void setSettingsParam(initialTab || "1")
+      void setSettingsParams({ [QUERY_KEYS.settings]: initialTab || "1" })
     },
-    [setSettingsParam],
+    [setSettingsParams],
   )
   const closeSettings = useCallback(() => {
-    void setSettingsParam(null)
-    void setSettingsTabParam(null)
-  }, [setSettingsParam, setSettingsTabParam])
+    void setSettingsParams({ [QUERY_KEYS.settings]: null, [QUERY_KEYS.settingsTab]: null })
+  }, [setSettingsParams])
   const toggleSettings = useCallback(() => {
     if (settingsParam) {
-      void setSettingsParam(null)
-      void setSettingsTabParam(null)
+      void setSettingsParams({ [QUERY_KEYS.settings]: null, [QUERY_KEYS.settingsTab]: null })
     } else {
       trackSettingsOpened(undefined)
-      void setSettingsParam("1")
+      void setSettingsParams({ [QUERY_KEYS.settings]: "1" })
     }
-  }, [settingsParam, setSettingsParam, setSettingsTabParam])
+  }, [settingsParam, setSettingsParams])
 
   const openTemplates = useCallback(() => setState(s => ({ ...s, templates: true })), [])
   const closeTemplates = useCallback(() => setState(s => ({ ...s, templates: false })), [])
-
-  const togglePhotoMenu = useCallback(() => setState(s => ({ ...s, photoMenu: !s.photoMenu })), [])
-  const closePhotoMenu = useCallback(() => setState(s => ({ ...s, photoMenu: false })), [])
 
   const openMobilePreview = useCallback(() => setState(s => ({ ...s, mobilePreview: true })), [])
   const closeMobilePreview = useCallback(() => setState(s => ({ ...s, mobilePreview: false })), [])
@@ -103,8 +101,6 @@ export function useModals(): ModalState & ModalActions {
       toggleSettings,
       openTemplates,
       closeTemplates,
-      togglePhotoMenu,
-      closePhotoMenu,
       openMobilePreview,
       closeMobilePreview,
     }),
@@ -120,8 +116,6 @@ export function useModals(): ModalState & ModalActions {
       toggleSettings,
       openTemplates,
       closeTemplates,
-      togglePhotoMenu,
-      closePhotoMenu,
       openMobilePreview,
       closeMobilePreview,
     ],

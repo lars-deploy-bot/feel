@@ -11,5 +11,8 @@ export function formatTimestamp(timestamp: number): string {
   if (hours < 24) return `${hours}h ago`
   if (days === 1) return "Yesterday"
   if (days < 7) return `${days}d ago`
-  return new Date(timestamp).toLocaleDateString()
+  const weeks = Math.floor(days / 7)
+  if (weeks < 5) return `${weeks}w ago`
+  const months = Math.floor(days / 30)
+  return `${months}mo ago`
 }

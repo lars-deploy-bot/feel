@@ -60,13 +60,6 @@ export interface DexieSessionContext {
 interface DexieMessageStoreState {
   // Session context - REQUIRED for all operations
   session: DexieSessionContext | null
-  /**
-   * The currently active tab group ID (for sidebar grouping).
-   * This is the same as DbConversation.id - a "conversation" in Dexie
-   * represents a group of tabs in the sidebar.
-   */
-  currentTabGroupId: string | null
-  currentTabId: string | null
   currentWorkspace: string | null
   /** @deprecated Unused — per-tab loading is tracked via loadingTabs instead */
   isLoading: boolean
@@ -94,7 +87,6 @@ interface DexieMessageStoreActions {
     tabGroupId: string,
     tabId: string,
   ) => Promise<{ conversationId: string; tabId: string; created: boolean }>
-  switchConversation: (id: string, tabId?: string) => void
   deleteConversation: (id: string) => Promise<void>
   archiveConversation: (id: string) => Promise<void>
   unarchiveConversation: (id: string) => Promise<void>
@@ -135,8 +127,7 @@ interface DexieMessageStoreActions {
   updateMessageContent: (messageId: string, content: unknown) => Promise<boolean>
 
   // Tab management
-  addTab: (name?: string) => Promise<string>
-  switchTab: (tabId: string) => void
+  addTab: (tabGroupId: string, name?: string) => Promise<string>
   removeTab: (tabId: string) => Promise<void>
   reopenTab: (tabId: string) => Promise<void>
   renameTab: (tabId: string, name: string) => Promise<void>
@@ -155,9 +146,6 @@ interface DexieMessageStoreActions {
   finalizeAssistantStream: (messageId: string) => Promise<void>
   stopAssistantStream: (messageId: string) => Promise<void>
   failAssistantStream: (messageId: string, errorCode?: string) => Promise<void>
-
-  // Cleanup
-  clearCurrentConversation: () => void
 }
 
 type DexieMessageStore = DexieMessageStoreState & DexieMessageStoreActions
@@ -225,22 +213,11 @@ function scheduleFlushStreamingSnapshot(messageId: string, userId: string, getTe
   }, FLUSH_DEBOUNCE_MS)
 }
 
-async function queueSyncForStreamTab(
-  db: ReturnType<typeof getMessageDb>,
-  userId: string,
-  tabId: string | undefined,
-  currentTabGroupId: string | null,
-) {
-  if (tabId) {
-    const streamTab = await db.tabs.get(tabId)
-    if (streamTab) {
-      queueSync(streamTab.conversationId, userId)
-      return
-    }
-  }
-
-  if (currentTabGroupId) {
-    queueSync(currentTabGroupId, userId)
+async function queueSyncForStreamTab(db: ReturnType<typeof getMessageDb>, userId: string, tabId: string | undefined) {
+  if (!tabId) return
+  const streamTab = await db.tabs.get(tabId)
+  if (streamTab) {
+    queueSync(streamTab.conversationId, userId)
   }
 }
 
@@ -250,8 +227,6 @@ async function queueSyncForStreamTab(
 
 export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
   session: null,
-  currentTabGroupId: null,
-  currentTabId: null,
   currentWorkspace: null,
   isLoading: false,
   loadingTabs: new Set<string>(),
@@ -303,11 +278,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }),
     )
 
-    set({
-      currentTabGroupId: id,
-      currentTabId: defaultTabId,
-      currentWorkspace: workspace,
-    })
+    set({ currentWorkspace: workspace })
 
     queueSync(id, session.userId)
     return { conversationId: id, tabId: defaultTabId }
@@ -330,11 +301,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
         await safeDb(() => db.tabs.update(tabId, { conversationId: tabGroupId, pendingSync: true }))
         queueSync(tabGroupId, session.userId)
       }
-      set({
-        currentTabGroupId: tabGroupId,
-        currentTabId: existingTab.id,
-        currentWorkspace: workspace,
-      })
+      set({ currentWorkspace: workspace })
       return { conversationId: tabGroupId, tabId: existingTab.id, created: false }
     }
 
@@ -382,43 +349,24 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }),
     )
 
-    set({
-      currentTabGroupId: conversationId,
-      currentTabId: tabId,
-      currentWorkspace: workspace,
-    })
+    set({ currentWorkspace: workspace })
 
     queueSync(conversationId, session.userId)
     return { conversationId, tabId, created: true }
   },
 
-  switchConversation: (id, tabId) => {
-    set({
-      currentTabGroupId: id,
-      currentTabId: tabId ?? null,
-    })
-  },
-
   deleteConversation: async id => {
-    const { currentTabGroupId, session } = get()
+    const { session } = get()
     if (!session) return
 
     await syncDeleteConversation(id, session.userId)
-
-    if (currentTabGroupId === id) {
-      set({ currentTabGroupId: null, currentTabId: null })
-    }
   },
 
   archiveConversation: async id => {
-    const { currentTabGroupId, session } = get()
+    const { session } = get()
     if (!session) return
 
     await syncArchiveConversation(id, session.userId)
-
-    if (currentTabGroupId === id) {
-      set({ currentTabGroupId: null, currentTabId: null })
-    }
   },
 
   unarchiveConversation: async id => {
@@ -460,7 +408,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       return
     }
 
-    const { currentTabGroupId, currentTabId, session } = get()
+    const { session } = get()
 
     if (!session || !targetTabId) {
       console.warn("[dexie] addMessage called without session or targetTabId")
@@ -479,39 +427,34 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
         return
       }
 
-      // Resolve tabGroupId for the target tab
-      // If target tab differs from current, look up its tabGroupId from Dexie
-      let effectiveTabGroupId = currentTabGroupId
-      if (targetTabId !== currentTabId) {
-        let targetTab = await db.tabs.get(targetTabId)
-        if (!targetTab) {
-          // Recovery path for first-message race:
-          // tabStore can have the tab before Dexie is initialized for it.
-          // Backfill Dexie from tabStore so the first message isn't dropped.
-          const tabDataState = useTabDataStore.getState()
-          let inferredWorkspace: string | null = null
-          let inferredTabGroupId: string | null = null
+      // Resolve tabGroupId for the target tab by looking up in Dexie
+      let targetTab = await db.tabs.get(targetTabId)
+      if (!targetTab) {
+        // Recovery path for first-message race:
+        // tabStore can have the tab before Dexie is initialized for it.
+        // Backfill Dexie from tabStore so the first message isn't dropped.
+        const tabDataState = useTabDataStore.getState()
+        let inferredWorkspace: string | null = null
+        let inferredTabGroupId: string | null = null
 
-          for (const [workspace, tabs] of Object.entries(tabDataState.tabsByWorkspace)) {
-            const tab = tabs.find(t => t.id === targetTabId && !t.closedAt)
-            if (tab) {
-              inferredWorkspace = workspace
-              inferredTabGroupId = tab.tabGroupId
-              break
-            }
-          }
-
-          if (inferredWorkspace && inferredTabGroupId) {
-            await get().ensureTabGroupWithTab(inferredWorkspace, inferredTabGroupId, targetTabId)
-            targetTab = await db.tabs.get(targetTabId)
+        for (const [workspace, tabs] of Object.entries(tabDataState.tabsByWorkspace)) {
+          const tab = tabs.find(t => t.id === targetTabId && !t.closedAt)
+          if (tab) {
+            inferredWorkspace = workspace
+            inferredTabGroupId = tab.tabGroupId
+            break
           }
         }
 
-        if (targetTab) {
-          effectiveTabGroupId = targetTab.conversationId
-        } else {
-          console.warn(`[dexie] addMessage: target tab ${targetTabId} not found in Dexie`)
+        if (inferredWorkspace && inferredTabGroupId) {
+          await get().ensureTabGroupWithTab(inferredWorkspace, inferredTabGroupId, targetTabId)
+          targetTab = await db.tabs.get(targetTabId)
         }
+      }
+
+      const effectiveTabGroupId = targetTab?.conversationId ?? null
+      if (!targetTab) {
+        console.warn(`[dexie] addMessage: target tab ${targetTabId} not found in Dexie`)
       }
 
       if (!effectiveTabGroupId) {
@@ -771,17 +714,16 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     return true
   },
 
-  addTab: async (name = "new tab") => {
-    const { currentTabGroupId, session } = get()
+  addTab: async (tabGroupId, name = "new tab") => {
+    const { session } = get()
     if (!session) throw new Error("No session")
-    if (!currentTabGroupId) throw new Error("No active tab group")
 
     const db = getMessageDb(session.userId)
-    const existingTabs = await db.tabs.where("conversationId").equals(currentTabGroupId).toArray()
+    const existingTabs = await db.tabs.where("conversationId").equals(tabGroupId).toArray()
 
     const newTab: DbTab = {
       id: generateId(),
-      conversationId: currentTabGroupId,
+      conversationId: tabGroupId,
       name,
       position: existingTabs.length,
       createdAt: Date.now(),
@@ -790,11 +732,9 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     }
 
     await safeDb(() => db.tabs.add(newTab))
-    queueSync(currentTabGroupId, session.userId)
+    queueSync(tabGroupId, session.userId)
     return newTab.id
   },
-
-  switchTab: tabId => set({ currentTabId: tabId }),
 
   removeTab: async tabId => {
     const { session } = get()
@@ -890,9 +830,8 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
   },
 
   startAssistantStream: async tabId => {
-    const { currentTabGroupId, session } = get()
+    const { session } = get()
     if (!session) throw new Error("No session")
-    if (!currentTabGroupId) throw new Error("No active tab group")
 
     const db = getMessageDb(session.userId)
     const id = generateId()
@@ -940,7 +879,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     if (alreadyFinalized.has(messageId)) return
     alreadyFinalized.add(messageId)
 
-    const { streamingBuffers, activeStreamByTab, currentTabGroupId, session } = get()
+    const { streamingBuffers, activeStreamByTab, session } = get()
     if (!session) return
 
     const db = getMessageDb(session.userId)
@@ -966,7 +905,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    await queueSyncForStreamTab(db, session.userId, tabId, currentTabGroupId)
+    await queueSyncForStreamTab(db, session.userId, tabId)
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
@@ -974,7 +913,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     if (alreadyFinalized.has(messageId)) return
     alreadyFinalized.add(messageId)
 
-    const { streamingBuffers, activeStreamByTab, currentTabGroupId, session } = get()
+    const { streamingBuffers, activeStreamByTab, session } = get()
     if (!session) return
 
     const db = getMessageDb(session.userId)
@@ -1001,7 +940,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    await queueSyncForStreamTab(db, session.userId, tabId, currentTabGroupId)
+    await queueSyncForStreamTab(db, session.userId, tabId)
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
@@ -1009,7 +948,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     if (alreadyFinalized.has(messageId)) return
     alreadyFinalized.add(messageId)
 
-    const { streamingBuffers, activeStreamByTab, currentTabGroupId, session } = get()
+    const { streamingBuffers, activeStreamByTab, session } = get()
     if (!session) return
 
     const db = getMessageDb(session.userId)
@@ -1036,12 +975,8 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    await queueSyncForStreamTab(db, session.userId, tabId, currentTabGroupId)
+    await queueSyncForStreamTab(db, session.userId, tabId)
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
-  },
-
-  clearCurrentConversation: () => {
-    set({ currentTabGroupId: null, currentTabId: null })
   },
 }))
 
@@ -1049,18 +984,10 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
 // Selectors
 // =============================================================================
 
-/**
- * Returns the current tab group ID (sidebar grouping).
- * A "conversation" in Dexie represents a group of tabs.
- * @deprecated Use useDexieCurrentTabGroupId for clarity
- */
-export const useDexieCurrentConversationId = () => useDexieMessageStore(s => s.currentTabGroupId)
-/** Returns the current tab group ID (sidebar grouping) */
-export const useDexieCurrentTabGroupId = () => useDexieMessageStore(s => s.currentTabGroupId)
-export const useDexieCurrentTabId = () => useDexieMessageStore(s => s.currentTabId)
 export const useDexieCurrentWorkspace = () => useDexieMessageStore(s => s.currentWorkspace)
 export const useDexieIsSyncing = () => useDexieMessageStore(s => s.isSyncing)
 export const useDexieIsLoading = () => useDexieMessageStore(s => s.isLoading)
+export const useDexieLoadingTabs = () => useDexieMessageStore(s => s.loadingTabs)
 export const useDexieSession = () => useDexieMessageStore(s => s.session)
 
 export const useDexieMessageActions = () =>
@@ -1068,7 +995,6 @@ export const useDexieMessageActions = () =>
     setSession: state.setSession,
     initializeConversation: state.initializeConversation,
     ensureTabGroupWithTab: state.ensureTabGroupWithTab,
-    switchConversation: state.switchConversation,
     deleteConversation: state.deleteConversation,
     archiveConversation: state.archiveConversation,
     unarchiveConversation: state.unarchiveConversation,
@@ -1077,7 +1003,6 @@ export const useDexieMessageActions = () =>
     unshareConversation: state.unshareConversation,
     addMessage: state.addMessage,
     addTab: state.addTab,
-    switchTab: state.switchTab,
     removeTab: state.removeTab,
     reopenTab: state.reopenTab,
     renameTab: state.renameTab,
@@ -1088,7 +1013,6 @@ export const useDexieMessageActions = () =>
     finalizeAssistantStream: state.finalizeAssistantStream,
     stopAssistantStream: state.stopAssistantStream,
     failAssistantStream: state.failAssistantStream,
-    clearCurrentConversation: state.clearCurrentConversation,
     deleteMessagesAfter: state.deleteMessagesAfter,
     getResumeSessionAt: state.getResumeSessionAt,
     clearResumeSessionAt: state.clearResumeSessionAt,
@@ -1105,7 +1029,6 @@ export {
   useArchivedConversations as useDexieArchivedConversations,
   useConversation as useDexieConversation,
   useConversations as useDexieConversations,
-  useCurrentConversationSafe as useDexieCurrentConversationSafe,
   useMessages as useDexieMessages,
   useSharedConversations as useDexieSharedConversations,
   useTabs as useDexieTabs,

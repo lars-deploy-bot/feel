@@ -9,6 +9,7 @@ import { AutomationRunsView } from "@/components/automations/AutomationRunsView"
 import { type AutomationFormData, AutomationSidePanel } from "@/components/automations/AutomationSidePanel"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
+import { futTime, relTime, trigLabel } from "@/features/automations/display-helpers"
 import { trackAutomationCreated, trackAutomationDeleted, trackAutomationsViewed } from "@/lib/analytics/events"
 import { delly, patchy, postty } from "@/lib/api/api-client"
 import { type AutomationRunStatus, type Res, type TriggerType, validateRequest } from "@/lib/api/schemas"
@@ -20,60 +21,6 @@ import { plural } from "../lib/format"
 import { SettingsTabLayout } from "./SettingsTabLayout"
 
 const DELETE_CONFIRM_TIMEOUT_MS = 3000
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function relTime(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  const ms = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(ms / 60000)
-  const hrs = Math.floor(mins / 60)
-  const days = Math.floor(hrs / 24)
-  if (mins < 1) return "Just now"
-  if (mins < 60) return `${mins}m ago`
-  if (hrs < 24) return `${hrs}h ago`
-  if (days < 7) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString()
-}
-
-function futTime(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  const ms = new Date(dateStr).getTime() - Date.now()
-  if (ms < 0) return "Overdue"
-  const mins = Math.floor(ms / 60000)
-  const hrs = Math.floor(mins / 60)
-  const days = Math.floor(hrs / 24)
-  if (mins < 1) return "Now"
-  if (mins < 60) return `in ${mins}m`
-  if (hrs < 24) return `in ${hrs}h`
-  return `in ${days}d`
-}
-
-function trigLabel(job: AutomationJob): string {
-  switch (job.trigger_type) {
-    case "email":
-      return job.email_address ? job.email_address : "Email trigger"
-    case "webhook":
-      return "Webhook"
-    case "one-time":
-      return "One-time"
-    default: {
-      if (!job.cron_schedule) return "No schedule"
-      const parts = job.cron_schedule.split(" ")
-      if (parts.length === 5) {
-        const [min, hour, , , weekday] = parts
-        if (min === "0" && hour !== "*" && weekday === "*") return `Daily at ${hour}:00`
-        if (min === "0" && hour !== "*" && weekday === "1-5") return `Weekdays at ${hour}:00`
-        if (min === "0" && hour !== "*" && weekday !== "*") {
-          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-          const idx = Number(weekday)
-          return `${Number.isInteger(idx) && days[idx] ? days[idx] : weekday} at ${hour}:00`
-        }
-      }
-      return job.cron_schedule
-    }
-  }
-}
 
 function StatusDot({ job }: { job: AutomationJob }) {
   if (!job.is_active)
@@ -185,7 +132,7 @@ export function AutomationsSettings() {
       setIsCreating(false)
     },
     onError: (err: ApiError) => {
-      toast.error(err.message || "Failed to save automation")
+      toast(err.message || "Couldn't save automation")
       Sentry.captureException(err)
     },
   })
@@ -206,7 +153,7 @@ export function AutomationsSettings() {
     },
     onError: (err, _id, context) => {
       if (context?.previous) queryClient.setQueryData(queryKeys.automations.list(queryFilter), context.previous)
-      toast.error(err.message || "Failed to delete automation")
+      toast(err.message || "Couldn't delete automation")
       Sentry.captureException(err)
     },
     onSuccess: () => {
@@ -226,7 +173,7 @@ export function AutomationsSettings() {
       queryClient.invalidateQueries({ queryKey: queryKeys.automations.all })
     },
     onError: (err: ApiError) => {
-      toast.error(err.message || "Failed to trigger automation")
+      toast(err.message || "Couldn't trigger automation")
       Sentry.captureException(err)
     },
   })
@@ -278,8 +225,8 @@ export function AutomationsSettings() {
 
   if (loading) {
     return (
-      <SettingsTabLayout title="Agents" description="Loading...">
-        <LoadingSpinner message="Loading agents..." />
+      <SettingsTabLayout title="Agents" description="">
+        <LoadingSpinner message="Loading" />
       </SettingsTabLayout>
     )
   }

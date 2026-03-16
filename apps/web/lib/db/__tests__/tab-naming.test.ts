@@ -20,8 +20,6 @@ describe("Tab naming in Dexie", () => {
   beforeEach(() => {
     useDexieMessageStore.setState({
       session: null,
-      currentTabGroupId: null,
-      currentTabId: null,
       currentWorkspace: null,
       isLoading: false,
       isSyncing: false,
@@ -156,10 +154,9 @@ describe("Tab naming in Dexie", () => {
     const store = useDexieMessageStore.getState()
     store.setSession({ userId: TEST_USER_ID, orgId: TEST_ORG_ID })
 
-    // initializeConversation sets currentTabGroupId which addTab requires
-    await store.initializeConversation(TEST_WORKSPACE)
+    const result = await store.initializeConversation(TEST_WORKSPACE)
 
-    const newTabId = await store.addTab("Bug triage")
+    const newTabId = await store.addTab(result.conversationId, "Bug triage")
 
     const db = getMessageDb(TEST_USER_ID)
     const tab = await db.tabs.get(newTabId)
@@ -172,8 +169,8 @@ describe("Tab naming in Dexie", () => {
     const store = useDexieMessageStore.getState()
     store.setSession({ userId: TEST_USER_ID, orgId: TEST_ORG_ID })
 
-    await store.initializeConversation(TEST_WORKSPACE)
-    const newTabId = await store.addTab()
+    const result = await store.initializeConversation(TEST_WORKSPACE)
+    const newTabId = await store.addTab(result.conversationId)
 
     const db = getMessageDb(TEST_USER_ID)
     const tab = await db.tabs.get(newTabId)

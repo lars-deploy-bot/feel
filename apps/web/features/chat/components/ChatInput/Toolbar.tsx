@@ -3,7 +3,7 @@
 import { getAccessibleStreamModes, STREAM_MODES, type StreamMode } from "@webalive/shared"
 import { Camera, ChevronDown, ClipboardList, Copy, FileText, Globe, MousePointer2, Terminal, User } from "lucide-react"
 import type { RefObject } from "react"
-import { useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { useWorkbenchContext } from "@/features/chat/lib/workbench-context"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
@@ -16,14 +16,16 @@ import {
   trackSkillSelected,
   trackSkillsMenuOpened,
 } from "@/lib/analytics/events"
-import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
 import { useAllSkills, useSkillsLoading } from "@/lib/providers/SkillsStoreProvider"
 import { useWorkbench, useWorkbenchMinimized } from "@/lib/stores/debug-store"
+import { useLLMActions, useVoiceLanguage } from "@/lib/stores/llmStore"
 import type { Skill } from "@/lib/stores/skillsStore"
 import { useStreamMode, useStreamModeActions } from "@/lib/stores/streamModeStore"
 import { useChatInput } from "./ChatInputContext"
+import { useVoiceInput } from "./hooks/useVoiceInput"
 import type { AddSkillFn } from "./types"
+import { VoiceButton } from "./VoiceButton"
 
 interface ToolbarProps {
   fileInputRef: RefObject<HTMLInputElement | null>
@@ -34,13 +36,30 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarProps) {
-  const { config } = useChatInput()
+  const { config, message, setMessage, tabId } = useChatInput()
   const [showPromptMenu, setShowPromptMenu] = useState(false)
+
+  // Voice input — appends transcript to current message
+  // Ref avoids stale closure (message changes while recording)
+  const messageRef = useRef(message)
+  messageRef.current = message
+  const { markVoiceUsed } = useLLMActions()
+  const tabIdRef = useRef(tabId)
+  tabIdRef.current = tabId
+  const handleTranscript = useCallback(
+    (text: string) => {
+      const current = messageRef.current
+      setMessage(current ? `${current} ${text}` : text)
+      markVoiceUsed(tabIdRef.current)
+    },
+    [setMessage, markVoiceUsed],
+  )
+  const handleVoiceError = useCallback((msg: string) => toast(msg), [])
+  const voiceLanguage = useVoiceLanguage()
+  const voice = useVoiceInput({ onTranscript: handleTranscript, onError: handleVoiceError, language: voiceLanguage })
   const skills = useAllSkills()
   const isLoading = useSkillsLoading()
-  const currentTabId = useDexieMessageStore(s => s.currentTabId)
-  const userId = useDexieMessageStore(s => s.session?.userId ?? null)
-  const messages = useTabMessages(currentTabId, userId)
+  const messages = useTabMessages(tabId)
   const { activateSelector, selectorActive } = useWorkbenchContext()
   const isWorkbenchOpen = useWorkbench()
   const isWorkbenchMinimized = useWorkbenchMinimized()
@@ -79,8 +98,8 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
   }
 
   const handleCopyMessages = async () => {
-    if (messages.length === 0) {
-      toast.error("No messages to copy")
+    if (!messages || messages.length === 0) {
+      toast("Nothing to copy yet")
       return
     }
 
@@ -89,14 +108,14 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
     try {
       await navigator.clipboard.writeText(formatted)
       trackMessagesCopied()
-      toast.success("Messages copied")
+      toast("Copied to clipboard")
     } catch {
-      toast.error("Failed to copy")
+      toast("Couldn't copy — try again")
     }
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div data-panel-role="chat-toolbar" className="flex items-center gap-1">
       {/* Copy Messages - hidden for now */}
       <button
         type="button"
@@ -117,6 +136,7 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
             setShowPromptMenu(!showPromptMenu)
           }}
           className="flex items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
+          data-testid="skills-button"
           aria-label="Skills"
           title="Skills"
         >
@@ -192,6 +212,7 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
               ? "bg-purple-500/20 text-purple-400"
               : "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70"
           }`}
+          data-testid="element-selector-button"
           aria-label="Select element"
           title="Select element from preview (or hold Cmd/Ctrl)"
         >
@@ -213,6 +234,14 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
         }}
       />
 
+      {/* Voice input — hold to speak or tap to toggle */}
+      <VoiceButton
+        state={voice.state}
+        onToggle={voice.toggle}
+        onStartRecording={voice.startRecording}
+        onStopRecording={voice.stopRecording}
+      />
+
       <button
         type="button"
         onClick={() => {
@@ -220,6 +249,7 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
           handleClick()
         }}
         className="flex items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
+        data-testid="upload-photo-button"
         aria-label="Upload photo"
       >
         <Camera className="size-4" />

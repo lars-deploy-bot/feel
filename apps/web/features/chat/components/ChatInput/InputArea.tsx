@@ -1,6 +1,7 @@
 "use client"
 
 import { type ClipboardEvent, useEffect, useRef } from "react"
+import { useLLMActions } from "@/lib/stores/llmStore"
 import { useChatInput } from "./ChatInputContext"
 import { useSkillMention } from "./hooks/useSkillMention"
 import { SkillMentionPopup } from "./SkillMentionPopup"
@@ -8,6 +9,7 @@ import { SkillMentionPopup } from "./SkillMentionPopup"
 export function InputArea() {
   const { message, setMessage, onSubmit, config, registerTextareaRef, onAddSkill } = useChatInput()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { clearVoiceUsed } = useLLMActions()
 
   const mention = useSkillMention({
     message,
@@ -35,6 +37,8 @@ export function InputArea() {
       const end = textarea.selectionEnd
       const newValue = message.slice(0, start) + trimmed + message.slice(end)
       setMessage(newValue)
+      // Pasting is manual input — clear voice flag (paste bypasses onChange)
+      clearVoiceUsed()
 
       // Restore cursor position after state update
       requestAnimationFrame(() => {
@@ -79,6 +83,9 @@ export function InputArea() {
         onChange={e => {
           setMessage(e.target.value)
           mention.handleChange(e.target.value, e.target)
+          // User is typing manually — clear voice flag so language instruction
+          // isn't sent for typed messages (only voice-initiated ones)
+          clearVoiceUsed()
         }}
         onPaste={handlePaste}
         onKeyDown={e => {

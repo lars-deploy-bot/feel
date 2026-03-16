@@ -2,6 +2,7 @@
 
 import { ClipboardList, FileText, Globe, Loader2, Sparkles, X } from "lucide-react"
 import Image from "next/image"
+import { Tooltip } from "@/components/ui/Tooltip"
 import { useChatInput } from "./ChatInputContext"
 import {
   isFileUpload,
@@ -108,13 +109,13 @@ export function PromptBarAttachmentGrid() {
               </span>
               {attachment.error ? (
                 <span
-                  className="text-[11px] text-red-500 dark:text-red-400 truncate max-w-[140px]"
+                  className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate max-w-[140px]"
                   title={attachment.error}
                 >
-                  Upload failed
+                  Couldn't upload
                 </span>
               ) : isUploading ? (
-                <span className="text-[11px] text-black/60 dark:text-white/60">Uploading...</span>
+                <span className="text-[11px] text-zinc-400 dark:text-zinc-500">Uploading</span>
               ) : (
                 <span className="text-[11px] text-black/60 dark:text-white/60">
                   {isSkillAttachment(attachment)
@@ -130,22 +131,44 @@ export function PromptBarAttachmentGrid() {
               )}
             </div>
 
-            {/* Mode toggle for library images — inline text, no icon, stable width */}
+            {/* Mode toggle for library images — segmented pill so it's obviously a choice */}
             {isLibraryImage(attachment) && (
-              <button
-                type="button"
-                onClick={e => {
-                  e.stopPropagation()
-                  toggleImageMode(attachment.id)
-                }}
-                className="text-[11px] text-black/60 dark:text-white/60 hover:text-black/80 dark:hover:text-white/80 transition-colors ml-1 w-[52px] text-right"
-                title={
-                  attachment.mode === "analyze" ? "Click to switch to website mode" : "Click to switch to analyze mode"
-                }
-                aria-label={attachment.mode === "analyze" ? "Switch to website mode" : "Switch to analyze mode"}
-              >
-                {attachment.mode === "analyze" ? "analyze" : "website"}
-              </button>
+              <div className="flex items-center ml-1 rounded-md bg-black/[0.04] dark:bg-white/[0.06] p-0.5">
+                <Tooltip content="Place this image on your website" side="top" delayMs={300}>
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation()
+                      if (attachment.mode === "analyze") toggleImageMode(attachment.id)
+                    }}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-all duration-100 ${
+                      (attachment.mode ?? "website") === "website"
+                        ? "bg-white dark:bg-zinc-800 text-black/80 dark:text-white/80 shadow-sm"
+                        : "text-black/35 dark:text-white/30 hover:text-black/50 dark:hover:text-white/45"
+                    }`}
+                    aria-label="Add image to website"
+                  >
+                    to site
+                  </button>
+                </Tooltip>
+                <Tooltip content="Let Alive see and analyze this image" side="top" delayMs={300}>
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation()
+                      if (attachment.mode !== "analyze") toggleImageMode(attachment.id)
+                    }}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-all duration-100 ${
+                      attachment.mode === "analyze"
+                        ? "bg-white dark:bg-zinc-800 text-black/80 dark:text-white/80 shadow-sm"
+                        : "text-black/35 dark:text-white/30 hover:text-black/50 dark:hover:text-white/45"
+                    }`}
+                    aria-label="Ask Claude about this image"
+                  >
+                    ask about
+                  </button>
+                </Tooltip>
+              </div>
             )}
 
             {/* Remove button - always visible on mobile (touch devices can't hover) */}

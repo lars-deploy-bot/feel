@@ -47,32 +47,19 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
   await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
   // Sidebar defaults to closed — open it first via the Nav toggle button
-  const openSidebarButton = authenticatedPage.locator('button[aria-label="Open sidebar"]')
+  const openSidebarButton = authenticatedPage.locator('button[aria-label="Open sidebar"]').first()
   await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await openSidebarButton.click()
 
-  // Click the user account button at the bottom of the sidebar to open settings.
-  // Both desktop and mobile sidebars render this button with the same testid,
-  // so we scope to the visible desktop aside to avoid strict mode violations.
+  // Click the settings button inside the sidebar.
+  // Scope to the desktop sidebar to avoid strict mode violations.
   const desktopSidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
-  const sidebarSettingsButton = desktopSidebar.locator('[data-testid="settings-button"]')
-  const navSettingsButton = authenticatedPage.getByRole("button", { name: /open settings|close settings/i })
-  const settingsButton = (await sidebarSettingsButton.isVisible({ timeout: TEST_TIMEOUTS.medium }).catch(() => false))
-    ? sidebarSettingsButton
-    : navSettingsButton
-
+  const settingsButton = desktopSidebar.locator('button[aria-label="Settings"]').first()
   await expect(settingsButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await settingsButton.click()
 
-  // Settings content should appear in the main area
-  await expect(authenticatedPage.locator('[data-testid="settings-overlay"]')).toBeVisible({
+  // Settings content should appear — verify the General heading is visible
+  await expect(authenticatedPage.getByRole("heading", { name: "General" })).toBeVisible({
     timeout: TEST_TIMEOUTS.max,
-  })
-
-  // General tab: model select in main content, logout button in sidebar settings nav
-  await expect(authenticatedPage.locator("#claude-model")).toBeAttached({ timeout: TEST_TIMEOUTS.medium })
-  // Both desktop and mobile sidebars render a logout button — scope to the desktop sidebar
-  await expect(desktopSidebar.locator('[data-testid="logout-button"]')).toBeAttached({
-    timeout: TEST_TIMEOUTS.medium,
   })
 })

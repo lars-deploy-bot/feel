@@ -103,11 +103,11 @@ export function DriveUpload({ workspace, worktree, onUploadComplete }: DriveUplo
         className={`w-full py-3 px-4 border border-dashed rounded-lg flex flex-col items-center gap-1.5 transition-colors ${
           isDragging
             ? "border-sky-400 bg-sky-50/50 dark:bg-sky-900/10"
-            : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700"
+            : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
         } ${uploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       >
-        <Upload size={16} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-600" />
-        <span className="text-[12px] text-neutral-400 dark:text-neutral-600">
+        <Upload size={16} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600" />
+        <span className="text-[12px] text-zinc-400 dark:text-zinc-600">
           {uploading ? "Uploading..." : isDragging ? "Drop to upload" : "Drop files or click to upload"}
         </span>
       </button>

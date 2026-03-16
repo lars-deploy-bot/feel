@@ -4,7 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import type { AppDatabase } from "@webalive/database"
 import { motion } from "framer-motion"
 import { ArrowLeft, LogIn } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { parseAsString, useQueryStates } from "nuqs"
 import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -49,7 +50,10 @@ const itemVariants = {
 export function SubdomainDeployForm() {
   const { wildcard } = useDomainConfig()
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const [deployParams, setDeployParams] = useQueryStates({
+    q: parseAsString,
+    template: parseAsString,
+  })
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploymentStatus, setDeploymentStatus] = useState<DeploySubdomainResponse | null>(null)
   const [elapsedTime, setElapsedTime] = useState(0)
@@ -58,7 +62,7 @@ export function SubdomainDeployForm() {
 
   // Always show template selection first — persisted store shouldn't auto-skip
   // Only skip if a template was explicitly passed via URL param (e.g., from ChatEmptyState)
-  const templateFromUrl = searchParams.get("template")
+  const templateFromUrl = deployParams.template
   const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(true)
 
   // Sync with template URL param changes (component may not remount on query param changes)
@@ -84,7 +88,7 @@ export function SubdomainDeployForm() {
   const { siteIdea, templateId, setSiteIdea, setTemplateId } = onboardingState
 
   // Extract the 'q' search parameter for site ideas
-  const siteIdeasFromUrl = searchParams.get("q") || ""
+  const siteIdeasFromUrl = deployParams.q || ""
 
   // Fetch templates from API
   useEffect(() => {
@@ -118,20 +122,15 @@ export function SubdomainDeployForm() {
     }
   }, [templateFromUrl, templateId, setTemplateId])
 
-  // Sync URL with current state (preserve existing params like 'mode')
+  // Sync URL with current state — atomic update, no intermediate flicker
   useEffect(() => {
     if (showIdeaConfirmation && (siteIdea || templateId)) {
-      const params = new URLSearchParams(window.location.search)
-      if (siteIdea) params.set("q", siteIdea)
-      if (templateId) params.set("template", templateId)
-
-      const newSearch = params.toString()
-      const newUrl = newSearch ? `/deploy/start?${newSearch}` : "/deploy/start"
-      if (window.location.search !== `?${newSearch}`) {
-        window.history.replaceState({}, "", newUrl)
-      }
+      void setDeployParams({
+        q: siteIdea || null,
+        template: templateId || null,
+      })
     }
-  }, [siteIdea, templateId, showIdeaConfirmation])
+  }, [siteIdea, templateId, showIdeaConfirmation, setDeployParams])
 
   // Loading dots animation (. .. ...)
   useEffect(() => {
@@ -388,11 +387,8 @@ export function SubdomainDeployForm() {
             <button
               type="button"
               onClick={() => {
-                const params = new URLSearchParams(searchParams.toString())
-                params.delete("q")
-                params.delete("template")
-                const nextSearch = params.toString()
-                router.push(nextSearch ? `/deploy?${nextSearch}` : "/deploy")
+                void setDeployParams({ q: null, template: null })
+                router.push("/deploy")
               }}
               className="text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 text-xs font-medium inline-flex items-center gap-1 transition-colors uppercase tracking-wide"
             >

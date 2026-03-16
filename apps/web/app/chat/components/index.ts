@@ -1,5 +1,6 @@
 export { AgentManagerIndicator } from "./AgentManagerIndicator"
 export { ChatEmptyState } from "./ChatEmptyState"
+export { MessageList } from "./MessageList"
 export { Nav } from "./Nav"
 export { OfflineBanner } from "./OfflineBanner"
 export { TabBar } from "./TabBar"

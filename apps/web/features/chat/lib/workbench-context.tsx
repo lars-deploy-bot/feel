@@ -1,5 +1,5 @@
 "use client"
-import { createContext, type ReactNode, useCallback, useContext, useState } from "react"
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react"
 
 export interface WorkbenchEntry {
   id: string
@@ -17,14 +17,53 @@ export interface ElementSelection {
   columnNumber?: number
 }
 
-/** View mode for the workbench (home picker, site preview, code editor, terminal, drive, events) */
-export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events"
+/** View mode for the workbench */
+export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events" | "agents" | "photos" | "kanban"
+
+// ── Workbench View Contract ─────────────────────────────────────────────────
+
+/** Base props every workbench view receives from the Workbench dispatcher. */
+export interface WorkbenchViewProps {
+  workspace: string
+  worktree?: string | null
+}
+
+/** A keyboard shortcut registered by a workbench view. */
+export interface WorkbenchShortcut {
+  /** Unique identifier (for dedup/cleanup) */
+  id: string
+  /** Key to match (e.g., "Escape", "s", "f") */
+  key: string
+  /** Requires Ctrl (Win/Linux) or Cmd (Mac) */
+  ctrlOrMeta?: boolean
+  /** Handler called when the shortcut fires */
+  handler: (e: KeyboardEvent) => void
+}
+
+/**
+ * Type-safe view state registry. Views that need persistent state (survives
+ * view switches) declare their shape here. Using `useViewState("foo", ...)`
+ * without declaring "foo" in this map is a compiler error.
+ *
+ * @example
+ * // 1. Declare the shape in ViewStateMap:
+ * export interface ViewStateMap {
+ *   drive: { selectedFile: string | null; treeWidth: number }
+ * }
+ * // 2. Use in the view:
+ * const state = useViewState("drive", { selectedFile: null, treeWidth: 240 })
+ * state.value.selectedFile  // string | null — fully typed, zero assertions
+ */
+export interface ViewStateMap {
+  site: { device: "desktop" | "mobile" }
+}
+
+/** Internal typed storage — maps each declared view key to its state. */
+type ViewStateStorage = { [K in keyof ViewStateMap]?: ViewStateMap[K] }
 
 /** State for the workbench */
 export interface WorkbenchState {
   view: WorkbenchView
-  /** Current path in site preview (URL path) */
-  sitePath: string
   /** Currently open file path (for code view) */
   filePath: string | null
   /** Expanded folders in the file tree */
@@ -67,17 +106,22 @@ interface WorkbenchContextType {
   setTreeWidth: (width: number) => void
   /** Toggle tree sidebar collapsed */
   toggleTreeCollapsed: () => void
-  /** Set site preview path */
-  setSitePath: (path: string) => void
+  /** Register keyboard shortcuts (returns cleanup function) */
+  registerShortcuts: (shortcuts: WorkbenchShortcut[]) => () => void
+  /** Typed view state storage — accessed via useViewState hook, not directly */
+  viewStatesRef: React.RefObject<ViewStateStorage>
+  /** Add a photobook image to the chat input — registered by the chat page */
+  addImageToChat: ((imageKey: string) => void) | null
+  /** Register the callback for adding images to chat */
+  registerAddImageToChat: (handler: (imageKey: string) => void) => void
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined)
 
-const DEFAULT_TREE_WIDTH = 200
+const DEFAULT_TREE_WIDTH = 260
 
 const DEFAULT_WORKBENCH_STATE: WorkbenchState = {
-  view: "home",
-  sitePath: "/",
+  view: "site",
   filePath: null,
   expandedFolders: new Set<string>(),
   treeWidth: DEFAULT_TREE_WIDTH,
@@ -90,6 +134,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [onElementSelect, setOnElementSelect] = useState<((element: ElementSelection) => void) | null>(null)
   const [workbenchState, setWorkbenchState] = useState<WorkbenchState>(DEFAULT_WORKBENCH_STATE)
   const [selectorActive, setSelectorActive] = useState(false)
+  const [addImageToChat, setAddImageToChat] = useState<((imageKey: string) => void) | null>(null)
 
   const addEntry = (entry: Omit<WorkbenchEntry, "id" | "timestamp">) => {
     const newEntry: WorkbenchEntry = {
@@ -128,6 +173,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
   const registerElementSelectHandler = useCallback((handler: (element: ElementSelection) => void) => {
     setOnElementSelect(() => handler)
+  }, [])
+
+  const registerAddImageToChat = useCallback((handler: (imageKey: string) => void) => {
+    setAddImageToChat(() => handler)
   }, [])
 
   const setView = useCallback((view: WorkbenchView) => {
@@ -175,9 +224,38 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     setWorkbenchState(prev => ({ ...prev, treeCollapsed: !prev.treeCollapsed }))
   }, [])
 
-  const setSitePath = useCallback((sitePath: string) => {
-    setWorkbenchState(prev => ({ ...prev, sitePath }))
+  // ── Keyboard Shortcuts ──────────────────────────────────────────────────
+  const shortcutsRef = useRef<Map<string, WorkbenchShortcut>>(new Map())
+
+  const registerShortcuts = useCallback((shortcuts: WorkbenchShortcut[]) => {
+    for (const s of shortcuts) {
+      shortcutsRef.current.set(s.id, s)
+    }
+    return () => {
+      for (const s of shortcuts) {
+        shortcutsRef.current.delete(s.id)
+      }
+    }
   }, [])
+
+  // Central keydown listener — replaces per-view window.addEventListener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      for (const shortcut of shortcutsRef.current.values()) {
+        if (e.key.toLowerCase() !== shortcut.key.toLowerCase()) continue
+        const hasModifier = e.ctrlKey || e.metaKey
+        if (shortcut.ctrlOrMeta && !hasModifier) continue
+        if (!shortcut.ctrlOrMeta && hasModifier) continue
+        shortcut.handler(e)
+        return
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  // ── View State Persistence ──────────────────────────────────────────────
+  const viewStatesRef = useRef<ViewStateStorage>({})
 
   return (
     <WorkbenchContext.Provider
@@ -199,7 +277,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         toggleFolder,
         setTreeWidth,
         toggleTreeCollapsed,
-        setSitePath,
+        registerShortcuts,
+        viewStatesRef,
+        addImageToChat,
+        registerAddImageToChat,
       }}
     >
       {children}

@@ -7,7 +7,7 @@
 
 "use client"
 
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Key, Loader2, Plus, Trash2 } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Key, Loader2, Plus, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { ApiError, delly, getty, postty } from "@/lib/api/api-client"
@@ -239,9 +239,7 @@ export function UserEnvKeysSettings() {
     const validated = validateRequest("user-env-keys/create", { keyName, keyValue })
     await postty("user-env-keys/create", validated)
 
-    toast.success(`${keyName} saved`, {
-      icon: <CheckCircle2 className="h-4 w-4 text-green-500" />,
-    })
+    toast(`${keyName} saved`)
     await refetch()
   }
 
@@ -249,10 +247,10 @@ export function UserEnvKeysSettings() {
     try {
       const validated = validateRequest("user-env-keys/delete", { keyName })
       await delly("user-env-keys/delete", validated)
-      toast.success(`${keyName} deleted`)
+      toast(`${keyName} deleted`)
       await refetch()
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Failed to delete key")
+      toast(err instanceof ApiError ? err.message : "Couldn't delete key")
     }
   }
 

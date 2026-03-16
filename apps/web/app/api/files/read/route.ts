@@ -60,6 +60,11 @@ function getLanguageFromFilename(filename: string): string {
     cjs: "javascript",
     json: "json",
     md: "markdown",
+    mdx: "markdown",
+    markdown: "markdown",
+    mdown: "markdown",
+    csv: "csv",
+    tsv: "tsv",
     css: "css",
     scss: "scss",
     less: "less",
@@ -83,6 +88,11 @@ function getLanguageFromFilename(filename: string): string {
     gql: "graphql",
     vue: "vue",
     svelte: "svelte",
+    tex: "latex",
+    latex: "latex",
+    bib: "latex",
+    sty: "latex",
+    cls: "latex",
   }
   return languageMap[ext] || "plaintext"
 }

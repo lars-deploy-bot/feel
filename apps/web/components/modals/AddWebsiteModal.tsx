@@ -193,8 +193,8 @@ export function AddWebsiteModal({ onClose, onSuccess }: AddWebsiteModalProps) {
         {/* Content - reuse WebsiteConfig component */}
         <div className="p-4">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
-              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+            <div className="mb-4 p-3 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+              <p className="text-[13px] text-zinc-500 dark:text-zinc-400">{error}</p>
             </div>
           )}
 

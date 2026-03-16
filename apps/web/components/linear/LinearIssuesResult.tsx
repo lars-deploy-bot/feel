@@ -490,7 +490,7 @@ function IssueRow({ issue }: { issue: LinearMcpIssue }) {
       }
     } catch (error) {
       console.error("[LinearIssuesResult] Failed to copy identifier:", error)
-      toast.error("Failed to copy to clipboard")
+      toast("Couldn't copy — try again")
       // Don't set copied to true on error
     }
   }

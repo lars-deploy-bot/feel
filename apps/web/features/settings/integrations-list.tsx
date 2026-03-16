@@ -13,7 +13,7 @@ import {
   providerSupportsOAuth,
   providerSupportsPat,
 } from "@webalive/shared"
-import { AlertCircle, CheckCircle2, ExternalLink, Key, Loader2, RefreshCw } from "lucide-react"
+import { AlertCircle, ExternalLink, Key, Loader2, RefreshCw } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { Badge } from "@/components/ui/badge"
@@ -367,9 +367,7 @@ function IntegrationDetail({ integration, onUpdate }: { integration: Integration
     const success = await connect()
     if (success) {
       trackIntegrationConnected(integration.provider_key)
-      toast.success(`${integration.display_name} connected`, {
-        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-      })
+      toast(`${integration.display_name} connected`, {})
       onUpdate()
     }
   }
@@ -378,7 +376,7 @@ function IntegrationDetail({ integration, onUpdate }: { integration: Integration
     try {
       await disconnect()
       trackIntegrationDisconnected(integration.provider_key)
-      toast.success(`${integration.display_name} disconnected`)
+      toast(`${integration.display_name} disconnected`)
       onUpdate()
     } catch {
       // Error handled by mutation's onError callback
@@ -547,9 +545,7 @@ function DetailPatInput({
     if (!token.trim()) return
     const result = await connectWithPat(token.trim())
     if (result.success) {
-      toast.success(`Connected to ${displayName} as ${result.username}`, {
-        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-      })
+      toast(`Connected to ${displayName} as ${result.username}`, {})
       setToken("")
       setExpanded(false)
       onSuccess()
@@ -667,9 +663,7 @@ function PatInput({
 
     const result = await connectWithPat(token.trim())
     if (result.success) {
-      toast.success(`Connected to ${displayName} as ${result.username}`, {
-        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-      })
+      toast(`Connected to ${displayName} as ${result.username}`, {})
       setToken("")
       setShowInput(false)
       onSuccess()
@@ -770,9 +764,7 @@ function DualConnectionOptions({
 
     const result = await connectWithPat(token.trim())
     if (result.success) {
-      toast.success(`Connected to ${displayName} as ${result.username}`, {
-        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-      })
+      toast(`Connected to ${displayName} as ${result.username}`, {})
       setToken("")
       setShowPatInput(false)
       onSuccess()
@@ -892,9 +884,7 @@ function IntegrationCard({ integration, onUpdate }: IntegrationCardProps) {
     const success = await connect()
     if (success) {
       trackIntegrationConnected(integration.provider_key)
-      toast.success(`${integration.display_name} connected`, {
-        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-      })
+      toast(`${integration.display_name} connected`, {})
       onUpdate()
     }
   }
@@ -903,7 +893,7 @@ function IntegrationCard({ integration, onUpdate }: IntegrationCardProps) {
     try {
       await disconnect()
       trackIntegrationDisconnected(integration.provider_key)
-      toast.success(`${integration.display_name} disconnected`)
+      toast(`${integration.display_name} disconnected`)
       onUpdate()
     } catch {
       // Error handled by mutation's onError callback

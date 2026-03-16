@@ -31,16 +31,16 @@ export function DrivePreview({ workspace, worktree, filePath, onClose }: DrivePr
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <PanelBar className="px-3 gap-2">
-        <File size={14} strokeWidth={1.5} className={getFileColor(filename)} />
-        <span className="text-[13px] text-neutral-700 dark:text-neutral-300 truncate flex-1">{filename}</span>
+      <PanelBar className="px-3 gap-1.5">
+        <File size={15} strokeWidth={1.5} className={getFileColor(filename)} />
+        <span className="text-[13px] text-black/70 dark:text-white/70 truncate flex-1">{filename}</span>
         <button
           type="button"
           onClick={onClose}
-          className="p-1 text-neutral-400 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 rounded transition-colors"
+          className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
           title="Close"
         >
-          <X size={14} strokeWidth={1.5} />
+          <X size={15} strokeWidth={1.5} />
         </button>
       </PanelBar>
 
@@ -58,7 +58,7 @@ export function DrivePreview({ workspace, worktree, filePath, onClose }: DrivePr
 
 function ImagePreviewPlaceholder({ filename }: { filename: string }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-3 text-neutral-400 dark:text-neutral-600">
+    <div className="flex flex-col items-center justify-center h-full gap-3 text-zinc-400 dark:text-zinc-600">
       <Image size={48} strokeWidth={1} className="opacity-50" />
       <p className="text-sm">{filename}</p>
       <p className="text-xs">Image preview</p>
@@ -107,12 +107,12 @@ function TextPreview({
   return (
     <div className="p-4">
       {file && (
-        <div className="mb-3 flex items-center gap-3 text-[11px] text-neutral-400 dark:text-neutral-600">
+        <div className="mb-3 flex items-center gap-3 text-[11px] text-zinc-400 dark:text-zinc-600">
           <span>{formatSize(file.size)}</span>
           <span>{file.language}</span>
         </div>
       )}
-      <pre className="font-mono text-[13px] leading-relaxed text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap break-words">
+      <pre className="font-mono text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap break-words">
         {file?.content}
       </pre>
     </div>

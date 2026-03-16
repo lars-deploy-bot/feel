@@ -57,3 +57,15 @@ export function generateInviteCode(userId: string): string {
 
   return code
 }
+
+/**
+ * Build invite link from code (server-side only — called from API routes).
+ *
+ * @param code - The invite code
+ * @param baseUrl - The base URL (e.g. "https://app.alive.best")
+ * @throws Error if baseUrl is missing
+ */
+export function buildInviteLink(code: string, baseUrl: string): string {
+  if (!baseUrl) throw new Error("[referral] baseUrl is required for invite link generation")
+  return `${baseUrl}/invite/${code}`
+}
