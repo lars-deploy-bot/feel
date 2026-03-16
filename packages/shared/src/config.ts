@@ -39,11 +39,9 @@ function getBuiltinModule<T>(name: string): T | null {
     return null
   }
 
-  try {
-    return process.getBuiltinModule(name) as T
-  } catch {
-    return null
-  }
+  const mod: unknown = process.getBuiltinModule(name)
+  if (!mod) return null
+  return mod as T
 }
 
 /**

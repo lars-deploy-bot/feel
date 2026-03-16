@@ -8,31 +8,53 @@
  * Usage: bun run --cwd packages/tunnel sync
  */
 
-import { readFile } from "node:fs/promises"
 import { createClient } from "@supabase/supabase-js"
-import { isAliveWorkspace, parseServerConfig, requireEnv } from "@webalive/shared"
-import { loadTunnelConfig } from "./config.js"
+import { environments, isAliveWorkspace, parseServerConfig, requireEnv, type ServerConfig } from "@webalive/shared"
+import { tunnelConfigFromServerConfig } from "./config.js"
+import { TunnelSyncError } from "./errors.js"
 import { TunnelManager } from "./tunnel.js"
 
-interface DomainRow {
-  hostname: string
-  port: number
+const LOG_PREFIX = "[tunnel:sync]"
+
+function log(msg: string): void {
+  process.stderr.write(`${LOG_PREFIX} ${msg}\n`)
 }
 
-async function main() {
-  // Load server config (same as generate-routing.ts)
-  const configPath = requireEnv("SERVER_CONFIG_PATH")
-  const raw = await readFile(configPath, "utf8")
-  const serverCfg = parseServerConfig(raw)
+interface StaticRoute {
+  hostname: string
+  service: string
+}
 
-  console.log(`Server: ${serverCfg.serverId}`)
-  console.log(`Domain: ${serverCfg.domains.main}`)
+function buildStaticRoutes(serverCfg: ServerConfig): StaticRoute[] {
+  const routes: StaticRoute[] = []
 
-  // Load tunnel config from server-config.json
-  const tunnelCfg = loadTunnelConfig()
-  const tunnel = new TunnelManager(tunnelCfg)
+  // Environment routes (production, staging, dev) — from the typed source of truth
+  for (const env of Object.values(environments)) {
+    if (!env.subdomain) continue
+    const hostname = `${env.subdomain}.${serverCfg.domains.main}`
+    routes.push({ hostname, service: `http://localhost:${env.port}` })
+  }
 
-  // Query domains from DB (same query as generate-routing.ts)
+  // Shell routes (WebSocket terminal)
+  if (serverCfg.shell?.domains) {
+    const upstreamRaw = serverCfg.shell.upstream.includes("://")
+      ? serverCfg.shell.upstream
+      : `http://${serverCfg.shell.upstream}`
+    const upstreamUrl = new URL(upstreamRaw)
+    if (!upstreamUrl.port) {
+      throw new TunnelSyncError(`Invalid shell.upstream (missing port): ${serverCfg.shell.upstream}`)
+    }
+    const shellPort = Number.parseInt(upstreamUrl.port, 10)
+
+    for (const domain of serverCfg.shell.domains) {
+      routes.push({ hostname: domain, service: `http://localhost:${shellPort}` })
+    }
+  }
+
+  return routes
+}
+
+async function querySiteDomains(serverCfg: ServerConfig): Promise<Map<string, number>> {
   const supabaseUrl = requireEnv("SUPABASE_URL")
   const supabaseKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY")
   const supabase = createClient(supabaseUrl, supabaseKey, { db: { schema: "app" } })
@@ -44,92 +66,52 @@ async function main() {
     .is("is_test_env", false)
     .order("hostname", { ascending: true })
 
-  if (error) throw new Error(`DB query failed: ${error.message}`)
-  const domains: DomainRow[] = data ?? []
+  if (error) throw new TunnelSyncError(`DB query failed: ${error.message}`)
 
-  // Filter reserved domains (same logic as generate-routing.ts)
   const sites = new Map<string, number>()
-  for (const d of domains) {
+  for (const d of data ?? []) {
     if (isAliveWorkspace(d.hostname)) continue
     sites.set(d.hostname, d.port)
   }
+  return sites
+}
 
-  console.log(`\nFound ${sites.size} sites to sync`)
+async function main() {
+  const configPath = requireEnv("SERVER_CONFIG_PATH")
+  const raw = await Bun.file(configPath).text()
+  const serverCfg = parseServerConfig(raw)
+  const tunnelCfg = tunnelConfigFromServerConfig(serverCfg)
 
-  // Static routes: app environments, shell, etc.
-  // These are the "infrastructure" routes that don't come from the DB.
-  const envPath = `${serverCfg.paths.aliveRoot}/packages/shared/environments.json`
-  const envRaw = await readFile(envPath, "utf8")
-  const envConfig = JSON.parse(envRaw)
+  log(`Server: ${serverCfg.serverId}`)
+  log(`Domain: ${serverCfg.domains.main}`)
 
-  const staticRoutes: Array<{ hostname: string; service: string }> = []
+  const tunnel = new TunnelManager(tunnelCfg)
+  const sites = await querySiteDomains(serverCfg)
+  log(`Found ${sites.size} sites`)
 
-  // Environment routes (production, staging, dev)
-  for (const env of Object.values(envConfig.environments)) {
-    if (
-      !env ||
-      typeof env !== "object" ||
-      !("subdomain" in env) ||
-      typeof env.subdomain !== "string" ||
-      env.subdomain.length === 0
-    ) {
-      throw new Error("Invalid environments.json: missing subdomain for tunnel static route")
-    }
-    if (!("port" in env) || typeof env.port !== "number") {
-      throw new Error("Invalid environments.json: missing numeric port for tunnel static route")
-    }
-    const hostname = `${env.subdomain}.${serverCfg.domains.main}`
-    staticRoutes.push({ hostname, service: `http://localhost:${env.port}` })
-  }
-
-  // Shell routes (WebSocket terminal)
-  if (serverCfg.shell?.domains) {
-    const upstreamRaw = serverCfg.shell.upstream.includes("://")
-      ? serverCfg.shell.upstream
-      : `http://${serverCfg.shell.upstream}`
-    const upstreamUrl = new URL(upstreamRaw)
-    if (!upstreamUrl.port) {
-      throw new Error(`Invalid shell.upstream (missing port): ${serverCfg.shell.upstream}`)
-    }
-    const shellPort = Number.parseInt(upstreamUrl.port, 10)
-
-    for (const domain of serverCfg.shell.domains) {
-      staticRoutes.push({
-        hostname: domain,
-        service: `http://localhost:${shellPort}`,
-      })
-    }
-  }
-
-  console.log(`Static routes: ${staticRoutes.length}`)
+  const staticRoutes = buildStaticRoutes(serverCfg)
+  log(`Static routes: ${staticRoutes.length}`)
   for (const r of staticRoutes) {
-    console.log(`  ${r.hostname} → ${r.service}`)
+    log(`  ${r.hostname} → ${r.service}`)
   }
 
-  // Sync to tunnel
-  console.log("\nSyncing to Cloudflare Tunnel...")
+  log("Syncing to Cloudflare Tunnel...")
   const result = await tunnel.syncRoutes(sites, staticRoutes)
 
-  console.log("\nDone:")
-  console.log(`  Added:   ${result.added.length}`)
-  console.log(`  Updated: ${result.updated.length}`)
-  console.log(`  Removed: ${result.removed.length}`)
-
+  log(`Done: added=${result.added.length} updated=${result.updated.length} removed=${result.removed.length}`)
   if (result.added.length > 0) {
-    console.log("\n  Added routes:")
-    for (const h of result.added) console.log(`    + ${h}`)
+    for (const h of result.added) log(`  + ${h}`)
   }
   if (result.updated.length > 0) {
-    console.log("\n  Updated routes:")
-    for (const h of result.updated) console.log(`    ~ ${h}`)
+    for (const h of result.updated) log(`  ~ ${h}`)
   }
   if (result.removed.length > 0) {
-    console.log("\n  Removed routes:")
-    for (const h of result.removed) console.log(`    - ${h}`)
+    for (const h of result.removed) log(`  - ${h}`)
   }
 }
 
-main().catch(e => {
-  console.error(`\nSync failed: ${e.message}`)
+main().catch((e: unknown) => {
+  const message = e instanceof Error ? e.message : String(e)
+  process.stderr.write(`${LOG_PREFIX} FATAL: ${message}\n`)
   process.exit(1)
 })

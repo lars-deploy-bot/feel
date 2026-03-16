@@ -4,7 +4,8 @@
  */
 
 import { readFileSync } from "node:fs"
-import { parseServerConfig, requireEnv } from "@webalive/shared"
+import { parseServerConfig, requireEnv, type ServerConfig } from "@webalive/shared"
+import { TunnelConfigError } from "./errors.js"
 
 export interface TunnelConfig {
   /** Cloudflare account ID */
@@ -20,18 +21,13 @@ export interface TunnelConfig {
 }
 
 /**
- * Load tunnel config from server-config.json.
- * Reads `tunnel.accountId`, `tunnel.tunnelId`, `tunnel.apiToken`, `tunnel.zoneId`
- * and derives `baseDomain` from `domains.main`.
+ * Extract TunnelConfig from an already-parsed ServerConfig.
+ * Use this when you already have the config to avoid double-reading.
  */
-export function loadTunnelConfig(): TunnelConfig {
-  const configPath = requireEnv("SERVER_CONFIG_PATH")
-  const raw = readFileSync(configPath, "utf8")
-  const serverCfg = parseServerConfig(raw)
-
+export function tunnelConfigFromServerConfig(serverCfg: ServerConfig): TunnelConfig {
   const tunnel = serverCfg.tunnel
   if (!tunnel) {
-    throw new Error("Missing 'tunnel' section in server-config.json")
+    throw new TunnelConfigError("Missing 'tunnel' section in server-config.json")
   }
 
   return {
@@ -41,4 +37,15 @@ export function loadTunnelConfig(): TunnelConfig {
     zoneId: tunnel.zoneId,
     baseDomain: serverCfg.domains.main,
   }
+}
+
+/**
+ * Convenience: load tunnel config directly from server-config.json.
+ * Prefer tunnelConfigFromServerConfig() when you already have ServerConfig.
+ */
+export function loadTunnelConfig(): TunnelConfig {
+  const configPath = requireEnv("SERVER_CONFIG_PATH")
+  const raw = readFileSync(configPath, "utf8")
+  const serverCfg = parseServerConfig(raw)
+  return tunnelConfigFromServerConfig(serverCfg)
 }
