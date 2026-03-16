@@ -13,6 +13,7 @@ import {
   SENTRY,
   SUPERADMIN,
 } from "../config"
+import { buildBaseConfig } from "./fixtures/server-config-fixture"
 
 function assertRecord(v: unknown): asserts v is Record<string, unknown> {
   if (typeof v !== "object" || v === null) throw new Error(`Expected object, got ${typeof v}`)
@@ -20,7 +21,7 @@ function assertRecord(v: unknown): asserts v is Record<string, unknown> {
 
 const CONFIG_MODULE_URL = new URL("../config.ts", import.meta.url).href
 
-function runConfigProbe(envOverrides: Record<string, string | undefined>) {
+function runConfigProbe(envOverrides: Record<string, string | undefined>, options?: { disableRequire?: boolean }) {
   const env = { ...process.env }
   for (const [key, value] of Object.entries(envOverrides)) {
     if (typeof value === "undefined") {
@@ -30,42 +31,28 @@ function runConfigProbe(envOverrides: Record<string, string | undefined>) {
     }
   }
 
-  const script = `
-	import { DOMAINS, PATHS, SECURITY, SUPERADMIN } from "${CONFIG_MODULE_URL}";
-	console.log(JSON.stringify({
-	  aliveRoot: PATHS.ALIVE_ROOT,
-	  e2bScratchRoot: PATHS.E2B_SCRATCH_ROOT,
-	  sitesRoot: PATHS.SITES_ROOT,
-	  imagesStorage: PATHS.IMAGES_STORAGE,
-	  mainDomain: DOMAINS.MAIN,
-  mainSuffix: DOMAINS.MAIN_SUFFIX,
-  allowedBases: [...SECURITY.ALLOWED_WORKSPACE_BASES],
-  workspacePath: SUPERADMIN.WORKSPACE_PATH
-}));
-`
+  const prefix = options?.disableRequire ? "globalThis.require = undefined;\n" : ""
+  const importStyle = options?.disableRequire
+    ? `const mod = await import("${CONFIG_MODULE_URL}");\n` +
+      "const { PATHS, SECURITY } = mod;\n" +
+      "console.log(JSON.stringify({\n" +
+      "  aliveRoot: PATHS.ALIVE_ROOT,\n" +
+      "  sitesRoot: PATHS.SITES_ROOT,\n" +
+      "  allowedBases: [...SECURITY.ALLOWED_WORKSPACE_BASES]\n" +
+      "}));"
+    : `import { DOMAINS, PATHS, SECURITY, SUPERADMIN } from "${CONFIG_MODULE_URL}";\n` +
+      "console.log(JSON.stringify({\n" +
+      "  aliveRoot: PATHS.ALIVE_ROOT,\n" +
+      "  e2bScratchRoot: PATHS.E2B_SCRATCH_ROOT,\n" +
+      "  sitesRoot: PATHS.SITES_ROOT,\n" +
+      "  imagesStorage: PATHS.IMAGES_STORAGE,\n" +
+      "  mainDomain: DOMAINS.MAIN,\n" +
+      "  mainSuffix: DOMAINS.MAIN_SUFFIX,\n" +
+      "  allowedBases: [...SECURITY.ALLOWED_WORKSPACE_BASES],\n" +
+      "  workspacePath: SUPERADMIN.WORKSPACE_PATH\n" +
+      "}));"
 
-  return spawnSync("bun", ["-e", script], { env, encoding: "utf8", timeout: 10_000 })
-}
-
-function runConfigProbeWithoutRequire(envOverrides: Record<string, string | undefined>) {
-  const env = { ...process.env }
-  for (const [key, value] of Object.entries(envOverrides)) {
-    if (typeof value === "undefined") {
-      delete env[key]
-    } else {
-      env[key] = value
-    }
-  }
-
-  const script = `
-	globalThis.require = undefined;
-	const mod = await import("${CONFIG_MODULE_URL}");
-	console.log(JSON.stringify({
-	  aliveRoot: mod.PATHS.ALIVE_ROOT,
-	  sitesRoot: mod.PATHS.SITES_ROOT,
-	  allowedBases: [...mod.SECURITY.ALLOWED_WORKSPACE_BASES]
-	}));
-`
+  const script = prefix + importStyle
 
   return spawnSync("bun", ["-e", script], { env, encoding: "utf8", timeout: 10_000 })
 }
@@ -81,8 +68,6 @@ describe("resolveTemplatePath", () => {
   const TEMPLATES_ROOT = "/srv/webalive/templates"
 
   it("extracts directory name from a DB source_path", () => {
-    // DB stores: "/srv/webalive/templates/blank.alive.best"
-    // Function extracts last segment "blank.alive.best" and joins with TEMPLATES_ROOT
     const result = resolveTemplatePath("/srv/webalive/templates/blank.alive.best")
     expect(result).toBe(`${TEMPLATES_ROOT}/blank.alive.best`)
   })
@@ -102,10 +87,8 @@ describe("resolveTemplatePath", () => {
   })
 
   it("handles path traversal attempts — extracts only last segment", () => {
-    // Even with traversal in the input, only the last segment is used
     const result = resolveTemplatePath("../../etc/passwd")
     expect(result).toBe(`${TEMPLATES_ROOT}/passwd`)
-    // Crucially, the result stays under TEMPLATES_ROOT
     expect(result.startsWith(TEMPLATES_ROOT)).toBe(true)
   })
 
@@ -183,64 +166,27 @@ describe("local/standalone config defaults", () => {
   })
 
   it("loads server config when require is unavailable but process.getBuiltinModule exists", () => {
-    const configDir = writeServerConfig({
-      serverId: "srv_test_server_123456",
-      serverIp: "127.0.0.1",
-      serverIpv6: "::1",
-      automationPrimary: false,
-      paths: {
-        aliveRoot: "/root/alive",
-        sitesRoot: "/srv/webalive/sites",
-        templatesRoot: "/srv/webalive/templates",
-        imagesStorage: "/srv/webalive/storage",
-      },
-      domains: {
-        main: "example.com",
-        wildcard: "example.com",
-        cookieDomain: ".example.com",
-        previewBase: "preview.example.com",
-        frameAncestors: ["https://app.example.com"],
-      },
-      tunnel: {
-        accountId: "cf-account",
-        tunnelId: "055f6248-5434-487c-a074-f9fab9aa6fe1",
-        apiToken: "cf-token",
-        zoneId: "cf-zone",
-      },
-      urls: {
-        prod: "https://app.example.com",
-        staging: "https://staging.example.com",
-        dev: "https://dev.example.com",
-      },
-      shell: {
-        domains: ["go.example.com"],
-        listen: ":8443",
-        upstream: "localhost:3888",
-      },
-      sentry: {
-        dsn: "https://abc123@sentry.example.com/2",
-        url: "https://sentry.example.com",
-        projectId: "2",
-      },
-      contactEmail: "ops@example.com",
-      previewProxy: {
-        port: 5055,
-      },
-      generated: {
-        dir: "/var/lib/alive/generated",
-        caddySites: "/var/lib/alive/generated/Caddyfile.sites",
-        caddyShell: "/var/lib/alive/generated/Caddyfile.shell",
-        nginxMap: "/var/lib/alive/generated/nginx.sni.map",
-      },
-    })
+    const configDir = writeServerConfig(
+      buildBaseConfig({
+        tunnel: {
+          accountId: "cf-account",
+          tunnelId: "055f6248-5434-487c-a074-f9fab9aa6fe1",
+          apiToken: "cf-token",
+          zoneId: "cf-zone",
+        },
+      }),
+    )
 
     try {
-      const result = runConfigProbeWithoutRequire({
-        STREAM_ENV: "production",
-        SERVER_CONFIG_PATH: join(configDir, "server-config.json"),
-        CI: undefined,
-        VITEST: undefined,
-      })
+      const result = runConfigProbe(
+        {
+          STREAM_ENV: "production",
+          SERVER_CONFIG_PATH: join(configDir, "server-config.json"),
+          CI: undefined,
+          VITEST: undefined,
+        },
+        { disableRequire: true },
+      )
 
       expect(result.status).toBe(0)
       const parsed: unknown = JSON.parse(result.stdout)
@@ -257,50 +203,7 @@ describe("local/standalone config defaults", () => {
 
 describe("E2B config validation", () => {
   it("fails fast when E2B is enabled without paths.e2bScratchRoot", () => {
-    const configDir = writeServerConfig({
-      serverId: "srv_test_server_123456",
-      serverIp: "127.0.0.1",
-      serverIpv6: "::1",
-      automationPrimary: false,
-      paths: {
-        aliveRoot: "/root/alive",
-        sitesRoot: "/srv/webalive/sites",
-        templatesRoot: "/srv/webalive/templates",
-        imagesStorage: "/srv/webalive/storage",
-      },
-      domains: {
-        main: "example.com",
-        wildcard: "example.com",
-        cookieDomain: ".example.com",
-        previewBase: "preview.example.com",
-        frameAncestors: ["https://app.example.com"],
-      },
-      urls: {
-        prod: "https://app.example.com",
-        staging: "https://staging.example.com",
-        dev: "https://dev.example.com",
-      },
-      shell: {
-        domains: ["go.example.com"],
-        listen: ":8443",
-        upstream: "localhost:3888",
-      },
-      sentry: {
-        dsn: "https://abc123@sentry.example.com/2",
-        url: "https://sentry.example.com",
-        projectId: "2",
-      },
-      contactEmail: "ops@example.com",
-      previewProxy: {
-        port: 5055,
-      },
-      generated: {
-        dir: "/var/lib/alive/generated",
-        caddySites: "/var/lib/alive/generated/Caddyfile.sites",
-        caddyShell: "/var/lib/alive/generated/Caddyfile.shell",
-        nginxMap: "/var/lib/alive/generated/nginx.sni.map",
-      },
-    })
+    const configDir = writeServerConfig(buildBaseConfig())
 
     try {
       const result = runConfigProbe({
@@ -319,51 +222,17 @@ describe("E2B config validation", () => {
   })
 
   it("allows E2B when paths.e2bScratchRoot is configured", () => {
-    const configDir = writeServerConfig({
-      serverId: "srv_test_server_123456",
-      serverIp: "127.0.0.1",
-      serverIpv6: "::1",
-      automationPrimary: false,
-      paths: {
-        aliveRoot: "/root/alive",
-        sitesRoot: "/srv/webalive/sites",
-        templatesRoot: "/srv/webalive/templates",
-        imagesStorage: "/srv/webalive/storage",
-        e2bScratchRoot: "/srv/webalive/e2b-scratch",
-      },
-      domains: {
-        main: "example.com",
-        wildcard: "example.com",
-        cookieDomain: ".example.com",
-        previewBase: "preview.example.com",
-        frameAncestors: ["https://app.example.com"],
-      },
-      urls: {
-        prod: "https://app.example.com",
-        staging: "https://staging.example.com",
-        dev: "https://dev.example.com",
-      },
-      shell: {
-        domains: ["go.example.com"],
-        listen: ":8443",
-        upstream: "localhost:3888",
-      },
-      sentry: {
-        dsn: "https://abc123@sentry.example.com/2",
-        url: "https://sentry.example.com",
-        projectId: "2",
-      },
-      contactEmail: "ops@example.com",
-      previewProxy: {
-        port: 5055,
-      },
-      generated: {
-        dir: "/var/lib/alive/generated",
-        caddySites: "/var/lib/alive/generated/Caddyfile.sites",
-        caddyShell: "/var/lib/alive/generated/Caddyfile.shell",
-        nginxMap: "/var/lib/alive/generated/nginx.sni.map",
-      },
-    })
+    const configDir = writeServerConfig(
+      buildBaseConfig({
+        paths: {
+          aliveRoot: "/root/alive",
+          sitesRoot: "/srv/webalive/sites",
+          templatesRoot: "/srv/webalive/templates",
+          imagesStorage: "/srv/webalive/storage",
+          e2bScratchRoot: "/srv/webalive/e2b-scratch",
+        },
+      }),
+    )
 
     try {
       const result = runConfigProbe({
@@ -384,50 +253,7 @@ describe("E2B config validation", () => {
   })
 
   it("does not fail host-mode config when shared E2B secrets exist but new sites stay on systemd", () => {
-    const configDir = writeServerConfig({
-      serverId: "srv_test_server_123456",
-      serverIp: "127.0.0.1",
-      serverIpv6: "::1",
-      automationPrimary: false,
-      paths: {
-        aliveRoot: "/root/alive",
-        sitesRoot: "/srv/webalive/sites",
-        templatesRoot: "/srv/webalive/templates",
-        imagesStorage: "/srv/webalive/storage",
-      },
-      domains: {
-        main: "example.com",
-        wildcard: "example.com",
-        cookieDomain: ".example.com",
-        previewBase: "preview.example.com",
-        frameAncestors: ["https://app.example.com"],
-      },
-      urls: {
-        prod: "https://app.example.com",
-        staging: "https://staging.example.com",
-        dev: "https://dev.example.com",
-      },
-      shell: {
-        domains: ["go.example.com"],
-        listen: ":8443",
-        upstream: "localhost:3888",
-      },
-      sentry: {
-        dsn: "https://abc123@sentry.example.com/2",
-        url: "https://sentry.example.com",
-        projectId: "2",
-      },
-      contactEmail: "ops@example.com",
-      previewProxy: {
-        port: 5055,
-      },
-      generated: {
-        dir: "/var/lib/alive/generated",
-        caddySites: "/var/lib/alive/generated/Caddyfile.sites",
-        caddyShell: "/var/lib/alive/generated/Caddyfile.shell",
-        nginxMap: "/var/lib/alive/generated/nginx.sni.map",
-      },
-    })
+    const configDir = writeServerConfig(buildBaseConfig())
 
     try {
       const result = runConfigProbe({
@@ -486,13 +312,10 @@ describe("resolveLocalAliveRoot", () => {
 })
 
 describe("config values in test environment", () => {
-  // When SERVER_CONFIG_PATH is set and the file exists, real config values are loaded
-  // even in test env. These tests only apply when no config path is set.
   const hasServerConfig = !!process.env.SERVER_CONFIG_PATH
 
   it("test env returns empty config when SERVER_CONFIG_PATH is unset", () => {
     if (hasServerConfig) {
-      // Config was loaded from file — values are non-empty
       expect(PATHS.ALIVE_ROOT).toBeTruthy()
       expect(PATHS.SITES_ROOT).toBeTruthy()
       expect(DOMAINS.MAIN).toBeTruthy()
@@ -507,8 +330,6 @@ describe("config values in test environment", () => {
     if (hasServerConfig) {
       expect(SECURITY.ALLOWED_WORKSPACE_BASES.length).toBeGreaterThan(0)
     } else {
-      // Without server-config, both SITES_ROOT and E2B_SCRATCH_ROOT are empty.
-      // No fallbacks — if paths aren't configured, no workspace bases are allowed.
       expect(SECURITY.ALLOWED_WORKSPACE_BASES).toEqual([])
     }
   })

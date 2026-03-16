@@ -17,6 +17,7 @@
     "sync": "bun run src/sync.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
     "@webalive/shared": "workspace:*",
     "cloudflare": "^4.4.0"
   },
