@@ -37,7 +37,8 @@
     "test:e2e:staging:ui": "ENV_FILE=.env.staging E2E_STRICT_API_GUARD=1 bash ../../scripts/playwright/run.sh test --config=playwright.live.config.ts --ui",
     "test:e2e:critical": "ENV_FILE=.env.e2e.local E2E_STRICT_API_GUARD=1 bash scripts/run-local-e2e.sh bash ../../scripts/playwright/run.sh test chat-critical.spec.ts",
     "test:e2e:critical:10x": "for i in $(seq 1 10); do echo \"--- Run $i/10 ---\" && ENV_FILE=.env.e2e.local E2E_STRICT_API_GUARD=1 bash scripts/run-local-e2e.sh bash ../../scripts/playwright/run.sh test chat-critical.spec.ts || exit 1; done && echo '10/10 passed'",
-    "test:gates": "ENV_FILE=.env.e2e.local E2E_STRICT_API_GUARD=1 bash scripts/run-local-e2e.sh bash ../../scripts/playwright/run.sh test auth.spec.ts protection-verification.spec.ts org-workspace-selection.spec.ts chat-improved.spec.ts chat-critical.spec.ts deploy.spec.ts && ENV_FILE=.env.staging E2E_STRICT_API_GUARD=1 bash ../../scripts/playwright/run.sh test --config=playwright.live.config.ts chat-live.spec.ts",
+    "test:e2e:critical:live": "ENV_FILE=${ENV_FILE:-.env.staging} E2E_STRICT_API_GUARD=1 bash ../../scripts/playwright/run.sh test --config=playwright.live.config.ts chat-critical-live.spec.ts",
+    "test:gates": "ENV_FILE=.env.e2e.local E2E_STRICT_API_GUARD=1 bash scripts/run-local-e2e.sh bash ../../scripts/playwright/run.sh test auth.spec.ts protection-verification.spec.ts org-workspace-selection.spec.ts chat-improved.spec.ts chat-critical.spec.ts deploy.spec.ts && ENV_FILE=.env.staging E2E_STRICT_API_GUARD=1 bash ../../scripts/playwright/run.sh test --config=playwright.live.config.ts chat-live.spec.ts chat-critical-live.spec.ts",
     "check:unregistered-domains": "bun run scripts/check-unregistered-domains.ts",
     "register:unregistered-domains": "bun run scripts/register-unregistered-domains.ts"
   },

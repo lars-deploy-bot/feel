@@ -98,12 +98,53 @@ function checkPlaywrightOkTrap(filePath: string): Violation[] {
   return violations
 }
 
+const MOCK_PATTERNS = [
+  { pattern: /\.route\s*\(/, label: "page.route() — route interception" },
+  { pattern: /route\.fulfill\s*\(/, label: "route.fulfill() — fake response" },
+  { pattern: /StreamBuilder/, label: "StreamBuilder — fake NDJSON" },
+  { pattern: /vi\.(mock|fn|spyOn)\s*\(/, label: "vitest mock" },
+  { pattern: /jest\.(mock|fn|spyOn)\s*\(/, label: "jest mock" },
+  { pattern: /\.mockResolvedValue|\.mockReturnValue|\.mockImplementation/, label: "mock return value" },
+]
+
+/**
+ * Detect mocks in live E2E specs (*-live.spec.ts).
+ * Live specs must hit real services — mocks belong in non-live specs.
+ */
+function checkNoMocksInLiveSpecs(filePath: string): Violation[] {
+  if (!filePath.endsWith("-live.spec.ts")) return []
+
+  const content = readFileSync(filePath, "utf-8")
+  const lines = content.split("\n")
+  const violations: Violation[] = []
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (!line) continue
+
+    for (const { pattern, label } of MOCK_PATTERNS) {
+      if (pattern.test(line)) {
+        violations.push({
+          file: filePath,
+          line: i + 1,
+          pattern: label,
+          fix: "Live specs must not mock. Move to a non-live spec file.",
+          context: line.trim(),
+        })
+      }
+    }
+  }
+
+  return violations
+}
+
 // Main
 const files = findE2EFiles(E2E_DIR)
 const allViolations: Violation[] = []
 
 for (const file of files) {
   allViolations.push(...checkPlaywrightOkTrap(file))
+  allViolations.push(...checkNoMocksInLiveSpecs(file))
 }
 
 if (allViolations.length > 0) {
