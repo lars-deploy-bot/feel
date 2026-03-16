@@ -45,7 +45,7 @@ async function main() {
     .order("hostname", { ascending: true })
 
   if (error) throw new Error(`DB query failed: ${error.message}`)
-  const domains = (data ?? []) as DomainRow[]
+  const domains: DomainRow[] = data ?? []
 
   // Filter reserved domains (same logic as generate-routing.ts)
   const sites = new Map<string, number>()
@@ -65,17 +65,38 @@ async function main() {
   const staticRoutes: Array<{ hostname: string; service: string }> = []
 
   // Environment routes (production, staging, dev)
-  for (const env of Object.values(envConfig.environments) as Array<{ subdomain: string; port: number }>) {
+  for (const env of Object.values(envConfig.environments)) {
+    if (
+      !env ||
+      typeof env !== "object" ||
+      !("subdomain" in env) ||
+      typeof env.subdomain !== "string" ||
+      env.subdomain.length === 0
+    ) {
+      throw new Error("Invalid environments.json: missing subdomain for tunnel static route")
+    }
+    if (!("port" in env) || typeof env.port !== "number") {
+      throw new Error("Invalid environments.json: missing numeric port for tunnel static route")
+    }
     const hostname = `${env.subdomain}.${serverCfg.domains.main}`
     staticRoutes.push({ hostname, service: `http://localhost:${env.port}` })
   }
 
   // Shell routes (WebSocket terminal)
   if (serverCfg.shell?.domains) {
+    const upstreamRaw = serverCfg.shell.upstream.includes("://")
+      ? serverCfg.shell.upstream
+      : `http://${serverCfg.shell.upstream}`
+    const upstreamUrl = new URL(upstreamRaw)
+    if (!upstreamUrl.port) {
+      throw new Error(`Invalid shell.upstream (missing port): ${serverCfg.shell.upstream}`)
+    }
+    const shellPort = Number.parseInt(upstreamUrl.port, 10)
+
     for (const domain of serverCfg.shell.domains) {
       staticRoutes.push({
         hostname: domain,
-        service: `http://localhost:${Number.parseInt(serverCfg.shell.upstream.split(":")[1], 10)}`,
+        service: `http://localhost:${shellPort}`,
       })
     }
   }

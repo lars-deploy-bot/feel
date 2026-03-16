@@ -19,13 +19,6 @@ export interface TunnelConfig {
   baseDomain: string
 }
 
-function must(val: unknown, field: string): string {
-  if (typeof val !== "string" || !val) {
-    throw new Error(`Missing tunnel.${field} in server-config.json`)
-  }
-  return val
-}
-
 /**
  * Load tunnel config from server-config.json.
  * Reads `tunnel.accountId`, `tunnel.tunnelId`, `tunnel.apiToken`, `tunnel.zoneId`
@@ -36,16 +29,16 @@ export function loadTunnelConfig(): TunnelConfig {
   const raw = readFileSync(configPath, "utf8")
   const serverCfg = parseServerConfig(raw)
 
-  const tunnel = (serverCfg as Record<string, unknown>).tunnel as Record<string, unknown> | undefined
+  const tunnel = serverCfg.tunnel
   if (!tunnel) {
     throw new Error("Missing 'tunnel' section in server-config.json")
   }
 
   return {
-    accountId: must(tunnel.accountId, "accountId"),
-    tunnelId: must(tunnel.tunnelId, "tunnelId"),
-    apiToken: must(tunnel.apiToken, "apiToken"),
-    zoneId: must(tunnel.zoneId, "zoneId"),
+    accountId: tunnel.accountId,
+    tunnelId: tunnel.tunnelId,
+    apiToken: tunnel.apiToken,
+    zoneId: tunnel.zoneId,
     baseDomain: serverCfg.domains.main,
   }
 }
