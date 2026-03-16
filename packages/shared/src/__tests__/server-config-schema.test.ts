@@ -116,3 +116,71 @@ describe("parseServerConfig sentry compatibility", () => {
     expect(() => parseServerConfig(raw)).toThrow(/unexpected/)
   })
 })
+
+describe("parseServerConfig tunnel validation", () => {
+  it("rejects tunnel with empty accountId", () => {
+    const raw = JSON.stringify(
+      buildBaseConfig({
+        tunnel: {
+          accountId: "",
+          tunnelId: "some-id",
+          apiToken: "some-token",
+          zoneId: "some-zone",
+        },
+      }),
+    )
+
+    expect(() => parseServerConfig(raw)).toThrow()
+  })
+
+  it("rejects tunnel with empty tunnelId", () => {
+    const raw = JSON.stringify(
+      buildBaseConfig({
+        tunnel: {
+          accountId: "some-account",
+          tunnelId: "",
+          apiToken: "some-token",
+          zoneId: "some-zone",
+        },
+      }),
+    )
+
+    expect(() => parseServerConfig(raw)).toThrow()
+  })
+
+  it("rejects tunnel with unknown keys (strict mode)", () => {
+    const raw = JSON.stringify(
+      buildBaseConfig({
+        tunnel: {
+          accountId: "some-account",
+          tunnelId: "some-id",
+          apiToken: "some-token",
+          zoneId: "some-zone",
+          extraField: "nope",
+        },
+      }),
+    )
+
+    expect(() => parseServerConfig(raw)).toThrow()
+  })
+
+  it("rejects partial tunnel object (missing zoneId)", () => {
+    const raw = JSON.stringify(
+      buildBaseConfig({
+        tunnel: {
+          accountId: "some-account",
+          tunnelId: "some-id",
+          apiToken: "some-token",
+        },
+      }),
+    )
+
+    expect(() => parseServerConfig(raw)).toThrow()
+  })
+
+  it("accepts config without tunnel section", () => {
+    const raw = JSON.stringify(buildBaseConfig())
+    const parsed = parseServerConfig(raw)
+    expect(parsed.tunnel).toBeUndefined()
+  })
+})

@@ -25,14 +25,17 @@ interface StaticRoute {
   service: string
 }
 
+function localService(port: number): string {
+  return `http://localhost:${port}`
+}
+
 function buildStaticRoutes(serverCfg: ServerConfig): StaticRoute[] {
   const routes: StaticRoute[] = []
 
-  // Environment routes (production, staging, dev) — from the typed source of truth
+  // Environment routes (production, staging, dev) — use domain from environments source of truth
   for (const env of Object.values(environments)) {
-    if (!env.subdomain) continue
-    const hostname = `${env.subdomain}.${serverCfg.domains.main}`
-    routes.push({ hostname, service: `http://localhost:${env.port}` })
+    if (!env.domain) continue
+    routes.push({ hostname: env.domain, service: localService(env.port) })
   }
 
   // Shell routes (WebSocket terminal)
@@ -47,7 +50,7 @@ function buildStaticRoutes(serverCfg: ServerConfig): StaticRoute[] {
     const shellPort = Number.parseInt(upstreamUrl.port, 10)
 
     for (const domain of serverCfg.shell.domains) {
-      routes.push({ hostname: domain, service: `http://localhost:${shellPort}` })
+      routes.push({ hostname: domain, service: localService(shellPort) })
     }
   }
 
@@ -69,7 +72,7 @@ async function querySiteDomains(serverCfg: ServerConfig): Promise<Map<string, nu
   if (error) throw new TunnelSyncError(`DB query failed: ${error.message}`)
 
   const sites = new Map<string, number>()
-  for (const d of data ?? []) {
+  for (const d of data) {
     if (isAliveWorkspace(d.hostname)) continue
     sites.set(d.hostname, d.port)
   }
@@ -108,10 +111,21 @@ async function main() {
   if (result.removed.length > 0) {
     for (const h of result.removed) log(`  - ${h}`)
   }
+  if (result.dnsErrors.length > 0) {
+    log(`DNS errors (${result.dnsErrors.length}):`)
+    for (const e of result.dnsErrors) log(`  ! ${e}`)
+    process.exitCode = 1
+  }
 }
 
 main().catch((e: unknown) => {
-  const message = e instanceof Error ? e.message : String(e)
-  process.stderr.write(`${LOG_PREFIX} FATAL: ${message}\n`)
+  if (e instanceof Error) {
+    process.stderr.write(`${LOG_PREFIX} FATAL: ${e.message}\n`)
+    if (e.stack) {
+      process.stderr.write(`${e.stack}\n`)
+    }
+  } else {
+    process.stderr.write(`${LOG_PREFIX} FATAL: ${String(e)}\n`)
+  }
   process.exit(1)
 })

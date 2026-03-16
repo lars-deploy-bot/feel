@@ -64,6 +64,12 @@ source = "/srv/webalive/storage"
 target = "/srv/webalive/storage"
 read_only = false
 
+# E2B scratch workspaces (local workspace for E2B-mode sites)
+[[runtime.bind_mounts]]
+source = "/srv/webalive/e2b-scratch"
+target = "/srv/webalive/e2b-scratch"
+read_only = false
+
 [[runtime.bind_mounts]]
 source = "/root/.claude"
 target = "/root/.claude"
