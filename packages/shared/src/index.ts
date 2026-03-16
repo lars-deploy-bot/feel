@@ -127,12 +127,7 @@ export {
   type WrapExternalContentOptions,
   wrapExternalContent,
 } from "./external-content.js"
-export {
-  getCaddyServices,
-  getDirectServices,
-  INFRASTRUCTURE_SERVICES,
-  type InfrastructureService,
-} from "./infrastructure-services.js"
+export { INFRASTRUCTURE_SERVICES, type InfrastructureService } from "./infrastructure-services.js"
 // invite-code.ts uses node:crypto — import via "@webalive/shared/invite-code" (server-only)
 export type {
   ManagerPasswordResetToken,

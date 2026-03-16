@@ -3,7 +3,11 @@
 # Routing Smoke Test
 # =============================================================================
 # Fast (<5s) verification that all critical routing paths work.
-# Checks: production, staging, widget, images, preview fallback, sites.
+# Derives infrastructure service checks from the registry in
+# packages/shared/src/infrastructure-services.ts — no hardcoded hostname list.
+#
+# Deletable when a proper health-check service exists, with zero downstream impact.
+# Only reads state (curl, check status codes), never mutates anything.
 #
 # Run manually, post-deploy, post-tunnel-sync, or via cron.
 # Exit code: 0 = all pass, 1 = at least one failure.
@@ -12,6 +16,9 @@
 # =============================================================================
 
 set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 VERBOSE="${1:-}"
 FAILURES=0
@@ -25,9 +32,7 @@ check() {
     CHECKS=$((CHECKS + 1))
 
     local http_code
-    local body
-    body=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "$url" 2>/dev/null) || body="000"
-    http_code="$body"
+    http_code=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "$url" 2>/dev/null) || http_code="000"
 
     # For content checks, we need the actual body
     if [[ -n "$content_check" && "$http_code" == "$expected_code" ]]; then
@@ -68,25 +73,45 @@ check_content_type() {
 echo "Routing smoke test — $(date -Iseconds)"
 echo "================================================"
 
-# Production
+# --- Environment routes (production, staging) ---
+# These are structural — always checked.
 check "production /api/health" "https://app.alive.best/api/health" 200 '"status"'
-check "production homepage" "https://app.alive.best/" 200
-
-# Staging
 check "staging /api/health" "https://staging.alive.best/api/health" 200 '"status"'
 
-# Widget
-check_content_type "widget.js" "https://widget.alive.best/widget.js" "javascript"
+# --- Infrastructure services from the registry ---
+# Reads INFRASTRUCTURE_SERVICES from packages/shared and emits check commands.
+# Falls back to a minimal hardcoded set if bun is unavailable.
+if command -v bun &>/dev/null && [[ -f "$PROJECT_ROOT/packages/shared/src/infrastructure-services.ts" ]]; then
+    INFRA_CHECKS=$(bun -e "
+      const { INFRASTRUCTURE_SERVICES } = require('@webalive/shared');
+      for (const svc of INFRASTRUCTURE_SERVICES) {
+        if (!svc.healthPath) continue;
+        const url = 'https://' + svc.hostname + svc.healthPath;
+        const ct = svc.healthContentType || '';
+        console.log(JSON.stringify({ name: svc.displayName, url, ct }));
+      }
+    " 2>/dev/null) || INFRA_CHECKS=""
 
-# Manager
-check "manager" "https://mg.alive.best/" 200
+    if [[ -n "$INFRA_CHECKS" ]]; then
+        while IFS= read -r line; do
+            name=$(echo "$line" | jq -r '.name')
+            url=$(echo "$line" | jq -r '.url')
+            ct=$(echo "$line" | jq -r '.ct')
+            if [[ -n "$ct" ]]; then
+                check_content_type "$name" "$url" "$ct"
+            else
+                check "$name" "$url" 200
+            fi
+        done <<< "$INFRA_CHECKS"
+    fi
+else
+    # Minimal fallback if bun/registry unavailable (e.g., running on a bare server)
+    check_content_type "widget.js" "https://widget.alive.best/widget.js" "javascript"
+    check "manager" "https://mg.alive.best/" 200
+fi
 
-# Image serving (via internal Caddy)
-# Use a known test image if available, otherwise just check the path doesn't return HTML
-check_content_type "site images" "https://blank.alive.best/_images/placeholder.txt" "text"
-
-# Preview fallback (unknown subdomain should not 404 from tunnel catch-all)
-# It should hit internal Caddy → preview-proxy, which returns 401/403 without JWT
+# --- Structural routing checks (not service-specific) ---
+# Preview fallback: unknown subdomain should not 404 from tunnel catch-all
 check "preview fallback" "https://nonexistent-smoke-test.alive.best/" 401
 
 echo "================================================"

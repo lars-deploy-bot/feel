@@ -105,6 +105,7 @@ fi
 
 # Schema compatibility gate: verify current code can parse server-config.json.
 # Prevents deploying a build that can't read runtime config (postmortem 2026-03-16).
+# TODO: Move to deployer-rs preflight when deploy pipeline migrates (see plan/execution-substrate/06)
 if ! bun -e "
   const { readFileSync } = require('node:fs');
   const { parseServerConfig } = require('@webalive/shared');
