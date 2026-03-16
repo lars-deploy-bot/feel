@@ -17,7 +17,7 @@ type SdkOriginRequest = Cloudflare.ZeroTrust.Tunnels.Cloudflared.ConfigurationGe
 /** Cloudflare catch-all service that returns 404 for unmatched hostnames */
 const CATCH_ALL_SERVICE = "http_status:404"
 
-function localService(port: number): string {
+export function localService(port: number): string {
   return `http://localhost:${port}`
 }
 
