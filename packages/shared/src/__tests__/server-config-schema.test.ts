@@ -66,6 +66,27 @@ describe("parseServerConfig sentry compatibility", () => {
     expect(parsed.shell.e2bUpstream).toBe("localhost:5075")
   })
 
+  it("parses optional tunnel configuration", () => {
+    const raw = JSON.stringify(
+      buildBaseConfig({
+        tunnel: {
+          accountId: "cf-account",
+          tunnelId: "055f6248-5434-487c-a074-f9fab9aa6fe1",
+          apiToken: "cf-token",
+          zoneId: "cf-zone",
+        },
+      }),
+    )
+
+    const parsed = parseServerConfig(raw)
+    expect(parsed.tunnel).toEqual({
+      accountId: "cf-account",
+      tunnelId: "055f6248-5434-487c-a074-f9fab9aa6fe1",
+      apiToken: "cf-token",
+      zoneId: "cf-zone",
+    })
+  })
+
   it("parses canonical sentry.url + sentry.projectId", () => {
     const raw = JSON.stringify(buildBaseConfig())
     const parsed = parseServerConfig(raw)
