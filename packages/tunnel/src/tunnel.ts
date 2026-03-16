@@ -152,9 +152,9 @@ export class TunnelManager {
 
     await this.updateIngress(newIngress)
 
-    // Sync DNS records
+    // Sync DNS records — ensure all managed hostnames have CNAMEs (heals drift)
     const dnsPromises: Promise<void>[] = []
-    for (const hostname of added) {
+    for (const hostname of sites.keys()) {
       dnsPromises.push(this.ensureDnsRecord(hostname))
     }
     for (const hostname of removed) {

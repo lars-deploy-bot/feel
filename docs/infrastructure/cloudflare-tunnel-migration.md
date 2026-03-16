@@ -16,7 +16,7 @@ Migrated all `*.alive.best` routing from nginx → Caddy → Go preview-proxy to
 
 ## Architecture
 
-```
+```text
 *.alive.best site traffic (e.g. larry.alive.best):
   Browser → Cloudflare CDN → cloudflared → Caddy :8444 → localhost:{site_port}
                                             ↳ /_images/* served from /srv/webalive/storage
@@ -251,7 +251,7 @@ The `*.alive.best` map entry catches preview subdomains and routes them to previ
 
 ## Tunnel ingress structure
 
-```
+```text
 Explicit site rules (124):     hostname.alive.best → http://localhost:8444
 Infrastructure rules (direct):  app/staging/dev/go/oc/services.alive.best → http://localhost:{port}
 E2E rule:                       dl1.alive.best → http://localhost:8444

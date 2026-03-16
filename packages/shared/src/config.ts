@@ -168,17 +168,19 @@ function loadServerConfig(): Partial<ServerConfig> {
     return {}
   }
 
+  const streamEnv = process.env.STREAM_ENV
+  const isLocalDev = streamEnv === "local" || streamEnv === "standalone"
+  const isTestEnv = process.env.CI === "true" || process.env.VITEST === "true"
+
   const fs = getBuiltinModule<{
     existsSync: (path: string) => boolean
     readFileSync: (path: string, enc: string) => string
   }>("node:fs")
   if (!fs) {
-    return {}
+    if (isTestEnv) return {}
+    if (isLocalDev) return localDefaults()
+    throw new Error('FATAL: process.getBuiltinModule("node:fs") is unavailable in this runtime.')
   }
-
-  const streamEnv = process.env.STREAM_ENV
-  const isLocalDev = streamEnv === "local" || streamEnv === "standalone"
-  const isTestEnv = process.env.CI === "true" || process.env.VITEST === "true"
 
   if (!CONFIG_PATH) {
     if (isTestEnv) return {}
