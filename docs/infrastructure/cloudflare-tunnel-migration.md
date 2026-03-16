@@ -124,13 +124,13 @@ systemctl status cloudflared
 ```bash
 cd /root/webalive/alive
 
-CF_ACCOUNT_ID="..." CF_TUNNEL_ID="..." CF_API_TOKEN="..." \
-CF_ZONE_ID="..." CF_BASE_DOMAIN="alive.best" \
 SERVER_CONFIG_PATH="/var/lib/alive/server-config.json" \
 SUPABASE_URL="<from .env.production>" \
 SUPABASE_SERVICE_ROLE_KEY="<from .env.production>" \
 bun run --cwd packages/tunnel src/sync.ts
 ```
+
+Tunnel configuration (`accountId`, `tunnelId`, `apiToken`, `zoneId`) is read from the `tunnel` section of `server-config.json`.
 
 The sync script now also:
 - Generates `/etc/caddy/Caddyfile.internal` with all site hostname→port mappings
@@ -272,7 +272,7 @@ Location: `packages/tunnel/`
 
 - `TunnelManager` class: add/remove/update/sync routes via Cloudflare API
 - `sync.ts`: bulk sync all DB domains to tunnel (replaces generate-routing.ts)
-- Config via env vars: `CF_ACCOUNT_ID`, `CF_TUNNEL_ID`, `CF_API_TOKEN`, `CF_ZONE_ID`, `CF_BASE_DOMAIN`
+- Config via `server-config.json`: `tunnel.accountId`, `tunnel.tunnelId`, `tunnel.apiToken`, `tunnel.zoneId` (loaded via `SERVER_CONFIG_PATH` env var)
 
 ## Rollback
 

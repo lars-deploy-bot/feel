@@ -32,12 +32,12 @@ check() {
     CHECKS=$((CHECKS + 1))
 
     local http_code
-    http_code=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "$url" 2>/dev/null) || http_code="000"
+    http_code=$(curl -sS --max-time 10 -o /dev/null -w "%{http_code}" "$url" 2>/dev/null) || http_code="000"
 
     # For content checks, we need the actual body
     if [[ -n "$content_check" && "$http_code" == "$expected_code" ]]; then
         local actual_body
-        actual_body=$(curl -sf --max-time 10 "$url" 2>/dev/null) || actual_body=""
+        actual_body=$(curl -sS --max-time 10 "$url" 2>/dev/null) || actual_body=""
         if ! echo "$actual_body" | grep -q "$content_check"; then
             echo "FAIL: $name — got $http_code but content missing: $content_check"
             FAILURES=$((FAILURES + 1))
@@ -111,8 +111,15 @@ else
 fi
 
 # --- Structural routing checks (not service-specific) ---
-# Preview fallback: unknown subdomain should not 404 from tunnel catch-all
-check "preview fallback" "https://nonexistent-smoke-test.alive.best/" 401
+# Preview fallback: unknown subdomain should hit preview-proxy (401 or 403), not tunnel 404
+CHECKS=$((CHECKS + 1))
+preview_code=$(curl -sS --max-time 10 -o /dev/null -w "%{http_code}" "https://nonexistent-smoke-test.alive.best/" 2>/dev/null) || preview_code="000"
+if [[ "$preview_code" == "401" || "$preview_code" == "403" ]]; then
+    [[ "$VERBOSE" == "--verbose" ]] && echo "OK:   preview fallback ($preview_code)"
+else
+    echo "FAIL: preview fallback — expected 401 or 403, got $preview_code"
+    FAILURES=$((FAILURES + 1))
+fi
 
 echo "================================================"
 if [[ $FAILURES -eq 0 ]]; then
