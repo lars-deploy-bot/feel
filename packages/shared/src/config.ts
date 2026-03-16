@@ -34,14 +34,28 @@ import { parseServerConfig, type ServerConfig } from "./server-config-schema.js"
 // Check if we're in a browser environment
 const isBrowser = typeof globalThis !== "undefined" && "window" in globalThis
 
-function getBuiltinModule<T>(name: string): T | null {
+/**
+ * Access a Node.js builtin module without static imports (which break browser bundles).
+ * The caller is responsible for ensuring the generic type matches the requested module.
+ * This is safe because we only call it with known module names ("node:fs", "node:url", "node:path")
+ * whose shapes are well-defined and stable.
+ */
+function getBuiltinModule(name: "node:fs"): typeof import("node:fs") | null
+function getBuiltinModule(name: "node:url"): typeof import("node:url") | null
+function getBuiltinModule(name: "node:path"): typeof import("node:path") | null
+function getBuiltinModule(
+  name: string,
+): typeof import("node:fs") | typeof import("node:url") | typeof import("node:path") | null {
   if (isBrowser || typeof process === "undefined" || typeof process.getBuiltinModule !== "function") {
     return null
   }
 
-  const mod: unknown = process.getBuiltinModule(name)
+  // process.getBuiltinModule returns the module or undefined for unknown names.
+  // The overload signatures guarantee callers only pass known module names,
+  // so the return type is safe at call sites.
+  const mod = process.getBuiltinModule(name)
   if (!mod) return null
-  return mod as T
+  return mod as typeof import("node:fs") | typeof import("node:url") | typeof import("node:path")
 }
 
 /**
@@ -66,7 +80,7 @@ export const CONFIG_PATH = !isBrowser && typeof process !== "undefined" ? (proce
  * and uses ~/.alive/ for workspace-related paths.
  */
 function fileUrlToPathSafe(url: URL): string {
-  const nodeUrl = getBuiltinModule<{ fileURLToPath: (url: URL | string) => string }>("node:url")
+  const nodeUrl = getBuiltinModule("node:url")
   if (nodeUrl) {
     return nodeUrl.fileURLToPath(url)
   }
@@ -81,10 +95,8 @@ function extractAliveRootFromPath(filePath: string): string | undefined {
 }
 
 function findAliveRootFromCwd(startDir: string): string {
-  const fs = getBuiltinModule<{ existsSync: (path: string) => boolean }>("node:fs")
-  const path = getBuiltinModule<{ dirname: (path: string) => string; join: (...paths: string[]) => string }>(
-    "node:path",
-  )
+  const fs = getBuiltinModule("node:fs")
+  const path = getBuiltinModule("node:path")
 
   if (!fs || !path) {
     return startDir
@@ -170,10 +182,7 @@ function loadServerConfig(): Partial<ServerConfig> {
   const isLocalDev = streamEnv === "local" || streamEnv === "standalone"
   const isTestEnv = process.env.CI === "true" || process.env.VITEST === "true"
 
-  const fs = getBuiltinModule<{
-    existsSync: (path: string) => boolean
-    readFileSync: (path: string, enc: string) => string
-  }>("node:fs")
+  const fs = getBuiltinModule("node:fs")
   if (!fs) {
     if (isTestEnv) return {}
     if (isLocalDev) return localDefaults()

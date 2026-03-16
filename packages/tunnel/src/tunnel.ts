@@ -10,9 +10,16 @@
 
 import Cloudflare from "cloudflare"
 import type { TunnelConfig } from "./config.js"
-import { TunnelApiError } from "./errors.js"
+import { TunnelApiError, TunnelDnsError } from "./errors.js"
 
 type SdkOriginRequest = Cloudflare.ZeroTrust.Tunnels.Cloudflared.ConfigurationGetResponse.Config.Ingress.OriginRequest
+
+/** Cloudflare catch-all service that returns 404 for unmatched hostnames */
+const CATCH_ALL_SERVICE = "http_status:404"
+
+function localService(port: number): string {
+  return `http://localhost:${port}`
+}
 
 export interface IngressRule {
   hostname?: string
@@ -35,12 +42,20 @@ export class TunnelManager {
 
   /**
    * Get current tunnel ingress configuration.
-   * Throws TunnelApiError if the tunnel config is missing.
+   * Throws TunnelApiError if the tunnel config is missing or the API call fails.
    */
   async getIngress(): Promise<IngressRule[]> {
-    const result = await this.cf.zeroTrust.tunnels.cloudflared.configurations.get(this.config.tunnelId, {
-      account_id: this.config.accountId,
-    })
+    let result: Cloudflare.ZeroTrust.Tunnels.Cloudflared.ConfigurationGetResponse
+    try {
+      result = await this.cf.zeroTrust.tunnels.cloudflared.configurations.get(this.config.tunnelId, {
+        account_id: this.config.accountId,
+      })
+    } catch (err) {
+      throw new TunnelApiError(
+        `Failed to get tunnel config for ${this.config.tunnelId}: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      )
+    }
 
     if (!result.config) {
       throw new TunnelApiError(`Tunnel ${this.config.tunnelId} has no config — was it created correctly?`)
@@ -52,7 +67,7 @@ export class TunnelManager {
     // Map SDK ingress (hostname required) to our model (hostname optional for catch-all)
     return sdkIngress.map(
       (r): IngressRule => ({
-        hostname: r.hostname || undefined,
+        hostname: r.hostname !== "" ? r.hostname : undefined,
         service: r.service,
         ...(r.originRequest ? { originRequest: r.originRequest } : {}),
       }),
@@ -65,18 +80,15 @@ export class TunnelManager {
    */
   async addRoute(hostname: string, localPort: number): Promise<void> {
     const ingress = await this.getIngress()
+    const service = localService(localPort)
 
     const existing = ingress.find(r => r.hostname === hostname)
     if (existing) {
-      const newService = `http://localhost:${localPort}`
-      if (existing.service === newService) return
-      existing.service = newService
+      if (existing.service === service) return
+      existing.service = service
     } else {
       const catchAllIndex = ingress.findIndex(r => !r.hostname)
-      const rule: IngressRule = {
-        hostname,
-        service: `http://localhost:${localPort}`,
-      }
+      const rule: IngressRule = { hostname, service }
       if (catchAllIndex >= 0) {
         ingress.splice(catchAllIndex, 0, rule)
       } else {
@@ -109,7 +121,7 @@ export class TunnelManager {
     if (!rule) {
       throw new TunnelApiError(`No tunnel route found for ${hostname}`)
     }
-    rule.service = `http://localhost:${newPort}`
+    rule.service = localService(newPort)
     await this.updateIngress(ingress)
   }
 
@@ -124,11 +136,13 @@ export class TunnelManager {
   /**
    * Sync all sites from a hostname→port map to the tunnel.
    * Adds missing routes, updates changed ports, removes stale routes.
+   *
+   * DNS operations use allSettled so a single record failure doesn't abort the whole sync.
    */
   async syncRoutes(
     sites: Map<string, number>,
     staticRoutes: IngressRule[],
-  ): Promise<{ added: string[]; updated: string[]; removed: string[] }> {
+  ): Promise<{ added: string[]; updated: string[]; removed: string[]; dnsErrors: string[] }> {
     const ingress = await this.getIngress()
     const added: string[] = []
     const updated: string[] = []
@@ -147,7 +161,7 @@ export class TunnelManager {
     const newIngress: IngressRule[] = [...staticRoutes]
 
     for (const [hostname, port] of sites) {
-      const service = `http://localhost:${port}`
+      const service = localService(port)
       const existing = existingDynamic.get(hostname)
 
       if (!existing) {
@@ -165,21 +179,32 @@ export class TunnelManager {
     }
 
     // Always end with catch-all
-    newIngress.push({ service: "http_status:404" })
+    newIngress.push({ service: CATCH_ALL_SERVICE })
 
     await this.updateIngress(newIngress)
 
-    // Sync DNS records — ensure all managed hostnames have CNAMEs (heals drift)
-    const dnsPromises: Promise<void>[] = []
+    // Sync DNS records — ensure all managed hostnames have CNAMEs (heals drift).
+    // Use allSettled so one DNS failure doesn't abort the entire sync.
+    const dnsPromises: Array<{ hostname: string; promise: Promise<void> }> = []
     for (const hostname of sites.keys()) {
-      dnsPromises.push(this.ensureDnsRecord(hostname))
+      dnsPromises.push({ hostname, promise: this.ensureDnsRecord(hostname) })
     }
     for (const hostname of removed) {
-      dnsPromises.push(this.removeDnsRecord(hostname))
+      dnsPromises.push({ hostname, promise: this.removeDnsRecord(hostname) })
     }
-    await Promise.all(dnsPromises)
 
-    return { added, updated, removed }
+    const dnsResults = await Promise.allSettled(dnsPromises.map(d => d.promise))
+    const dnsErrors: string[] = []
+    for (let i = 0; i < dnsResults.length; i++) {
+      const result = dnsResults[i]
+      if (result.status === "rejected") {
+        const hostname = dnsPromises[i].hostname
+        const reason = result.reason instanceof Error ? result.reason.message : String(result.reason)
+        dnsErrors.push(`${hostname}: ${reason}`)
+      }
+    }
+
+    return { added, updated, removed, dnsErrors }
   }
 
   // ---------------------------------------------------------------------------
@@ -187,28 +212,28 @@ export class TunnelManager {
   // ---------------------------------------------------------------------------
 
   private async updateIngress(ingress: IngressRule[]): Promise<void> {
-    const hasCatchAll = ingress.some(r => !r.hostname)
-    if (!hasCatchAll) {
-      ingress.push({ service: "http_status:404" })
-    }
+    // Separate hostname rules from catch-all
+    const hostnameRules = ingress.filter(hasHostname)
+    const catchAll = ingress.find(r => !hasHostname(r))
+    const catchAllService = catchAll ? catchAll.service : CATCH_ALL_SERVICE
 
-    // Build typed array for the SDK. hostname is required in the SDK type,
-    // but the catch-all legitimately has no hostname — we use "" which the API accepts.
-    const typedIngress = ingress.filter(hasHostname).map(r => ({
+    const typedIngress = hostnameRules.map(r => ({
       hostname: r.hostname,
       service: r.service,
       ...(r.originRequest ? { originRequest: r.originRequest } : {}),
     }))
 
-    const catchAll = ingress.find(r => !r.hostname)
-    if (!catchAll) {
-      throw new TunnelApiError("Catch-all rule missing after explicit insertion — this is a bug")
+    try {
+      await this.cf.zeroTrust.tunnels.cloudflared.configurations.update(this.config.tunnelId, {
+        account_id: this.config.accountId,
+        config: { ingress: [...typedIngress, { hostname: "", service: catchAllService }] },
+      })
+    } catch (err) {
+      throw new TunnelApiError(
+        `Failed to update tunnel ingress (${hostnameRules.length} rules): ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      )
     }
-
-    await this.cf.zeroTrust.tunnels.cloudflared.configurations.update(this.config.tunnelId, {
-      account_id: this.config.accountId,
-      config: { ingress: [...typedIngress, { hostname: "", service: catchAll.service }] },
-    })
   }
 
   private async ensureDnsRecord(hostname: string): Promise<void> {
@@ -218,51 +243,90 @@ export class TunnelManager {
 
     const tunnelCname = `${this.config.tunnelId}.cfargotunnel.com`
 
-    const existing = await this.cf.dns.records.list({
-      zone_id: this.config.zoneId,
-      name: { exact: hostname },
-      type: "CNAME",
-    })
+    const existing = await this.cf.dns.records
+      .list({
+        zone_id: this.config.zoneId,
+        name: { exact: hostname },
+        type: "CNAME",
+      })
+      .catch((err: unknown) => {
+        throw new TunnelDnsError(
+          `Failed to list DNS records for ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
+        )
+      })
 
     if (existing.result.length > 0) {
       const record = existing.result[0]
+      if (!record.id) {
+        throw new TunnelDnsError(`DNS record for ${hostname} has no id — cannot update`)
+      }
       if (record.content !== tunnelCname) {
-        await this.cf.dns.records.update(record.id, {
-          zone_id: this.config.zoneId,
-          type: "CNAME",
-          name: hostname,
-          content: tunnelCname,
-          proxied: true,
-          ttl: 1,
-        })
+        try {
+          await this.cf.dns.records.update(record.id, {
+            zone_id: this.config.zoneId,
+            type: "CNAME",
+            name: hostname,
+            content: tunnelCname,
+            proxied: true,
+            ttl: 1,
+          })
+        } catch (err) {
+          throw new TunnelDnsError(
+            `Failed to update DNS record for ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
+            { cause: err },
+          )
+        }
       }
       return
     }
 
-    await this.cf.dns.records.create({
-      zone_id: this.config.zoneId,
-      type: "CNAME",
-      name: hostname,
-      content: tunnelCname,
-      proxied: true,
-      ttl: 1,
-    })
+    try {
+      await this.cf.dns.records.create({
+        zone_id: this.config.zoneId,
+        type: "CNAME",
+        name: hostname,
+        content: tunnelCname,
+        proxied: true,
+        ttl: 1,
+      })
+    } catch (err) {
+      throw new TunnelDnsError(
+        `Failed to create DNS record for ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      )
+    }
   }
 
   private async removeDnsRecord(hostname: string): Promise<void> {
     if (!this.isOwnedHostname(hostname)) return
 
-    const records = await this.cf.dns.records.list({
-      zone_id: this.config.zoneId,
-      name: { exact: hostname },
-      type: "CNAME",
-    })
-
-    for (const record of records.result) {
-      await this.cf.dns.records.delete(record.id, {
+    const records = await this.cf.dns.records
+      .list({
         zone_id: this.config.zoneId,
+        name: { exact: hostname },
+        type: "CNAME",
       })
-    }
+      .catch((err: unknown) => {
+        throw new TunnelDnsError(
+          `Failed to list DNS records for removal of ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
+        )
+      })
+
+    // Delete in parallel — order doesn't matter for independent records
+    const deletePromises = records.result
+      .filter((record): record is typeof record & { id: string } => typeof record.id === "string")
+      .map(record =>
+        this.cf.dns.records.delete(record.id, { zone_id: this.config.zoneId }).catch((err: unknown) => {
+          throw new TunnelDnsError(
+            `Failed to delete DNS record ${record.id} for ${hostname}: ${err instanceof Error ? err.message : String(err)}`,
+            { cause: err },
+          )
+        }),
+      )
+
+    await Promise.all(deletePromises)
   }
 
   private isOwnedHostname(hostname: string): boolean {
