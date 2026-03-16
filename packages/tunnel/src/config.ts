@@ -40,12 +40,20 @@ export function tunnelConfigFromServerConfig(serverCfg: ServerConfig): TunnelCon
 }
 
 /**
+ * Load and parse server-config.json from SERVER_CONFIG_PATH.
+ * Single place for the requireEnv → readFile → parse pattern.
+ * Used by both loadTunnelConfig() and sync.ts main().
+ */
+export function loadServerConfig(): ServerConfig {
+  const configPath = requireEnv("SERVER_CONFIG_PATH")
+  const raw = readFileSync(configPath, "utf8")
+  return parseServerConfig(raw)
+}
+
+/**
  * Convenience: load tunnel config directly from server-config.json.
  * Prefer tunnelConfigFromServerConfig() when you already have ServerConfig.
  */
 export function loadTunnelConfig(): TunnelConfig {
-  const configPath = requireEnv("SERVER_CONFIG_PATH")
-  const raw = readFileSync(configPath, "utf8")
-  const serverCfg = parseServerConfig(raw)
-  return tunnelConfigFromServerConfig(serverCfg)
+  return tunnelConfigFromServerConfig(loadServerConfig())
 }

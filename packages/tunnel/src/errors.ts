@@ -1,35 +1,33 @@
-/** Missing or invalid tunnel configuration in server-config.json */
-export class TunnelConfigError extends Error {
-  readonly code = "TUNNEL_CONFIG" as const
-  constructor(message: string) {
-    super(message)
-    this.name = "TunnelConfigError"
+/** Extract a human-readable message from an unknown caught value. */
+export function errorMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
+/** Base class for all tunnel errors — provides code + name boilerplate. */
+abstract class TunnelError extends Error {
+  abstract readonly code: string
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
+    this.name = this.constructor.name
   }
+}
+
+/** Missing or invalid tunnel configuration in server-config.json */
+export class TunnelConfigError extends TunnelError {
+  readonly code = "TUNNEL_CONFIG" as const
 }
 
 /** Cloudflare Tunnel API call failed */
-export class TunnelApiError extends Error {
+export class TunnelApiError extends TunnelError {
   readonly code = "TUNNEL_API" as const
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options)
-    this.name = "TunnelApiError"
-  }
 }
 
 /** DNS record operation failed */
-export class TunnelDnsError extends Error {
+export class TunnelDnsError extends TunnelError {
   readonly code = "TUNNEL_DNS" as const
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options)
-    this.name = "TunnelDnsError"
-  }
 }
 
 /** Bulk sync operation failed */
-export class TunnelSyncError extends Error {
+export class TunnelSyncError extends TunnelError {
   readonly code = "TUNNEL_SYNC" as const
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options)
-    this.name = "TunnelSyncError"
-  }
 }

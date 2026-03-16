@@ -4,17 +4,8 @@
  * Verifies that all critical routing categories work through the Cloudflare Tunnel
  * + internal Caddy stack. These tests hit REAL infrastructure.
  *
- * Infrastructure service checks are derived from the INFRASTRUCTURE_SERVICES registry
- * in @webalive/shared — this file does NOT maintain a parallel list of hostnames.
- *
- * Categories tested:
- *   1. Production routing (app.alive.best → :9000)
- *   2. Staging routing (staging.alive.best → :8998)
- *   3. Staging/production isolation (different build SHAs)
- *   4. Infrastructure services (from registry — widget, mg, oc, etc.)
- *   5. Site routing via internal Caddy (:8444)
- *   6. Image serving (/_images/* returns images, not HTML)
- *   7. Preview fallback (unknown subdomains → preview-proxy)
+ * Infrastructure service checks are derived from the INFRASTRUCTURE_SERVICES registry.
+ * Environment URLs come from env vars — no fallbacks, fail fast if missing.
  *
  * Run: ENV_FILE=.env.production bun run test:e2e:live
  */
@@ -22,11 +13,18 @@
 import { expect, test } from "@playwright/test"
 import { INFRASTRUCTURE_SERVICES } from "@webalive/shared"
 
-const PROD_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.alive.best"
-const STAGING_URL = process.env.STAGING_URL ?? "https://staging.alive.best"
+function requireTestEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) throw new Error(`${name} is required for routing live tests`)
+  return value
+}
+
+const PROD_URL = requireTestEnv("NEXT_PUBLIC_APP_URL")
+const STAGING_URL = requireTestEnv("STAGING_URL")
+const BASE_DOMAIN = requireTestEnv("BASE_DOMAIN")
 
 // A known site that should always be running (blank template)
-const SITE_URL = "https://blank.alive.best"
+const SITE_URL = `https://blank.${BASE_DOMAIN}`
 
 // ---------------------------------------------------------------------------
 // Environment routing
@@ -83,17 +81,17 @@ const healthCheckableServices = INFRASTRUCTURE_SERVICES.filter(s => s.healthPath
 
 for (const svc of healthCheckableServices) {
   test.describe(`Routing: ${svc.displayName}`, () => {
-    const url = `https://${svc.hostname}${svc.healthPath}`
+    const url = `https://${svc.subdomain}.${BASE_DOMAIN}${svc.healthPath}`
 
     if (svc.healthContentType) {
-      test(`${svc.hostname} returns ${svc.healthContentType}`, async ({ request }) => {
+      test(`${svc.subdomain}.${BASE_DOMAIN} returns ${svc.healthContentType}`, async ({ request }) => {
         const res = await request.get(url)
         expect(res.status()).toBe(200)
         const contentType = res.headers()["content-type"] ?? ""
         expect(contentType.toLowerCase()).toContain(svc.healthContentType!.toLowerCase())
       })
     } else {
-      test(`${svc.hostname} returns 200`, async ({ request }) => {
+      test(`${svc.subdomain}.${BASE_DOMAIN} returns 200`, async ({ request }) => {
         const res = await request.get(url)
         expect(res.status()).toBe(200)
       })
@@ -114,11 +112,9 @@ test.describe("Routing: Site via Internal Caddy", () => {
   test("site /_images/* returns image content-type, not HTML", async ({ request }) => {
     const res = await request.get(`${SITE_URL}/_images/`, { failOnStatusCode: false })
     const contentType = res.headers()["content-type"] ?? ""
-    // Should NOT be HTML (that would mean Vite caught it, not Caddy)
     if (res.status() === 200) {
       expect(contentType).not.toContain("text/html")
     }
-    // 404 is acceptable (no files in /_images/) — the point is it wasn't Vite HTML
   })
 })
 
@@ -128,10 +124,9 @@ test.describe("Routing: Site via Internal Caddy", () => {
 
 test.describe("Routing: Preview Fallback", () => {
   test("unknown subdomain routes to preview-proxy (not tunnel 404)", async ({ request }) => {
-    const res = await request.get("https://nonexistent-routing-test.alive.best/", {
+    const res = await request.get(`https://nonexistent-routing-test.${BASE_DOMAIN}/`, {
       failOnStatusCode: false,
     })
-    // Should NOT be 404 from tunnel catch-all — that means the wildcard is broken
     expect(res.status()).not.toBe(404)
   })
 })

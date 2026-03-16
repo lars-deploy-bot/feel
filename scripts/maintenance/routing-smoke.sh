@@ -60,7 +60,7 @@ check_content_type() {
     CHECKS=$((CHECKS + 1))
 
     local content_type
-    content_type=$(curl -sf --max-time 10 -o /dev/null -w "%{content_type}" "$url" 2>/dev/null) || content_type=""
+    content_type=$(curl -sS --max-time 10 -o /dev/null -w "%{content_type}" "$url" 2>/dev/null) || content_type=""
 
     if echo "$content_type" | grep -qi "$expected_type"; then
         [[ "$VERBOSE" == "--verbose" ]] && echo "OK:   $name (type: $content_type)"
@@ -73,47 +73,67 @@ check_content_type() {
 echo "Routing smoke test — $(date -Iseconds)"
 echo "================================================"
 
+# --- Derive domain from server-config.json (no hardcoded domains, fail fast) ---
+SERVER_CONFIG_PATH="${SERVER_CONFIG_PATH:-/var/lib/alive/server-config.json}"
+if [[ ! -f "$SERVER_CONFIG_PATH" ]]; then
+    echo "FATAL: server-config.json not found at $SERVER_CONFIG_PATH" >&2
+    exit 1
+fi
+if ! command -v jq &>/dev/null; then
+    echo "FATAL: jq is required but not installed" >&2
+    exit 1
+fi
+BASE_DOMAIN=$(jq -re '.domains.main' "$SERVER_CONFIG_PATH")
+if [[ -z "$BASE_DOMAIN" ]]; then
+    echo "FATAL: domains.main is empty in $SERVER_CONFIG_PATH" >&2
+    exit 1
+fi
+
 # --- Environment routes (production, staging) ---
 # These are structural — always checked.
-check "production /api/health" "https://app.alive.best/api/health" 200 '"status"'
-check "staging /api/health" "https://staging.alive.best/api/health" 200 '"status"'
+check "production /api/health" "https://app.${BASE_DOMAIN}/api/health" 200 '"status"'
+check "staging /api/health" "https://staging.${BASE_DOMAIN}/api/health" 200 '"status"'
 
 # --- Infrastructure services from the registry ---
 # Reads INFRASTRUCTURE_SERVICES from packages/shared and emits check commands.
-# Falls back to a minimal hardcoded set if bun is unavailable.
-if command -v bun &>/dev/null && [[ -f "$PROJECT_ROOT/packages/shared/src/infrastructure-services.ts" ]]; then
-    INFRA_CHECKS=$(bun -e "
-      const { INFRASTRUCTURE_SERVICES } = require('@webalive/shared');
-      for (const svc of INFRASTRUCTURE_SERVICES) {
-        if (!svc.healthPath) continue;
-        const url = 'https://' + svc.hostname + svc.healthPath;
-        const ct = svc.healthContentType || '';
-        console.log(JSON.stringify({ name: svc.displayName, url, ct }));
-      }
-    " 2>/dev/null) || INFRA_CHECKS=""
-
-    if [[ -n "$INFRA_CHECKS" ]]; then
-        while IFS= read -r line; do
-            name=$(echo "$line" | jq -r '.name')
-            url=$(echo "$line" | jq -r '.url')
-            ct=$(echo "$line" | jq -r '.ct')
-            if [[ -n "$ct" ]]; then
-                check_content_type "$name" "$url" "$ct"
-            else
-                check "$name" "$url" 200
-            fi
-        done <<< "$INFRA_CHECKS"
-    fi
-else
-    # Minimal fallback if bun/registry unavailable (e.g., running on a bare server)
-    check_content_type "widget.js" "https://widget.alive.best/widget.js" "javascript"
-    check "manager" "https://mg.alive.best/" 200
+# Requires bun — fail fast if unavailable (no fallback with duplicated knowledge).
+if ! command -v bun &>/dev/null; then
+    echo "FATAL: bun is required to read the infrastructure services registry" >&2
+    exit 1
 fi
+
+INFRA_CHECKS=$(bun -e "
+  const { INFRASTRUCTURE_SERVICES } = require('@webalive/shared');
+  const baseDomain = '$BASE_DOMAIN';
+  for (const svc of INFRASTRUCTURE_SERVICES) {
+    if (!svc.healthPath) continue;
+    const url = 'https://' + svc.subdomain + '.' + baseDomain + svc.healthPath;
+    const ct = svc.healthContentType || '';
+    console.log(JSON.stringify({ name: svc.displayName, url, ct }));
+  }
+" 2>&1)
+
+if [[ $? -ne 0 ]]; then
+    echo "FATAL: Failed to read infrastructure services registry: $INFRA_CHECKS" >&2
+    exit 1
+fi
+
+while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    name=$(echo "$line" | jq -r '.name')
+    url=$(echo "$line" | jq -r '.url')
+    ct=$(echo "$line" | jq -r '.ct')
+    if [[ -n "$ct" ]]; then
+        check_content_type "$name" "$url" "$ct"
+    else
+        check "$name" "$url" 200
+    fi
+done <<< "$INFRA_CHECKS"
 
 # --- Structural routing checks (not service-specific) ---
 # Preview fallback: unknown subdomain should hit preview-proxy (401 or 403), not tunnel 404
 CHECKS=$((CHECKS + 1))
-preview_code=$(curl -sS --max-time 10 -o /dev/null -w "%{http_code}" "https://nonexistent-smoke-test.alive.best/" 2>/dev/null) || preview_code="000"
+preview_code=$(curl -sS --max-time 10 -o /dev/null -w "%{http_code}" "https://nonexistent-smoke-test.${BASE_DOMAIN}/" 2>/dev/null) || preview_code="000"
 if [[ "$preview_code" == "401" || "$preview_code" == "403" ]]; then
     [[ "$VERBOSE" == "--verbose" ]] && echo "OK:   preview fallback ($preview_code)"
 else
