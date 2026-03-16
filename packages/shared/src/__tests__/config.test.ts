@@ -47,6 +47,29 @@ function runConfigProbe(envOverrides: Record<string, string | undefined>) {
   return spawnSync("bun", ["-e", script], { env, encoding: "utf8", timeout: 10_000 })
 }
 
+function runConfigProbeWithoutRequire(envOverrides: Record<string, string | undefined>) {
+  const env = { ...process.env }
+  for (const [key, value] of Object.entries(envOverrides)) {
+    if (typeof value === "undefined") {
+      delete env[key]
+    } else {
+      env[key] = value
+    }
+  }
+
+  const script = `
+	globalThis.require = undefined;
+	const mod = await import("${CONFIG_MODULE_URL}");
+	console.log(JSON.stringify({
+	  aliveRoot: mod.PATHS.ALIVE_ROOT,
+	  sitesRoot: mod.PATHS.SITES_ROOT,
+	  allowedBases: [...mod.SECURITY.ALLOWED_WORKSPACE_BASES]
+	}));
+`
+
+  return spawnSync("bun", ["-e", script], { env, encoding: "utf8", timeout: 10_000 })
+}
+
 function writeServerConfig(rawConfig: Record<string, unknown>): string {
   const dir = mkdtempSync(join(tmpdir(), "alive-config-probe-"))
   writeFileSync(join(dir, "server-config.json"), JSON.stringify(rawConfig))
@@ -157,6 +180,78 @@ describe("local/standalone config defaults", () => {
     expect(result.status).not.toBe(0)
     const output = `${result.stdout}\n${result.stderr}`
     expect(output).toContain(`Server config not found at ${missingPath}`)
+  })
+
+  it("loads server config when require is unavailable but process.getBuiltinModule exists", () => {
+    const configDir = writeServerConfig({
+      serverId: "srv_test_server_123456",
+      serverIp: "127.0.0.1",
+      serverIpv6: "::1",
+      automationPrimary: false,
+      paths: {
+        aliveRoot: "/root/alive",
+        sitesRoot: "/srv/webalive/sites",
+        templatesRoot: "/srv/webalive/templates",
+        imagesStorage: "/srv/webalive/storage",
+      },
+      domains: {
+        main: "example.com",
+        wildcard: "example.com",
+        cookieDomain: ".example.com",
+        previewBase: "preview.example.com",
+        frameAncestors: ["https://app.example.com"],
+      },
+      tunnel: {
+        accountId: "cf-account",
+        tunnelId: "055f6248-5434-487c-a074-f9fab9aa6fe1",
+        apiToken: "cf-token",
+        zoneId: "cf-zone",
+      },
+      urls: {
+        prod: "https://app.example.com",
+        staging: "https://staging.example.com",
+        dev: "https://dev.example.com",
+      },
+      shell: {
+        domains: ["go.example.com"],
+        listen: ":8443",
+        upstream: "localhost:3888",
+      },
+      sentry: {
+        dsn: "https://abc123@sentry.example.com/2",
+        url: "https://sentry.example.com",
+        projectId: "2",
+      },
+      contactEmail: "ops@example.com",
+      previewProxy: {
+        port: 5055,
+      },
+      generated: {
+        dir: "/var/lib/alive/generated",
+        caddySites: "/var/lib/alive/generated/Caddyfile.sites",
+        caddyShell: "/var/lib/alive/generated/Caddyfile.shell",
+        nginxMap: "/var/lib/alive/generated/nginx.sni.map",
+      },
+    })
+
+    try {
+      const result = runConfigProbeWithoutRequire({
+        STREAM_ENV: "production",
+        SERVER_CONFIG_PATH: join(configDir, "server-config.json"),
+        CI: undefined,
+        VITEST: undefined,
+      })
+
+      expect(result.status).toBe(0)
+      const parsed: unknown = JSON.parse(result.stdout)
+      expect(parsed).toMatchObject({
+        aliveRoot: "/root/alive",
+        sitesRoot: "/srv/webalive/sites",
+        allowedBases: ["/srv/webalive/sites"],
+      })
+    } finally {
+      rmSync(configDir, { recursive: true, force: true })
+    }
   })
 })
 
