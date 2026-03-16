@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto"
 import { act, renderHook, waitFor } from "@testing-library/react"
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 // Mock Sentry to avoid Next.js module resolution issues in test environment
 vi.mock("@sentry/nextjs", () => ({
@@ -48,8 +48,6 @@ async function insertMessages(messages: DbMessage[]): Promise<void> {
 function resetDexieStore(): void {
   useDexieMessageStore.setState({
     session: null,
-    currentTabGroupId: null,
-    currentTabId: null,
     currentWorkspace: null,
     isLoading: false,
     isSyncing: false,
@@ -69,6 +67,13 @@ describe("useTabMessages", () => {
       }
       originalConsoleError(...args)
     }
+  })
+
+  beforeEach(() => {
+    // useTabMessages reads userId from useDexieSession() internally
+    useDexieMessageStore.setState({
+      session: { userId: TEST_USER_ID, orgId: "org-test" },
+    })
   })
 
   afterEach(async () => {
@@ -92,7 +97,7 @@ describe("useTabMessages", () => {
       ])
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(3)
@@ -119,15 +124,15 @@ describe("useTabMessages", () => {
       })
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(1)
     })
 
-    expect(result.current[0].content).toBe("live buffer text")
-    expect(result.current[0].isStreaming).toBe(true)
-    expect(result.current[0].status).toBe("streaming")
+    expect(result.current![0].content).toBe("live buffer text")
+    expect(result.current![0].isStreaming).toBe(true)
+    expect(result.current![0].status).toBe("streaming")
   })
 
   it("marks stale streaming messages as interrupted when no buffer exists", async () => {
@@ -143,15 +148,15 @@ describe("useTabMessages", () => {
       ])
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(1)
     })
 
-    expect(result.current[0].status).toBe("interrupted")
-    expect(result.current[0].isStreaming).toBe(false)
-    expect(result.current[0].content).toBe("stale snapshot")
+    expect(result.current![0].status).toBe("interrupted")
+    expect(result.current![0].isStreaming).toBe(false)
+    expect(result.current![0].content).toBe("stale snapshot")
   })
 
   it("keeps recent streaming messages in streaming state without buffer", async () => {
@@ -167,23 +172,27 @@ describe("useTabMessages", () => {
       ])
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(1)
     })
 
-    expect(result.current[0].status).toBe("streaming")
-    expect(result.current[0].isStreaming).toBe(true)
-    expect(result.current[0].content).toBe("recent snapshot")
+    expect(result.current![0].status).toBe("streaming")
+    expect(result.current![0].isStreaming).toBe(true)
+    expect(result.current![0].content).toBe("recent snapshot")
   })
 
-  it("returns empty array when tabId or userId is null", async () => {
-    const { result: noTab } = renderHook(() => useTabMessages(null, TEST_USER_ID))
-    expect(noTab.current).toEqual([])
+  it("returns empty array when tabId is null", async () => {
+    const { result: noTab } = renderHook(() => useTabMessages(null))
+    // useLiveQuery may return undefined initially, then resolves to []
+    await waitFor(() => expect(noTab.current).toEqual([]))
+  })
 
-    const { result: noUser } = renderHook(() => useTabMessages(TEST_TAB_ID, null))
-    expect(noUser.current).toEqual([])
+  it("returns empty array when userId is not set", async () => {
+    useDexieMessageStore.setState({ session: null })
+    const { result: noUser } = renderHook(() => useTabMessages(TEST_TAB_ID))
+    await waitFor(() => expect(noUser.current).toEqual([]))
   })
 
   it("filters out soft-deleted messages", async () => {
@@ -194,13 +203,13 @@ describe("useTabMessages", () => {
       ])
     })
 
-    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID, TEST_USER_ID))
+    const { result } = renderHook(() => useTabMessages(TEST_TAB_ID))
 
     await waitFor(() => {
       expect(result.current).toHaveLength(1)
     })
 
-    expect(result.current[0].id).toBe("alive")
+    expect(result.current![0].id).toBe("alive")
   })
 
   it("exposes active stream state and streaming text per tab", async () => {

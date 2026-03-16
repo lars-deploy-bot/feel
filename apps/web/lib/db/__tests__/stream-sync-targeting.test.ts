@@ -40,8 +40,6 @@ describe("dexie stream sync targeting", () => {
     mockQueueSync.mockReset()
     useDexieMessageStore.setState({
       session: null,
-      currentTabGroupId: null,
-      currentTabId: null,
       currentWorkspace: null,
       isLoading: false,
       isSyncing: false,
@@ -59,10 +57,7 @@ describe("dexie stream sync targeting", () => {
 
   it("finalizeAssistantStream syncs the stream tab conversation when current tab changed", async () => {
     const store = await setupStore()
-    store.switchConversation(TAB_GROUP_A, TAB_A)
     const streamId = await store.startAssistantStream(TAB_A)
-
-    store.switchConversation(TAB_GROUP_B, TAB_B)
     await store.finalizeAssistantStream(streamId)
 
     expect(mockQueueSync).toHaveBeenLastCalledWith(TAB_GROUP_A, TEST_USER_ID)
@@ -70,10 +65,7 @@ describe("dexie stream sync targeting", () => {
 
   it("stopAssistantStream syncs the stream tab conversation when current tab changed", async () => {
     const store = await setupStore()
-    store.switchConversation(TAB_GROUP_A, TAB_A)
     const streamId = await store.startAssistantStream(TAB_A)
-
-    store.switchConversation(TAB_GROUP_B, TAB_B)
     await store.stopAssistantStream(streamId)
 
     expect(mockQueueSync).toHaveBeenLastCalledWith(TAB_GROUP_A, TEST_USER_ID)
@@ -81,10 +73,7 @@ describe("dexie stream sync targeting", () => {
 
   it("failAssistantStream syncs the stream tab conversation when current tab changed", async () => {
     const store = await setupStore()
-    store.switchConversation(TAB_GROUP_A, TAB_A)
     const streamId = await store.startAssistantStream(TAB_A)
-
-    store.switchConversation(TAB_GROUP_B, TAB_B)
     await store.failAssistantStream(streamId, "test_error")
 
     expect(mockQueueSync).toHaveBeenLastCalledWith(TAB_GROUP_A, TEST_USER_ID)

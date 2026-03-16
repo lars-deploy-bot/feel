@@ -19,7 +19,7 @@ vi.mock("@/lib/stores/onboardingStore", () => ({
 }))
 
 describe("ChatEmptyState", () => {
-  it("shows pick-a-project state with site selector when user has sites", () => {
+  it("shows returning-user state with open/import buttons when user has sites", () => {
     const onImportGithub = vi.fn()
     const onSelectSite = vi.fn()
 
@@ -33,12 +33,12 @@ describe("ChatEmptyState", () => {
       />,
     )
 
-    expect(screen.getByText("Pick a project to continue.")).toBeTruthy()
+    expect(screen.getByText("Welcome back.")).toBeTruthy()
 
-    fireEvent.click(screen.getByRole("button", { name: "Select a site" }))
+    fireEvent.click(screen.getByRole("button", { name: "Open a project" }))
     expect(onSelectSite).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByRole("button", { name: "Open from GitHub" }))
+    fireEvent.click(screen.getByRole("button", { name: "Import from GitHub" }))
     expect(onImportGithub).toHaveBeenCalledTimes(1)
   })
 

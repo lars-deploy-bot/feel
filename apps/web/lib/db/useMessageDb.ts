@@ -194,25 +194,24 @@ export function useTab(tabId: string | null, userId: string | null): DbTab | nul
  * Uses composite index [tabId+seq] for reliable ordering by sequence number.
  * Filters out soft-deleted messages (those with deletedAt set).
  */
-export function useMessages(tabId: string | null, userId: string | null): DbMessage[] {
-  return (
-    useLiveQuery(
-      async () => {
-        if (!tabId || !userId) return []
+export function useMessages(tabId: string | null, userId: string | null): DbMessage[] | undefined {
+  return useLiveQuery(
+    async () => {
+      if (!tabId || !userId) return []
 
-        const db = getMessageDb(userId)
+      const db = getMessageDb(userId)
 
-        // Order by seq (sequence number) for reliable ordering
-        // Filter out soft-deleted messages
-        return db.messages
-          .where("[tabId+seq]")
-          .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
-          .and(m => !m.deletedAt) // Exclude deleted messages
-          .toArray()
-      },
-      [tabId, userId],
-      [],
-    ) ?? []
+      // Order by seq (sequence number) for reliable ordering
+      // Filter out soft-deleted messages
+      return db.messages
+        .where("[tabId+seq]")
+        .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
+        .and(m => !m.deletedAt) // Exclude deleted messages
+        .toArray()
+    },
+    [tabId, userId],
+    // No default — returns undefined while the async query resolves.
+    // This lets consumers distinguish "loading" from "genuinely empty".
   )
 }
 
@@ -239,35 +238,6 @@ export function usePendingMessages(tabId: string | null, userId: string | null):
       [],
     ) ?? []
   )
-}
-
-// =============================================================================
-// Safety Hooks
-// =============================================================================
-
-/**
- * Safe hook for current conversation - handles cross-tab deletion.
- *
- * USE THIS instead of raw useConversation + useCurrentConversationId
- * to gracefully handle when a conversation is deleted in another tab.
- */
-export function useCurrentConversationSafe(
-  currentConversationId: string | null,
-  userId: string | null,
-  clearCurrentConversation: () => void,
-): DbConversation | null {
-  const conversation = useConversation(currentConversationId, userId)
-
-  // Handle cross-tab deletion: if we have an ID but conversation is null,
-  // it was deleted in another tab - clear our selection
-  if (currentConversationId && conversation === null && userId) {
-    // Schedule the clear for next tick to avoid render loop
-    queueMicrotask(() => {
-      clearCurrentConversation()
-    })
-  }
-
-  return conversation
 }
 
 // =============================================================================

@@ -126,12 +126,13 @@
       }
     },
     {
-      "includes": ["**/DevTerminal.tsx", "**/Sandbox.tsx", "**/SettingsModal.tsx"],
+      "includes": ["**/DevTerminal.tsx", "**/Sandbox.tsx", "**/SettingsModal.tsx", "**/kanban/*.tsx", "**/WorkbenchHome.tsx"],
       "linter": {
         "rules": {
           "a11y": {
             "useSemanticElements": "off",
-            "noNoninteractiveElementToInteractiveRole": "off"
+            "noNoninteractiveElementToInteractiveRole": "off",
+            "noStaticElementInteractions": "off"
           }
         }
       }

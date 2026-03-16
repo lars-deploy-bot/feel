@@ -72,7 +72,7 @@ export function WorktreeSwitcher({
       if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError("Failed to load worktrees.")
+        setError("Couldn't load worktrees")
       }
     } finally {
       setLoading(false)
@@ -112,7 +112,7 @@ export function WorktreeSwitcher({
       if (err instanceof ApiError) {
         setRemoveError(err.message)
       } else {
-        setRemoveError("Failed to remove worktree.")
+        setRemoveError("Couldn't remove worktree")
       }
     } finally {
       setRemovingSlug(null)
@@ -169,7 +169,7 @@ export function WorktreeSwitcher({
       if (err instanceof ApiError) {
         setCreateError(err.message)
       } else {
-        setCreateError("Failed to create worktree.")
+        setCreateError("Couldn't create worktree")
       }
     } finally {
       setCreating(false)
@@ -218,9 +218,9 @@ export function WorktreeSwitcher({
               <div className="text-xs text-black/50 dark:text-white/50">No worktree selected</div>
             </button>
 
-            {loading && <div className="text-xs text-black/40 dark:text-white/40 px-3 py-2">Loading worktrees…</div>}
-            {error && <div className="text-xs text-red-500 px-3 py-2">{error}</div>}
-            {removeError && <div className="text-xs text-red-500 px-3 py-2">{removeError}</div>}
+            {loading && <div className="text-xs text-black/30 dark:text-white/30 px-3 py-2">Loading</div>}
+            {error && <div className="text-xs text-zinc-400 dark:text-zinc-500 px-3 py-2">{error}</div>}
+            {removeError && <div className="text-xs text-zinc-400 dark:text-zinc-500 px-3 py-2">{removeError}</div>}
 
             {!loading &&
               worktrees.map(item => {
@@ -263,7 +263,7 @@ export function WorktreeSwitcher({
             <div className="space-y-2">
               <input
                 type="text"
-                placeholder="slug (optional, e.g. feature-branch)"
+                placeholder="slug (optional)"
                 value={slug}
                 onChange={e => setSlug(e.target.value)}
                 aria-label="Worktree slug"
@@ -279,13 +279,13 @@ export function WorktreeSwitcher({
               />
               <input
                 type="text"
-                placeholder="from (optional, e.g. main)"
+                placeholder="from (optional)"
                 value={from}
                 onChange={e => setFrom(e.target.value)}
                 aria-label="Base ref (optional)"
                 className="w-full rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-transparent px-3 py-2 text-sm"
               />
-              {createError && <div className="text-xs text-red-500">{createError}</div>}
+              {createError && <div className="text-xs text-zinc-400 dark:text-zinc-500">{createError}</div>}
               <button
                 type="button"
                 disabled={creating}

@@ -53,7 +53,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       maxHeight: "100px",
       onMessage: (msg, type) => {
         if (type === "error") {
-          toast.error(msg)
+          toast(msg)
         }
       },
       ...userConfig,
@@ -157,6 +157,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       onSubmit: handleSubmit,
       onStop,
       config,
+      tabId,
       registerTextareaRef,
       onAddSkill: addSkill,
     }),
@@ -173,6 +174,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       handleSubmit,
       onStop,
       config,
+      tabId,
       registerTextareaRef,
       addSkill,
     ],
@@ -210,6 +212,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       />
 
       <section
+        data-panel-role="chat-input"
         className="relative flex-shrink-0 px-4 pb-4 safe-area-inset-bottom"
         aria-label="Chat input"
         onPaste={handlePaste}

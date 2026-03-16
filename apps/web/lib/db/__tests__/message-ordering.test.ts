@@ -75,8 +75,6 @@ describe("message ordering", () => {
   beforeEach(() => {
     useDexieMessageStore.setState({
       session: null,
-      currentTabGroupId: null,
-      currentTabId: null,
       currentWorkspace: null,
       isLoading: false,
       isSyncing: false,
@@ -118,12 +116,11 @@ describe("message ordering", () => {
   })
 
   it("should correctly order user message after AI streaming messages", async () => {
-    const { tabId, conversationId } = await setupTab()
+    const { tabId } = await setupTab()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
 
     // Ensure store knows the current conversation (required for startAssistantStream)
-    store.switchConversation(conversationId, tabId)
 
     // Simulate the real flow:
     // 1. User sends message 1
@@ -172,11 +169,9 @@ describe("message ordering", () => {
   })
 
   it("should handle concurrent addMessage and startAssistantStream without seq collision", async () => {
-    const { tabId, conversationId } = await setupTab()
+    const { tabId } = await setupTab()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
-
-    store.switchConversation(conversationId, tabId)
 
     // Fire off multiple operations concurrently (simulating race condition)
     // Note: With Promise.all, the ORDER within the batch is non-deterministic,
@@ -205,11 +200,9 @@ describe("message ordering", () => {
   })
 
   it("should maintain order when rapidly sending user messages during AI stream", async () => {
-    const { tabId, conversationId } = await setupTab()
+    const { tabId } = await setupTab()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
-
-    store.switchConversation(conversationId, tabId)
 
     // User message 1
     await store.addMessage(userMessage("rapid-1", "Question 1"), tabId)
@@ -238,11 +231,9 @@ describe("message ordering", () => {
   })
 
   it("should preserve order across multiple conversation turns", async () => {
-    const { tabId, conversationId } = await setupTab()
+    const { tabId } = await setupTab()
     const store = useDexieMessageStore.getState()
     const db = getMessageDb(TEST_USER_ID)
-
-    store.switchConversation(conversationId, tabId)
 
     // Turn 1: User asks, AI responds with tools
     await store.addMessage(userMessage("turn1-user", "Build a website"), tabId)

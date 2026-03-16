@@ -7,10 +7,6 @@ interface OfflineBannerProps {
   isOnline: boolean
 }
 
-/**
- * Subtle, non-invasive banner shown when the user loses internet connection.
- * Slides in from top, uses muted colors to avoid alarm.
- */
 export function OfflineBanner({ isOnline }: OfflineBannerProps) {
   return (
     <AnimatePresence>
@@ -22,9 +18,9 @@ export function OfflineBanner({ isOnline }: OfflineBannerProps) {
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="overflow-hidden"
         >
-          <div className="bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200 text-sm px-4 py-2 flex items-center justify-center gap-2 border-b border-amber-200 dark:border-amber-800/50">
-            <WifiOff className="w-4 h-4 flex-shrink-0" />
-            <span>No internet connection — messages can't be sent right now</span>
+          <div className="text-[13px] text-zinc-400 dark:text-zinc-500 px-4 py-2 flex items-center justify-center gap-2 border-b border-zinc-100 dark:border-white/[0.04]">
+            <WifiOff className="w-3.5 h-3.5" />
+            <span>You're offline</span>
           </div>
         </motion.div>
       )}

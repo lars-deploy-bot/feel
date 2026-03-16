@@ -165,7 +165,7 @@ export function GithubImportModal({ onClose, onImported, orgId }: GithubImportMo
               className="w-full h-11 px-3 rounded-lg border border-black/15 dark:border-white/15 bg-transparent text-sm text-black dark:text-white placeholder:text-black/35 dark:placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-black/15 dark:focus:ring-white/20 disabled:opacity-60"
             />
             {trimmedRepoUrl && trimmedRepoUrl !== "https://github.com/" && !isValidRepoInput && (
-              <p className="text-xs text-red-600 dark:text-red-400">Enter a GitHub URL or owner/repo shorthand.</p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">Use a GitHub URL or owner/repo</p>
             )}
             {trimmedRepoUrl && isValidRepoInput && (
               <p className="text-xs text-black/50 dark:text-white/50">
@@ -179,8 +179,8 @@ export function GithubImportModal({ onClose, onImported, orgId }: GithubImportMo
           </p>
 
           {error && (
-            <div className="rounded-lg border border-red-200 dark:border-red-800/60 bg-red-50 dark:bg-red-900/20 px-3 py-2">
-              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2">
+              <p className="text-[13px] text-zinc-500 dark:text-zinc-400">{error}</p>
             </div>
           )}
 

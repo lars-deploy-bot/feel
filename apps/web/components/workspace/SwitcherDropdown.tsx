@@ -155,11 +155,7 @@ export function SwitcherDropdown<T>({
           aria-label="Close"
           className="grid w-10 h-10 place-content-center bg-transparent border-none cursor-pointer shrink-0"
         >
-          {/* X icon on touch devices, Esc badge on desktop */}
-          <X size={16} strokeWidth={2} className="text-black/30 dark:text-white/30 pointer-coarse:block hidden" />
-          <kbd className="text-[11px] text-black/30 dark:text-white/30 border border-black/[0.12] dark:border-white/[0.12] rounded px-1.5 py-0.5 font-mono pointer-coarse:hidden">
-            Esc
-          </kbd>
+          <X size={16} strokeWidth={2} className="text-black/30 dark:text-white/30" />
         </button>
       </label>
 

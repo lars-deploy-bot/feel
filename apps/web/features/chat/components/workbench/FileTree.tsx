@@ -2,7 +2,9 @@
 
 import { ChevronRight, File, Folder } from "lucide-react"
 import { memo, useCallback, useEffect, useState } from "react"
-import { type FileInfo, listFiles } from "./lib/file-api"
+import type { FileInfo, SearchResult } from "./lib/file-api"
+import { listFiles, searchFiles } from "./lib/file-api"
+import { cacheKey, getCachedList, hasCachedList, setCachedList } from "./lib/file-cache"
 import { getFileColor } from "./lib/file-colors"
 import { useFileChangeVersion } from "./lib/file-events"
 
@@ -13,14 +15,7 @@ interface FileTreeProps {
   expandedFolders: Set<string>
   onToggleFolder: (path: string) => void
   onSelectFile: (path: string) => void
-}
-
-// Global cache for file listings - persists across re-renders
-const fileCache = new Map<string, FileInfo[]>()
-
-function getCacheKey(workspace: string, worktree: string | null | undefined, path: string): string {
-  const scope = worktree ? `wt/${worktree}` : "base"
-  return `${workspace}::${scope}::${path}`
+  filter?: string
 }
 
 export function FileTree({
@@ -30,7 +25,23 @@ export function FileTree({
   expandedFolders,
   onToggleFolder,
   onSelectFile,
+  filter,
 }: FileTreeProps) {
+  const activeFilter = filter?.trim() || ""
+
+  // When filtering: show flat search results instead of the tree
+  if (activeFilter) {
+    return (
+      <SearchResults
+        workspace={workspace}
+        worktree={worktree}
+        query={activeFilter}
+        activeFile={activeFile}
+        onSelectFile={onSelectFile}
+      />
+    )
+  }
+
   return (
     <div className="h-full overflow-y-auto text-[13px] py-1">
       <TreeLevel
@@ -46,6 +57,91 @@ export function FileTree({
     </div>
   )
 }
+
+// --- Flat search results (replaces tree when filtering) ---
+
+interface SearchResultsProps {
+  workspace: string
+  worktree?: string | null
+  query: string
+  activeFile: string | null
+  onSelectFile: (path: string) => void
+}
+
+function SearchResults({ workspace, worktree, query, activeFile, onSelectFile }: SearchResultsProps) {
+  const [results, setResults] = useState<SearchResult[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!query) {
+      setResults([])
+      return
+    }
+
+    let mounted = true
+    const timer = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const data = await searchFiles(workspace, query, worktree)
+        if (mounted) setResults(data)
+      } catch {
+        // Search errors are non-critical — silently handled
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }, 150) // debounce
+
+    return () => {
+      mounted = false
+      clearTimeout(timer)
+    }
+  }, [workspace, worktree, query])
+
+  return (
+    <div className="h-full overflow-y-auto text-[13px] py-1">
+      {loading && results.length === 0 && (
+        <div className="px-3 py-2 text-[13px] text-zinc-300 dark:text-zinc-700">Searching</div>
+      )}
+
+      {!loading && results.length === 0 && query && (
+        <div className="px-3 py-2 text-[13px] text-zinc-300 dark:text-zinc-700">No matches</div>
+      )}
+
+      {results.map(item => {
+        const isActive = activeFile === item.path
+        // Show parent directory for context
+        const dir = item.path.includes("/") ? item.path.substring(0, item.path.lastIndexOf("/")) : ""
+
+        return (
+          <button
+            key={item.path}
+            type="button"
+            onClick={() => onSelectFile(item.path)}
+            className={`w-full flex items-center gap-1.5 px-2 h-8 text-left transition-colors ${
+              isActive
+                ? "bg-black/[0.06] dark:bg-white/[0.08] text-black dark:text-white"
+                : "text-zinc-600 dark:text-zinc-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-zinc-800 dark:hover:text-zinc-300"
+            }`}
+          >
+            <File size={14} strokeWidth={1.5} className={`shrink-0 ${getFileColor(item.name)}`} />
+            <span className="truncate">
+              <span>{item.name}</span>
+              {dir && <span className="text-black/30 dark:text-white/25 ml-1.5 text-[11px]">{dir}</span>}
+            </span>
+          </button>
+        )
+      })}
+
+      {results.length > 0 && (
+        <div className="px-3 py-1.5 text-[11px] text-black/30 dark:text-white/25">
+          {results.length} {results.length === 1 ? "file" : "files"}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Normal tree (when not filtering) ---
 
 interface TreeLevelProps {
   workspace: string
@@ -68,16 +164,16 @@ function TreeLevel({
   onToggleFolder,
   onSelectFile,
 }: TreeLevelProps) {
-  const cacheKey = getCacheKey(workspace, worktree, path)
-  const [files, setFiles] = useState<FileInfo[]>(() => fileCache.get(cacheKey) || [])
-  const [loading, setLoading] = useState(!fileCache.has(cacheKey))
+  const key = cacheKey(workspace, worktree, path)
+  const [files, setFiles] = useState<FileInfo[]>(() => getCachedList(key) || [])
+  const [loading, setLoading] = useState(!hasCachedList(key))
   const [error, setError] = useState<string | null>(null)
   const changeVersion = useFileChangeVersion()
 
   useEffect(() => {
     // Already cached - no need to fetch
-    if (fileCache.has(cacheKey)) {
-      setFiles(fileCache.get(cacheKey)!)
+    if (hasCachedList(key)) {
+      setFiles(getCachedList(key)!)
       setLoading(false)
       return
     }
@@ -87,40 +183,41 @@ function TreeLevel({
     async function load() {
       // Stale-while-revalidate: only show spinner on initial load, not revalidation
       if (files.length === 0) setLoading(true)
-      const result = await listFiles(workspace, path, worktree)
-      if (!mounted) return
-
-      if (result.ok) {
+      try {
+        const data = await listFiles(workspace, path, worktree)
+        if (!mounted) return
         // Sort: folders first, then files, alphabetically
-        const sorted = [...result.data].sort((a, b) => {
+        const sorted = [...data].sort((a, b) => {
           if (a.type !== b.type) return a.type === "directory" ? -1 : 1
           return a.name.localeCompare(b.name)
         })
-        fileCache.set(cacheKey, sorted)
+        setCachedList(key, sorted)
         setFiles(sorted)
         setError(null)
-      } else {
-        setError(result.error)
+      } catch (err) {
+        if (!mounted) return
+        setError(err instanceof Error ? err.message : "Failed to load files")
+      } finally {
+        if (mounted) setLoading(false)
       }
-      setLoading(false)
     }
 
     load()
     return () => {
       mounted = false
     }
-  }, [workspace, worktree, path, cacheKey, changeVersion])
+  }, [workspace, worktree, path, key, changeVersion])
 
   if (loading && depth === 0) {
-    return <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">Loading...</div>
+    return <div className="px-3 py-2 text-[13px] text-zinc-300 dark:text-zinc-700">Loading</div>
   }
 
   if (error && depth === 0) {
-    return <div className="px-3 py-2 text-neutral-400 dark:text-neutral-500">{error}</div>
+    return <div className="px-3 py-2 text-[13px] text-black/30 dark:text-white/25">{error}</div>
   }
 
   if (files.length === 0 && depth === 0 && !loading) {
-    return <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">Empty</div>
+    return <div className="px-3 py-2 text-[13px] text-zinc-300 dark:text-zinc-700">No files</div>
   }
 
   return (
@@ -187,66 +284,49 @@ const TreeNode = memo(function TreeNode({
       <button
         type="button"
         onClick={handleClick}
-        className={`w-full h-7 flex items-center gap-1 text-left transition-colors ${
+        className={`w-full h-8 flex items-center gap-1.5 text-left transition-colors ${
           isActive
             ? "bg-black/[0.06] dark:bg-white/[0.08] text-black dark:text-white"
-            : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-neutral-800 dark:hover:text-neutral-300"
+            : "text-zinc-600 dark:text-zinc-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-zinc-800 dark:hover:text-zinc-300"
         }`}
         style={{ paddingLeft }}
       >
-        {/* Chevron for folders */}
         {isFolder ? (
           <ChevronRight
             size={14}
             strokeWidth={1.5}
-            className={`shrink-0 text-neutral-400 dark:text-neutral-600 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+            className={`shrink-0 text-black/30 dark:text-white/25 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
           />
         ) : (
           <span className="w-[14px] shrink-0" />
         )}
-
-        {/* Icon */}
         {isFolder ? (
           <Folder size={14} strokeWidth={1.5} className="shrink-0 text-amber-500/80" />
         ) : (
           <File size={14} strokeWidth={1.5} className={`shrink-0 ${getFileColor(item.name)}`} />
         )}
-
-        {/* Name */}
         <span className="truncate pr-2">{item.name}</span>
       </button>
 
-      {/* Children (if expanded folder) */}
       {isFolder && isExpanded && (
-        <TreeLevel
-          workspace={workspace}
-          worktree={worktree}
-          path={item.path}
-          depth={depth + 1}
-          activeFile={activeFile}
-          expandedFolders={expandedFolders}
-          onToggleFolder={onToggleFolder}
-          onSelectFile={onSelectFile}
-        />
+        <div className="relative">
+          {/* Indent guide line */}
+          <div
+            className="absolute top-0 bottom-0 w-px bg-black/[0.06] dark:bg-white/[0.06]"
+            style={{ left: 8 + depth * 12 + 7 }}
+          />
+          <TreeLevel
+            workspace={workspace}
+            worktree={worktree}
+            path={item.path}
+            depth={depth + 1}
+            activeFile={activeFile}
+            expandedFolders={expandedFolders}
+            onToggleFolder={onToggleFolder}
+            onSelectFile={onSelectFile}
+          />
+        </div>
       )}
     </>
   )
 })
-
-// Export cache invalidation for manual refresh
-export function invalidateFileCache(workspace?: string, worktree?: string | null, path?: string): void {
-  if (workspace && path !== undefined) {
-    fileCache.delete(getCacheKey(workspace, worktree, path))
-    return
-  }
-  if (workspace) {
-    const scope = worktree ? `wt/${worktree}` : "base"
-    for (const key of fileCache.keys()) {
-      if (key.startsWith(`${workspace}::${scope}::`)) {
-        fileCache.delete(key)
-      }
-    }
-    return
-  }
-  fileCache.clear()
-}

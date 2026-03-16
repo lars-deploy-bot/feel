@@ -1,6 +1,6 @@
 "use client"
 
-import { isRetryableNetworkError, retryAsync } from "@webalive/shared"
+import { DEFAULT_VOICE_LANGUAGE, isRetryableNetworkError, retryAsync } from "@webalive/shared"
 import { useCallback, useRef } from "react"
 import toast from "react-hot-toast"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
@@ -23,7 +23,7 @@ import { useAttachmentStore } from "@/lib/stores/attachmentStore"
 import { authStore } from "@/lib/stores/authStore"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useBuilding, useGoal, useTargetUsers } from "@/lib/stores/goalStore"
-import { useModel } from "@/lib/stores/llmStore"
+import { useLLMActions, useModel, useVoiceLanguage } from "@/lib/stores/llmStore"
 import { clearAbortController, setAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 import { getPlanModeState, getStreamModeState } from "@/lib/stores/streamModeStore"
 
@@ -136,6 +136,8 @@ export function useChatMessaging({
   // Store hooks
   const streamingActions = useStreamingActions()
   const userModel = useModel()
+  const voiceLanguage = useVoiceLanguage()
+  const { consumeVoiceUsed } = useLLMActions()
   const { addEvent: addDevEvent } = useDevTerminal()
 
   // Agent supervisor state
@@ -152,7 +154,7 @@ export function useChatMessaging({
   const requestWorktree = worktreesEnabled ? worktree || undefined : undefined
 
   const createRequestBody = useCallback(
-    (message: string, analyzeImageUrls?: string[]) => {
+    (message: string, analyzeImageUrls?: string[], voiceUsed?: boolean) => {
       // Tab.id IS the conversation key - no separate sessionId
       if (!tabId || !tabGroupId) {
         throw new Error("[useChatMessaging] Cannot create request: tabId or tabGroupId is missing")
@@ -168,6 +170,7 @@ export function useChatMessaging({
         tabId,
         tabGroupId,
         model: userModel,
+        voiceLanguage: voiceUsed && voiceLanguage !== DEFAULT_VOICE_LANGUAGE ? voiceLanguage : undefined,
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
         // Read stream mode directly from store to avoid stale closure
         streamMode: currentMode !== "default" ? currentMode : undefined, // Only send if non-default
@@ -177,7 +180,7 @@ export function useChatMessaging({
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [tabId, tabGroupId, userModel, isTerminal, workspace, requestWorktree],
+    [tabId, tabGroupId, userModel, voiceLanguage, isTerminal, workspace, requestWorktree],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {
@@ -275,7 +278,7 @@ export function useChatMessaging({
                 // Note: sendMessage will be called via the returned function
               }, 4000)
               if (!data.onTrack) {
-                toast("Supervisor: Course correction suggested", { icon: "🎯" })
+                toast("Adjusting approach")
               }
             }
           })
@@ -376,7 +379,9 @@ export function useChatMessaging({
 
       try {
         const { prompt, analyzeImageUrls } = buildPromptForClaude(userMessage)
-        const requestBody = createRequestBody(prompt, analyzeImageUrls)
+        // Consume voice flag before building the body — side-effect-free createRequestBody
+        const voiceUsed = consumeVoiceUsed(targetTabId)
+        const requestBody = createRequestBody(prompt, analyzeImageUrls, voiceUsed)
 
         const abortController = new AbortController()
         abortControllerRef.current = abortController
@@ -478,7 +483,7 @@ export function useChatMessaging({
                 const helpText = getErrorHelp(errorData.error, errorData.details)
                 if (helpText) userMessage += `\n\n${helpText}`
                 if (errorData.error === ErrorCodes.CONVERSATION_BUSY) {
-                  toast.error(userMessage, { duration: 4000, position: "top-center" })
+                  toast(userMessage, { duration: 4000 })
                 }
               } else {
                 // Friendly fallback messages when structured error JSON is unavailable
@@ -557,9 +562,8 @@ export function useChatMessaging({
                       : parsed.reason === "workspace_limit"
                         ? "This workspace is busy"
                         : "Server is busy"
-                  toast(`${reasonText} — your request is queued`, {
+                  toast(`${reasonText} — queued, hang on`, {
                     id: "stream-queued",
-                    icon: "\u23F3",
                     duration: 10_000,
                   })
                   markStreamAlive()

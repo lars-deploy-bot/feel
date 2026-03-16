@@ -24,7 +24,7 @@ class BillingErrorBoundary extends Component<{ children: ReactNode }, { hasError
     if (this.state.hasError) {
       return (
         <SettingsTabLayout title="Billing" description="Plan, credits, and payment">
-          <p className={text.muted}>Unable to load billing information right now.</p>
+          <p className={text.muted}>Couldn't load billing — try refreshing</p>
         </SettingsTabLayout>
       )
     }

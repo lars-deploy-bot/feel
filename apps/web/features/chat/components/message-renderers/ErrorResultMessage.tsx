@@ -149,17 +149,20 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
 
     const dexieState = useDexieMessageStore.getState()
     const userId = dexieState.session?.userId
-    const currentTabId = dexieState.currentTabId
-    if (!userId || !currentTabId) return
+    if (!userId) return
 
     // Dynamically import tab store to avoid circular deps
-    const { useTabActions: getTabActions } = await import("@/lib/stores/tabStore")
+    const { useTabActions: getTabActions, useTabViewStore: tabViewStoreHook } = await import("@/lib/stores/tabStore")
     const { useTabDataStore: tabDataStoreHook } = await import("@/lib/stores/tabDataStore")
 
     const tabActions = getTabActions()
     const tabDataStore = tabDataStoreHook.getState()
+    const tabViewStore = tabViewStoreHook.getState()
 
-    // Find the current tab's group
+    // Get active tab from tabStore (single source of truth)
+    const currentTabId = tabViewStore.activeTabByWorkspace[workspace]
+    if (!currentTabId) return
+
     const workspaceTabs = tabDataStore.tabsByWorkspace[workspace]
     if (!workspaceTabs) return
     const currentTab = Object.values(workspaceTabs)
@@ -245,42 +248,42 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
 
     // Better fallback messages for common HTTP errors
     if (errorMessage.includes("HTTP 401")) {
-      return "Your session has expired. Please refresh the page and log in again."
+      return "Session expired — refresh to sign back in"
     }
     if (errorMessage.includes("HTTP 403")) {
-      return "Access denied. Please check your permissions."
+      return "You don't have access to this"
     }
     if (errorMessage.includes("HTTP 500")) {
-      return "Server error. Please try again in a moment."
+      return "Server hit an issue — try again in a moment"
     }
     if (errorMessage.includes("HTTP 502")) {
-      return "Server temporarily unavailable. Please try again in a moment."
+      return "Server is restarting — give it a moment"
     }
     if (errorMessage.includes("HTTP 503")) {
-      return "Service temporarily unavailable. Please try again in a moment."
+      return "Server is busy — try again shortly"
     }
     if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
-      return "Couldn't reach the server. Please check your internet connection."
+      return "Can't reach the server — check your connection"
     }
     if (errorMessage.includes("Connection lost")) {
-      return "Connection lost. Please check your internet connection and try again."
+      return "Connection dropped — check your network"
     }
     if (errorMessage.includes("No response body")) {
-      return "Server did not respond. Please try again."
+      return "No response — try sending again"
     }
     if (errorMessage.includes("closed connection without sending")) {
-      return "Server closed the connection unexpectedly. Please try again."
+      return "Connection closed early — try again"
     }
 
     // Never show raw JSON to users - if the message contains JSON, show generic error
     if (errorMessage.includes("{") && errorMessage.includes("}")) {
       if (errorMessage.includes("OAuth") || errorMessage.includes("token has expired")) {
-        return "The Claude OAuth token has expired. Please reconnect."
+        return "Token expired — reconnect to continue"
       }
       if (isAuthError || errorMessage.includes("auth") || errorMessage.includes("token")) {
-        return "Authentication failed. Please reconnect."
+        return "Couldn't authenticate — try reconnecting"
       }
-      return "Something went wrong. Please try again."
+      return "That didn't work — try again"
     }
 
     // Fallback for unparseable errors
@@ -315,11 +318,11 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
   const dotColor = isOffline ? "amber" : isSessionCorrupt ? "blue" : "red"
 
   const getTitle = () => {
-    if (isOffline) return "Connection failed"
-    if (isSessionCorrupt) return "Session interrupted"
-    if (isAuthError) return "Authentication error"
-    if (isWorkspace) return "Workspace error"
-    return "Something went wrong"
+    if (isOffline) return "Offline"
+    if (isSessionCorrupt) return "Session lost"
+    if (isAuthError) return "Auth issue"
+    if (isWorkspace) return "Workspace issue"
+    return "Didn't work"
   }
 
   return (

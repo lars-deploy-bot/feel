@@ -58,9 +58,6 @@ type ImageStore = ImageState & ImageActions
 
 const useImageStoreBase = create<ImageStore>((set, get) => {
   const loadImages = async (workspace?: string, worktree?: string | null) => {
-    const currentState = get()
-    if (currentState.loading) return
-
     set({ loading: true, error: null })
 
     try {

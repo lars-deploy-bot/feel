@@ -28,6 +28,14 @@ interface OrganizationWorkspaceSwitcherProps {
   orgOnly?: boolean
   /** Only show workspace selector, hide org picker */
   wsOnly?: boolean
+  /** Minimal mode: shows only a clean project name (first segment of domain, capitalized). Click opens switcher. */
+  minimal?: boolean
+}
+
+/** Derive a clean project name: "larry.alive.best" → "Larry", "alive" → "Alive" */
+function deriveProjectName(domain: string): string {
+  const first = domain.split(".")[0]
+  return first.charAt(0).toUpperCase() + first.slice(1)
 }
 
 export function OrganizationWorkspaceSwitcher({
@@ -35,6 +43,7 @@ export function OrganizationWorkspaceSwitcher({
   compact,
   orgOnly,
   wsOnly,
+  minimal,
 }: OrganizationWorkspaceSwitcherProps) {
   const { organizations } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
@@ -43,7 +52,7 @@ export function OrganizationWorkspaceSwitcher({
   const org = organizations.find(o => o.org_id === selectedOrgId) ?? organizations[0]
 
   // Hooks must be called before early return — query with empty string is a no-op
-  const { data: workspacesData } = useWorkspacesQuery(org?.org_id ?? "")
+  const { data: workspacesData, isPending: wsLoading } = useWorkspacesQuery(org?.org_id ?? "")
   const workspaces = useMemo(() => {
     const ws = workspacesData?.workspaces ?? []
     return ws.toSorted((a, b) => {
@@ -98,10 +107,41 @@ export function OrganizationWorkspaceSwitcher({
   if (!org) return null
 
   // If workspace doesn't belong to the selected org, treat as unselected
-  const wsInOrg = workspace && workspaces.includes(workspace) ? workspace : null
+  // While loading, keep wsInOrg as the raw workspace to avoid "Select project" flash
+  const wsInOrg = wsLoading ? workspace : workspace && workspaces.includes(workspace) ? workspace : null
 
   const showOrgChevron = organizations.length > 1
   const showWsChevron = !wsInOrg || workspaces.length > 1
+
+  // Minimal layout: just the project name, click to switch
+  if (minimal) {
+    return (
+      <div className="relative">
+        <button
+          ref={wsTriggerRef}
+          type="button"
+          onClick={() => setWsOpen(prev => !prev)}
+          className="text-[13px] font-semibold text-black/40 dark:text-white/30 hover:text-black/60 dark:hover:text-white/50 bg-white dark:bg-[#1a1a1a] border border-emerald-400/30 dark:border-emerald-500/20 ring-1 ring-emerald-400/10 dark:ring-emerald-500/10 px-3 py-1 rounded-full transition-all select-none shrink-0"
+        >
+          {wsInOrg ? deriveProjectName(wsInOrg) : "Select project"}
+        </button>
+
+        {wsOpen && workspaces.length > 0 && (
+          <SwitcherDropdown
+            triggerRef={wsTriggerRef}
+            items={workspaces}
+            activeItem={wsInOrg}
+            getKey={getWsKey}
+            getLabel={getWsLabel}
+            placeholder="Find Project…"
+            onSelect={handleWsSelect}
+            onClose={closeWs}
+            footerAction={{ label: "Create Project", onClick: handleCreateProject }}
+          />
+        )}
+      </div>
+    )
+  }
 
   // Compact layout for sidebar
   if (compact) {
@@ -116,7 +156,7 @@ export function OrganizationWorkspaceSwitcher({
               setOrgOpen(prev => !prev)
               setWsOpen(false)
             }}
-            className="flex items-center gap-1 text-[11px] text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 transition-colors truncate"
+            className="flex items-center gap-1.5 text-[13px] font-medium text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] px-2 py-1 rounded-lg transition-all truncate"
           >
             <span className="truncate">{org.name}</span>
             {showOrgChevron && <ChevronDown size={10} strokeWidth={2} className="shrink-0 opacity-50" />}

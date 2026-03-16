@@ -4,8 +4,8 @@
  */
 
 export function getParentPath(filePath: string): string {
-  if (!filePath.includes("/")) return ""
-  return filePath.split("/").slice(0, -1).join("/")
+  const index = filePath.lastIndexOf("/")
+  return index > 0 ? filePath.slice(0, index) : ""
 }
 
 export function getFileName(filePath: string): string {

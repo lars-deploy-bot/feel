@@ -163,21 +163,21 @@ describe("tabStore", () => {
     it("should not count closed tabs in per-group limit check", () => {
       const actions = getActions()
 
-      // Create 5 tabs
+      // Fill to MAX_TABS_PER_GROUP
       const tabs: Tab[] = []
       for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         const tab = actions.addTab(workspace, tabGroupId)
         if (tab) tabs.push(tab)
       }
-      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(5)
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(MAX_TABS_PER_GROUP)
 
       // Close 3 tabs
       for (let i = 0; i < 3; i++) {
         actions.removeTab(workspace, tabs[i].id)
       }
 
-      // Should have 2 open tabs now
-      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(2)
+      // Should have MAX - 3 open tabs now
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(MAX_TABS_PER_GROUP - 3)
 
       // Should be able to add 3 more
       for (let i = 0; i < 3; i++) {
@@ -185,13 +185,13 @@ describe("tabStore", () => {
         expect(tab).not.toBeNull()
       }
 
-      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(5)
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(MAX_TABS_PER_GROUP)
     })
 
     it("should allow adding tab after closing one at per-group limit", () => {
       const actions = getActions()
 
-      // Create 5 tabs
+      // Fill to MAX_TABS_PER_GROUP
       const tabs: Tab[] = []
       for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         const tab = actions.addTab(workspace, tabGroupId)
@@ -203,7 +203,7 @@ describe("tabStore", () => {
 
       // Close one tab
       actions.removeTab(workspace, tabs[0].id)
-      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(4)
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(MAX_TABS_PER_GROUP - 1)
 
       // Now should be able to add
       const newTab = actions.addTab(workspace, tabGroupId)
@@ -221,7 +221,7 @@ describe("tabStore", () => {
       for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         actions.addTab(workspace1, tabGroupId)
       }
-      expect(countOpenTabsInGroup(workspace1, tabGroupId)).toBe(5)
+      expect(countOpenTabsInGroup(workspace1, tabGroupId)).toBe(MAX_TABS_PER_GROUP)
 
       // Same tabGroupId in workspace2 should still allow tabs
       const tab = actions.addTab(workspace2, tabGroupId)
@@ -413,11 +413,11 @@ describe("tabStore", () => {
         actions.addTab(workspace, group3)
       }
 
-      // Total: 15 open tabs across 3 groups (5 each)
-      expect(countOpenTabs(workspace)).toBe(15)
-      expect(countOpenTabsInGroup(workspace, group1)).toBe(5)
-      expect(countOpenTabsInGroup(workspace, group2)).toBe(5)
-      expect(countOpenTabsInGroup(workspace, group3)).toBe(5)
+      // Total: 3 * MAX_TABS_PER_GROUP open tabs across 3 groups
+      expect(countOpenTabs(workspace)).toBe(3 * MAX_TABS_PER_GROUP)
+      expect(countOpenTabsInGroup(workspace, group1)).toBe(MAX_TABS_PER_GROUP)
+      expect(countOpenTabsInGroup(workspace, group2)).toBe(MAX_TABS_PER_GROUP)
+      expect(countOpenTabsInGroup(workspace, group3)).toBe(MAX_TABS_PER_GROUP)
 
       // Can't add more to any full group
       expect(actions.addTab(workspace, group1)).toBeNull()
@@ -427,7 +427,7 @@ describe("tabStore", () => {
       // But CAN create a new group
       const newGroup = actions.createTabGroupWithTab(workspace)
       expect(newGroup).not.toBeNull()
-      expect(countOpenTabs(workspace)).toBe(16)
+      expect(countOpenTabs(workspace)).toBe(3 * MAX_TABS_PER_GROUP + 1)
     })
 
     it("scenario: old phantom tabs don't block new group creation", () => {
@@ -546,7 +546,7 @@ describe("tabStore", () => {
       actions.addTab(workspace, convA)
       expect(countOpenTabsInGroup(workspace, convA)).toBe(1)
 
-      // Create conversations B, C, D each with 5 tabs (15 total in B/C/D)
+      // Create conversations B, C, D each with MAX_TABS_PER_GROUP tabs
       for (const conv of ["conversation-B", "conversation-C", "conversation-D"]) {
         for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
           actions.addTab(workspace, conv)
@@ -554,7 +554,7 @@ describe("tabStore", () => {
       }
 
       // Total is way over old limit
-      expect(countOpenTabs(workspace)).toBe(16)
+      expect(countOpenTabs(workspace)).toBe(3 * MAX_TABS_PER_GROUP + 1)
       expect(countOpenTabs(workspace)).toBeGreaterThan(OLD_GLOBAL_LIMIT)
 
       // THE FIX: Can still add tabs to conversation A (it only has 1)
@@ -569,13 +569,13 @@ describe("tabStore", () => {
 
       const actions = getActions()
 
-      // Fill workspace with 20 tabs across 4 groups
+      // Fill workspace with 4 * MAX_TABS_PER_GROUP tabs across 4 groups
       for (let g = 0; g < 4; g++) {
         for (let t = 0; t < MAX_TABS_PER_GROUP; t++) {
           actions.addTab(workspace, `existing-group-${g}`)
         }
       }
-      expect(countOpenTabs(workspace)).toBe(20)
+      expect(countOpenTabs(workspace)).toBe(4 * MAX_TABS_PER_GROUP)
 
       // User clicks on a conversation in the sidebar
       const sidebarConvId = "clicked-from-sidebar"

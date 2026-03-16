@@ -1,27 +1,11 @@
 "use client"
 
-import { Image, Layers, MessageCircle, Settings } from "lucide-react"
-import type { RefObject } from "react"
-import { PhotoMenu } from "@/components/ui/PhotoMenu"
-import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
-import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
-import {
-  trackComponentsClicked,
-  trackFeedbackClicked,
-  trackPhotobookImageSelected,
-  trackPhotosClicked,
-  trackSettingsClicked,
-} from "@/lib/analytics/events"
+import { Layers, MessageCircle, Settings } from "lucide-react"
+import { trackComponentsClicked, trackFeedbackClicked, trackSettingsClicked } from "@/lib/analytics/events"
 
 interface NavProps {
   onFeedbackClick: () => void
   onTemplatesClick: () => void
-  showPhotoMenu: boolean
-  onPhotoMenuToggle: () => void
-  onPhotoMenuClose: () => void
-  photoButtonRef: RefObject<HTMLButtonElement | null>
-  chatInputRef: RefObject<ChatInputHandle | null>
-  workspace: string | null
   isSidebarOpen: boolean
   onToggleSidebar: () => void
   settingsMode: boolean
@@ -31,12 +15,6 @@ interface NavProps {
 export function Nav({
   onFeedbackClick,
   onTemplatesClick,
-  showPhotoMenu,
-  onPhotoMenuToggle,
-  onPhotoMenuClose,
-  photoButtonRef,
-  chatInputRef,
-  workspace,
   isSidebarOpen,
   onToggleSidebar,
   settingsMode,
@@ -50,16 +28,21 @@ export function Nav({
   const iconButtonStyle = `${buttonBase} w-8 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]`
 
   return (
-    <div className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]">
+    <div
+      data-testid="chat-nav-bar"
+      className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]"
+    >
       <div className="h-full flex items-center justify-between px-2">
-        {/* Left side: sidebar toggle + workspace picker */}
+        {/* Left side: sidebar toggle */}
         <div className="flex items-center gap-2 min-w-0 pl-1">
+          {/* Sidebar toggle — mobile only (desktop has collapsed rail) */}
           <button
             type="button"
             onClick={onToggleSidebar}
-            className={`inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-200 ease-in-out overflow-hidden ${
+            className={`md:hidden inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-200 ease-in-out overflow-hidden ${
               isSidebarOpen ? "w-0 opacity-0 pointer-events-none" : "w-8 opacity-100"
             }`}
+            data-testid="sidebar-toggle"
             aria-label="Open sidebar"
             tabIndex={isSidebarOpen ? -1 : 0}
           >
@@ -78,7 +61,6 @@ export function Nav({
               <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
             </svg>
           </button>
-          <OrganizationWorkspaceSwitcher workspace={workspace} wsOnly />
         </div>
 
         {/* Action buttons — desktop only. Mobile versions live in ConversationSidebar.tsx (search: "Mobile action buttons") */}
@@ -110,6 +92,7 @@ export function Nav({
               onFeedbackClick()
             }}
             className={iconButtonStyle}
+            data-testid="feedback-button"
             aria-label="Send Feedback"
             title="Send Feedback"
           >
@@ -124,37 +107,12 @@ export function Nav({
               onTemplatesClick()
             }}
             className={iconButtonStyle}
+            data-testid="templates-button"
             aria-label="Components"
             title="Components"
           >
             <Layers size={16} strokeWidth={1.5} />
           </button>
-
-          {/* Photos */}
-          <div className="relative">
-            <button
-              ref={photoButtonRef}
-              type="button"
-              onClick={() => {
-                trackPhotosClicked()
-                onPhotoMenuToggle()
-              }}
-              className={iconButtonStyle}
-              aria-label="Photos"
-              title="Photos"
-            >
-              <Image size={16} strokeWidth={1.5} />
-            </button>
-            <PhotoMenu
-              isOpen={showPhotoMenu}
-              onClose={onPhotoMenuClose}
-              onSelectImage={imageKey => {
-                trackPhotobookImageSelected(imageKey)
-                chatInputRef.current?.addPhotobookImage(imageKey)
-              }}
-              triggerRef={photoButtonRef}
-            />
-          </div>
         </div>
       </div>
     </div>

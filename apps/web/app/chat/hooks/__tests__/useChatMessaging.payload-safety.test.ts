@@ -57,6 +57,8 @@ const mocks = vi.hoisted(() => {
     useBuilding: vi.fn(() => null),
     useTargetUsers: vi.fn(() => null),
     useModel: vi.fn(() => "claude-sonnet"),
+    useVoiceLanguage: vi.fn(() => "en"),
+    consumeVoiceUsed: vi.fn((_tabId: string) => false),
     usePlanMode: vi.fn(() => false),
     getPlanModeState: vi.fn(() => ({ planMode: false })),
     getStreamModeState: vi.fn(() => ({ mode: "default" })),
@@ -70,6 +72,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("@webalive/shared", () => ({
   retryAsync: mocks.retryAsync,
   isRetryableNetworkError: mocks.isRetryableNetworkError,
+  DEFAULT_VOICE_LANGUAGE: "en",
 }))
 
 vi.mock("react-hot-toast", () => ({
@@ -191,6 +194,8 @@ vi.mock("@/lib/stores/goalStore", () => ({
 
 vi.mock("@/lib/stores/llmStore", () => ({
   useModel: () => mocks.useModel(),
+  useVoiceLanguage: () => mocks.useVoiceLanguage(),
+  useLLMActions: () => ({ consumeVoiceUsed: mocks.consumeVoiceUsed }),
 }))
 
 vi.mock("@/lib/stores/streamModeStore", () => ({

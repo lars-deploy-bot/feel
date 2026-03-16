@@ -115,10 +115,10 @@ function TreeLevel({
     const style = depth === 0 ? "px-3 py-2" : "py-1"
     return (
       <div
-        className={`${style} text-neutral-400 dark:text-neutral-600`}
+        className={`${style} text-zinc-300 dark:text-zinc-700`}
         style={depth > 0 ? { paddingLeft: 8 + depth * 12 } : undefined}
       >
-        Loading...
+        Loading
       </div>
     )
   }
@@ -127,10 +127,10 @@ function TreeLevel({
     const style = depth === 0 ? "px-3 py-2" : "py-1"
     return (
       <div
-        className={`${style} text-neutral-400 dark:text-neutral-500`}
+        className={`${style} text-zinc-400 dark:text-zinc-500`}
         style={depth > 0 ? { paddingLeft: 8 + depth * 12 } : undefined}
       >
-        {depth === 0 ? error : "Failed to load"}
+        {depth === 0 ? error : "Couldn't load"}
       </div>
     )
   }
@@ -139,10 +139,10 @@ function TreeLevel({
     const style = depth === 0 ? "px-3 py-2" : "py-1"
     return (
       <div
-        className={`${style} text-neutral-400 dark:text-neutral-600`}
+        className={`${style} text-zinc-400 dark:text-zinc-600`}
         style={depth > 0 ? { paddingLeft: 8 + depth * 12 } : undefined}
       >
-        Empty
+        No files
       </div>
     )
   }
@@ -234,7 +234,7 @@ const TreeNode = memo(function TreeNode({
         className={`w-full h-7 flex items-center gap-1 text-left transition-colors ${
           isActive
             ? "bg-black/[0.06] dark:bg-white/[0.08] text-black dark:text-white"
-            : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-neutral-800 dark:hover:text-neutral-300"
+            : "text-zinc-600 dark:text-zinc-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-zinc-800 dark:hover:text-zinc-300"
         }`}
         style={{ paddingLeft }}
       >
@@ -242,7 +242,7 @@ const TreeNode = memo(function TreeNode({
           <ChevronRight
             size={14}
             strokeWidth={1.5}
-            className={`shrink-0 text-neutral-400 dark:text-neutral-600 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+            className={`shrink-0 text-zinc-400 dark:text-zinc-600 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
           />
         ) : (
           <span className="w-[14px] shrink-0" />
@@ -265,7 +265,7 @@ const TreeNode = memo(function TreeNode({
             onKeyDown={e => {
               if (e.key === "Enter") handleDelete(e)
             }}
-            className="shrink-0 p-0.5 mr-1 text-neutral-400 dark:text-neutral-600 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors"
+            className="shrink-0 p-0.5 mr-1 text-zinc-400 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors"
             title="Delete"
           >
             <Trash2 size={12} strokeWidth={1.5} />

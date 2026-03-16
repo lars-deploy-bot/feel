@@ -18,14 +18,13 @@ export function useOnlineStatus() {
 
     const handleOnline = () => {
       setIsOnline(true)
-      toast.success("You're back online", { id: "online-status" })
+      toast("Back online", { id: "online-status" })
     }
 
     const handleOffline = () => {
       setIsOnline(false)
-      toast("You're offline — messages can't be sent right now", {
+      toast("You're offline", {
         id: "online-status",
-        icon: "📡",
         duration: 4000,
       })
     }

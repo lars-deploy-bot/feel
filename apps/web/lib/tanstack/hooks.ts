@@ -64,13 +64,13 @@ export function useQueryError<T>(query: UseQueryResult<T, Error>) {
     if (!error) return
 
     if (error.isAuthError) {
-      toast.error("Session expired. Please log in again.")
+      toast("Session expired — sign in again")
     } else if (error.isNetworkError) {
-      toast.error("Network error. Please check your connection.")
+      toast("Can't reach the server")
     } else if (error.isServerError) {
-      toast.error("Server error. Please try again later.")
+      toast("Server issue — try again in a moment")
     } else {
-      toast.error(error.message)
+      toast(error.message)
     }
   }, [error])
 

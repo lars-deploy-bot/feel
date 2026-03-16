@@ -26,6 +26,7 @@ export { ApiError, type ApiResponse, fetcher } from "./fetcher"
 export { parseQueryError, type QueryError, useQueryError, useQueryWithError } from "./hooks"
 // Mutations
 export {
+  useAddOrgMember,
   useCreateWebsite,
   useInvalidateAutomations,
   useInvalidateOrganizations,

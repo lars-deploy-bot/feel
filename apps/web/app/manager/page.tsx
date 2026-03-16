@@ -1073,24 +1073,21 @@ export default function ManagerPage() {
 
       <Toaster
         position="top-right"
-        containerStyle={{
-          zIndex: 9999,
-        }}
+        containerStyle={{ zIndex: 9999 }}
         toastOptions={{
           duration: 3000,
-          style: {
-            background: "#363636",
-            color: "#fff",
-          },
+          style: { padding: "12px 16px", maxWidth: 420 },
+          className:
+            "!bg-white dark:!bg-zinc-900 !text-zinc-600 dark:!text-zinc-400 !text-[13px] !shadow-[0_2px_8px_rgba(0,0,0,0.06)] !border !border-zinc-200 dark:!border-zinc-800 !rounded-xl",
           success: {
-            style: {
-              background: "#10B981",
-            },
+            className:
+              "!bg-white dark:!bg-zinc-900 !text-zinc-600 dark:!text-zinc-400 !text-[13px] !shadow-[0_2px_8px_rgba(0,0,0,0.06)] !border !border-zinc-200 dark:!border-zinc-800 !rounded-xl",
+            iconTheme: { primary: "#a1a1aa", secondary: "#fff" },
           },
           error: {
-            style: {
-              background: "#EF4444",
-            },
+            className:
+              "!bg-white dark:!bg-zinc-900 !text-zinc-600 dark:!text-zinc-400 !text-[13px] !shadow-[0_2px_8px_rgba(0,0,0,0.06)] !border !border-zinc-200 dark:!border-zinc-800 !rounded-xl",
+            iconTheme: { primary: "#a1a1aa", secondary: "#fff" },
           },
         }}
       />
