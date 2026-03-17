@@ -1644,17 +1644,21 @@ export const apiSchemas = {
   },
 
   /**
-   * GET /api/conversations?workspace=xxx
-   * Fetch user's conversations for a workspace
+   * GET /api/conversations?workspace=xxx&limit=50&cursor=xxx
+   * Fetch user's conversations. workspace is optional — omit for cross-workspace fetch.
    */
   "conversations/list": {
     path: "conversations",
     query: z.object({
-      workspace: z.string().min(1),
+      workspace: z.string().min(1).optional(),
+      limit: z.coerce.number().int().min(1).max(200).default(50),
+      cursor: z.string().optional(),
     }),
     res: z.object({
       own: z.array(z.unknown()),
       shared: z.array(z.unknown()),
+      hasMore: z.boolean().optional(),
+      nextCursor: z.string().nullable().optional(),
     }),
   },
 

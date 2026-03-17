@@ -30,6 +30,19 @@ vi.mock("@/features/settings/SettingsNav", () => ({
   SettingsNav: () => <div data-testid="settings-nav">Settings Navigation</div>,
 }))
 
+vi.mock("@/lib/hooks/useOrganizations", () => ({
+  useOrganizations: () => ({ organizations: [{ org_id: "org-1" }] }),
+}))
+
+vi.mock("@/lib/hooks/useFavoriteWorkspaces", () => ({
+  useFavoriteWorkspaces: () => ({ favorites: new Set<string>(), toggle: vi.fn() }),
+}))
+
+vi.mock("@/lib/stores/workspaceStore", () => ({
+  useRecentWorkspaces: () => [{ domain: "example.com", orgId: "org-1", lastAccessed: Date.now() }],
+  useWorkspaceActions: () => ({ removeRecentWorkspace: vi.fn() }),
+}))
+
 vi.mock("@/lib/analytics/events", () => ({
   trackSidebarClosed: () => undefined,
   trackSidebarOpened: () => undefined,
@@ -40,8 +53,9 @@ vi.mock("@/lib/db/conversationSync", () => ({
 }))
 
 vi.mock("@/lib/db/dexieMessageStore", () => ({
-  useDexieArchivedConversations: () => [],
-  useDexieConversations: () => [{ id: "conv-1" }],
+  useDexieAllArchivedConversations: () => [],
+  useDexieAllConversations: () => [{ id: "conv-1", workspace: "example.com" }],
+  useDexieMessageActions: () => ({ setConversationFavorited: vi.fn() }),
   useDexieSession: () => "session-1",
 }))
 
@@ -54,8 +68,9 @@ vi.mock("@/lib/stores/streamingStore", () => ({
     selector({ tabs: {} }),
 }))
 
-vi.mock("@/lib/stores/tabStore", () => ({
-  useWorkspaceTabs: () => [],
+vi.mock("@/lib/stores/tabDataStore", () => ({
+  useTabDataStore: (selector: (state: { tabsByWorkspace: Record<string, never[]> }) => unknown) =>
+    selector({ tabsByWorkspace: {} }),
 }))
 
 vi.mock("../components/ArchivedConversationItem", () => ({
@@ -85,6 +100,7 @@ function renderSidebar(settingsMode = false) {
       onUnarchiveTabGroup={() => undefined}
       onRenameTabGroup={() => undefined}
       onNewConversation={() => undefined}
+      onNewConversationInWorkspace={() => undefined}
       onNewWorktree={() => undefined}
       onSelectWorktree={() => undefined}
       onToggleSettings={() => undefined}

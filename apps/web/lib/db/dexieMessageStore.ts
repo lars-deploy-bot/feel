@@ -91,6 +91,7 @@ interface DexieMessageStoreActions {
   archiveConversation: (id: string) => Promise<void>
   unarchiveConversation: (id: string) => Promise<void>
   renameConversation: (id: string, title: string) => Promise<void>
+  setConversationFavorited: (id: string, favorited: boolean) => Promise<void>
   shareConversation: (id: string) => Promise<void>
   unshareConversation: (id: string) => Promise<void>
 
@@ -381,6 +382,13 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     await syncRenameConversation(id, session.userId, title)
   },
 
+  setConversationFavorited: async (id, favorited) => {
+    const { session } = get()
+    if (!session) return
+    const db = getMessageDb(session.userId)
+    await safeDb(() => db.conversations.update(id, { favorited }))
+  },
+
   shareConversation: async id => {
     const { session } = get()
     if (!session) return
@@ -533,8 +541,8 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       const msg = allMessages[i]
       // Check if this is an SDK assistant message with a UUID
       if (msg.content.kind === "sdk_message") {
-        const sdkData = msg.content.data as { type?: string; uuid?: string }
-        if (sdkData?.type === "assistant" && sdkData?.uuid) {
+        const sdkData = isRecord(msg.content.data) ? msg.content.data : null
+        if (sdkData?.type === "assistant" && typeof sdkData.uuid === "string") {
           resumeUuid = sdkData.uuid
           break
         }
@@ -594,7 +602,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       if (message.deletedAt) continue
       if (message.content.kind !== "sdk_message") continue
 
-      const sdkData = message.content.data as { type?: string; uuid?: string } | undefined
+      const sdkData = isRecord(message.content.data) ? message.content.data : null
       if (sdkData?.type === "assistant" && typeof sdkData.uuid === "string" && sdkData.uuid.length > 0) {
         const resumeUuid = sdkData.uuid
         set(state => ({
@@ -805,7 +813,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
 
     set({ isSyncing: true })
     try {
-      await fetchConversations(workspace, session.userId, session.orgId)
+      await fetchConversations(session.userId, session.orgId, workspace)
     } finally {
       set({ isSyncing: false })
     }
@@ -999,6 +1007,7 @@ export const useDexieMessageActions = () =>
     archiveConversation: state.archiveConversation,
     unarchiveConversation: state.unarchiveConversation,
     renameConversation: state.renameConversation,
+    setConversationFavorited: state.setConversationFavorited,
     shareConversation: state.shareConversation,
     unshareConversation: state.unshareConversation,
     addMessage: state.addMessage,
@@ -1026,6 +1035,8 @@ export const useDexieMessageActions = () =>
 // =============================================================================
 
 export {
+  useAllArchivedConversations as useDexieAllArchivedConversations,
+  useAllConversations as useDexieAllConversations,
   useArchivedConversations as useDexieArchivedConversations,
   useConversation as useDexieConversation,
   useConversations as useDexieConversations,

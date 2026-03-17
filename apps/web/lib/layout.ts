@@ -25,6 +25,9 @@ export const WORKBENCH_PANEL = {
 
 export const RESIZE_HANDLE_ID = "chat-workbench-handle"
 
+/** Shared top bar height (px) — sidebar header, tab bar, workbench view switcher */
+export const TOP_BAR_HEIGHT = 52
+
 /** Sidebar collapsed rail layout — shared so adjacent content aligns vertically */
 export const SIDEBAR_RAIL = {
   /** Vertical padding (px) of the rail container */

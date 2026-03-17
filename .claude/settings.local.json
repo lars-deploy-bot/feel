@@ -12,7 +12,6 @@
       "NotebookEdit(*)",
       "Task(*)",
       "mcp__playwright",
-      "mcp__context7",
       "mcp__supabase"
     ]
   },

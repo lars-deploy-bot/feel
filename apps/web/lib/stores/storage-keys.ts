@@ -31,6 +31,9 @@ export const FEATURE_FLAGS_STORAGE_KEY = "feature-flags-store" as const
 // Goal store key
 export const GOAL_STORAGE_KEY = "goal-store" as const
 
+// Favorite workspaces store key
+export const FAVORITE_WORKSPACES_STORAGE_KEY = "alive:favorite-projects" as const
+
 // Type for all storage keys (useful for cleanup utilities)
 export type StorageKey =
   | typeof TAB_DATA_STORAGE_KEY
@@ -42,3 +45,4 @@ export type StorageKey =
   | typeof DEBUG_STORAGE_KEY
   | typeof FEATURE_FLAGS_STORAGE_KEY
   | typeof GOAL_STORAGE_KEY
+  | typeof FAVORITE_WORKSPACES_STORAGE_KEY
