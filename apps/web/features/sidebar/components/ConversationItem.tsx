@@ -3,7 +3,7 @@
 import { Archive, Bot, Check, Pencil, X } from "lucide-react"
 import { useRef, useState } from "react"
 import type { DbConversation } from "@/lib/db/messageDb"
-import { formatTimestamp } from "../utils"
+import { formatTimestamp, workspaceSlug } from "../utils"
 
 function StreamingDot() {
   return (
@@ -70,6 +70,11 @@ export function ConversationItem({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Interactive when not editing
     <div
+      draggable={!isEditing}
+      onDragStart={e => {
+        e.dataTransfer.setData("text/plain", conversation.id)
+        e.dataTransfer.effectAllowed = "move"
+      }}
       onClick={isEditing ? undefined : onClick}
       tabIndex={isEditing ? undefined : 0}
       onKeyDown={e => {
@@ -77,21 +82,25 @@ export function ConversationItem({
           onClick?.()
         }
       }}
-      className="group"
+      className="group px-0 py-px"
     >
       <div
         className={`
-          flex items-center gap-2 px-3 py-2.5 mx-2 rounded-lg cursor-pointer
-          transition-all duration-150 ease-out
-          ${isActive ? "bg-[#4a7c59]/[0.08] dark:bg-[#7cb88a]/[0.08]" : "hover:bg-[#4a7c59]/[0.05] dark:hover:bg-[#7cb88a]/[0.05]"}
+          flex items-start gap-2 px-3 py-2 mx-2 rounded-lg cursor-pointer
+          transition-colors duration-100
+          ${isActive ? "bg-black/[0.04] dark:bg-white/[0.04]" : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"}
         `}
       >
-        {isStreaming && <StreamingDot />}
+        {isStreaming && (
+          <span className="mt-1.5">
+            <StreamingDot />
+          </span>
+        )}
         {conversation.source === "automation_run" && (
-          <Bot size={13} strokeWidth={1.75} className="shrink-0 text-[#b5afa3] dark:text-[#5c574d]" />
+          <Bot size={13} strokeWidth={1.75} className="shrink-0 mt-[3px] text-black/20 dark:text-white/20" />
         )}
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col">
           {isEditing ? (
             <input
               ref={inputRef}
@@ -101,26 +110,29 @@ export function ConversationItem({
               onBlur={handleSaveEdit}
               onKeyDown={handleEditKeyDown}
               onClick={e => e.stopPropagation()}
-              className="w-full text-[13px] text-[#2c2a26] dark:text-[#e8e4dc] bg-transparent outline-none"
+              className="w-full text-[13px] text-black dark:text-white bg-transparent outline-none"
             />
           ) : (
-            <div className="flex items-center gap-2">
-              <span
-                className={`text-[13px] truncate ${
-                  isActive ? "text-[#2c2a26] dark:text-[#e8e4dc] font-medium" : "text-[#5c574d] dark:text-[#b5afa3]"
-                }`}
-              >
-                {conversation.title}
-              </span>
-              <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">
-                {formatTimestamp(conversation.updatedAt)}
-              </span>
-            </div>
+            <span
+              className={`text-[13px] truncate ${
+                isActive ? "text-black dark:text-white font-medium" : "text-black/40 dark:text-white/40"
+              }`}
+            >
+              {conversation.title}
+            </span>
           )}
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] text-black/20 dark:text-white/20 truncate">
+              {workspaceSlug(conversation.workspace)}
+            </span>
+            <span className="text-[11px] text-black/15 dark:text-white/15 shrink-0 tabular-nums">
+              {formatTimestamp(conversation.updatedAt)}
+            </span>
+          </div>
         </div>
 
         {!isEditing && (
-          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ease-out">
+          <div className="flex items-center gap-0.5 shrink-0 mt-px opacity-0 group-hover:opacity-100 transition-opacity duration-100">
             {isConfirming && (
               <button
                 type="button"
@@ -128,7 +140,7 @@ export function ConversationItem({
                   e.stopPropagation()
                   onCancelArchive(e)
                 }}
-                className="size-5 rounded-lg flex items-center justify-center text-[#b5afa3] dark:text-[#5c574d] hover:text-[#5c574d] dark:hover:text-[#b5afa3] active:scale-90 transition-all duration-150 ease-out"
+                className="size-5 rounded-lg flex items-center justify-center text-black/25 dark:text-white/25 hover:text-black/50 dark:hover:text-white/50 active:scale-90 transition-colors duration-100"
                 aria-label="Cancel archive"
               >
                 <X size={12} strokeWidth={2} />
@@ -139,7 +151,7 @@ export function ConversationItem({
               <button
                 type="button"
                 onClick={handleStartEdit}
-                className="size-5 rounded-lg flex items-center justify-center text-[#b5afa3] dark:text-[#5c574d] hover:text-[#5c574d] dark:hover:text-[#b5afa3] active:scale-90 transition-all duration-150 ease-out"
+                className="size-5 rounded-lg flex items-center justify-center text-black/25 dark:text-white/25 hover:text-black/50 dark:hover:text-white/50 active:scale-90 transition-colors duration-100"
                 aria-label="Rename"
               >
                 <Pencil size={11} strokeWidth={1.75} />
@@ -152,10 +164,10 @@ export function ConversationItem({
                 e.stopPropagation()
                 onArchive(e, conversation)
               }}
-              className={`size-5 rounded-lg flex items-center justify-center active:scale-90 transition-all duration-150 ease-out ${
+              className={`size-5 rounded-lg flex items-center justify-center active:scale-90 transition-colors duration-100 ${
                 isConfirming
-                  ? "bg-[#4a7c59]/[0.12] dark:bg-[#7cb88a]/[0.12] text-[#2c2a26] dark:text-[#e8e4dc]"
-                  : "text-[#b5afa3] dark:text-[#5c574d] hover:text-[#5c574d] dark:hover:text-[#b5afa3]"
+                  ? "bg-black/[0.06] dark:bg-white/[0.06] text-black/70 dark:text-white/70"
+                  : "text-black/25 dark:text-white/25 hover:text-black/50 dark:hover:text-white/50"
               }`}
               aria-label={isConfirming ? "Confirm archive" : "Archive"}
             >

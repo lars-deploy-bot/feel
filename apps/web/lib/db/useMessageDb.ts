@@ -12,6 +12,7 @@
 
 import Dexie from "dexie"
 import { useLiveQuery } from "dexie-react-hooks"
+import { useMemo } from "react"
 import { type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
 
 // =============================================================================
@@ -88,6 +89,77 @@ export function useSharedConversations(workspace: string | null, session: Sessio
           .toArray()
       },
       [workspace, session?.userId, session?.orgId],
+      [],
+    ) ?? []
+  )
+}
+
+/**
+ * Get ALL conversations across ALL workspaces (user's own + shared from user's orgs).
+ *
+ * Uses composite index [creatorId+updatedAt] for efficient sorted query.
+ * Filters by creatorId OR (shared AND orgId in user's org set) for security.
+ */
+export function useAllConversations(session: SessionContext | null, orgIds: ReadonlySet<string>): DbConversation[] {
+  // Stabilize orgIds set — useLiveQuery deps comparison uses Object.is, so we
+  // serialize to a sorted string to avoid re-firing on every render.
+  const orgIdsKey = useMemo(() => [...orgIds].sort().join(","), [orgIds])
+
+  return (
+    useLiveQuery(
+      async () => {
+        if (!session?.userId || orgIds.size === 0) return []
+
+        const db = getMessageDb(session.userId)
+
+        // Fetch own conversations via [creatorId+updatedAt] index
+        const own = await db.conversations
+          .where("[creatorId+updatedAt]")
+          .between([session.userId, Dexie.minKey], [session.userId, Dexie.maxKey])
+          .and(c => !c.deletedAt && !c.archivedAt)
+          .toArray()
+
+        // Fetch shared conversations from each of the user's orgs
+        const sharedResults: DbConversation[] = []
+        for (const orgId of orgIds) {
+          const shared = await db.conversations
+            .where("[orgId+visibility+updatedAt]")
+            .between([orgId, "shared", Dexie.minKey], [orgId, "shared", Dexie.maxKey])
+            .and(c => !c.deletedAt && !c.archivedAt && c.creatorId !== session.userId)
+            .toArray()
+          sharedResults.push(...shared)
+        }
+
+        // Merge and sort by updatedAt descending, stable tiebreaker by id
+        const merged = [...own, ...sharedResults]
+        merged.sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
+        return merged
+      },
+      [session?.userId, orgIdsKey],
+      [],
+    ) ?? []
+  )
+}
+
+/**
+ * Get ALL archived conversations across ALL workspaces (user's own only).
+ */
+export function useAllArchivedConversations(session: SessionContext | null): DbConversation[] {
+  return (
+    useLiveQuery(
+      async () => {
+        if (!session?.userId) return []
+
+        const db = getMessageDb(session.userId)
+
+        return db.conversations
+          .where("[creatorId+updatedAt]")
+          .between([session.userId, Dexie.minKey], [session.userId, Dexie.maxKey])
+          .and(c => !c.deletedAt && !!c.archivedAt)
+          .reverse()
+          .toArray()
+      },
+      [session?.userId],
       [],
     ) ?? []
   )

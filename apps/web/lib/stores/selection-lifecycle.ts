@@ -124,9 +124,9 @@
  *
  * autoSelectWorkspace respects selectedOrgId:
  *   - If an org is selected, picks the most recent workspace FROM THAT ORG only.
- *   - If the selected org has no recents, falls back to global most recent
- *     (which also sets the org — the pair always moves together).
- *   - This prevents auto-select from silently switching the user's org.
+ *   - If the selected org has no recents, returns false (workspace stays null).
+ *     Never falls back to a different org's workspace — that would silently
+ *     switch the user's org, which is confusing and breaks the mental model.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  * PERSISTENCE RULES

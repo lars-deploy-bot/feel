@@ -60,8 +60,9 @@ export function AccountMenu({
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (menuRef.current?.contains(e.target as Node)) return
-      if (triggerRef.current?.contains(e.target as Node)) return
+      if (!(e.target instanceof Node)) return
+      if (menuRef.current?.contains(e.target)) return
+      if (triggerRef.current?.contains(e.target)) return
       setOpen(false)
     }
     document.addEventListener("mousedown", handler)

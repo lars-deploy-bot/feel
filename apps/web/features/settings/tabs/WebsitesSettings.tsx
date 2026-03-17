@@ -10,12 +10,12 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { SearchInput } from "@/components/ui/SearchInput"
 import { useSuperadmin } from "@/hooks/use-superadmin"
+import { useFavoriteWorkspaces } from "@/lib/hooks/useFavoriteWorkspaces"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useAllWorkspacesQuery } from "@/lib/hooks/useSettingsQueries"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 import { PROJECT_GRID, ProjectCard } from "../components/ProjectCard"
 import { SectionHeader } from "../components/SectionHeader"
-import { useFavorites } from "../hooks/useFavorites"
 import { plural } from "../lib/format"
 import type { AllWebsitesData, SortState, WorkspaceWithOrg } from "../lib/project-types"
 import { SORT_FIELDS, sortWorkspaces } from "../lib/project-types"
@@ -185,7 +185,7 @@ export function WebsitesSettings() {
   const selectedOrgId = useSelectedOrgId()
   const { data: allWorkspaces, isLoading: websitesLoading, refetch } = useAllWorkspacesQuery(organizations)
   const { currentWorkspace, switchWorkspace } = useWorkspaceSwitch()
-  const { favorites, toggle: toggleFavorite } = useFavorites()
+  const { favorites, toggle: toggleFavorite } = useFavoriteWorkspaces()
   const [showAddModal, setShowAddModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")

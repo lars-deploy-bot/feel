@@ -1,22 +1,31 @@
 "use client"
 
-import { Bot, ChevronRight, Layers, MessageCircle, Plus, Settings } from "lucide-react"
+import { ChevronRight, Layers, MessageCircle, Plus, Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { SettingsNav } from "@/features/settings/SettingsNav"
+import { deriveProjectName } from "@/features/sidebar/utils"
 import { trackSidebarClosed, trackSidebarOpened } from "@/lib/analytics/events"
 import { fetchConversations } from "@/lib/db/conversationSync"
-import { useDexieArchivedConversations, useDexieConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
+import {
+  useDexieAllArchivedConversations,
+  useDexieAllConversations,
+  useDexieMessageActions,
+  useDexieSession,
+} from "@/lib/db/dexieMessageStore"
 import type { DbConversation } from "@/lib/db/messageDb"
-import { SIDEBAR_RAIL } from "@/lib/layout"
+import { useFavoriteWorkspaces } from "@/lib/hooks/useFavoriteWorkspaces"
+import { useOrganizations } from "@/lib/hooks/useOrganizations"
+import { SIDEBAR_RAIL, TOP_BAR_HEIGHT } from "@/lib/layout"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useStreamingStore } from "@/lib/stores/streamingStore"
-import { useWorkspaceTabs } from "@/lib/stores/tabStore"
+import { useTabDataStore } from "@/lib/stores/tabDataStore"
 import { AccountMenu } from "./components/AccountMenu"
 import { ArchivedConversationItem } from "./components/ArchivedConversationItem"
 import { ConversationItem } from "./components/ConversationItem"
+import { WorkspaceGroupMenu } from "./components/WorkspaceGroupMenu"
 import { styles } from "./sidebar-styles"
 import { useSidebarActions, useSidebarOpen } from "./sidebarStore"
 
@@ -30,6 +39,7 @@ interface ConversationSidebarProps {
   onUnarchiveTabGroup: (tabGroupId: string) => void
   onRenameTabGroup: (tabGroupId: string, title: string) => void
   onNewConversation: () => void
+  onNewConversationInWorkspace: (workspace: string) => void
   onNewWorktree: () => void
   onSelectWorktree: (worktree: string | null) => void
   worktreeModalOpen?: boolean
@@ -55,6 +65,7 @@ export function ConversationSidebar({
   onUnarchiveTabGroup,
   onRenameTabGroup,
   onNewConversation,
+  onNewConversationInWorkspace,
   onNewWorktree: _onNewWorktree,
   onSelectWorktree,
   worktreeModalOpen,
@@ -69,15 +80,63 @@ export function ConversationSidebar({
   const isOpen = useSidebarOpen()
   const { closeSidebar, openSidebar } = useSidebarActions()
   const session = useDexieSession()
-  const allConversations = useDexieConversations(workspace || "", session)
-  const conversations = workspace ? allConversations : []
-  const archivedConversations = useDexieArchivedConversations(workspace || "", session)
+  const { organizations } = useOrganizations()
+  const orgIds = useMemo(() => new Set(organizations.map(o => o.org_id)), [organizations])
+  const conversations = useDexieAllConversations(session, orgIds)
+  const archivedConversations = useDexieAllArchivedConversations(session)
+  const { favorites: favoriteSet, toggle: toggleFavoriteWorkspace } = useFavoriteWorkspaces()
   const sidebarRef = useRef<HTMLDivElement>(null)
   const [archiveConfirmingId, setArchiveConfirmingId] = useState<string | null>(null)
   const [archivedExpanded, setArchivedExpanded] = useState(false)
-  const [agentsExpanded, setAgentsExpanded] = useState(false)
   const didInitRef = useRef(false)
   const { user } = useAuth()
+  const { setConversationFavorited } = useDexieMessageActions()
+  const [dragOverZone, setDragOverZone] = useState<"favorites" | "below" | null>(null)
+
+  // Drag-and-drop: move conversations between favorites and ungrouped
+  const extractDropId = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOverZone(null)
+    return e.dataTransfer.getData("text/plain")
+  }, [])
+
+  const handleDropFavorites = useCallback(
+    (e: React.DragEvent) => {
+      const id = extractDropId(e)
+      if (!id) return
+      setConversationFavorited(id, true)
+      const conversation = conversations.find(c => c.id === id)
+      if (conversation && !favoriteSet.has(conversation.workspace)) {
+        toggleFavoriteWorkspace(conversation.workspace)
+      }
+    },
+    [extractDropId, setConversationFavorited, conversations, favoriteSet, toggleFavoriteWorkspace],
+  )
+
+  const handleDropBelow = useCallback(
+    (e: React.DragEvent) => {
+      const id = extractDropId(e)
+      if (!id) return
+      setConversationFavorited(id, false)
+    },
+    [extractDropId, setConversationFavorited],
+  )
+
+  const handleDragOverFavorites = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDragOverZone("favorites")
+  }, [])
+
+  const handleDragOverBelow = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDragOverZone("below")
+  }, [])
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverZone(null)
+  }, [])
 
   // Track sidebar open/close (skip initial false -> closed on mount)
   useEffect(() => {
@@ -89,21 +148,27 @@ export function ConversationSidebar({
     didInitRef.current = true
   }, [isOpen])
 
-  // Pull conversations from server on workspace change to sync server-side data (e.g. automation runs)
+  // Pull conversations from server (cross-workspace) on session init
   useEffect(() => {
-    if (workspace && session?.userId && session?.orgId) {
-      fetchConversations(workspace, session.userId, session.orgId)
+    if (session?.userId && session?.orgId) {
+      fetchConversations(session.userId, session.orgId)
     }
-  }, [workspace, session?.userId, session?.orgId])
+  }, [session?.userId, session?.orgId])
 
-  // Get streaming state for all tabs to show activity indicator
+  // Get streaming state for ALL tabs across ALL workspaces to show activity indicator
   const streamingTabs = useStreamingStore(state => state.tabs)
-  const workspaceTabs = useWorkspaceTabs(workspace)
+  const tabsByWorkspace = useTabDataStore(s => s.tabsByWorkspace)
 
   const streamingConversationIds = useMemo(() => {
-    const tabGroupByTabId = new Map(workspaceTabs.map(tab => [tab.id, tab.tabGroupId]))
-    const activeConversations = new Set<string>()
+    // Build tabId → tabGroupId map from ALL workspaces
+    const tabGroupByTabId = new Map<string, string>()
+    for (const tabs of Object.values(tabsByWorkspace)) {
+      for (const tab of tabs) {
+        tabGroupByTabId.set(tab.id, tab.tabGroupId)
+      }
+    }
 
+    const activeConversations = new Set<string>()
     for (const [tabId, tabState] of Object.entries(streamingTabs)) {
       if (!tabState.isStreamActive) continue
       const tabGroupId = tabGroupByTabId.get(tabId)
@@ -113,28 +178,52 @@ export function ConversationSidebar({
     }
 
     return activeConversations
-  }, [streamingTabs, workspaceTabs])
+  }, [streamingTabs, tabsByWorkspace])
 
-  const MAX_VISIBLE_CONVERSATIONS = 5
+  // Favorite workspaces — explicitly marked via settings heart toggle.
+  // Always visible at top, even with 0 conversations.
+  const favoriteWorkspaces = useMemo(() => [...favoriteSet].sort(), [favoriteSet])
 
-  // Split conversations into user chats vs agent runs, and cap visible user chats
-  const { recentConversations, olderConversations, agentConversations } = useMemo(() => {
-    const user: typeof conversations = []
-    const agent: typeof conversations = []
+  // Split conversations: favorited → under their workspace in top section, rest → below.
+  // Dexie `favorited` flag is the single owner. Workspace membership alone doesn't count.
+  const { favoriteGroups, activeConversations } = useMemo(() => {
+    const favByWs = new Map<string, typeof conversations>()
+    const active: typeof conversations = []
+
+    for (const ws of favoriteWorkspaces) {
+      favByWs.set(ws, [])
+    }
+
     for (const c of conversations) {
-      if (c.source === "automation_run") {
-        agent.push(c)
+      if (c.source === "automation_run") continue
+
+      if (c.favorited && favByWs.has(c.workspace)) {
+        favByWs.get(c.workspace)!.push(c)
       } else {
-        user.push(c)
+        active.push(c)
       }
     }
-    return {
-      recentConversations: user.slice(0, MAX_VISIBLE_CONVERSATIONS),
-      olderConversations: user.slice(MAX_VISIBLE_CONVERSATIONS),
-      agentConversations: agent,
+
+    // All favorite workspaces show — even with 0 conversations
+    const groups = favoriteWorkspaces.map(ws => ({
+      workspace: ws,
+      conversations: favByWs.get(ws)!,
+    }))
+
+    return { favoriteGroups: groups, activeConversations: active }
+  }, [conversations, favoriteWorkspaces])
+
+  const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(() => new Set())
+
+  // Auto-expand current workspace
+  useEffect(() => {
+    if (workspace) {
+      setExpandedWorkspaces(prev => {
+        if (prev.has(workspace)) return prev
+        return new Set([...prev, workspace])
+      })
     }
-  }, [conversations])
-  const [olderExpanded, setOlderExpanded] = useState(false)
+  }, [workspace])
 
   // Memoized handlers
   const handleTabGroupClick = useCallback(
@@ -165,6 +254,16 @@ export function ConversationSidebar({
     setArchiveConfirmingId(null)
   }, [])
 
+  const handleArchiveAllInWorkspace = useCallback(
+    (ws: string) => {
+      const wsConversations = conversations.filter(c => c.workspace === ws)
+      for (const c of wsConversations) {
+        onArchiveTabGroup(c.id)
+      }
+    },
+    [conversations, onArchiveTabGroup],
+  )
+
   // Close on Escape key - exit settings mode first, then close sidebar
   useEffect(() => {
     if (!isOpen) return
@@ -180,13 +279,6 @@ export function ConversationSidebar({
     return () => document.removeEventListener("keydown", handleEscape)
   }, [isOpen, closeSidebar, settingsMode, onToggleSettings])
 
-  const isConversationStreaming = useCallback(
-    (conversationId: string) => {
-      return streamingConversationIds.has(conversationId)
-    },
-    [streamingConversationIds],
-  )
-
   const worktreeEnabled = useFeatureFlag("WORKTREES")
 
   // User display: email prefix or name
@@ -195,11 +287,8 @@ export function ConversationSidebar({
   // Shared sidebar content
   const renderContent = (isMobile: boolean) => (
     <div className={`flex flex-col h-full ${isMobile ? "w-screen" : "w-[260px]"}`}>
-      {/* Header — aligned with collapsed rail via shared SIDEBAR_RAIL constants */}
-      <div
-        className="flex items-center justify-between px-3 shrink-0"
-        style={{ height: SIDEBAR_RAIL.paddingY * 2 + SIDEBAR_RAIL.iconSize }}
-      >
+      {/* Header — height shared with tab bar and workbench view switcher */}
+      <div className="flex items-center justify-between px-3 shrink-0" style={{ height: TOP_BAR_HEIGHT }}>
         {settingsMode ? (
           <button
             type="button"
@@ -277,117 +366,142 @@ export function ConversationSidebar({
           )}
 
           {/* Conversation list — scrollable middle */}
-          <div className="flex-1 overflow-y-auto py-1 flex flex-col gap-0.5">
-            {conversations.length === 0 && archivedConversations.length === 0 ? (
-              <div className="px-4 py-8 text-center text-[13px] text-[#b5afa3] dark:text-[#5c574d]">
+          <div className="flex-1 overflow-y-auto py-1 flex flex-col">
+            {conversations.length === 0 && archivedConversations.length === 0 && favoriteGroups.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[13px] text-black/25 dark:text-white/25">
                 Start typing to begin
               </div>
             ) : (
               <>
-                {/* Recent user conversations */}
-                {recentConversations.map(conversation => (
-                  <ConversationItem
-                    key={conversation.id}
-                    conversation={conversation}
-                    isActive={conversation.id === activeTabGroupId}
-                    isStreaming={isConversationStreaming(conversation.id)}
-                    isConfirming={archiveConfirmingId === conversation.id}
-                    onClick={() => handleTabGroupClick(conversation.id)}
-                    onArchive={handleArchiveClick}
-                    onCancelArchive={handleCancelArchive}
-                    onRename={(id, title) => onRenameTabGroup(id, title)}
-                  />
-                ))}
+                {/* Favorites drop zone — always visible so you can drag here even when empty */}
+                <ul
+                  className={`flex flex-col gap-2 pb-1 min-h-[40px] rounded-lg transition-colors duration-150 list-none p-0 m-0 ${
+                    dragOverZone === "favorites" ? "bg-black/[0.03] dark:bg-white/[0.03]" : ""
+                  }`}
+                  onDrop={handleDropFavorites}
+                  onDragOver={handleDragOverFavorites}
+                  onDragLeave={handleDragLeave}
+                >
+                  {favoriteGroups.map(({ workspace: ws, conversations: wsConversations }) => {
+                    const isExpanded = expandedWorkspaces.has(ws)
+                    return (
+                      <div key={ws} className="group/ws">
+                        <div className="flex items-center mx-2 rounded-lg hover:bg-black/[0.025] dark:hover:bg-white/[0.025] transition-colors duration-100">
+                          {wsConversations.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedWorkspaces(prev => {
+                                  const next = new Set(prev)
+                                  if (next.has(ws)) next.delete(ws)
+                                  else next.add(ws)
+                                  return next
+                                })
+                              }
+                              className="flex-1 flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-black/40 dark:text-white/40 min-w-0"
+                            >
+                              <ChevronRight
+                                size={11}
+                                strokeWidth={2}
+                                className={`shrink-0 transition-transform duration-200 ease-out ${isExpanded ? "rotate-90" : ""}`}
+                              />
+                              <span className="truncate font-medium">{deriveProjectName(ws)}</span>
+                              <span className="text-[11px] text-black/20 dark:text-white/20 shrink-0 tabular-nums">
+                                {wsConversations.length}
+                              </span>
+                            </button>
+                          ) : (
+                            <div className="flex-1 flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-black/40 dark:text-white/40 min-w-0">
+                              <span className="shrink-0" style={{ width: 11 }} />
+                              <span className="truncate font-medium">{deriveProjectName(ws)}</span>
+                            </div>
+                          )}
+                          <div className="pr-2.5">
+                            <WorkspaceGroupMenu
+                              workspace={ws}
+                              conversationCount={wsConversations.length}
+                              onNewConversation={onNewConversationInWorkspace}
+                              onRemoveFavorite={toggleFavoriteWorkspace}
+                              onArchiveAll={handleArchiveAllInWorkspace}
+                              onManageFavorites={onSettingsClick}
+                            />
+                          </div>
+                        </div>
+                        {isExpanded && wsConversations.length > 0 && (
+                          <div className="flex flex-col gap-0.5 mt-0.5">
+                            {wsConversations.map(conversation => (
+                              <ConversationItem
+                                key={conversation.id}
+                                conversation={conversation}
+                                isActive={conversation.id === activeTabGroupId}
+                                isStreaming={streamingConversationIds.has(conversation.id)}
+                                isConfirming={archiveConfirmingId === conversation.id}
+                                onClick={() => handleTabGroupClick(conversation.id)}
+                                onArchive={handleArchiveClick}
+                                onCancelArchive={handleCancelArchive}
+                                onRename={(id, title) => onRenameTabGroup(id, title)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </ul>
 
-                {/* Older user conversations — collapsible */}
-                {olderConversations.length > 0 && (
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setOlderExpanded(prev => !prev)}
-                      className="flex items-center gap-2 px-3 py-2.5 mx-2 rounded-lg w-[calc(100%-16px)] text-[13px] text-[#8a8578] dark:text-[#7a756b] hover:bg-[#4a7c59]/[0.05] dark:hover:bg-[#7cb88a]/[0.05] transition-all duration-150 ease-out"
-                    >
-                      <ChevronRight
-                        size={12}
-                        strokeWidth={2}
-                        className={`shrink-0 transition-transform duration-200 ease-out ${olderExpanded ? "rotate-90" : ""}`}
-                      />
-                      <span className="truncate">Older</span>
-                      <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">
-                        {olderConversations.length}
-                      </span>
-                    </button>
-                    {olderExpanded &&
-                      olderConversations.map(conversation => (
-                        <ConversationItem
-                          key={conversation.id}
-                          conversation={conversation}
-                          isActive={conversation.id === activeTabGroupId}
-                          isStreaming={isConversationStreaming(conversation.id)}
-                          isConfirming={archiveConfirmingId === conversation.id}
-                          onClick={() => handleTabGroupClick(conversation.id)}
-                          onArchive={handleArchiveClick}
-                          onCancelArchive={handleCancelArchive}
-                          onRename={(id, title) => onRenameTabGroup(id, title)}
-                        />
-                      ))}
-                  </div>
-                )}
+                {/* Divider + new conversation button */}
+                <div className="mx-4 my-2 border-t border-black/[0.06] dark:border-white/[0.06]" />
+                <button
+                  type="button"
+                  onClick={onNewConversation}
+                  className="flex items-center gap-2.5 px-4 py-2.5 mx-2 rounded-lg text-[13px] text-black/30 dark:text-white/30 hover:text-black/50 dark:hover:text-white/50 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-all duration-100"
+                >
+                  <Plus size={14} strokeWidth={1.75} className="shrink-0" />
+                  <span>New conversation</span>
+                </button>
 
-                {/* Agent conversations — collapsible */}
-                {agentConversations.length > 0 && (
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setAgentsExpanded(prev => !prev)}
-                      className="flex items-center gap-2 px-3 py-2.5 mx-2 rounded-lg w-[calc(100%-16px)] text-[13px] text-[#8a8578] dark:text-[#7a756b] hover:bg-[#4a7c59]/[0.05] dark:hover:bg-[#7cb88a]/[0.05] transition-all duration-150 ease-out"
-                    >
-                      <ChevronRight
-                        size={12}
-                        strokeWidth={2}
-                        className={`shrink-0 transition-transform duration-200 ease-out ${agentsExpanded ? "rotate-90" : ""}`}
-                      />
-                      <Bot size={13} strokeWidth={1.75} className="shrink-0" />
-                      <span className="truncate">Agents</span>
-                      <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">
-                        {agentConversations.length}
-                      </span>
-                    </button>
-                    {agentsExpanded &&
-                      agentConversations.map(conversation => (
-                        <ConversationItem
-                          key={conversation.id}
-                          conversation={conversation}
-                          isActive={conversation.id === activeTabGroupId}
-                          isStreaming={isConversationStreaming(conversation.id)}
-                          isConfirming={archiveConfirmingId === conversation.id}
-                          onClick={() => handleTabGroupClick(conversation.id)}
-                          onArchive={handleArchiveClick}
-                          onCancelArchive={handleCancelArchive}
-                          onRename={(id, title) => onRenameTabGroup(id, title)}
-                        />
-                      ))}
-                  </div>
-                )}
+                {/* All non-favorited conversations — drop here to unfavorite */}
+                <ul
+                  className={`flex flex-col gap-0.5 mt-2 min-h-[40px] rounded-lg transition-colors duration-150 list-none p-0 m-0 ${
+                    dragOverZone === "below" ? "bg-black/[0.03] dark:bg-white/[0.03]" : ""
+                  }`}
+                  onDrop={handleDropBelow}
+                  onDragOver={handleDragOverBelow}
+                  onDragLeave={handleDragLeave}
+                >
+                  {activeConversations.map(conversation => (
+                    <ConversationItem
+                      key={conversation.id}
+                      conversation={conversation}
+                      isActive={conversation.id === activeTabGroupId}
+                      isStreaming={streamingConversationIds.has(conversation.id)}
+                      isConfirming={archiveConfirmingId === conversation.id}
+                      onClick={() => handleTabGroupClick(conversation.id)}
+                      onArchive={handleArchiveClick}
+                      onCancelArchive={handleCancelArchive}
+                      onRename={(id, title) => onRenameTabGroup(id, title)}
+                    />
+                  ))}
+                </ul>
               </>
             )}
           </div>
 
           {/* Archived — collapsible, pinned above bottom */}
           {archivedConversations.length > 0 && (
-            <div className="shrink-0 border-t border-[#4a7c59]/[0.06] dark:border-[#7cb88a]/[0.04] py-1">
+            <div className="shrink-0 border-t border-black/[0.04] dark:border-white/[0.04] py-1">
               <button
                 type="button"
                 onClick={() => setArchivedExpanded(prev => !prev)}
-                className="flex items-center gap-2 px-3 py-2.5 mx-2 rounded-lg w-[calc(100%-16px)] text-[13px] text-[#8a8578] dark:text-[#7a756b] hover:bg-[#4a7c59]/[0.05] dark:hover:bg-[#7cb88a]/[0.05] transition-all duration-150 ease-out"
+                className="flex items-center gap-2 px-3 py-2 mx-2 rounded-lg w-[calc(100%-16px)] text-[13px] text-black/30 dark:text-white/30 hover:bg-black/[0.025] dark:hover:bg-white/[0.025] transition-colors duration-100"
               >
                 <ChevronRight
-                  size={12}
+                  size={11}
                   strokeWidth={2}
                   className={`shrink-0 transition-transform duration-200 ease-out ${archivedExpanded ? "rotate-90" : ""}`}
                 />
                 <span className="truncate">Archived</span>
-                <span className="text-[11px] text-[#b5afa3] dark:text-[#5c574d] shrink-0 tabular-nums">
+                <span className="text-[11px] text-black/20 dark:text-white/20 shrink-0 tabular-nums">
                   {archivedConversations.length}
                 </span>
               </button>

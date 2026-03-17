@@ -1,52 +1,11 @@
 "use client"
 
-import { create } from "zustand"
+import { autorun, makeAutoObservable, observable, toJS } from "mobx"
+import { useCallback, useRef, useSyncExternalStore } from "react"
 
-/**
- * Per-tab abort controllers (stored outside Zustand because AbortController isn't serializable)
- * This enables independent stream cancellation when tabs are enabled.
- */
-const abortControllerMap = new Map<string, AbortController>()
-
-/** Get the abort controller for a tab */
-export function getAbortController(tabId: string): AbortController | undefined {
-  return abortControllerMap.get(tabId)
-}
-
-/** Set the abort controller for a tab */
-export function setAbortController(tabId: string, controller: AbortController | null): void {
-  if (controller) {
-    abortControllerMap.set(tabId, controller)
-  } else {
-    abortControllerMap.delete(tabId)
-  }
-}
-
-/** Clear the abort controller for a tab */
-export function clearAbortController(tabId: string): void {
-  abortControllerMap.delete(tabId)
-}
-
-/**
- * Streaming State Store - Manages per-conversation streaming state
- *
- * **IMPORTANT**: This store is IN-MEMORY ONLY (not persisted).
- * - Streaming state only matters during active streams
- * - Tool mappings, errors, and health metrics are ephemeral
- * - On page refresh, messages are restored from Dexie (IndexedDB); streaming state resets (correct behavior)
- *
- * Solves brittleness issues:
- * 1. Per-conversation toolUseMap (not global) - no collisions across conversations
- * 2. Parse error tracking with recovery thresholds - per-conversation error state
- * 3. Session ID validation - validate session IDs per conversation
- * 4. Stream health metrics - track message count, timing
- * 5. Proper cleanup on conversation end
- *
- * Pattern follows Zustand Guide §14.1-14.3:
- * - State + Actions separation (actions in stable object)
- * - Atomic selectors (single-value hooks)
- * - Scoped per conversation (no global state leaks)
- */
+// =============================================================================
+// Types (unchanged — same exports)
+// =============================================================================
 
 export interface StreamingError {
   type: "parse_error" | "reader_error" | "timeout_error" | "invalid_event_structure" | "critical_error"
@@ -55,328 +14,415 @@ export interface StreamingError {
   linePreview?: string
 }
 
-/** Pending tool execution state */
 export interface PendingTool {
   toolUseId: string
   toolName: string
   toolInput: unknown
   startedAt: number
-  elapsedSeconds: number // Updated by tool_progress events
+  elapsedSeconds: number
 }
 
 export interface TabStreamState {
-  // Tool use tracking (per-tab, not global)
   toolUseMap: Map<string, string>
-  // Tool input tracking - stores the input for each tool_use_id
   toolInputMap: Map<string, unknown>
-  // Pending tools - tools that have started but not completed
   pendingTools: Map<string, PendingTool>
-
-  // Error recovery
   consecutiveParseErrors: number
   recentErrors: StreamingError[]
   maxRecentErrors: number
-
-  // Session validation
   lastValidSessionId: string | null
   sessionValidatedAt: number | null
-
-  // Stream health
   isStreamActive: boolean
   lastMessageReceivedAt: number | null
   messagesReceivedInStream: number
   lastSeenStreamSeq: number | null
 }
 
+// =============================================================================
+// MobX Store
+// =============================================================================
+
+class TabStream {
+  toolUseMap = observable.map<string, string>()
+  toolInputMap = observable.map<string, unknown>()
+  pendingTools = observable.map<string, PendingTool>()
+  consecutiveParseErrors = 0
+  recentErrors: StreamingError[] = []
+  maxRecentErrors = 10
+  lastValidSessionId: string | null = null
+  sessionValidatedAt: number | null = null
+  isStreamActive = false
+  lastMessageReceivedAt: number | null = null
+  messagesReceivedInStream = 0
+  lastSeenStreamSeq: number | null = null
+  abortController: AbortController | null = null
+
+  constructor() {
+    makeAutoObservable(this, {
+      // AbortController is not observable — just a plain field
+      abortController: false,
+    })
+  }
+
+  get pendingToolsList(): PendingTool[] {
+    return [...this.pendingTools.values()]
+  }
+
+  get streamHealth(): { isActive: boolean; messageCount: number; timeSinceLastMessage: number | null } {
+    return {
+      isActive: this.isStreamActive,
+      messageCount: this.messagesReceivedInStream,
+      timeSinceLastMessage: this.lastMessageReceivedAt ? Date.now() - this.lastMessageReceivedAt : null,
+    }
+  }
+}
+
+class StreamingStore {
+  tabs = observable.map<string, TabStream>()
+
+  constructor() {
+    makeAutoObservable(this)
+  }
+
+  private getOrCreateTab(tabId: string): TabStream {
+    let tab = this.tabs.get(tabId)
+    if (!tab) {
+      tab = new TabStream()
+      this.tabs.set(tabId, tab)
+    }
+    return tab
+  }
+
+  // -- Tool use tracking --
+
+  recordToolUse(tabId: string, toolUseId: string, toolName: string, toolInput?: unknown) {
+    const tab = this.getOrCreateTab(tabId)
+    tab.toolUseMap.set(toolUseId, toolName)
+    if (toolInput !== undefined) {
+      tab.toolInputMap.set(toolUseId, toolInput)
+    }
+  }
+
+  getToolName(tabId: string, toolUseId: string): string | undefined {
+    return this.tabs.get(tabId)?.toolUseMap.get(toolUseId)
+  }
+
+  getToolInput(tabId: string, toolUseId: string): unknown | undefined {
+    const val = this.tabs.get(tabId)?.toolInputMap.get(toolUseId)
+    if (val === undefined) return undefined
+    // toJS strips MobX proxy — plain object safe for IndexedDB structured clone
+    return toJS(val)
+  }
+
+  clearToolUseMap(tabId: string) {
+    const tab = this.tabs.get(tabId)
+    if (!tab) return
+    tab.toolUseMap.clear()
+    tab.toolInputMap.clear()
+  }
+
+  // -- Pending tools --
+
+  markToolPending(tabId: string, toolUseId: string, toolName: string, toolInput: unknown) {
+    const tab = this.getOrCreateTab(tabId)
+    tab.pendingTools.set(toolUseId, {
+      toolUseId,
+      toolName,
+      toolInput: toJS(toolInput),
+      startedAt: Date.now(),
+      elapsedSeconds: 0,
+    })
+  }
+
+  updateToolProgress(tabId: string, toolUseId: string, elapsedSeconds: number) {
+    const existing = this.tabs.get(tabId)?.pendingTools.get(toolUseId)
+    if (!existing) return
+    this.tabs.get(tabId)!.pendingTools.set(toolUseId, { ...existing, elapsedSeconds })
+  }
+
+  markToolComplete(tabId: string, toolUseId: string) {
+    this.tabs.get(tabId)?.pendingTools.delete(toolUseId)
+  }
+
+  getPendingTools(tabId: string): PendingTool[] {
+    const tab = this.tabs.get(tabId)
+    if (!tab) return []
+    return toJS([...tab.pendingTools.values()])
+  }
+
+  // -- Error tracking --
+
+  recordError(tabId: string, error: Omit<StreamingError, "timestamp">) {
+    const tab = this.getOrCreateTab(tabId)
+    const newError: StreamingError = { ...error, timestamp: Date.now() }
+    tab.recentErrors = [newError, ...tab.recentErrors].slice(0, tab.maxRecentErrors)
+  }
+
+  resetConsecutiveErrors(tabId: string) {
+    const tab = this.tabs.get(tabId)
+    if (tab) tab.consecutiveParseErrors = 0
+  }
+
+  incrementConsecutiveErrors(tabId: string) {
+    const tab = this.getOrCreateTab(tabId)
+    tab.consecutiveParseErrors++
+  }
+
+  getConsecutiveErrors(tabId: string): number {
+    return this.tabs.get(tabId)?.consecutiveParseErrors ?? 0
+  }
+
+  // -- Session tracking --
+
+  recordSessionId(tabId: string, sessionId: string) {
+    const tab = this.getOrCreateTab(tabId)
+    tab.lastValidSessionId = sessionId
+    tab.sessionValidatedAt = Date.now()
+  }
+
+  getLastSessionId(tabId: string): string | null {
+    return this.tabs.get(tabId)?.lastValidSessionId ?? null
+  }
+
+  // -- Stream health --
+
+  startStream(tabId: string) {
+    const tab = this.getOrCreateTab(tabId)
+    tab.isStreamActive = true
+    tab.messagesReceivedInStream = 0
+    tab.lastSeenStreamSeq = null
+  }
+
+  recordMessageReceived(tabId: string) {
+    const tab = this.getOrCreateTab(tabId)
+    tab.lastMessageReceivedAt = Date.now()
+    tab.messagesReceivedInStream++
+  }
+
+  recordStreamSeq(tabId: string, streamSeq: number) {
+    const tab = this.getOrCreateTab(tabId)
+    tab.lastSeenStreamSeq = Math.max(tab.lastSeenStreamSeq ?? 0, streamSeq)
+  }
+
+  getLastSeenStreamSeq(tabId: string): number | null {
+    return this.tabs.get(tabId)?.lastSeenStreamSeq ?? null
+  }
+
+  endStream(tabId: string) {
+    const tab = this.tabs.get(tabId)
+    if (!tab) return
+    tab.isStreamActive = false
+    tab.pendingTools.clear()
+  }
+
+  getStreamHealth(tabId: string): { isActive: boolean; messageCount: number; timeSinceLastMessage: number | null } {
+    const tab = this.tabs.get(tabId)
+    if (!tab) return { isActive: false, messageCount: 0, timeSinceLastMessage: null }
+    return tab.streamHealth
+  }
+
+  // -- Tab state (for compatibility) --
+
+  getTabState(tabId: string): TabStreamState {
+    const tab = this.getOrCreateTab(tabId)
+    return {
+      toolUseMap: new Map(toJS(tab.toolUseMap)),
+      toolInputMap: new Map(toJS(tab.toolInputMap)),
+      pendingTools: new Map(toJS(tab.pendingTools)),
+      consecutiveParseErrors: tab.consecutiveParseErrors,
+      recentErrors: toJS(tab.recentErrors),
+      maxRecentErrors: tab.maxRecentErrors,
+      lastValidSessionId: tab.lastValidSessionId,
+      sessionValidatedAt: tab.sessionValidatedAt,
+      isStreamActive: tab.isStreamActive,
+      lastMessageReceivedAt: tab.lastMessageReceivedAt,
+      messagesReceivedInStream: tab.messagesReceivedInStream,
+      lastSeenStreamSeq: tab.lastSeenStreamSeq,
+    }
+  }
+
+  // -- Cleanup --
+
+  clearTab(tabId: string) {
+    this.tabs.delete(tabId)
+  }
+
+  clearAllTabs() {
+    this.tabs.clear()
+  }
+}
+
+// Singleton
+const store = new StreamingStore()
+
+// =============================================================================
+// AbortController helpers (same standalone exports — now backed by TabStream)
+// =============================================================================
+
+export function getAbortController(tabId: string): AbortController | undefined {
+  return store.tabs.get(tabId)?.abortController ?? undefined
+}
+
+export function setAbortController(tabId: string, controller: AbortController | null): void {
+  const tab = store.tabs.get(tabId)
+  if (tab) {
+    tab.abortController = controller
+  } else if (controller) {
+    // Tab doesn't exist yet — create it so controller has a home
+    const newTab = new TabStream()
+    newTab.abortController = controller
+    store.tabs.set(tabId, newTab)
+  }
+}
+
+export function clearAbortController(tabId: string): void {
+  const tab = store.tabs.get(tabId)
+  if (tab) tab.abortController = null
+}
+
+// =============================================================================
+// Actions interface (same type as before — message-parser imports this)
+// =============================================================================
+
 export interface StreamingStoreState {
-  // Map of tabId -> StreamingState
   tabs: Record<string, TabStreamState>
-
-  // Actions
   actions: {
-    // Initialize or get tab state
     getTabState: (tabId: string) => TabStreamState
-
-    // Tool use tracking
     recordToolUse: (tabId: string, toolUseId: string, toolName: string, toolInput?: unknown) => void
     getToolName: (tabId: string, toolUseId: string) => string | undefined
     getToolInput: (tabId: string, toolUseId: string) => unknown | undefined
     clearToolUseMap: (tabId: string) => void
-
-    // Pending tool tracking (tools in progress)
     markToolPending: (tabId: string, toolUseId: string, toolName: string, toolInput: unknown) => void
     updateToolProgress: (tabId: string, toolUseId: string, elapsedSeconds: number) => void
     markToolComplete: (tabId: string, toolUseId: string) => void
     getPendingTools: (tabId: string) => PendingTool[]
-
-    // Error tracking
     recordError: (tabId: string, error: Omit<StreamingError, "timestamp">) => void
     resetConsecutiveErrors: (tabId: string) => void
     incrementConsecutiveErrors: (tabId: string) => void
     getConsecutiveErrors: (tabId: string) => number
-
-    // Session tracking
     recordSessionId: (tabId: string, sessionId: string) => void
     getLastSessionId: (tabId: string) => string | null
-
-    // Stream health
     startStream: (tabId: string) => void
     recordMessageReceived: (tabId: string) => void
     recordStreamSeq: (tabId: string, streamSeq: number) => void
     getLastSeenStreamSeq: (tabId: string) => number | null
     endStream: (tabId: string) => void
-    getStreamHealth: (tabId: string) => {
-      isActive: boolean
-      messageCount: number
-      timeSinceLastMessage: number | null
-    }
-
-    // Cleanup
+    getStreamHealth: (tabId: string) => { isActive: boolean; messageCount: number; timeSinceLastMessage: number | null }
     clearTab: (tabId: string) => void
     clearAllTabs: () => void
   }
 }
 
-const defaultTabState: TabStreamState = {
-  toolUseMap: new Map(),
-  toolInputMap: new Map(),
-  pendingTools: new Map(),
-  consecutiveParseErrors: 0,
-  recentErrors: [],
-  maxRecentErrors: 10,
-  lastValidSessionId: null,
-  sessionValidatedAt: null,
-  isStreamActive: false,
-  lastMessageReceivedAt: null,
-  messagesReceivedInStream: 0,
-  lastSeenStreamSeq: null,
+// Stable actions object — bound methods from the MobX store
+const actions: StreamingStoreState["actions"] = {
+  getTabState: tabId => store.getTabState(tabId),
+  recordToolUse: (tabId, toolUseId, toolName, toolInput) => store.recordToolUse(tabId, toolUseId, toolName, toolInput),
+  getToolName: (tabId, toolUseId) => store.getToolName(tabId, toolUseId),
+  getToolInput: (tabId, toolUseId) => store.getToolInput(tabId, toolUseId),
+  clearToolUseMap: tabId => store.clearToolUseMap(tabId),
+  markToolPending: (tabId, toolUseId, toolName, toolInput) =>
+    store.markToolPending(tabId, toolUseId, toolName, toolInput),
+  updateToolProgress: (tabId, toolUseId, elapsedSeconds) => store.updateToolProgress(tabId, toolUseId, elapsedSeconds),
+  markToolComplete: (tabId, toolUseId) => store.markToolComplete(tabId, toolUseId),
+  getPendingTools: tabId => store.getPendingTools(tabId),
+  recordError: (tabId, error) => store.recordError(tabId, error),
+  resetConsecutiveErrors: tabId => store.resetConsecutiveErrors(tabId),
+  incrementConsecutiveErrors: tabId => store.incrementConsecutiveErrors(tabId),
+  getConsecutiveErrors: tabId => store.getConsecutiveErrors(tabId),
+  recordSessionId: (tabId, sessionId) => store.recordSessionId(tabId, sessionId),
+  getLastSessionId: tabId => store.getLastSessionId(tabId),
+  startStream: tabId => store.startStream(tabId),
+  recordMessageReceived: tabId => store.recordMessageReceived(tabId),
+  recordStreamSeq: (tabId, streamSeq) => store.recordStreamSeq(tabId, streamSeq),
+  getLastSeenStreamSeq: tabId => store.getLastSeenStreamSeq(tabId),
+  endStream: tabId => store.endStream(tabId),
+  getStreamHealth: tabId => store.getStreamHealth(tabId),
+  clearTab: tabId => store.clearTab(tabId),
+  clearAllTabs: () => store.clearAllTabs(),
 }
 
-export const useStreamingStore = create<StreamingStoreState>((set, get) => {
-  // Helper: Update a tab's state without boilerplate
-  const updateTab = (tabId: string, updates: Partial<TabStreamState>): void => {
-    set(s => ({
-      tabs: {
-        ...s.tabs,
-        [tabId]: {
-          ...(s.tabs[tabId] || defaultTabState),
-          ...updates,
-        },
-      },
-    }))
+// =============================================================================
+// Zustand-compatible facade — useStreamingStore.getState() works for tests
+// =============================================================================
+
+function getState(): StreamingStoreState {
+  const tabsRecord: Record<string, TabStreamState> = {}
+  for (const [tabId] of store.tabs) {
+    tabsRecord[tabId] = store.getTabState(tabId)
   }
+  return { tabs: tabsRecord, actions }
+}
 
-  return {
-    tabs: {},
+/**
+ * Zustand-compatible hook + .getState() for backwards compatibility.
+ * Consumers that use `useStreamingStore(selector)` get a reactive bridge.
+ * Consumers that use `useStreamingStore.getState()` get a snapshot.
+ */
+export const useStreamingStore = Object.assign(
+  function useStreamingStoreHook<T>(selector: (state: StreamingStoreState) => T): T {
+    return useMobxValue(() => selector(getState()), [])
+  },
+  { getState },
+)
 
-    actions: {
-      getTabState: (tabId: string): TabStreamState => {
-        const state = get()
-        const existing = state.tabs[tabId]
-        if (!existing) {
-          updateTab(tabId, defaultTabState)
-          return { ...defaultTabState }
-        }
-        return existing
-      },
+// =============================================================================
+// Hook helper: bridge MobX → React for a single derived value
+// =============================================================================
 
-      recordToolUse: (tabId: string, toolUseId: string, toolName: string, toolInput?: unknown): void => {
-        const state = get()
-        const tabState = state.tabs[tabId] || { ...defaultTabState }
-        const newToolUseMap = new Map(tabState.toolUseMap)
-        newToolUseMap.set(toolUseId, toolName)
-        const newToolInputMap = new Map(tabState.toolInputMap)
-        if (toolInput !== undefined) {
-          newToolInputMap.set(toolUseId, toolInput)
-        }
-        updateTab(tabId, { toolUseMap: newToolUseMap, toolInputMap: newToolInputMap })
-      },
+/**
+ * Bridge MobX → React via useSyncExternalStore.
+ * Concurrent-safe, no double-render, re-subscribes when deps change.
+ *
+ * - subscribe: autorun tracks MobX observables read by `fn`, calls listener on change
+ * - getSnapshot: returns the latest value from `fn`
+ *
+ * @see https://github.com/mobxjs/mobx/discussions/3589
+ * @see https://react.dev/reference/react/useSyncExternalStore
+ */
+function useMobxValue<T>(fn: () => T, deps: unknown[]): T {
+  // Keep fn fresh without re-subscribing on every render
+  const fnRef = useRef(fn)
+  fnRef.current = fn
 
-      getToolName: (tabId: string, toolUseId: string): string | undefined => {
-        const state = get()
-        return state.tabs[tabId]?.toolUseMap.get(toolUseId)
-      },
+  // Cache the latest snapshot so getSnapshot returns a stable reference
+  const snapshotRef = useRef<T>(fn())
 
-      getToolInput: (tabId: string, toolUseId: string): unknown | undefined => {
-        const state = get()
-        return state.tabs[tabId]?.toolInputMap.get(toolUseId)
-      },
+  // subscribe and getSnapshot must be stable per deps — useSyncExternalStore
+  // re-subscribes when subscribe identity changes.
+  const subscribe = useCallback((listener: () => void) => {
+    const dispose = autorun(() => {
+      snapshotRef.current = fnRef.current()
+      listener()
+    })
+    return dispose
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
 
-      clearToolUseMap: (tabId: string): void => {
-        updateTab(tabId, { toolUseMap: new Map(), toolInputMap: new Map() })
-      },
+  const getSnapshot = useCallback(() => snapshotRef.current, [subscribe])
 
-      markToolPending: (tabId: string, toolUseId: string, toolName: string, toolInput: unknown): void => {
-        const state = get()
-        const tabState = state.tabs[tabId] || { ...defaultTabState }
-        const newPendingTools = new Map(tabState.pendingTools)
-        newPendingTools.set(toolUseId, {
-          toolUseId,
-          toolName,
-          toolInput,
-          startedAt: Date.now(),
-          elapsedSeconds: 0,
-        })
-        updateTab(tabId, { pendingTools: newPendingTools })
-      },
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
 
-      updateToolProgress: (tabId: string, toolUseId: string, elapsedSeconds: number): void => {
-        const state = get()
-        const tabState = state.tabs[tabId]
-        if (!tabState) return
-        const existing = tabState.pendingTools.get(toolUseId)
-        if (!existing) return
-        const newPendingTools = new Map(tabState.pendingTools)
-        newPendingTools.set(toolUseId, { ...existing, elapsedSeconds })
-        updateTab(tabId, { pendingTools: newPendingTools })
-      },
+// =============================================================================
+// Atomic selectors (same exports as before)
+// =============================================================================
 
-      markToolComplete: (tabId: string, toolUseId: string): void => {
-        const state = get()
-        const tabState = state.tabs[tabId]
-        if (!tabState) return
-        const newPendingTools = new Map(tabState.pendingTools)
-        newPendingTools.delete(toolUseId)
-        updateTab(tabId, { pendingTools: newPendingTools })
-      },
+export const useStreamingActions = () => actions
 
-      getPendingTools: (tabId: string): PendingTool[] => {
-        const state = get()
-        const tabState = state.tabs[tabId]
-        if (!tabState) return []
-        return Array.from(tabState.pendingTools.values())
-      },
-
-      recordError: (tabId: string, error: Omit<StreamingError, "timestamp">): void => {
-        const state = get()
-        const tabState = state.tabs[tabId] || { ...defaultTabState }
-        const newError: StreamingError = {
-          ...error,
-          timestamp: Date.now(),
-        }
-        const recentErrors = [newError, ...tabState.recentErrors].slice(0, tabState.maxRecentErrors)
-        updateTab(tabId, { recentErrors })
-      },
-
-      resetConsecutiveErrors: (tabId: string): void => {
-        updateTab(tabId, { consecutiveParseErrors: 0 })
-      },
-
-      incrementConsecutiveErrors: (tabId: string): void => {
-        const state = get()
-        const tabState = state.tabs[tabId] || { ...defaultTabState }
-        updateTab(tabId, {
-          consecutiveParseErrors: tabState.consecutiveParseErrors + 1,
-        })
-      },
-
-      getConsecutiveErrors: (tabId: string): number => {
-        const state = get()
-        return state.tabs[tabId]?.consecutiveParseErrors || 0
-      },
-
-      recordSessionId: (tabId: string, sessionId: string): void => {
-        updateTab(tabId, {
-          lastValidSessionId: sessionId,
-          sessionValidatedAt: Date.now(),
-        })
-      },
-
-      getLastSessionId: (tabId: string): string | null => {
-        const state = get()
-        return state.tabs[tabId]?.lastValidSessionId || null
-      },
-
-      startStream: (tabId: string): void => {
-        updateTab(tabId, {
-          isStreamActive: true,
-          messagesReceivedInStream: 0,
-          lastSeenStreamSeq: null,
-        })
-      },
-
-      recordMessageReceived: (tabId: string): void => {
-        const state = get()
-        const tabState = state.tabs[tabId] || { ...defaultTabState }
-        updateTab(tabId, {
-          lastMessageReceivedAt: Date.now(),
-          messagesReceivedInStream: tabState.messagesReceivedInStream + 1,
-        })
-      },
-
-      recordStreamSeq: (tabId: string, streamSeq: number): void => {
-        const state = get()
-        const tabState = state.tabs[tabId] || { ...defaultTabState }
-        const nextSeq = Math.max(tabState.lastSeenStreamSeq ?? 0, streamSeq)
-        updateTab(tabId, { lastSeenStreamSeq: nextSeq })
-      },
-
-      getLastSeenStreamSeq: (tabId: string): number | null => {
-        const state = get()
-        return state.tabs[tabId]?.lastSeenStreamSeq ?? null
-      },
-
-      endStream: (tabId: string): void => {
-        // Clear pending tools when stream ends (handles cancel, error, completion)
-        updateTab(tabId, { isStreamActive: false, pendingTools: new Map() })
-      },
-
-      getStreamHealth: (
-        tabId: string,
-      ): { isActive: boolean; messageCount: number; timeSinceLastMessage: number | null } => {
-        const state = get()
-        const tabState = state.tabs[tabId]
-        if (!tabState) {
-          return { isActive: false, messageCount: 0, timeSinceLastMessage: null }
-        }
-        return {
-          isActive: tabState.isStreamActive,
-          messageCount: tabState.messagesReceivedInStream,
-          timeSinceLastMessage: tabState.lastMessageReceivedAt ? Date.now() - tabState.lastMessageReceivedAt : null,
-        }
-      },
-
-      clearTab: (tabId: string): void => {
-        set(s => {
-          const { [tabId]: _, ...rest } = s.tabs
-          return { tabs: rest }
-        })
-      },
-
-      clearAllTabs: (): void => {
-        set({ tabs: {} })
-      },
-    },
-  }
-})
-
-// Atomic selectors (Guide §14.1)
-export const useStreamingActions = () => useStreamingStore(state => state.actions)
-
-export const useTabToolMap = (tabId: string) => useStreamingStore(state => state.tabs[tabId]?.toolUseMap || new Map())
+export const useTabToolMap = (tabId: string) =>
+  useMobxValue(() => new Map(store.tabs.get(tabId)?.toolUseMap ?? []), [tabId])
 
 export const useTabErrors = (tabId: string) => ({
-  consecutive: useStreamingStore(state => state.tabs[tabId]?.consecutiveParseErrors || 0),
-  recent: useStreamingStore(state => state.tabs[tabId]?.recentErrors || []),
+  consecutive: useMobxValue(() => store.tabs.get(tabId)?.consecutiveParseErrors ?? 0, [tabId]),
+  recent: useMobxValue(() => store.tabs.get(tabId)?.recentErrors ?? [], [tabId]),
 })
 
-export const useStreamHealth = (tabId: string) => {
-  const actions = useStreamingActions()
-  return actions.getStreamHealth(tabId)
-}
+export const useStreamHealth = (tabId: string) => useMobxValue(() => store.getStreamHealth(tabId), [tabId])
 
 export const useLastSeenStreamSeq = (tabId: string | null) =>
-  useStreamingStore(state => (tabId ? (state.tabs[tabId]?.lastSeenStreamSeq ?? null) : null))
+  useMobxValue(() => (tabId ? store.getLastSeenStreamSeq(tabId) : null), [tabId])
 
-/** Returns true if the specified tab has an active stream (busy) */
 export const useIsStreamActive = (tabId: string | null) =>
-  useStreamingStore(state => (tabId ? (state.tabs[tabId]?.isStreamActive ?? false) : false))
+  useMobxValue(() => (tabId ? (store.tabs.get(tabId)?.isStreamActive ?? false) : false), [tabId])
 
-/** Returns pending tools for a tab */
 export const usePendingTools = (tabId: string | null) =>
-  useStreamingStore(state => {
-    if (!tabId) return []
-    const tabState = state.tabs[tabId]
-    if (!tabState) return []
-    return Array.from(tabState.pendingTools.values())
-  })
+  useMobxValue(() => (tabId ? store.getPendingTools(tabId) : []), [tabId])
