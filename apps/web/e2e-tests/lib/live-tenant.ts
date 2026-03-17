@@ -3,12 +3,13 @@ import { parseWorkspaceStorageValue, TEST_CONFIG, WORKSPACE_STORAGE } from "@web
 import {
   BootstrapTenantRequestSchema,
   BootstrapTenantResponseSchema,
+  type TestE2BDomain,
   TestE2BDomainResponseSchema,
   type TestE2BDomainUpdateBody,
   type TestTenant,
   VerifyTenantResponseSchema,
 } from "@/app/api/test/test-route-schemas"
-import { TEST_TIMEOUTS } from "../fixtures/test-data"
+import { TEST_SELECTORS, TEST_TIMEOUTS } from "../fixtures/test-data"
 import { login } from "../helpers"
 import { requireProjectBaseUrl } from "./base-url"
 import { buildE2ETestHeaders } from "./test-headers"
@@ -87,7 +88,7 @@ export async function loginLiveStaging(
 
   await page.waitForURL("**/chat", { timeout: TEST_TIMEOUTS.max })
 
-  await expect(page.locator('[data-testid="workspace-ready"]')).toBeAttached({
+  await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({
     timeout: TEST_TIMEOUTS.max,
   })
 
@@ -99,12 +100,49 @@ export async function loginLiveStaging(
   expect(parsed.state.currentWorkspace).toBe(user.workspace)
   expect(parsed.state.selectedOrgId).toBe(user.orgId)
 
-  await expect(page.locator('[data-testid="message-input"]')).toBeVisible({
+  await expect(page.locator(TEST_SELECTORS.messageInput)).toBeVisible({
     timeout: TEST_TIMEOUTS.slow,
   })
 }
 
-export async function updateTestDomainRuntime(baseUrl: string, payload: TestE2BDomainUpdateBody): Promise<void> {
+/** GET the E2B domain runtime state. Returns null with `allow404AsNull` if endpoint unavailable. */
+export function getDomainRuntime(baseUrl: string, workspace: string): Promise<TestE2BDomain>
+export function getDomainRuntime(
+  baseUrl: string,
+  workspace: string,
+  options: { allow404AsNull: true },
+): Promise<TestE2BDomain | null>
+export async function getDomainRuntime(
+  baseUrl: string,
+  workspace: string,
+  options?: { allow404AsNull?: boolean },
+): Promise<TestE2BDomain | null> {
+  const response = await fetch(`${baseUrl}/api/test/e2b-domain?workspace=${encodeURIComponent(workspace)}`, {
+    method: "GET",
+    headers: buildE2ETestHeaders(),
+  })
+
+  if (response.status === 404 && options?.allow404AsNull) {
+    return null
+  }
+
+  if (!response.ok) {
+    throw new Error(`e2b-domain GET failed (${response.status})`)
+  }
+
+  const payload = TestE2BDomainResponseSchema.parse(await response.json())
+  if (!payload.ok) {
+    throw new Error("e2b-domain GET returned ok=false")
+  }
+
+  return payload.domain
+}
+
+/** POST to update E2B domain runtime state. Returns the updated domain. */
+export async function updateTestDomainRuntime(
+  baseUrl: string,
+  payload: TestE2BDomainUpdateBody,
+): Promise<TestE2BDomain> {
   const response = await fetch(`${baseUrl}/api/test/e2b-domain`, {
     method: "POST",
     headers: buildE2ETestHeaders(true),
@@ -112,13 +150,13 @@ export async function updateTestDomainRuntime(baseUrl: string, payload: TestE2BD
   })
 
   if (!response.ok) {
-    throw new Error(`e2b-domain POST failed (${response.status})`)
+    const error = await response.json().catch(() => ({}))
+    const errorCode = typeof error.error === "string" ? error.error : "unknown_error"
+    throw new Error(`e2b-domain POST failed (${response.status}): ${errorCode}`)
   }
 
   const data = TestE2BDomainResponseSchema.parse(await response.json())
-  if (!data.ok) {
-    throw new Error("e2b-domain POST returned ok=false")
-  }
+  return data.domain
 }
 
 export async function getTenantSandboxState(baseUrl: string, email: string) {

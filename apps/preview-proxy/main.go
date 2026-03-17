@@ -264,6 +264,14 @@ func (h *previewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Serve images directly from storage — no auth required.
+	// This handles /_images/* from any origin (preview iframes, main app, open source clones).
+	// Next.js rewrites /_images/* here so images work regardless of infrastructure.
+	if h.cfg.ImagesStorage != "" && strings.HasPrefix(r.URL.Path, "/_images/") {
+		h.serveImage(w, r)
+		return
+	}
+
 	host := r.Header.Get("X-Forwarded-Host")
 	if host == "" {
 		host = r.Host
@@ -291,13 +299,6 @@ func (h *previewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// On first request with a valid token, set a session cookie for sub-resources
 	if hasValidToken {
 		h.setSessionCookie(w, hostname)
-	}
-
-	// Serve images directly from storage (Caddy handles this for direct access,
-	// but the wildcard block routes everything through this proxy)
-	if h.cfg.ImagesStorage != "" && strings.HasPrefix(r.URL.Path, "/_images/") {
-		h.serveImage(w, r)
-		return
 	}
 
 	// Strip preview_token from the query before proxying

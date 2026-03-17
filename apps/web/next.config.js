@@ -86,6 +86,16 @@ const nextConfig = {
   poweredByHeader: false,
   devIndicators: false,
   skipTrailingSlashRedirect: true,
+  // Rewrite /_images/* to the Go preview-proxy which serves from /srv/webalive/storage.
+  // Works regardless of infrastructure (tunnel, Caddy, open source clones).
+  async rewrites() {
+    return [
+      {
+        source: "/_images/:path*",
+        destination: "http://localhost:5055/_images/:path*",
+      },
+    ]
+  },
   // PostHog proxy: handled by app/a/[...path]/route.ts (generic path to bypass adblockers)
   // so that X-Forwarded-For is preserved for accurate GeoIP.
   // Sentry uses a tunnel API route — see app/api/monitoring/route.ts.
