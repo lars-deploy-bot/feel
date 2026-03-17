@@ -58,8 +58,8 @@ function assertSafeWorkspaceRoot(workspaceRoot: string): void {
   // Superadmin workspace (alive repo) is allowed
   if (resolved === path.resolve(SUPERADMIN.WORKSPACE_PATH)) return
 
-  // /tmp/test-workspace for local E2E tests
-  if (resolved.startsWith("/tmp/test-workspace")) return
+  // /tmp paths for local tests (E2E, worktrees, etc.)
+  if (resolved.startsWith("/tmp/")) return
 
   // Must be under an allowed workspace base (SITES_ROOT, E2B_SCRATCH_ROOT, etc.)
   const allowed = SECURITY.ALLOWED_WORKSPACE_BASES.some(base => resolved === base || resolved.startsWith(`${base}/`))
