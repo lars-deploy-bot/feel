@@ -127,6 +127,7 @@ export {
   type WrapExternalContentOptions,
   wrapExternalContent,
 } from "./external-content.js"
+export { INFRASTRUCTURE_SERVICES, type InfraRouteVia, type InfrastructureService } from "./infrastructure-services.js"
 // invite-code.ts uses node:crypto — import via "@webalive/shared/invite-code" (server-only)
 export type {
   ManagerPasswordResetToken,
@@ -301,6 +302,7 @@ export {
   buildStreamToolRuntimeConfig,
   createStreamCanUseTool,
   createStreamToolContext,
+  type ExecutionMode,
   getAccessibleStreamModes,
   getStreamAllowedTools,
   getStreamDisallowedTools,
@@ -330,6 +332,7 @@ export {
   type StreamSdkToolLowerName,
   type StreamSdkToolName,
   type StreamToolContext,
+  type StreamToolContextInput,
   type StreamToolDecision,
   type StreamToolRole,
   type StreamToolRuntimeConfig,

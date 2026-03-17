@@ -261,6 +261,7 @@ input:-webkit-autofill:active {
 /* Thin scrollbar — hidden by default, fades in on hover */
 .scrollbar-thin {
   scrollbar-width: none;
+  scrollbar-gutter: stable;
 }
 
 .scrollbar-thin::-webkit-scrollbar {

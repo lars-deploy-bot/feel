@@ -19,7 +19,7 @@
 
 export type InternalMcpServer = "alive-tools" | "alive-workspace" | "alive-sandboxed-fs"
 
-type WorkspaceKind = "site" | "platform"
+type WorkspaceKind = "site" | "platform" | "e2b"
 type ToolVisibility = "visible" | "silent"
 type ToolRole = "member" | "admin" | "superadmin"
 
@@ -79,14 +79,14 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
   {
     name: "list_workflows",
     mcpServer: "alive-tools",
-    enabled: true,
+    enabled: false,
     tier: "discoverable",
     reason: "Workflow discovery is allowed.",
   },
   {
     name: "get_workflow",
     mcpServer: "alive-tools",
-    enabled: true,
+    enabled: false,
     tier: "discoverable",
     reason: "Workflow reads are allowed.",
   },
@@ -100,7 +100,7 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
   {
     name: "get_alive_super_template",
     mcpServer: "alive-tools",
-    enabled: true,
+    enabled: false,
     tier: "discoverable",
     reason: "Template reads are allowed.",
   },
@@ -114,7 +114,7 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
   {
     name: "ask_website_config",
     mcpServer: "alive-tools",
-    enabled: true,
+    enabled: false,
     tier: "discoverable",
     reason: "Website config collection is allowed.",
   },
@@ -135,7 +135,7 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
   {
     name: "generate_persona",
     mcpServer: "alive-tools",
-    enabled: true,
+    enabled: false,
     tier: "discoverable",
     reason: "Persona generation is allowed.",
   },
@@ -206,7 +206,7 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
   {
     name: "create_website",
     mcpServer: "alive-workspace",
-    enabled: true,
+    enabled: false,
     tier: "discoverable",
     reason: "Website creation mutates workspace and is site-workspace only.",
     workspaceKinds: ["site"],
@@ -214,7 +214,7 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
   {
     name: "git_push",
     mcpServer: "alive-workspace",
-    enabled: true,
+    enabled: false,
     tier: "discoverable",
     reason: "Git push mutates remote repository and is site-workspace only.",
     workspaceKinds: ["site"],
@@ -229,8 +229,8 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     mcpServer: "alive-sandboxed-fs",
     enabled: true,
     tier: "core",
-    reason: "Site workspace file reads must go through sandboxed path validation.",
-    workspaceKinds: ["site"],
+    reason: "E2B sandbox file reads go through sandboxed path validation.",
+    workspaceKinds: ["e2b"],
     roles: ["member", "admin"],
   },
   {
@@ -238,8 +238,8 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     mcpServer: "alive-sandboxed-fs",
     enabled: true,
     tier: "core",
-    reason: "Site workspace file writes must go through sandboxed path validation.",
-    workspaceKinds: ["site"],
+    reason: "E2B sandbox file writes go through sandboxed path validation.",
+    workspaceKinds: ["e2b"],
     roles: ["member", "admin"],
   },
   {
@@ -247,8 +247,8 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     mcpServer: "alive-sandboxed-fs",
     enabled: true,
     tier: "core",
-    reason: "Site workspace file edits must go through sandboxed path validation.",
-    workspaceKinds: ["site"],
+    reason: "E2B sandbox file edits go through sandboxed path validation.",
+    workspaceKinds: ["e2b"],
     roles: ["member", "admin"],
   },
   {
@@ -256,8 +256,8 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     mcpServer: "alive-sandboxed-fs",
     enabled: true,
     tier: "core",
-    reason: "Site workspace glob queries must go through sandboxed path validation.",
-    workspaceKinds: ["site"],
+    reason: "E2B sandbox glob queries go through sandboxed path validation.",
+    workspaceKinds: ["e2b"],
     roles: ["member", "admin"],
   },
   {
@@ -265,8 +265,8 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     mcpServer: "alive-sandboxed-fs",
     enabled: true,
     tier: "core",
-    reason: "Site workspace grep queries must go through sandboxed path validation.",
-    workspaceKinds: ["site"],
+    reason: "E2B sandbox grep queries go through sandboxed path validation.",
+    workspaceKinds: ["e2b"],
     roles: ["member", "admin"],
   },
   {
@@ -274,8 +274,8 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     mcpServer: "alive-sandboxed-fs",
     enabled: true,
     tier: "core",
-    reason: "Site workspace shell commands must go through heavy-command safeguards.",
-    workspaceKinds: ["site"],
+    reason: "E2B sandbox shell commands go through heavy-command safeguards.",
+    workspaceKinds: ["e2b"],
     roles: ["member", "admin"],
   },
   {
@@ -283,8 +283,8 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     mcpServer: "alive-sandboxed-fs",
     enabled: true,
     tier: "core",
-    reason: "Notebook edits in site workspaces must go through sandboxed path validation.",
-    workspaceKinds: ["site"],
+    reason: "E2B sandbox notebook edits go through sandboxed path validation.",
+    workspaceKinds: ["e2b"],
     roles: ["member", "admin"],
   },
 ] as const

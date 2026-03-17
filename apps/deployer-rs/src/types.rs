@@ -48,6 +48,8 @@ pub(crate) struct ServiceEnv {
     pub(crate) server_id: String,
     pub(crate) alive_root: PathBuf,
     pub(crate) sites_root: Option<PathBuf>,
+    pub(crate) templates_root: Option<PathBuf>,
+    pub(crate) images_storage: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -157,6 +159,8 @@ pub(crate) struct BindMount {
 pub(crate) enum BindMountServerPath {
     AliveRoot,
     SitesRoot,
+    TemplatesRoot,
+    ImagesStorage,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -258,6 +262,10 @@ pub(crate) struct ServerConfigPaths {
     pub(crate) alive_root: String,
     #[serde(rename = "sitesRoot")]
     pub(crate) sites_root: Option<String>,
+    #[serde(rename = "templatesRoot")]
+    pub(crate) templates_root: Option<String>,
+    #[serde(rename = "imagesStorage")]
+    pub(crate) images_storage: Option<String>,
 }
 
 #[derive(Clone, Copy)]

@@ -27,14 +27,8 @@ export const SETTINGS_SOURCES = STREAM_SETTINGS_SOURCES
  * @param {string} [mode="default"] - Stream mode ("default" | "plan" | "superadmin")
  * @returns {string[]} Base allowed tools list
  */
-export function getAllowedTools(
-  _workspacePath,
-  isAdmin = false,
-  isSuperadmin = false,
-  isSuperadminWorkspace = false,
-  mode = "default",
-) {
-  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode })
+export function getAllowedTools(_workspacePath, isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode) {
+  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).allowedTools
 }
 
@@ -44,15 +38,11 @@ export function getAllowedTools(
  * @param {boolean} [isSuperadmin=false] - Whether the user is a superadmin (still blocks ExitPlanMode)
  * @param {string} [mode="default"] - Stream mode ("default" | "plan" | "superadmin")
  * @param {boolean} [isSuperadminWorkspace=false] - Whether this is the platform workspace
+ * @param {string} [executionMode] - "systemd" or "e2b"
  * @returns {string[]} Disallowed tools list
  */
-export function getDisallowedTools(
-  isAdmin = false,
-  isSuperadmin = false,
-  mode = "default",
-  isSuperadminWorkspace = false,
-) {
-  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode })
+export function getDisallowedTools(isAdmin, isSuperadmin, mode, isSuperadminWorkspace, executionMode) {
+  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).disallowedTools
 }
 

@@ -44,6 +44,7 @@ const memberContext = createStreamToolContext({
   isAdmin: false,
   isSuperadmin: false,
   isSuperadminWorkspace: false,
+  executionMode: "systemd",
   mode: "default",
 })
 
@@ -51,6 +52,7 @@ const adminContext = createStreamToolContext({
   isAdmin: true,
   isSuperadmin: false,
   isSuperadminWorkspace: false,
+  executionMode: "systemd",
   mode: "default",
 })
 
@@ -58,6 +60,7 @@ const superadminContext = createStreamToolContext({
   isAdmin: true,
   isSuperadmin: true,
   isSuperadminWorkspace: false,
+  executionMode: "systemd",
   mode: "default",
 })
 

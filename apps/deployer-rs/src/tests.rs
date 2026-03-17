@@ -249,6 +249,8 @@ healthcheck_path = "/health"
             server_id: "srv_test".to_string(),
             alive_root: repo_root.clone(),
             sites_root: None,
+            templates_root: None,
+            images_storage: None,
         },
         repo_root: repo_root.clone(),
         data_dir: temp_dir_path("local-fs-data"),
@@ -487,14 +489,17 @@ fn normalize_env_value_strips_matching_quotes() {
 
 #[test]
 fn parse_server_identity_from_server_config_reads_alive_root() {
-    let (server_id, alive_root, sites_root) = parse_server_identity_from_server_config(
-        r#"{"serverId":"srv_alive_dot_best_138_201_56_93","paths":{"aliveRoot":"/srv/alive/repo","sitesRoot":"/srv/sites"}}"#,
-    )
-    .expect("failed to parse server config identity");
+    let (server_id, alive_root, sites_root, templates_root, images_storage) =
+        parse_server_identity_from_server_config(
+            r#"{"serverId":"srv_alive_dot_best_138_201_56_93","paths":{"aliveRoot":"/srv/alive/repo","sitesRoot":"/srv/sites","templatesRoot":"/srv/templates","imagesStorage":"/srv/images"}}"#,
+        )
+        .expect("failed to parse server config identity");
 
     assert_eq!(server_id, "srv_alive_dot_best_138_201_56_93");
     assert_eq!(alive_root, PathBuf::from("/srv/alive/repo"));
     assert_eq!(sites_root, Some(PathBuf::from("/srv/sites")));
+    assert_eq!(templates_root, Some(PathBuf::from("/srv/templates")));
+    assert_eq!(images_storage, Some(PathBuf::from("/srv/images")));
 }
 
 #[tokio::test]
@@ -693,6 +698,8 @@ fn resolve_bind_mount_source_reads_sites_root_from_server_config() {
             server_id: "srv_test".to_string(),
             alive_root: PathBuf::from("/srv/alive/repo"),
             sites_root: Some(PathBuf::from("/srv/workspaces")),
+            templates_root: None,
+            images_storage: None,
         },
         repo_root: PathBuf::from("/srv/alive/repo"),
         data_dir: temp_dir_path("resolve-bind-source"),
@@ -1356,6 +1363,8 @@ CMD ["sh","-c","test \"$PUBLIC_MARKER\" = \"ready\" && test -z \"$MAILER_API_KEY
             server_id: "srv_e2e_smoke".to_string(),
             alive_root: host_root.clone(),
             sites_root: Some(PathBuf::from("/srv/workspaces")),
+            templates_root: None,
+            images_storage: None,
         },
         repo_root: host_root.clone(),
         data_dir: data_dir.clone(),

@@ -24,7 +24,8 @@ impl ServiceEnv {
         let server_config_path = env::var("SERVER_CONFIG_PATH")
             .map(PathBuf::from)
             .context("SERVER_CONFIG_PATH is required")?;
-        let (server_id, alive_root, sites_root) = load_server_identity(&server_config_path)?;
+        let (server_id, alive_root, sites_root, templates_root, images_storage) =
+            load_server_identity(&server_config_path)?;
 
         Ok(Self {
             database_url,
@@ -32,13 +33,15 @@ impl ServiceEnv {
             server_id,
             alive_root,
             sites_root,
+            templates_root,
+            images_storage,
         })
     }
 }
 
 pub(crate) fn load_server_identity(
     server_config_path: &Path,
-) -> Result<(String, PathBuf, Option<PathBuf>)> {
+) -> Result<(String, PathBuf, Option<PathBuf>, Option<PathBuf>, Option<PathBuf>)> {
     let raw = fs::read_to_string(server_config_path)
         .with_context(|| format!("failed to read {}", server_config_path.display()))?;
     parse_server_identity_from_server_config(&raw)
@@ -46,7 +49,7 @@ pub(crate) fn load_server_identity(
 
 pub(crate) fn parse_server_identity_from_server_config(
     raw: &str,
-) -> Result<(String, PathBuf, Option<PathBuf>)> {
+) -> Result<(String, PathBuf, Option<PathBuf>, Option<PathBuf>, Option<PathBuf>)> {
     let config = serde_json::from_str::<ServerConfigIdentity>(raw)
         .context("failed to parse server-config.json")?;
     if config.server_id.trim().is_empty() {
@@ -55,15 +58,13 @@ pub(crate) fn parse_server_identity_from_server_config(
     if config.paths.alive_root.trim().is_empty() {
         return Err(anyhow!("server-config.json is missing paths.aliveRoot"));
     }
-    let sites_root = config
-        .paths
-        .sites_root
-        .filter(|value| !value.trim().is_empty())
-        .map(PathBuf::from);
+    let optional_path = |v: Option<String>| v.filter(|s| !s.trim().is_empty()).map(PathBuf::from);
     Ok((
         config.server_id,
         PathBuf::from(config.paths.alive_root),
-        sites_root,
+        optional_path(config.paths.sites_root),
+        optional_path(config.paths.templates_root),
+        optional_path(config.paths.images_storage),
     ))
 }
 
@@ -430,6 +431,16 @@ pub(crate) fn resolve_bind_mount_source(
                 .sites_root
                 .clone()
                 .ok_or_else(|| anyhow!("server-config.json is missing paths.sitesRoot")),
+            crate::types::BindMountServerPath::TemplatesRoot => context
+                .env
+                .templates_root
+                .clone()
+                .ok_or_else(|| anyhow!("server-config.json is missing paths.templatesRoot")),
+            crate::types::BindMountServerPath::ImagesStorage => context
+                .env
+                .images_storage
+                .clone()
+                .ok_or_else(|| anyhow!("server-config.json is missing paths.imagesStorage")),
         };
     }
 
@@ -464,6 +475,20 @@ pub(crate) fn resolve_bind_mount_target(
                 .sites_root
                 .as_ref()
                 .ok_or_else(|| anyhow!("server-config.json is missing paths.sitesRoot"))?
+                .display()
+                .to_string(),
+            crate::types::BindMountServerPath::TemplatesRoot => context
+                .env
+                .templates_root
+                .as_ref()
+                .ok_or_else(|| anyhow!("server-config.json is missing paths.templatesRoot"))?
+                .display()
+                .to_string(),
+            crate::types::BindMountServerPath::ImagesStorage => context
+                .env
+                .images_storage
+                .as_ref()
+                .ok_or_else(|| anyhow!("server-config.json is missing paths.imagesStorage"))?
                 .display()
                 .to_string(),
         };

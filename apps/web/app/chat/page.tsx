@@ -3,7 +3,7 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { AnimatePresence, motion } from "framer-motion"
 import { useQueryState } from "nuqs"
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import {
   Panel,
@@ -52,11 +52,13 @@ import {
   trackWorkspaceSelected,
 } from "@/lib/analytics/events"
 import { useDexieMessageActions, useDexieSession } from "@/lib/db/dexieMessageStore"
+import { AUTOMATION_RUN_SOURCE, getMessageDb } from "@/lib/db/messageDb"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useSessionHeartbeat } from "@/lib/hooks/useSessionHeartbeat"
 import { useAllWorkspacesQuery, type WorkspaceInfo } from "@/lib/hooks/useSettingsQueries"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { CHAT_PANEL, RESIZE_HANDLE_ID, WORKBENCH_PANEL } from "@/lib/layout"
+import { stripOAuthCallbackParams } from "@/lib/oauth/popup-constants"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useDebugVisible, useWorkbench, useWorkbenchFullscreen } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
@@ -105,9 +107,16 @@ function ChatPageContent() {
     renameConversation,
     setSession: setDexieSession,
     reopenTab: dexieReopenTab,
+    loadTabMessages: dexieLoadTabMessages,
   } = useDexieMessageActions()
   const dexieSession = useDexieSession()
-  const { createTabGroupWithTab, removeTabGroup, setActiveTab, reopenTab } = useTabActions()
+  const {
+    createTabGroupWithTab,
+    removeTabGroup,
+    setActiveTab,
+    reopenTab,
+    openTabGroupInTab: openTabGroupInTargetWs,
+  } = useTabActions()
 
   // Ensures Dexie has a tabgroup+tab for the session key (tabId)
   const initializeTab = useCallback(
@@ -179,7 +188,7 @@ function ChatPageContent() {
 
   // Automation transcript polling — automation runs write to app.messages directly
   // (not via Redis stream buffer), so we poll fetchTabMessages() instead.
-  const isAutomationRun = conversation?.source === "automation_run"
+  const isAutomationRun = conversation?.source === AUTOMATION_RUN_SOURCE
   const automationMeta = isAutomationRun ? conversation?.sourceMetadata : undefined
   useAutomationTranscriptPoll({
     isAutomationRun,
@@ -376,12 +385,17 @@ function ChatPageContent() {
   const isSuperadminWorkspace = workspace === SUPERADMIN_WORKSPACE_NAME
   const showWorkbench = showWorkbenchRaw // Show for all workspaces
 
-  // Sync workbench toggle → panel collapse/expand (no layout shift)
-  useEffect(() => {
+  // Sync workbench toggle → panel collapse/expand.
+  // The PanelGroup is only mounted after hydration (isHydrated gate below),
+  // so defaultSize already has the correct persisted value on first render.
+  // This effect only handles runtime toggles after mount.
+  useLayoutEffect(() => {
     const panel = workbenchPanelRef.current
     if (!panel) return
     if (showWorkbench) {
-      panel.expand()
+      if (panel.isCollapsed()) {
+        panel.resize(WORKBENCH_PANEL.default)
+      }
     } else {
       panel.collapse()
     }
@@ -709,8 +723,9 @@ function ChatPageContent() {
       } else if (validated.status === "error" && validated.errorMessage) {
         toast(validated.errorMessage)
       }
-      const cleanUrl = window.location.pathname + window.location.hash
-      window.history.replaceState({}, "", cleanUrl)
+      const url = new URL(window.location.href)
+      stripOAuthCallbackParams(url)
+      window.history.replaceState(window.history.state, "", url.toString())
     }
   }, [urlSearchParams])
 
@@ -749,12 +764,45 @@ function ChatPageContent() {
       return
     }
 
+    // Also create the conversation in Dexie so it appears in the sidebar immediately.
+    // startNewTabGroup only writes to the localStorage tab store — the sidebar reads
+    // from Dexie, so without this the conversation won't show until the first message.
+    const tabs = useTabDataStore.getState().tabsByWorkspace[tabWorkspace] ?? []
+    const newTab = tabs.find(t => t.id === newTabId)
+    if (newTab) {
+      await ensureTabGroupWithTab(tabWorkspace, newTab.tabGroupId, newTabId)
+    }
+
     if (previousTabId) {
       streamingActions.clearTab(previousTabId)
     }
     setMsg("")
     setTimeout(() => chatInputRef.current?.focus(), 0)
-  }, [tabId, streamingActions, startNewTabGroup, tabWorkspace])
+  }, [tabId, streamingActions, startNewTabGroup, tabWorkspace, ensureTabGroupWithTab])
+
+  const handleNewTabGroupInWorkspace = useCallback(
+    async (targetWorkspace: string) => {
+      // Switch to the target workspace first
+      const orgId = resolveOrgForWorkspace(targetWorkspace, queryClient)
+      if (orgId) {
+        setSelectedOrg(orgId)
+      }
+      setWorkspace(targetWorkspace, orgId ?? undefined)
+
+      // Use createTabGroupWithTab directly with targetWorkspace — startNewTabGroup
+      // reads workspace from its closure which hasn't updated yet after setWorkspace.
+      trackConversationCreated()
+      const { tabGroupId: newGroupId, tabId: newTabId } = createTabGroupWithTab(targetWorkspace)
+      await ensureTabGroupWithTab(targetWorkspace, newGroupId, newTabId)
+
+      if (tabId) {
+        streamingActions.clearTab(tabId)
+      }
+      setMsg("")
+      setTimeout(() => chatInputRef.current?.focus(), 0)
+    },
+    [queryClient, setSelectedOrg, setWorkspace, createTabGroupWithTab, ensureTabGroupWithTab, tabId, streamingActions],
+  )
 
   const handleNewWorktree = useCallback(() => {
     if (!workspace) {
@@ -773,12 +821,48 @@ function ChatPageContent() {
   }, [])
 
   const handleTabGroupSelect = useCallback(
-    (selectedTabGroupId: string) => {
+    async (selectedTabGroupId: string) => {
       if (!selectedTabGroupId) return
       trackConversationSwitched()
+
+      // Check if the conversation belongs to a different workspace
+      if (dexieSession?.userId) {
+        const db = getMessageDb(dexieSession.userId)
+        const conversation = await db.conversations.get(selectedTabGroupId)
+        if (conversation && conversation.workspace !== tabWorkspace) {
+          // Cross-workspace click: resolve org and switch workspace first
+          const orgId = resolveOrgForWorkspace(conversation.workspace, queryClient) ?? conversation.orgId
+          if (orgId) {
+            setSelectedOrg(orgId)
+          }
+          setWorkspace(conversation.workspace, orgId ?? undefined)
+          // Open the tab group in the target workspace directly
+          // (handleOpenTabGroupInTab uses closure workspace which hasn't updated yet)
+          const tab = openTabGroupInTargetWs(conversation.workspace, selectedTabGroupId)
+          if (tab?.id) {
+            initializeTab(tab.id, selectedTabGroupId, conversation.workspace)
+            switchTab(tab.id)
+            void dexieLoadTabMessages(tab.id)
+            setMsg(tab.inputDraft ?? "")
+          }
+          return
+        }
+      }
+
       handleOpenTabGroupInTab(selectedTabGroupId)
     },
-    [handleOpenTabGroupInTab],
+    [
+      handleOpenTabGroupInTab,
+      dexieSession?.userId,
+      tabWorkspace,
+      queryClient,
+      setSelectedOrg,
+      setWorkspace,
+      initializeTab,
+      switchTab,
+      openTabGroupInTargetWs,
+      dexieLoadTabMessages,
+    ],
   )
 
   const handleArchiveTabGroup = useCallback(
@@ -843,15 +927,18 @@ function ChatPageContent() {
   )
 
   const settingsInitialTab = modals.settings?.initialTab
+  const isSettingsOpen = !!modals.settings
 
+  // Both openSidebar (Zustand) and openSettings (useState) are synchronous —
+  // React 18+ batches them into a single render. No flash.
   const handleNavSettingsClick = useCallback(() => {
-    if (modals.settings) {
+    if (isSettingsOpen) {
       modals.closeSettings()
     } else {
       openSidebar()
       modals.openSettings()
     }
-  }, [modals, openSidebar])
+  }, [isSettingsOpen, modals.closeSettings, modals.openSettings, openSidebar])
 
   const layout = (
     <div
@@ -870,6 +957,7 @@ function ChatPageContent() {
         onUnarchiveTabGroup={handleUnarchiveTabGroup}
         onRenameTabGroup={handleRenameTabGroup}
         onNewConversation={handleNewTabGroup}
+        onNewConversationInWorkspace={handleNewTabGroupInWorkspace}
         onNewWorktree={handleNewWorktree}
         onSelectWorktree={setWorktree}
         worktreeModalOpen={worktreeModalOpen}
@@ -932,7 +1020,7 @@ function ChatPageContent() {
                 >
                   {/* Tab bar — fixed header, outside scroll */}
                   {(tabs.length > 0 || closedTabs.length > 0) && (
-                    <div className="row-start-1 bg-[#faf8f5] dark:bg-[#1a1a1a] z-10">
+                    <div className="row-start-1 bg-[#faf8f5]/80 dark:bg-[#1a1a1a]/80 backdrop-blur-xl z-10">
                       <TabBar
                         tabs={tabs}
                         closedTabs={closedTabs}

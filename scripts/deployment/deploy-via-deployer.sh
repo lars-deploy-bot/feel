@@ -103,6 +103,22 @@ if [[ "$HEALTH_OK" != "true" ]]; then
     exit 1
 fi
 
+# Schema compatibility gate: verify current code can parse server-config.json.
+# Prevents deploying a build that can't read runtime config (postmortem 2026-03-16).
+# TODO: Move to deployer-rs preflight when deploy pipeline migrates (see plan/execution-substrate/06)
+if ! bun -e "
+  const { readFileSync } = require('node:fs');
+  const { parseServerConfig } = require('@webalive/shared');
+  const raw = readFileSync('$SERVER_CONFIG_PATH', 'utf8');
+  parseServerConfig(raw);
+  console.log('Schema OK');
+" >/tmp/alive-schema-check-"$ENVIRONMENT".log 2>&1; then
+    log_error "Schema compatibility check FAILED — server-config.json contains keys unknown to @webalive/shared"
+    cat /tmp/alive-schema-check-"$ENVIRONMENT".log || true
+    phase_end error "server-config.json schema mismatch"
+    exit 1
+fi
+
 ENVIRONMENT_ID=$(db_query "SELECT environment_id FROM deploy.environments WHERE application_id = '$APPLICATION_ID' AND name = '$ENVIRONMENT' AND server_id = '$CURRENT_SERVER_ID' LIMIT 1;")
 if [[ -z "$ENVIRONMENT_ID" ]]; then
     phase_end error "No environment '$ENVIRONMENT' found for application $APPLICATION_ID on server $CURRENT_SERVER_ID"

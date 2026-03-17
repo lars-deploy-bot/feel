@@ -48,6 +48,7 @@ interface WorkspaceActions {
     setDeepLinkPending: (workspace: string | null) => void
     setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
+    removeRecentWorkspace: (domain: string) => void
     clearRecentWorkspaces: () => void
     getRecentForOrg: (orgId: string) => RecentWorkspace[]
   }
@@ -169,19 +170,13 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             ? state.recentWorkspaces.filter(r => r.orgId === state.selectedOrgId)
             : state.recentWorkspaces
 
-          if (candidates.length > 0) {
-            const sorted = [...candidates].sort((a, b) => b.lastAccessed - a.lastAccessed)
-            const mostRecent = sorted[0]
-            set({
-              currentWorkspace: mostRecent.domain,
-              selectedOrgId: mostRecent.orgId,
-            })
-            return true
+          if (candidates.length === 0) {
+            // Selected org has no recents — don't fall back to a different org's
+            // workspace. That would silently switch the org, surprising the user.
+            return false
           }
 
-          // Selected org has no recents — fall back to global most recent.
-          // This sets both workspace AND org, so the pair stays coherent.
-          const sorted = [...state.recentWorkspaces].sort((a, b) => b.lastAccessed - a.lastAccessed)
+          const sorted = [...candidates].sort((a, b) => b.lastAccessed - a.lastAccessed)
           const mostRecent = sorted[0]
           set({
             currentWorkspace: mostRecent.domain,
@@ -296,6 +291,13 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             }
           })
           // Sync to server for cross-device access
+          queueSyncToServer()
+        },
+
+        removeRecentWorkspace: (domain: string) => {
+          set(state => ({
+            recentWorkspaces: state.recentWorkspaces.filter(w => w.domain !== domain),
+          }))
           queueSyncToServer()
         },
 

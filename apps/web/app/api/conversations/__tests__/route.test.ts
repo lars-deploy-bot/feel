@@ -3,15 +3,15 @@
  *
  * Tests cover:
  * - Authentication required
- * - Workspace parameter validation
+ * - Workspace parameter is optional (omit for cross-workspace fetch)
  * - Fetching own conversations
  * - Fetching shared conversations from org
  * - Excluding deleted conversations
  * - Data transformation (server → client format)
+ * - Pagination (hasMore, nextCursor)
  * - Error handling
  *
  * @vitest-environment node
- * @error-check-disable - Tests use old error format, need migration to ErrorCodes
  */
 
 import { NextRequest } from "next/server"
@@ -25,10 +25,23 @@ vi.mock("@/features/auth/lib/auth", () => ({
 }))
 
 // Mock Supabase client
+//
+// The route builds its query as:
+//   .from("conversations")
+//   .select(...)          ← mockSelect
+//   .is("deleted_at", null) ← mockIs
+//   .order(...)           ← mockOrder
+//   .limit(limit + 1)     ← mockLimit
+//   [.eq("workspace", w)] ← mockEq (only when workspace provided)
+//   [.lt("updated_at", c)]← mockLt (only when cursor provided)
+//
+// The final awaited value comes from whichever mock is last in the chain.
 const mockSelect = vi.fn()
 const mockEq = vi.fn()
 const mockIs = vi.fn()
 const mockOrder = vi.fn()
+const mockLimit = vi.fn()
+const mockLt = vi.fn()
 
 vi.mock("@/lib/supabase/server-rls", () => ({
   createRLSAppClient: vi.fn(() =>
@@ -104,6 +117,27 @@ function createMockRequest(params: Record<string, string> = {}): NextRequest {
   return new NextRequest(url)
 }
 
+/**
+ * Set up the mock chain for a given result.
+ *
+ * Chain (without workspace/cursor): select → is → order → limit → await
+ * Chain (with workspace):           select → is → order → limit → eq → await
+ * Chain (with cursor):              select → is → order → limit → lt → await
+ * Chain (with both):                select → is → order → limit → eq → lt → await
+ *
+ * We make every terminal node return the same result object so every variant
+ * resolves correctly regardless of which optional chained calls are made.
+ */
+function setupMockChain(result: { data: unknown[] | null; error: unknown }) {
+  // Terminal: awaiting any of these returns the result
+  mockLt.mockReturnValue(result)
+  mockEq.mockReturnValue({ lt: mockLt, ...result })
+  mockLimit.mockReturnValue({ eq: mockEq, lt: mockLt, ...result })
+  mockOrder.mockReturnValue({ limit: mockLimit })
+  mockIs.mockReturnValue({ order: mockOrder })
+  mockSelect.mockReturnValue({ is: mockIs })
+}
+
 describe("GET /api/conversations", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -111,17 +145,11 @@ describe("GET /api/conversations", () => {
     // Default: authenticated user
     vi.mocked(getSessionUser).mockResolvedValue(MOCK_SESSION_USER)
 
-    // Set up chainable mock for Supabase queries
-    mockOrder.mockReturnValue({
+    // Default DB result: two conversations (one own, one shared)
+    setupMockChain({
       data: [TEST_CONVERSATION_DB, TEST_SHARED_CONVERSATION_DB],
       error: null,
     })
-    mockIs.mockReturnValue({ order: mockOrder })
-    mockEq.mockImplementation(() => ({
-      eq: mockEq,
-      is: mockIs,
-    }))
-    mockSelect.mockReturnValue({ eq: mockEq })
   })
 
   afterEach(() => {
@@ -149,13 +177,17 @@ describe("GET /api/conversations", () => {
   })
 
   describe("Input Validation", () => {
-    it("should require workspace parameter", async () => {
+    it("should return all conversations when workspace is omitted", async () => {
+      // workspace is now optional — omitting it fetches across all workspaces
       const req = createMockRequest({})
       const response = await GET(req)
       const data = await response.json()
 
-      expect(response.status).toBe(400)
-      expect(data.error).toBe(ErrorCodes.INVALID_REQUEST)
+      expect(response.status).toBe(200)
+      expect(data.own).toBeDefined()
+      expect(data.shared).toBeDefined()
+      expect(typeof data.hasMore).toBe("boolean")
+      expect("nextCursor" in data).toBe(true)
     })
   })
 
@@ -168,14 +200,12 @@ describe("GET /api/conversations", () => {
       expect(response.status).toBe(200)
       expect(data.own).toBeDefined()
       expect(Array.isArray(data.own)).toBe(true)
+      expect(typeof data.hasMore).toBe("boolean")
+      expect("nextCursor" in data).toBe(true)
     })
 
     it("should transform database format to client format", async () => {
-      // Mock to return a specific conversation
-      mockOrder.mockReturnValueOnce({
-        data: [TEST_CONVERSATION_DB],
-        error: null,
-      })
+      setupMockChain({ data: [TEST_CONVERSATION_DB], error: null })
 
       const req = createMockRequest({ workspace: TEST_WORKSPACE })
       const response = await GET(req)
@@ -193,10 +223,7 @@ describe("GET /api/conversations", () => {
     })
 
     it("should convert timestamps to milliseconds", async () => {
-      mockOrder.mockReturnValueOnce({
-        data: [TEST_CONVERSATION_DB],
-        error: null,
-      })
+      setupMockChain({ data: [TEST_CONVERSATION_DB], error: null })
 
       const req = createMockRequest({ workspace: TEST_WORKSPACE })
       const response = await GET(req)
@@ -209,10 +236,7 @@ describe("GET /api/conversations", () => {
     })
 
     it("should include tabs with conversations", async () => {
-      mockOrder.mockReturnValueOnce({
-        data: [TEST_CONVERSATION_DB],
-        error: null,
-      })
+      setupMockChain({ data: [TEST_CONVERSATION_DB], error: null })
 
       const req = createMockRequest({ workspace: TEST_WORKSPACE })
       const response = await GET(req)
@@ -230,7 +254,7 @@ describe("GET /api/conversations", () => {
     })
 
     it("should map null tab drafts explicitly", async () => {
-      mockOrder.mockReturnValueOnce({
+      setupMockChain({
         data: [
           {
             ...TEST_CONVERSATION_DB,
@@ -250,10 +274,7 @@ describe("GET /api/conversations", () => {
 
   describe("Fetching Shared Conversations", () => {
     it("should return shared conversations from org", async () => {
-      mockOrder.mockReturnValueOnce({
-        data: [TEST_CONVERSATION_DB, TEST_SHARED_CONVERSATION_DB],
-        error: null,
-      })
+      setupMockChain({ data: [TEST_CONVERSATION_DB, TEST_SHARED_CONVERSATION_DB], error: null })
 
       const req = createMockRequest({ workspace: TEST_WORKSPACE })
       const response = await GET(req)
@@ -265,10 +286,7 @@ describe("GET /api/conversations", () => {
     })
 
     it("should include creatorId for shared conversations", async () => {
-      mockOrder.mockReturnValueOnce({
-        data: [TEST_SHARED_CONVERSATION_DB],
-        error: null,
-      })
+      setupMockChain({ data: [TEST_SHARED_CONVERSATION_DB], error: null })
 
       const req = createMockRequest({ workspace: TEST_WORKSPACE })
       const response = await GET(req)
@@ -284,8 +302,7 @@ describe("GET /api/conversations", () => {
       const req = createMockRequest({ workspace: TEST_WORKSPACE })
       await GET(req)
 
-      // Verify the chain includes is() call for deleted_at
-      expect(mockIs).toHaveBeenCalled()
+      expect(mockIs).toHaveBeenCalledWith("deleted_at", null)
     })
 
     it("should order by updated_at descending", async () => {
@@ -294,14 +311,64 @@ describe("GET /api/conversations", () => {
 
       expect(mockOrder).toHaveBeenCalledWith("updated_at", { ascending: false })
     })
+
+    it("should apply workspace filter only when workspace is provided", async () => {
+      const req = createMockRequest({ workspace: TEST_WORKSPACE })
+      await GET(req)
+
+      expect(mockEq).toHaveBeenCalledWith("workspace", TEST_WORKSPACE)
+    })
+
+    it("should not apply workspace filter when workspace is omitted", async () => {
+      const req = createMockRequest({})
+      await GET(req)
+
+      expect(mockEq).not.toHaveBeenCalledWith("workspace", expect.anything())
+    })
+  })
+
+  describe("Pagination", () => {
+    it("should return hasMore: false and nextCursor: null when results fit within limit", async () => {
+      // Default limit is 50; returning 2 rows means no next page
+      setupMockChain({ data: [TEST_CONVERSATION_DB, TEST_SHARED_CONVERSATION_DB], error: null })
+
+      const req = createMockRequest({ workspace: TEST_WORKSPACE })
+      const response = await GET(req)
+      const data = await response.json()
+
+      expect(data.hasMore).toBe(false)
+      expect(data.nextCursor).toBeNull()
+    })
+
+    it("should return hasMore: true and nextCursor when results exceed limit", async () => {
+      // Request limit=1, return 2 rows (limit+1) to signal there is a next page
+      const row1 = { ...TEST_CONVERSATION_DB, updated_at: "2026-02-01T10:00:00Z" }
+      const row2 = { ...TEST_SHARED_CONVERSATION_DB, updated_at: "2026-02-01T09:00:00Z" }
+      setupMockChain({ data: [row1, row2], error: null })
+
+      const req = createMockRequest({ workspace: TEST_WORKSPACE, limit: "1" })
+      const response = await GET(req)
+      const data = await response.json()
+
+      expect(data.hasMore).toBe(true)
+      // nextCursor is the updated_at of the last item in the page (row1, since only 1 item fits)
+      expect(data.nextCursor).toBe(row1.updated_at)
+    })
+
+    it("should include hasMore and nextCursor in every successful response", async () => {
+      const req = createMockRequest({ workspace: TEST_WORKSPACE })
+      const response = await GET(req)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect("hasMore" in data).toBe(true)
+      expect("nextCursor" in data).toBe(true)
+    })
   })
 
   describe("Error Handling", () => {
-    it("should return 500 on database error for own conversations", async () => {
-      mockOrder.mockReturnValueOnce({
-        data: null,
-        error: { message: "Database error" },
-      })
+    it("should return 500 on database error", async () => {
+      setupMockChain({ data: null, error: { message: "Database error" } })
 
       const req = createMockRequest({ workspace: TEST_WORKSPACE })
       const response = await GET(req)
@@ -312,10 +379,7 @@ describe("GET /api/conversations", () => {
     })
 
     it("should handle empty results gracefully", async () => {
-      mockOrder.mockReturnValue({
-        data: [],
-        error: null,
-      })
+      setupMockChain({ data: [], error: null })
 
       const req = createMockRequest({ workspace: TEST_WORKSPACE })
       const response = await GET(req)
@@ -324,12 +388,14 @@ describe("GET /api/conversations", () => {
       expect(response.status).toBe(200)
       expect(data.own).toEqual([])
       expect(data.shared).toEqual([])
+      expect(data.hasMore).toBe(false)
+      expect(data.nextCursor).toBeNull()
     })
   })
 
   describe("Source and SourceMetadata Mapping", () => {
     it("should default source to 'chat' when null", async () => {
-      mockOrder.mockReturnValueOnce({
+      setupMockChain({
         data: [{ ...TEST_CONVERSATION_DB, source: null, source_metadata: null }],
         error: null,
       })
@@ -344,7 +410,7 @@ describe("GET /api/conversations", () => {
 
     it("should pass through source when set to 'automation_run'", async () => {
       const metadata = { job_id: "job_123", claim_run_id: "run_456", triggered_by: "cron" }
-      mockOrder.mockReturnValueOnce({
+      setupMockChain({
         data: [{ ...TEST_CONVERSATION_DB, source: "automation_run", source_metadata: metadata }],
         error: null,
       })
@@ -359,7 +425,7 @@ describe("GET /api/conversations", () => {
 
     it("should preserve sourceMetadata shape with job_id, claim_run_id, and triggered_by", async () => {
       const metadata = { job_id: "job_abc", claim_run_id: "run_xyz", triggered_by: "manual" }
-      mockOrder.mockReturnValueOnce({
+      setupMockChain({
         data: [{ ...TEST_CONVERSATION_DB, source: "automation_run", source_metadata: metadata }],
         error: null,
       })
@@ -374,7 +440,7 @@ describe("GET /api/conversations", () => {
     })
 
     it("should return null sourceMetadata when automation metadata is malformed", async () => {
-      mockOrder.mockReturnValueOnce({
+      setupMockChain({
         data: [{ ...TEST_CONVERSATION_DB, source: "automation_run", source_metadata: { job_id: "job_only" } }],
         error: null,
       })
@@ -390,13 +456,8 @@ describe("GET /api/conversations", () => {
 
   describe("Null Timestamp Handling", () => {
     it("should handle null last_message_at", async () => {
-      const convWithNullTimestamp = {
-        ...TEST_CONVERSATION_DB,
-        last_message_at: null,
-      }
-
-      mockOrder.mockReturnValueOnce({
-        data: [convWithNullTimestamp],
+      setupMockChain({
+        data: [{ ...TEST_CONVERSATION_DB, last_message_at: null }],
         error: null,
       })
 
@@ -408,10 +469,7 @@ describe("GET /api/conversations", () => {
     })
 
     it("should handle null archived_at and deleted_at", async () => {
-      mockOrder.mockReturnValueOnce({
-        data: [TEST_CONVERSATION_DB],
-        error: null,
-      })
+      setupMockChain({ data: [TEST_CONVERSATION_DB], error: null })
 
       const req = createMockRequest({ workspace: TEST_WORKSPACE })
       const response = await GET(req)

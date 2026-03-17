@@ -160,18 +160,18 @@ describe("stream tool role policy", () => {
   ]
 
   it("gives member role default SDK tools and blocks admin/superadmin extras", () => {
-    const allowed = getStreamAllowedTools(enabledMcpTools, false, false, false)
-    const disallowed = getStreamDisallowedTools(false, false)
+    const allowed = getStreamAllowedTools(enabledMcpTools, false, false, false, "default", [], "systemd")
+    const disallowed = getStreamDisallowedTools(false, false, "default", false, "systemd")
 
-    expect(allowed).toContain("mcp__alive-sandboxed-fs__Read")
-    expect(allowed).not.toContain("Read")
-    expect(disallowed).toContain("Read")
-    expect(disallowed).toContain("Write")
-    expect(disallowed).toContain("Edit")
-    expect(disallowed).toContain("Glob")
-    expect(disallowed).toContain("Grep")
-    expect(disallowed).toContain("Bash")
-    expect(disallowed).toContain("NotebookEdit")
+    // Regular site members get SDK built-in tools directly (no sandboxed-fs swap)
+    expect(allowed).toContain("Read")
+    expect(allowed).toContain("Write")
+    expect(allowed).toContain("Edit")
+    expect(allowed).toContain("Glob")
+    expect(allowed).toContain("Grep")
+    expect(allowed).toContain("Bash")
+    expect(allowed).toContain("NotebookEdit")
+    expect(allowed).not.toContain("mcp__alive-sandboxed-fs__Read")
     expect(allowed).toContain("TodoWrite")
     expect(disallowed).toContain("AskUserQuestion") // restricted to plan/superadmin mode
     expect(allowed).toContain("ListMcpResources")
@@ -187,12 +187,12 @@ describe("stream tool role policy", () => {
   })
 
   it("gives admin role TaskStop and hides member-only MCP resource tools", () => {
-    const allowed = getStreamAllowedTools(enabledMcpTools, true, false, false)
-    const disallowed = getStreamDisallowedTools(true, false)
+    const allowed = getStreamAllowedTools(enabledMcpTools, true, false, false, "default", [], "systemd")
+    const disallowed = getStreamDisallowedTools(true, false, "default", false, "systemd")
 
-    expect(allowed).toContain("mcp__alive-sandboxed-fs__Read")
-    expect(allowed).not.toContain("Read")
-    expect(disallowed).toContain("Read")
+    // Regular site admins get SDK built-in tools directly (no sandboxed-fs swap)
+    expect(allowed).toContain("Read")
+    expect(allowed).not.toContain("mcp__alive-sandboxed-fs__Read")
     expect(allowed).toContain("TaskStop")
     expect(allowed).not.toContain("ListMcpResources")
     expect(allowed).not.toContain("ReadMcpResource")
@@ -204,8 +204,8 @@ describe("stream tool role policy", () => {
   })
 
   it("gives superadmin Task/WebSearch but still hides member-only MCP resource tools", () => {
-    const allowed = getStreamAllowedTools(enabledMcpTools, true, true, false)
-    const disallowed = getStreamDisallowedTools(true, true)
+    const allowed = getStreamAllowedTools(enabledMcpTools, true, true, false, "default", [], "systemd")
+    const disallowed = getStreamDisallowedTools(true, true, "default", false, "systemd")
 
     expect(allowed).toContain("Read")
     expect(allowed).not.toContain("mcp__alive-sandboxed-fs__Read")
@@ -224,7 +224,7 @@ describe("stream tool role policy", () => {
   })
 
   it("filters site-specific workspace MCP tools in superadmin workspace", () => {
-    const allowed = getStreamAllowedTools(enabledMcpTools, true, true, true)
+    const allowed = getStreamAllowedTools(enabledMcpTools, true, true, true, "default", [], "systemd")
 
     expect(allowed).not.toContain("mcp__alive-workspace__check_codebase")
     expect(allowed).toContain("mcp__alive-workspace__browser")
@@ -232,7 +232,7 @@ describe("stream tool role policy", () => {
   })
 
   it("hides TodoWrite from client visibility while still allowing execution", () => {
-    const context = createStreamToolContext()
+    const context = createStreamToolContext({ executionMode: "systemd" })
     const decision = getStreamToolDecision("TodoWrite", context)
 
     expect(decision.executable).toBe(true)
@@ -241,13 +241,19 @@ describe("stream tool role policy", () => {
   })
 
   it("treats external MCP tools as policy tools via MCP bridge policy inheritance", () => {
-    expect(isStreamPolicyTool("mcp__context7__resolve-library-id")).toBe(true)
+    expect(isStreamPolicyTool("mcp__google-scraper__search_google_maps")).toBe(true)
   })
 
   it("restricts AskUserQuestion to plan and superadmin modes", () => {
-    const defaultMode = getStreamToolDecision("AskUserQuestion", createStreamToolContext())
-    const planMode = getStreamToolDecision("AskUserQuestion", createStreamToolContext({ mode: "plan" }))
-    const superadminMode = getStreamToolDecision("AskUserQuestion", createStreamToolContext({ mode: "superadmin" }))
+    const defaultMode = getStreamToolDecision("AskUserQuestion", createStreamToolContext({ executionMode: "systemd" }))
+    const planMode = getStreamToolDecision(
+      "AskUserQuestion",
+      createStreamToolContext({ executionMode: "systemd", mode: "plan" }),
+    )
+    const superadminMode = getStreamToolDecision(
+      "AskUserQuestion",
+      createStreamToolContext({ executionMode: "systemd", mode: "superadmin" }),
+    )
 
     expect(defaultMode.executable).toBe(false)
     expect(planMode.executable).toBe(true)
@@ -255,11 +261,14 @@ describe("stream tool role policy", () => {
   })
 
   it("blocks ExitPlanMode for all roles", () => {
-    const member = getStreamToolDecision("ExitPlanMode", createStreamToolContext())
-    const admin = getStreamToolDecision("ExitPlanMode", createStreamToolContext({ isAdmin: true }))
+    const member = getStreamToolDecision("ExitPlanMode", createStreamToolContext({ executionMode: "systemd" }))
+    const admin = getStreamToolDecision(
+      "ExitPlanMode",
+      createStreamToolContext({ executionMode: "systemd", isAdmin: true }),
+    )
     const superadmin = getStreamToolDecision(
       "ExitPlanMode",
-      createStreamToolContext({ isAdmin: true, isSuperadmin: true }),
+      createStreamToolContext({ executionMode: "systemd", isAdmin: true, isSuperadmin: true }),
     )
 
     expect(member.executable).toBe(false)
@@ -268,9 +277,9 @@ describe("stream tool role policy", () => {
   })
 
   it("enforces member-only MCP resource SDK tools", () => {
-    const member = createStreamToolContext()
-    const admin = createStreamToolContext({ isAdmin: true })
-    const superadmin = createStreamToolContext({ isAdmin: true, isSuperadmin: true })
+    const member = createStreamToolContext({ executionMode: "systemd" })
+    const admin = createStreamToolContext({ executionMode: "systemd", isAdmin: true })
+    const superadmin = createStreamToolContext({ executionMode: "systemd", isAdmin: true, isSuperadmin: true })
 
     expect(getStreamToolDecision("ListMcpResources", member).executable).toBe(true)
     expect(getStreamToolDecision("ReadMcpResource", member).executable).toBe(true)
@@ -281,26 +290,24 @@ describe("stream tool role policy", () => {
   })
 
   it("blocks write/edit tools in plan mode at config-build time", () => {
-    const context = createStreamToolContext({ mode: "plan" })
+    const context = createStreamToolContext({ executionMode: "systemd", mode: "plan" })
     const runtime = buildStreamToolRuntimeConfig(enabledMcpTools, context)
 
-    expect(runtime.allowedTools).toContain("mcp__alive-sandboxed-fs__Read")
-    expect(runtime.allowedTools).toContain("mcp__alive-sandboxed-fs__Glob")
-    expect(runtime.allowedTools).toContain("mcp__alive-sandboxed-fs__Grep")
-    expect(runtime.allowedTools).not.toContain("Read")
-    expect(runtime.allowedTools).not.toContain("Glob")
-    expect(runtime.allowedTools).not.toContain("Grep")
+    // Plan mode: SDK read-only tools allowed, write tools blocked
+    expect(runtime.allowedTools).toContain("Read")
+    expect(runtime.allowedTools).toContain("Glob")
+    expect(runtime.allowedTools).toContain("Grep")
     expect(runtime.allowedTools).not.toContain("Write")
     expect(runtime.allowedTools).not.toContain("Edit")
     expect(runtime.allowedTools).not.toContain("Bash")
-    expect(runtime.allowedTools).not.toContain("mcp__context7__resolve-library-id")
+    expect(runtime.allowedTools).not.toContain("mcp__google-scraper__search_google_maps")
     expect(runtime.allowedTools).not.toContain("mcp__alive-workspace__browser")
     expect(runtime.disallowedTools).toContain("Write")
     expect(runtime.disallowedTools).toContain("Edit")
   })
 
   it("blocks external MCP tool invocations in plan mode even with connected providers", async () => {
-    const context = createStreamToolContext({ mode: "plan", connectedProviders: ["outlook"] })
+    const context = createStreamToolContext({ executionMode: "systemd", mode: "plan", connectedProviders: ["outlook"] })
     const canUseTool = createStreamCanUseTool(context, [])
     const result = await canUseTool(
       "mcp__outlook__search_emails",
@@ -312,7 +319,7 @@ describe("stream tool role policy", () => {
   })
 
   it("keeps OAuth external MCP invocations available outside plan mode when provider is connected", async () => {
-    const context = createStreamToolContext({ connectedProviders: ["outlook"] })
+    const context = createStreamToolContext({ executionMode: "systemd", connectedProviders: ["outlook"] })
     const canUseTool = createStreamCanUseTool(context, [])
     const result = await canUseTool(
       "mcp__outlook__search_emails",
@@ -325,26 +332,31 @@ describe("stream tool role policy", () => {
 
   it("filterToolsForMode keeps only plan-allowed tools", () => {
     const filtered = filterToolsForMode(
-      ["Read", "mcp__alive-sandboxed-fs__Read", "mcp__context7__resolve-library-id"],
+      ["Read", "mcp__alive-sandboxed-fs__Read", "mcp__google-scraper__search_google_maps"],
       "plan",
     )
-    expect(filtered).toEqual(["mcp__alive-sandboxed-fs__Read"])
+    expect(filtered).toEqual(["Read", "mcp__alive-sandboxed-fs__Read"])
   })
 
   it("hides OAuth MCP tools from init payload in plan mode even when connected", () => {
-    const context = createStreamToolContext({ mode: "plan", connectedProviders: ["outlook"] })
+    const context = createStreamToolContext({ executionMode: "systemd", mode: "plan", connectedProviders: ["outlook"] })
     const visible = isStreamInitVisibleTool("mcp__outlook__search_emails", context, [])
     expect(visible).toBe(false)
   })
 
   it("keeps OAuth MCP tools visible in init payload outside plan mode when connected", () => {
-    const context = createStreamToolContext({ connectedProviders: ["outlook"] })
+    const context = createStreamToolContext({ executionMode: "systemd", connectedProviders: ["outlook"] })
     const visible = isStreamInitVisibleTool("mcp__outlook__search_emails", context, [])
     expect(visible).toBe(true)
   })
 
   it("allows only bash tools in superadmin mode", () => {
-    const context = createStreamToolContext({ mode: "superadmin", isSuperadmin: true, isSuperadminWorkspace: true })
+    const context = createStreamToolContext({
+      executionMode: "systemd",
+      mode: "superadmin",
+      isSuperadmin: true,
+      isSuperadminWorkspace: true,
+    })
     const runtime = buildStreamToolRuntimeConfig(enabledMcpTools, context)
 
     expect(runtime.allowedTools).toContain("Bash")
@@ -358,7 +370,12 @@ describe("stream tool role policy", () => {
   })
 
   it("keeps superadmin mode bash-only even in site workspaces", () => {
-    const context = createStreamToolContext({ mode: "superadmin", isSuperadmin: true, isSuperadminWorkspace: false })
+    const context = createStreamToolContext({
+      executionMode: "systemd",
+      mode: "superadmin",
+      isSuperadmin: true,
+      isSuperadminWorkspace: false,
+    })
     const runtime = buildStreamToolRuntimeConfig(enabledMcpTools, context)
 
     expect(runtime.allowedTools).toContain("Bash")
@@ -369,7 +386,7 @@ describe("stream tool role policy", () => {
 
   it("fails closed for internal tools that have no policy entry", () => {
     const missingPolicyTool = "mcp__alive-tools__missing_policy_tool"
-    const decision = getStreamToolDecision(missingPolicyTool, createStreamToolContext())
+    const decision = getStreamToolDecision(missingPolicyTool, createStreamToolContext({ executionMode: "systemd" }))
 
     expect(decision.executable).toBe(false)
     expect(decision.policyFound).toBe(false)
@@ -378,10 +395,96 @@ describe("stream tool role policy", () => {
 
   it("fails closed for unknown mcp__alive-* namespaces", () => {
     const unknownInternalTool = "mcp__alive-foo__missing_policy_tool"
-    const decision = getStreamToolDecision(unknownInternalTool, createStreamToolContext())
+    const decision = getStreamToolDecision(unknownInternalTool, createStreamToolContext({ executionMode: "systemd" }))
 
     expect(decision.executable).toBe(false)
     expect(decision.policyFound).toBe(false)
     expect(isStreamClientVisibleTool(unknownInternalTool)).toBe(false)
+  })
+
+  // ===========================================================================
+  // E2B sandbox isolation — SDK file tools and sandboxed-fs are mutually exclusive
+  // ===========================================================================
+
+  const SDK_FILE_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "NotebookEdit"]
+
+  const e2bMcpTools = () => [
+    "mcp__alive-sandboxed-fs__Read",
+    "mcp__alive-sandboxed-fs__Write",
+    "mcp__alive-sandboxed-fs__Edit",
+    "mcp__alive-sandboxed-fs__Glob",
+    "mcp__alive-sandboxed-fs__Grep",
+    "mcp__alive-sandboxed-fs__Bash",
+    "mcp__alive-sandboxed-fs__NotebookEdit",
+    "mcp__alive-workspace__browser",
+    "mcp__alive-tools__search_tools",
+  ]
+
+  it("E2B workspace: denies SDK file/shell tools by policy", () => {
+    const e2bContext = createStreamToolContext({ executionMode: "e2b" })
+
+    for (const tool of SDK_FILE_TOOLS) {
+      const decision = getStreamToolDecision(tool, e2bContext)
+      expect(decision.executable).toBe(false)
+      expect(decision.reason).toContain("E2B")
+    }
+  })
+
+  it("E2B workspace: allows sandboxed-fs tools", () => {
+    const e2bContext = createStreamToolContext({ executionMode: "e2b" })
+
+    for (const tool of [
+      "mcp__alive-sandboxed-fs__Read",
+      "mcp__alive-sandboxed-fs__Write",
+      "mcp__alive-sandboxed-fs__Edit",
+      "mcp__alive-sandboxed-fs__Glob",
+      "mcp__alive-sandboxed-fs__Grep",
+      "mcp__alive-sandboxed-fs__Bash",
+      "mcp__alive-sandboxed-fs__NotebookEdit",
+    ]) {
+      const decision = getStreamToolDecision(tool, e2bContext)
+      expect(decision.executable).toBe(true)
+    }
+  })
+
+  it("E2B workspace: SDK file tools and sandboxed-fs are mutually exclusive in allowedTools", () => {
+    const e2bContext = createStreamToolContext({ executionMode: "e2b" })
+    const runtime = buildStreamToolRuntimeConfig(e2bMcpTools, e2bContext)
+
+    // Sandboxed-fs tools are allowed
+    expect(runtime.allowedTools).toContain("mcp__alive-sandboxed-fs__Read")
+    expect(runtime.allowedTools).toContain("mcp__alive-sandboxed-fs__Write")
+    expect(runtime.allowedTools).toContain("mcp__alive-sandboxed-fs__Bash")
+
+    // SDK file tools are denied
+    for (const tool of SDK_FILE_TOOLS) {
+      expect(runtime.allowedTools).not.toContain(tool)
+    }
+  })
+
+  it("regular site workspace: SDK file tools allowed, no sandboxed-fs", () => {
+    const siteContext = createStreamToolContext({ executionMode: "systemd", isSuperadminWorkspace: false })
+    const runtime = buildStreamToolRuntimeConfig(e2bMcpTools, siteContext)
+
+    // SDK file tools are allowed
+    for (const tool of SDK_FILE_TOOLS) {
+      expect(runtime.allowedTools).toContain(tool)
+    }
+
+    // Sandboxed-fs tools are NOT allowed (workspaceKind mismatch)
+    expect(runtime.allowedTools).not.toContain("mcp__alive-sandboxed-fs__Read")
+    expect(runtime.allowedTools).not.toContain("mcp__alive-sandboxed-fs__Write")
+    expect(runtime.allowedTools).not.toContain("mcp__alive-sandboxed-fs__Bash")
+  })
+
+  it("non-file SDK tools remain available in E2B mode", () => {
+    const e2bContext = createStreamToolContext({ executionMode: "e2b" })
+    const runtime = buildStreamToolRuntimeConfig(e2bMcpTools, e2bContext)
+
+    expect(runtime.allowedTools).toContain("TodoWrite")
+    expect(runtime.allowedTools).toContain("Mcp")
+    expect(runtime.allowedTools).toContain("BashOutput")
+    expect(runtime.allowedTools).toContain("TaskOutput")
+    expect(runtime.allowedTools).toContain("Skill")
   })
 })

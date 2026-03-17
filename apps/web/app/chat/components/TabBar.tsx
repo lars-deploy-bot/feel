@@ -4,30 +4,21 @@ import { History, Plus } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
+import { formatTimestamp } from "@/features/sidebar/utils"
 import { trackTabClosed, trackTabCreated, trackTabReopened } from "@/lib/analytics/events"
+import { TOP_BAR_HEIGHT } from "@/lib/layout"
 import type { Tab } from "@/lib/stores/tabStore"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function timeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000)
-  if (seconds < 60) return "just now"
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}
-
 // ─── Shared styles ───────────────────────────────────────────────────────────
 
-const ISLAND_BG = "bg-white dark:bg-[#1a1a1a] border border-black/[0.06] dark:border-white/[0.06]"
+const ISLAND_BG = "bg-black/[0.025] dark:bg-white/[0.04] border border-black/[0.03] dark:border-white/[0.04]"
 
 const ACTION_CIRCLE = `flex items-center justify-center size-8 rounded-full ${ISLAND_BG} transition-all duration-200`
 
 const PILL_ACTIVE =
-  "bg-white dark:bg-white/10 text-black dark:text-white shadow-[0_1px_4px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3),0_0_1px_rgba(255,255,255,0.05)]"
+  "bg-white dark:bg-white/10 text-black dark:text-white shadow-[0_1px_4px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3),0_0_1px_rgba(255,255,255,0.05)] rounded-full"
 
 const PILL_INACTIVE = "text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 cursor-pointer"
 
@@ -196,7 +187,7 @@ function TabPill({
       data-testid={`tab-${tab.id}`}
       data-tab-name={tab.name}
       data-active={isActive}
-      className={`flex items-center gap-1.5 h-8 px-3.5 text-[13px] font-medium rounded-full shrink-0 select-none touch-pan-x ${isActive ? PILL_ACTIVE : PILL_INACTIVE} ${swipe.isSwiping ? "" : "transition-all duration-200"}`}
+      className={`flex items-center gap-1.5 h-8 px-3.5 text-[13px] font-medium shrink-0 select-none touch-pan-x lowercase ${isActive ? PILL_ACTIVE : PILL_INACTIVE} ${swipe.isSwiping ? "" : "transition-all duration-200"}`}
       style={swipe.style}
       onClick={() => {
         if (!isEditing) onSelect()
@@ -320,7 +311,7 @@ function ClosedTabsDropdown({ tabs, triggerRef, onReopen, onClose }: ClosedTabsD
           </span>
           {tab.closedAt && (
             <span className="text-[10px] text-black/20 dark:text-white/20 shrink-0 tabular-nums">
-              {timeAgo(tab.closedAt)}
+              {formatTimestamp(tab.closedAt)}
             </span>
           )}
         </button>
@@ -366,11 +357,37 @@ export function TabBar({
   const closedBtnRef = useRef<HTMLButtonElement>(null)
   const closeMenu = useCallback(() => setShowClosedMenu(false), [])
 
+  // Collapse project pill to letter circle when tabs can't fit comfortably.
+  // Uses bar width + tab count — both stable inputs that don't change when the
+  // pill itself collapses, so there's no feedback loop.
+  const barRef = useRef<HTMLDivElement>(null)
+  const [pillCollapsed, setPillCollapsed] = useState(false)
+
+  useEffect(() => {
+    const bar = barRef.current
+    if (!bar) return
+
+    const check = () => {
+      const barWidth = bar.clientWidth
+      // ~80px per tab pill + ~240px for project chooser, action buttons, and gaps
+      setPillCollapsed(barWidth < tabs.length * 80 + 240)
+    }
+
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(bar)
+    return () => observer.disconnect()
+  }, [tabs.length])
+
   return (
-    <div data-testid="tab-bar" className="flex-shrink-0 overflow-hidden">
-      <div className="px-3 mx-auto w-full">
+    <div
+      data-testid="tab-bar"
+      className="flex-shrink-0 overflow-x-clip overflow-y-visible"
+      style={{ height: TOP_BAR_HEIGHT }}
+    >
+      <div className="px-3 mx-auto w-full h-full">
         {/* Single header row: project chooser | tabs (true center) | spacer */}
-        <div className="group/bar grid grid-cols-[auto_1fr_auto] items-center py-2">
+        <div ref={barRef} className="group/bar grid grid-cols-[auto_1fr_auto] items-center gap-3 h-full">
           {/* Left: sidebar toggle + project chooser */}
           <div className="flex items-center gap-2">
             <button
@@ -397,17 +414,17 @@ export function TabBar({
                 <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
               </svg>
             </button>
-            <OrganizationWorkspaceSwitcher workspace={workspace} wsOnly minimal />
+            <OrganizationWorkspaceSwitcher workspace={workspace} wsOnly minimal collapsed={pillCollapsed} />
           </div>
 
           {/* Center: tabs + actions */}
           {tabs.length > 0 ? (
-            <div className="flex items-center justify-center gap-2 min-w-0 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center justify-center gap-2 min-w-0">
               {/* Island + hint */}
-              <div className="relative">
+              <div className="relative min-w-0">
                 <div
                   role="tablist"
-                  className={`inline-flex items-center gap-1.5 px-1.5 py-1 rounded-full ${ISLAND_BG}`}
+                  className={`flex items-center gap-1 px-1.5 py-1 rounded-full overflow-x-auto scrollbar-hide ${ISLAND_BG}`}
                 >
                   {tabs.map(tab => (
                     <TabPill

@@ -7,6 +7,21 @@ import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
 
 const isDev = process.env.NODE_ENV === "development"
 
+const STORAGE_KEY = "alive-debug-view-v9"
+
+/** Read persisted debug state synchronously so the first render has the correct layout. */
+function readPersistedState(): Partial<DebugState> {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return {}
+    const parsed: { state?: Partial<DebugState> } = JSON.parse(raw)
+    return parsed.state ?? {}
+  } catch {
+    return {}
+  }
+}
+
 // Check if running on dev/staging environment (client-side check)
 function isDevOrStaging(): boolean {
   if (typeof window === "undefined") return false
@@ -55,6 +70,7 @@ export type DebugStore = DebugState & DebugActions
 export const useDebugStoreBase = create<DebugStore>()(
   persist(
     set => {
+      const persisted = readPersistedState()
       const actions = {
         toggleView: () => set(state => ({ isDebugView: !state.isDebugView })),
         toggleWorkbench: () =>
@@ -70,15 +86,15 @@ export const useDebugStoreBase = create<DebugStore>()(
         setWorkbenchFullscreen: (fullscreen: boolean) => set({ isWorkbenchFullscreen: fullscreen }),
       }
       return {
-        isDebugView: false,
-        showWorkbench: true,
-        isWorkbenchMinimized: true,
-        isWorkbenchFullscreen: false,
+        isDebugView: persisted.isDebugView ?? false,
+        showWorkbench: persisted.showWorkbench ?? true,
+        isWorkbenchMinimized: persisted.isWorkbenchMinimized ?? true,
+        isWorkbenchFullscreen: persisted.isWorkbenchFullscreen ?? false,
         actions,
       }
     },
     {
-      name: "alive-debug-view-v9",
+      name: STORAGE_KEY,
       partialize: state => ({
         isDebugView: state.isDebugView,
         showWorkbench: state.showWorkbench,

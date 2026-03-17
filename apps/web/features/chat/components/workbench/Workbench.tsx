@@ -19,6 +19,7 @@ import { useWorkbenchContext, type WorkbenchView, type WorkbenchViewProps } from
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useSuperadmin } from "@/hooks/use-superadmin"
 import { trackWorkbenchViewChanged } from "@/lib/analytics/events"
+import { TOP_BAR_HEIGHT } from "@/lib/layout"
 import { useDebugActions } from "@/lib/stores/debug-store"
 import { DrivePanel } from "./drive/DrivePanel"
 import { SitePreviewView } from "./SitePreviewView"
@@ -160,7 +161,11 @@ export function Workbench() {
   return (
     <div data-panel-role="workbench" className="relative bg-white dark:bg-[#0d0d0d] flex flex-col h-full w-full">
       {/* View switcher */}
-      <div data-panel-role="workbench-view-switcher" className="h-11 px-2.5 flex items-center gap-1 shrink-0">
+      <div
+        data-panel-role="workbench-view-switcher"
+        className="px-2.5 flex items-center gap-1 shrink-0"
+        style={{ height: TOP_BAR_HEIGHT }}
+      >
         {viewOptions.map(({ view, label, icon: Icon, activeClass, inactiveColor }) => {
           const active = workbench.view === view
           return (
@@ -252,7 +257,7 @@ function SuperadminMenu({
   useEffect(() => {
     if (!open) return
     function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false)
+      if (e.target instanceof Node && menuRef.current && !menuRef.current.contains(e.target)) setOpen(false)
     }
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false)

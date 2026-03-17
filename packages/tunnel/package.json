@@ -1,0 +1,29 @@
+{
+  "name": "@webalive/tunnel",
+  "version": "1.0.0",
+  "description": "Cloudflare Tunnel routing manager — replaces Caddy/nginx/preview-proxy",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "type-check": "tsgo --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "ci": "biome ci .",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "sync": "bun run src/sync.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
+    "@webalive/shared": "workspace:*",
+    "cloudflare": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

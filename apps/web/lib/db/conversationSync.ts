@@ -71,6 +71,8 @@ interface ServerConversation {
 interface ConversationsResponse {
   own: ServerConversation[]
   shared: ServerConversation[]
+  hasMore?: boolean
+  nextCursor?: string | null
 }
 
 /** Message shape returned by GET /api/conversations/messages */
@@ -253,7 +255,7 @@ async function buildConversationPayload(db: ReturnType<typeof getMessageDb>, con
  * Handle sync conflict by fetching fresh server data
  */
 async function handleConflict(db: ReturnType<typeof getMessageDb>, conflict: ConflictInfo): Promise<void> {
-  console.warn(`[sync] Conflict detected for ${conflict.conversationId}`, {
+  logError("sync", `Conflict detected for ${conflict.conversationId}`, {
     local: new Date(conflict.localUpdatedAt).toISOString(),
     server: new Date(conflict.serverUpdatedAt).toISOString(),
   })
@@ -392,7 +394,6 @@ async function syncBatch(
       })
     }
 
-    console.error("[sync] Batch sync failed", error)
     logError("sync", "Batch sync failed", {
       error: error instanceof Error ? error : undefined,
       conversationIds: batch.map(b => b.conversationId),
@@ -460,10 +461,6 @@ async function syncSingle(
       nextRetryAt: Date.now() + backoff,
     })
 
-    console.error("[sync] Failed to sync conversation", {
-      conversationId: item.conversationId,
-      error,
-    })
     logError("sync", "Single conversation sync failed", {
       error: error instanceof Error ? error : undefined,
       conversationId: item.conversationId,
@@ -497,7 +494,7 @@ export async function syncFromServer(
     return { conversations: 0, tabs: 0, isOffline: true }
   }
 
-  await fetchConversations(workspace, userId, orgId)
+  await fetchConversations(userId, orgId, workspace)
 
   // Count what we have locally now
   const db = getMessageDb(userId)
@@ -509,37 +506,45 @@ export async function syncFromServer(
 
 /**
  * Fetch user's conversations from server.
+ * workspace is optional — omit for cross-workspace unified sidebar fetch.
  *
  * CRITICAL: This fetches METADATA ONLY, not messages!
  * Messages are loaded lazily per-tab via fetchTabMessages.
  */
-export async function fetchConversations(workspace: string, userId: string, _orgId: string): Promise<void> {
+export async function fetchConversations(
+  userId: string,
+  _orgId: string,
+  workspace?: string,
+  cursor?: string,
+): Promise<{ hasMore: boolean; nextCursor: string | null }> {
   // Skip fetch if offline
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    return
+    return { hasMore: false, nextCursor: null }
   }
 
   try {
-    const response = await fetch(`/api/conversations?workspace=${encodeURIComponent(workspace)}`, {
+    const url = new URL("/api/conversations", window.location.origin)
+    if (workspace) url.searchParams.set("workspace", workspace)
+    if (cursor) url.searchParams.set("cursor", cursor)
+
+    const response = await fetch(url.toString(), {
       credentials: "include",
     })
 
     if (!response.ok) {
-      console.error("[sync] Failed to fetch conversations:", response.status)
       logError("sync", "Fetch conversations returned non-OK", { status: response.status, workspace })
-      return
+      return { hasMore: false, nextCursor: null }
     }
 
-    const { own, shared }: ConversationsResponse = await response.json()
+    const { own, shared, hasMore, nextCursor: responseCursor }: ConversationsResponse = await response.json()
     const db = getMessageDb(userId)
 
     // Merge server data with local data
     // Server is source of truth for synced conversations
     // Local changes take precedence if pendingSync is true
 
-    // Collect tabs and conversations for cross-device sync to localStorage
-    const allServerTabs: DbTab[] = []
-    const allConversations: Array<{ id: string; title: string }> = []
+    // Collect tabs grouped by workspace for cross-device sync to localStorage
+    const tabsByWorkspace = new Map<string, { tabs: DbTab[]; conversations: Array<{ id: string; title: string }> }>()
 
     for (const convo of [...own, ...shared]) {
       const local = await db.conversations.get(convo.id)
@@ -549,8 +554,14 @@ export async function fetchConversations(workspace: string, userId: string, _org
         continue
       }
 
-      // Track conversation for tab sync
-      allConversations.push({ id: convo.id, title: convo.title })
+      // Track conversation for tab sync (grouped by workspace)
+      const ws = convo.workspace
+      if (!tabsByWorkspace.has(ws)) {
+        tabsByWorkspace.set(ws, { tabs: [], conversations: [] })
+      }
+      const wsGroup = tabsByWorkspace.get(ws)!
+      wsGroup.conversations.push({ id: convo.id, title: convo.title })
+
       const normalizedSource = normalizeConversationSourcePayload(convo.source, convo.sourceMetadata)
 
       // Upsert conversation from server
@@ -598,19 +609,23 @@ export async function fetchConversations(workspace: string, userId: string, _org
         }
 
         await db.tabs.put(dbTab)
-        allServerTabs.push(dbTab)
+        wsGroup.tabs.push(dbTab)
       }
     }
 
-    // Cross-device sync: populate localStorage tabStore with server tabs
+    // Cross-device sync: populate localStorage tabStore per workspace
     // This enables clicking synced conversations in the sidebar to load correctly
-    syncDexieTabsToLocalStorage(workspace, allServerTabs, allConversations)
+    for (const [ws, { tabs, conversations }] of tabsByWorkspace) {
+      syncDexieTabsToLocalStorage(ws, tabs, conversations)
+    }
+
+    return { hasMore: hasMore ?? false, nextCursor: responseCursor ?? null }
   } catch (error) {
-    console.error("[sync] Failed to fetch conversations:", error)
     logError("sync", "Failed to fetch conversations", {
       error: error instanceof Error ? error : undefined,
       workspace,
     })
+    return { hasMore: false, nextCursor: null }
   }
 }
 
@@ -660,7 +675,6 @@ async function fetchTabMessagesImpl(
     const response = await fetch(url.toString(), { credentials: "include" })
 
     if (!response.ok) {
-      console.error("[sync] Failed to fetch messages:", response.status)
       logError("sync", "Fetch tab messages returned non-OK", { status: response.status, tabId })
       return { messages: localMessages, hasMore: false }
     }
@@ -726,7 +740,6 @@ async function fetchTabMessagesImpl(
 
     return { messages: updatedMessages, hasMore }
   } catch (error) {
-    console.error("[sync] Failed to fetch messages:", error)
     logError("sync", "Failed to fetch tab messages", {
       error: error instanceof Error ? error : undefined,
       tabId,
