@@ -44,18 +44,15 @@ function getBuiltinModule(name: "node:fs"): typeof import("node:fs") | null
 function getBuiltinModule(name: "node:url"): typeof import("node:url") | null
 function getBuiltinModule(name: "node:path"): typeof import("node:path") | null
 function getBuiltinModule(
-  name: string,
+  name: "node:fs" | "node:url" | "node:path",
 ): typeof import("node:fs") | typeof import("node:url") | typeof import("node:path") | null {
   if (isBrowser || typeof process === "undefined" || typeof process.getBuiltinModule !== "function") {
     return null
   }
 
-  // process.getBuiltinModule returns the module or undefined for unknown names.
-  // The overload signatures guarantee callers only pass known module names,
-  // so the return type is safe at call sites.
-  const mod = process.getBuiltinModule(name)
-  if (!mod) return null
-  return mod as typeof import("node:fs") | typeof import("node:url") | typeof import("node:path")
+  if (name === "node:fs") return process.getBuiltinModule("node:fs") ?? null
+  if (name === "node:url") return process.getBuiltinModule("node:url") ?? null
+  return process.getBuiltinModule("node:path") ?? null
 }
 
 /**

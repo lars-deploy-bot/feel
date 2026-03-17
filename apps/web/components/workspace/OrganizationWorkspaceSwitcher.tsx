@@ -128,6 +128,9 @@ export function OrganizationWorkspaceSwitcher({
           ref={wsTriggerRef}
           type="button"
           onClick={() => setWsOpen(prev => !prev)}
+          aria-label={wsInOrg ? `Select project ${projectName}` : "Select project"}
+          aria-expanded={wsOpen}
+          title={projectName}
           className={
             collapsed
               ? "size-7 rounded-full flex items-center justify-center text-[13px] font-medium text-black/35 dark:text-white/30 hover:text-black/55 dark:hover:text-white/50 transition-colors duration-100 select-none shrink-0"

@@ -30,7 +30,7 @@ test.describe
       const context = await browser.newContext()
       sharedPage = await context.newPage()
 
-      user = await getLiveStagingUser(0, requireEnvAppBaseUrl())
+      user = await getLiveStagingUser(test.info().workerIndex, requireEnvAppBaseUrl())
       await loginLiveStaging(sharedPage, user)
       await waitForMessageInput(sharedPage)
     })

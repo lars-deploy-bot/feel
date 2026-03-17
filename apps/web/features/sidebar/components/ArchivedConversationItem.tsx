@@ -38,7 +38,7 @@ export function ArchivedConversationItem({
               onRestore()
             }
           }}
-          className="opacity-0 group-hover:opacity-100 size-5 rounded-lg flex items-center justify-center text-black/20 dark:text-white/20 hover:text-black/40 dark:hover:text-white/40 transition-colors duration-100 active:scale-90 shrink-0"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 size-5 rounded-lg flex items-center justify-center text-black/20 dark:text-white/20 hover:text-black/40 dark:hover:text-white/40 transition-colors duration-100 active:scale-90 shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           aria-label="Restore"
         >
           <ArchiveRestore size={11} strokeWidth={1.75} />

@@ -34,6 +34,8 @@ export function buildBaseConfig(overrides?: Record<string, unknown>): Record<str
     sentry: {
       dsn: "https://abc123@sentry.example.com/2",
       url: "https://sentry.example.com",
+      org: "example-org",
+      project: "alive",
       projectId: "2",
     },
     contactEmail: "ops@example.com",
