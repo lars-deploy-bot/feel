@@ -31,7 +31,7 @@ import {
 // =============================================================================
 
 export type StreamToolRole = "member" | "admin" | "superadmin"
-export type StreamWorkspaceKind = "site" | "platform"
+export type StreamWorkspaceKind = "site" | "platform" | "e2b"
 export type StreamToolVisibility = "visible" | "silent"
 
 // =============================================================================
@@ -86,10 +86,18 @@ export interface StreamToolRuntimeConfig {
   visibleTools: string[]
 }
 
-interface StreamToolContextInput {
+/**
+ * Mirrors Database["app"]["Enums"]["execution_mode"] from @webalive/database.
+ * Redeclared here because @webalive/shared has no runtime dependency on @webalive/database.
+ */
+export type ExecutionMode = "systemd" | "e2b"
+
+export interface StreamToolContextInput {
   isAdmin?: boolean
   isSuperadmin?: boolean
   isSuperadminWorkspace?: boolean
+  /** Execution mode from database — "e2b" gives workspaceKind "e2b" (sandboxed-fs swap). */
+  executionMode: ExecutionMode
   mode?: StreamMode
   connectedProviders?: string[]
 }
@@ -104,13 +112,18 @@ export function getStreamToolRole(isAdmin: boolean, isSuperadmin: boolean): Stre
   return "member"
 }
 
-export function getStreamWorkspaceKind(isSuperadminWorkspace: boolean): StreamWorkspaceKind {
-  return isSuperadminWorkspace ? "platform" : "site"
+export function getStreamWorkspaceKind(
+  isSuperadminWorkspace: boolean,
+  executionMode: ExecutionMode,
+): StreamWorkspaceKind {
+  if (isSuperadminWorkspace) return "platform"
+  if (executionMode === "e2b") return "e2b"
+  return "site"
 }
 
-export function createStreamToolContext(input: StreamToolContextInput = {}): StreamToolContext {
+export function createStreamToolContext(input: StreamToolContextInput): StreamToolContext {
   const role = getStreamToolRole(!!input.isAdmin, !!input.isSuperadmin)
-  const workspaceKind = getStreamWorkspaceKind(!!input.isSuperadminWorkspace)
+  const workspaceKind = getStreamWorkspaceKind(!!input.isSuperadminWorkspace, input.executionMode)
   const connectedProviders = dedupeStrings((input.connectedProviders ?? []).filter(Boolean))
 
   return {
@@ -224,20 +237,6 @@ export const STREAM_SDK_TOOL_NAMES = defineSdkToolNames(
 type MissingSdkToolNames = Exclude<StreamSdkToolName, (typeof STREAM_SDK_TOOL_NAMES)[number]>
 const _assertAllSdkToolNamesListed: MissingSdkToolNames extends never ? true : never = true
 
-// SDK tools disabled for non-superadmin users in site workspaces.
-// These users must use the sandboxed FS MCP aliases instead.
-const SITE_SANDBOXED_FS_DISABLED_SDK_TOOLS = [
-  SDK_TOOL.READ,
-  SDK_TOOL.WRITE,
-  SDK_TOOL.EDIT,
-  SDK_TOOL.GLOB,
-  SDK_TOOL.GREP,
-  SDK_TOOL.BASH,
-  SDK_TOOL.NOTEBOOK_EDIT,
-] as const
-
-const SITE_SANDBOXED_FS_DISABLED_SDK_TOOL_SET = new Set<string>(SITE_SANDBOXED_FS_DISABLED_SDK_TOOLS)
-
 const PLAN_MODE_SANDBOXED_FS_TOOLS = [
   "mcp__alive-sandboxed-fs__Read",
   "mcp__alive-sandboxed-fs__Glob",
@@ -265,6 +264,9 @@ export const STREAM_MODES: Record<StreamMode, StreamModeConfig> = {
     requiredRole: "member",
     modeTools: [
       ...PLAN_MODE_SANDBOXED_FS_TOOLS,
+      SDK_TOOL.READ,
+      SDK_TOOL.GLOB,
+      SDK_TOOL.GREP,
       SDK_TOOL.BASH_OUTPUT,
       SDK_TOOL.TASK_OUTPUT,
       SDK_TOOL.WEB_FETCH,
@@ -512,12 +514,14 @@ const ALL_ROLES: readonly StreamToolRole[] = ["member", "admin", "superadmin"]
 const ADMIN_AND_SUPERADMIN: readonly StreamToolRole[] = ["admin", "superadmin"]
 const SUPERADMIN_ONLY: readonly StreamToolRole[] = ["superadmin"]
 const MEMBER_ONLY: readonly StreamToolRole[] = ["member"]
-const BOTH_WORKSPACE_KINDS: readonly StreamWorkspaceKind[] = ["site", "platform"]
+const ALL_WORKSPACE_KINDS: readonly StreamWorkspaceKind[] = ["site", "platform", "e2b"]
+/** SDK file/shell tools are replaced by sandboxed-fs MCP aliases in E2B mode. */
+const NON_E2B_WORKSPACE_KINDS: readonly StreamWorkspaceKind[] = ["site", "platform"]
 
 function policy(overrides: Partial<StreamToolPolicy> & Pick<StreamToolPolicy, "reason">): StreamToolPolicy {
   return {
     roles: ALL_ROLES,
-    workspaceKinds: BOTH_WORKSPACE_KINDS,
+    workspaceKinds: ALL_WORKSPACE_KINDS,
     visibility: "visible",
     ...overrides,
   }
@@ -554,12 +558,30 @@ function generateInternalMcpPolicies(): Record<string, StreamToolPolicy> {
  * SDK tool policies (hand-maintained — SDK tools are external to our codebase).
  */
 const SDK_TOOL_POLICIES: Record<StreamSdkToolName, StreamToolPolicy> = {
-  [SDK_TOOL.READ]: policy({ reason: "Workspace-scoped file reads are allowed." }),
-  [SDK_TOOL.WRITE]: policy({ reason: "Workspace file writes are allowed." }),
-  [SDK_TOOL.EDIT]: policy({ reason: "Workspace file edits are allowed." }),
-  [SDK_TOOL.GLOB]: policy({ reason: "Workspace discovery is allowed." }),
-  [SDK_TOOL.GREP]: policy({ reason: "Workspace search is allowed." }),
-  [SDK_TOOL.BASH]: policy({ reason: "Shell commands are allowed with runtime safeguards." }),
+  [SDK_TOOL.READ]: policy({
+    reason: "File reads — E2B uses sandboxed-fs instead.",
+    workspaceKinds: NON_E2B_WORKSPACE_KINDS,
+  }),
+  [SDK_TOOL.WRITE]: policy({
+    reason: "File writes — E2B uses sandboxed-fs instead.",
+    workspaceKinds: NON_E2B_WORKSPACE_KINDS,
+  }),
+  [SDK_TOOL.EDIT]: policy({
+    reason: "File edits — E2B uses sandboxed-fs instead.",
+    workspaceKinds: NON_E2B_WORKSPACE_KINDS,
+  }),
+  [SDK_TOOL.GLOB]: policy({
+    reason: "Glob queries — E2B uses sandboxed-fs instead.",
+    workspaceKinds: NON_E2B_WORKSPACE_KINDS,
+  }),
+  [SDK_TOOL.GREP]: policy({
+    reason: "Grep queries — E2B uses sandboxed-fs instead.",
+    workspaceKinds: NON_E2B_WORKSPACE_KINDS,
+  }),
+  [SDK_TOOL.BASH]: policy({
+    reason: "Shell commands — E2B uses sandboxed-fs instead.",
+    workspaceKinds: NON_E2B_WORKSPACE_KINDS,
+  }),
   [SDK_TOOL.TASK_OUTPUT]: policy({ reason: "Task output streaming is allowed." }),
   [SDK_TOOL.BASH_OUTPUT]: policy({ reason: "Legacy bash output alias is allowed." }),
   [SDK_TOOL.TODO_WRITE]: policy({
@@ -579,7 +601,10 @@ const SDK_TOOL_POLICIES: Record<StreamSdkToolName, StreamToolPolicy> = {
     reason: "MCP resource reading is member-only by product policy.",
     roles: MEMBER_ONLY,
   }),
-  [SDK_TOOL.NOTEBOOK_EDIT]: policy({ reason: "Notebook editing is allowed." }),
+  [SDK_TOOL.NOTEBOOK_EDIT]: policy({
+    reason: "Notebook editing — E2B uses sandboxed-fs instead.",
+    workspaceKinds: NON_E2B_WORKSPACE_KINDS,
+  }),
   [SDK_TOOL.WEB_FETCH]: policy({ reason: "Single-page fetch is allowed." }),
   [SDK_TOOL.SKILL]: policy({ reason: "Local skills are allowed." }),
   [SDK_TOOL.TASK_STOP]: policy({
@@ -795,10 +820,10 @@ export function buildStreamToolRuntimeConfig(
   const sdkTools = getSdkToolsForPolicyEvaluation()
   const internalMcpTools = getInternalMcpToolsForPolicyEvaluation(getEnabledMcpToolNames)
 
-  let allowedSdkTools = sdkTools.filter(
+  const allowedSdkTools = sdkTools.filter(
     tool => getStreamToolDecision(tool, context).executable || isUserApprovalTool(tool),
   )
-  let disallowedSdkTools = sdkTools.filter(
+  const disallowedSdkTools = sdkTools.filter(
     tool => !getStreamToolDecision(tool, context).executable && !isUserApprovalTool(tool),
   )
 
@@ -807,26 +832,6 @@ export function buildStreamToolRuntimeConfig(
   // Exclude discoverable tools from allowedTools (superadmin gets everything)
   if (context.role !== "superadmin") {
     allowedInternalMcpTools = allowedInternalMcpTools.filter(tool => !isDiscoverableTool(tool))
-  }
-
-  // One clear security gate for site users:
-  // non-superadmin roles must use sandboxed MCP file/shell tools, never SDK built-ins.
-  if (context.workspaceKind === "site" && context.role !== "superadmin") {
-    allowedSdkTools = allowedSdkTools.filter(tool => !SITE_SANDBOXED_FS_DISABLED_SDK_TOOL_SET.has(tool))
-    disallowedSdkTools = dedupeStrings([
-      ...disallowedSdkTools,
-      ...SITE_SANDBOXED_FS_DISABLED_SDK_TOOLS.filter(tool => !isUserApprovalTool(tool)),
-    ])
-  }
-
-  // One clear security gate for site users:
-  // non-superadmin roles must use sandboxed MCP file/shell tools, never SDK built-ins.
-  if (context.workspaceKind === "site" && context.role !== "superadmin") {
-    allowedSdkTools = allowedSdkTools.filter(tool => !SITE_SANDBOXED_FS_DISABLED_SDK_TOOL_SET.has(tool))
-    disallowedSdkTools = dedupeStrings([
-      ...disallowedSdkTools,
-      ...SITE_SANDBOXED_FS_DISABLED_SDK_TOOLS.filter(tool => !isUserApprovalTool(tool)),
-    ])
   }
 
   const allowedGlobalMcpTools = getGlobalMcpToolNames().filter(tool => getStreamToolDecision(tool, context).executable)
@@ -989,6 +994,7 @@ export function getStreamAllowedTools(
   isSuperadminWorkspace = false,
   mode: StreamMode = "default",
   connectedProviders: string[] = [],
+  executionMode: ExecutionMode,
 ): string[] {
   const context = createStreamToolContext({
     isAdmin,
@@ -996,6 +1002,7 @@ export function getStreamAllowedTools(
     isSuperadminWorkspace,
     mode,
     connectedProviders,
+    executionMode,
   })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).allowedTools
 }
@@ -1008,11 +1015,13 @@ export function getStreamDisallowedTools(
   isSuperadmin = false,
   mode: StreamMode = "default",
   isSuperadminWorkspace = false,
+  executionMode: ExecutionMode,
 ): string[] {
   const context = createStreamToolContext({
     isAdmin,
     isSuperadmin,
     isSuperadminWorkspace,
+    executionMode,
     mode,
   })
   return buildStreamToolRuntimeConfig(() => [], context).disallowedTools

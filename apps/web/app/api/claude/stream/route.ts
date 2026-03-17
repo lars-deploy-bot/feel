@@ -612,8 +612,22 @@ export async function POST(req: NextRequest) {
       // Note: Internal MCP servers (alive-workspace, alive-sandboxed-fs, alive-tools) are created locally
       // in the worker because createSdkMcpServer returns function objects that cannot
       // be serialized via IPC. Only OAuth HTTP servers are passed here.
-      const allowedTools = getAllowedTools(cwd, user.isAdmin, user.isSuperadmin, isSuperadminWorkspace, streamMode)
-      const disallowedTools = getDisallowedTools(user.isAdmin, user.isSuperadmin, streamMode, isSuperadminWorkspace)
+      const executionMode = isSuperadminWorkspace ? "systemd" : domainRecord.execution_mode
+      const allowedTools = getAllowedTools(
+        cwd,
+        user.isAdmin,
+        user.isSuperadmin,
+        isSuperadminWorkspace,
+        streamMode,
+        executionMode,
+      )
+      const disallowedTools = getDisallowedTools(
+        user.isAdmin,
+        user.isSuperadmin,
+        streamMode,
+        isSuperadminWorkspace,
+        executionMode,
+      )
 
       if (streamMode !== "default") {
         logger.log(`${streamMode} mode: ${allowedTools.length} tools available under registry policy`)

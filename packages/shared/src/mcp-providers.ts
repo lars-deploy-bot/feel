@@ -629,11 +629,6 @@ export type GlobalMcpProviderRegistry = Record<string, GlobalMcpProviderConfig>
  * 3. Add server config in worker-entry.mjs
  */
 export const GLOBAL_MCP_PROVIDERS = {
-  context7: {
-    url: "http://localhost:8082/mcp",
-    friendlyName: "Context7",
-    knownTools: ["mcp__context7__resolve-library-id", "mcp__context7__get-library-docs"] as const,
-  },
   "google-scraper": {
     url: "http://localhost:8083/mcp",
     friendlyName: "Google Maps",
