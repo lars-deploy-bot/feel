@@ -98,6 +98,7 @@ export const baseTestConfig = {
   env: {
     ...loadEnvFile(),
     STREAM_ENV: "local",
+    NEXT_PUBLIC_STREAM_ENV: "local",
   },
   exclude: [
     "**/node_modules/**",
