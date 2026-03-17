@@ -273,7 +273,7 @@ banner "Deploying: $ENV (port $PORT)"
 phase_start "Validating environment"
 
 # Check env file
-ENV_FILE="apps/web/.env.$ENV"
+ENV_FILE="$PROJECT_ROOT/apps/web/.env.$ENV"
 if [ -f "$ENV_FILE" ]; then
     # Validate LOCKBOX_MASTER_KEY
     LOCKBOX=$(grep "^LOCKBOX_MASTER_KEY=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- || echo "")
@@ -374,7 +374,7 @@ else
 
     STATIC_LOG="/tmp/static-check-$ENV.log"
     set +e
-    (bun run validate:turbo-env && bun run check:workspace-contract && turbo run type-check && turbo run ci && bun run --cwd apps/web scripts/check-error-patterns.ts) > "$STATIC_LOG" 2>&1
+    (bun run validate:turbo-env && bun run check:workspace-contract && turbo run type-check && turbo run ci && bun run --cwd "$PROJECT_ROOT/apps/web" scripts/check-error-patterns.ts) > "$STATIC_LOG" 2>&1
     STATIC_EXIT=$?
     set -e
 
@@ -614,10 +614,10 @@ else
     E2E_SECRET=$(grep "^E2E_TEST_SECRET=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- || echo "")
     if [ -z "$E2E_SECRET" ]; then
         # Production env intentionally omits E2E_TEST_SECRET — read from staging
-        E2E_SECRET=$(grep "^E2E_TEST_SECRET=" "apps/web/.env.staging" 2>/dev/null | cut -d'=' -f2- || echo "")
+        E2E_SECRET=$(grep "^E2E_TEST_SECRET=" "$PROJECT_ROOT/apps/web/.env.staging" 2>/dev/null | cut -d'=' -f2- || echo "")
     fi
     if [ -z "$E2E_SECRET" ]; then
-        phase_end error "E2E_TEST_SECRET not found in $ENV_FILE or apps/web/.env.staging"
+        phase_end error "E2E_TEST_SECRET not found in $ENV_FILE or $PROJECT_ROOT/apps/web/.env.staging"
         exit 1
     fi
 
@@ -633,7 +633,7 @@ else
         local script_name="$1"
         shift
         (
-            cd apps/web &&
+            cd "$PROJECT_ROOT/apps/web" &&
             ENV_FILE=".env.$ENV" \
             E2E_TEST_SECRET="$E2E_SECRET" \
             PLAYWRIGHT_BROWSERS_PATH="$E2E_PLAYWRIGHT_PATH" \
