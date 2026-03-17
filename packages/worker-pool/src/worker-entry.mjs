@@ -539,7 +539,9 @@ function dropPrivileges() {
         if (subdirMode !== 0o1777 && (subdirMode & 0o022) !== 0o022) {
           chmodSync(subdir, 0o1777)
         }
-      } catch {}
+      } catch (e) {
+        console.error(`[worker] Failed to fix project subdir permissions for ${entry.name}: ${e.message}`)
+      }
     }
   } catch (e) {
     console.error(`[worker] Failed to ensure projects dir permissions: ${e.message}`)

@@ -54,7 +54,7 @@ export async function pollForConversation(opts: {
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
-    const { data } = await app
+    const { data, error } = await app
       .from("conversations")
       .select("conversation_id, message_count")
       .eq(COL_WORKSPACE, workspace)
@@ -62,6 +62,8 @@ export async function pollForConversation(opts: {
       .gte(COL_MESSAGE_COUNT, minMessages)
       .order(COL_LAST_MESSAGE_AT, { ascending: false })
       .limit(1)
+
+    if (error) throw new Error(`Poll query failed: ${error.message}`)
 
     const convo = data?.[0]
     if (convo) {

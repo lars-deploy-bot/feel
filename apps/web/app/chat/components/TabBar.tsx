@@ -377,7 +377,7 @@ export function TabBar({
     const observer = new ResizeObserver(check)
     observer.observe(bar)
     return () => observer.disconnect()
-  }, [tabs.length])
+  }, [tabs.length, workspace, closedTabs.length, isSidebarOpen])
 
   return (
     <div
