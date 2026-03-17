@@ -27,14 +27,7 @@ export const SETTINGS_SOURCES = STREAM_SETTINGS_SOURCES
  * @param {string} [mode="default"] - Stream mode ("default" | "plan" | "superadmin")
  * @returns {string[]} Base allowed tools list
  */
-export function getAllowedTools(
-  _workspacePath,
-  isAdmin,
-  isSuperadmin,
-  isSuperadminWorkspace,
-  mode,
-  executionMode,
-) {
+export function getAllowedTools(_workspacePath, isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode) {
   const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).allowedTools
 }
@@ -48,13 +41,7 @@ export function getAllowedTools(
  * @param {string} [executionMode] - "systemd" or "e2b"
  * @returns {string[]} Disallowed tools list
  */
-export function getDisallowedTools(
-  isAdmin,
-  isSuperadmin,
-  mode,
-  isSuperadminWorkspace,
-  executionMode,
-) {
+export function getDisallowedTools(isAdmin, isSuperadmin, mode, isSuperadminWorkspace, executionMode) {
   const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).disallowedTools
 }
