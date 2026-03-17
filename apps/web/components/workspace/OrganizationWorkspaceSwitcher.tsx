@@ -4,11 +4,12 @@ import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { ChevronDown, Shield } from "lucide-react"
 import { useCallback, useMemo, useRef, useState } from "react"
 import toast from "react-hot-toast"
+import { deriveProjectName } from "@/features/sidebar/utils"
 import { trackCreateProjectClicked, trackCreateTeamClicked } from "@/lib/analytics/events"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useWorkspacesQuery } from "@/lib/hooks/useSettingsQueries"
-import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import { useRecentWorkspaces, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 import { SwitcherDropdown } from "./SwitcherDropdown"
 
 // ─── Accessors (stable references, defined outside component) ────────────────
@@ -30,12 +31,8 @@ interface OrganizationWorkspaceSwitcherProps {
   wsOnly?: boolean
   /** Minimal mode: shows only a clean project name (first segment of domain, capitalized). Click opens switcher. */
   minimal?: boolean
-}
-
-/** Derive a clean project name: "larry.alive.best" → "Larry", "alive" → "Alive" */
-function deriveProjectName(domain: string): string {
-  const first = domain.split(".")[0]
-  return first.charAt(0).toUpperCase() + first.slice(1)
+  /** Collapse minimal pill to a single-letter circle (used when tab bar is narrow) */
+  collapsed?: boolean
 }
 
 export function OrganizationWorkspaceSwitcher({
@@ -44,10 +41,12 @@ export function OrganizationWorkspaceSwitcher({
   orgOnly,
   wsOnly,
   minimal,
+  collapsed,
 }: OrganizationWorkspaceSwitcherProps) {
   const { organizations } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
   const { setCurrentWorkspace, setSelectedOrg } = useWorkspaceActions()
+  const recentWorkspaces = useRecentWorkspaces()
 
   const org = organizations.find(o => o.org_id === selectedOrgId) ?? organizations[0]
 
@@ -87,11 +86,16 @@ export function OrganizationWorkspaceSwitcher({
     (selected: Organization) => {
       setSelectedOrg(selected.org_id)
       if (selected.org_id !== org?.org_id) {
-        setCurrentWorkspace(null, selected.org_id)
+        // Auto-select the most recent workspace for the new org instead of clearing to null
+        const orgRecents = recentWorkspaces
+          .filter(r => r.orgId === selected.org_id)
+          .sort((a, b) => b.lastAccessed - a.lastAccessed)
+        const mostRecent = orgRecents[0]?.domain ?? null
+        setCurrentWorkspace(mostRecent, selected.org_id)
       }
       setOrgOpen(false)
     },
-    [setSelectedOrg, setCurrentWorkspace, org?.org_id],
+    [setSelectedOrg, setCurrentWorkspace, org?.org_id, recentWorkspaces],
   )
 
   const handleWsSelect = useCallback(
@@ -115,15 +119,22 @@ export function OrganizationWorkspaceSwitcher({
 
   // Minimal layout: just the project name, click to switch
   if (minimal) {
+    const projectName = wsInOrg ? deriveProjectName(wsInOrg) : "Select project"
+    const firstLetter = wsInOrg ? deriveProjectName(wsInOrg).charAt(0) : "?"
+
     return (
       <div className="relative">
         <button
           ref={wsTriggerRef}
           type="button"
           onClick={() => setWsOpen(prev => !prev)}
-          className="text-[13px] font-semibold text-black/40 dark:text-white/30 hover:text-black/60 dark:hover:text-white/50 bg-white dark:bg-[#1a1a1a] border border-emerald-400/30 dark:border-emerald-500/20 ring-1 ring-emerald-400/10 dark:ring-emerald-500/10 px-3 py-1 rounded-full transition-all select-none shrink-0"
+          className={
+            collapsed
+              ? "size-7 rounded-full flex items-center justify-center text-[13px] font-medium text-black/35 dark:text-white/30 hover:text-black/55 dark:hover:text-white/50 transition-colors duration-100 select-none shrink-0"
+              : "text-[13px] font-medium text-black/35 dark:text-white/30 hover:text-black/55 dark:hover:text-white/50 px-1 transition-colors duration-100 select-none shrink-0"
+          }
         >
-          {wsInOrg ? deriveProjectName(wsInOrg) : "Select project"}
+          {collapsed ? firstLetter : projectName}
         </button>
 
         {wsOpen && workspaces.length > 0 && (
@@ -146,7 +157,7 @@ export function OrganizationWorkspaceSwitcher({
   // Compact layout for sidebar
   if (compact) {
     return (
-      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+      <div className="flex items-center min-w-0 flex-1">
         {/* Org trigger - small label */}
         {!wsOnly && (
           <button
@@ -156,10 +167,10 @@ export function OrganizationWorkspaceSwitcher({
               setOrgOpen(prev => !prev)
               setWsOpen(false)
             }}
-            className="flex items-center gap-1.5 text-[13px] font-medium text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] px-2 py-1 rounded-lg transition-all truncate"
+            className="flex items-center gap-1 text-[13px] font-medium text-black/40 dark:text-white/30 hover:text-black/60 dark:hover:text-white/50 transition-colors duration-100 truncate"
           >
             <span className="truncate">{org.name}</span>
-            {showOrgChevron && <ChevronDown size={10} strokeWidth={2} className="shrink-0 opacity-50" />}
+            {showOrgChevron && <ChevronDown size={10} strokeWidth={2} className="shrink-0 opacity-40" />}
           </button>
         )}
 

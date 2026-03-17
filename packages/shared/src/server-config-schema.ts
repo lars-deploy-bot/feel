@@ -77,6 +77,15 @@ const tlsSchema = z
   })
   .strict()
 
+const tunnelSchema = z
+  .object({
+    accountId: z.string().min(1),
+    tunnelId: z.string().min(1),
+    apiToken: z.string().min(1),
+    zoneId: z.string().min(1),
+  })
+  .strict()
+
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
@@ -109,6 +118,8 @@ export const serverConfigSchema = z
       .strict(),
 
     tls: tlsSchema.optional(),
+
+    tunnel: tunnelSchema.optional(),
 
     urls: z
       .object({

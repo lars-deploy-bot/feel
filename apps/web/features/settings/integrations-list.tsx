@@ -30,6 +30,7 @@ import {
   trackIntegrationsViewed,
 } from "@/lib/analytics/events"
 import { getIntegrationUI } from "@/lib/integrations/registry"
+import { stripOAuthCallbackParams } from "@/lib/oauth/popup-constants"
 import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
 
 // Constants
@@ -126,14 +127,9 @@ export function IntegrationsList({ layout = "grid", filter }: IntegrationsListPr
     if (integration && status === "success") {
       // OAuth just succeeded - refetch to show "Connected" status immediately
       refetch()
-      // Clean up URL params
       const url = new URL(window.location.href)
-      url.searchParams.delete("integration")
-      url.searchParams.delete("status")
-      url.searchParams.delete("message")
-      url.searchParams.delete("error_code")
-      url.searchParams.delete("error_action")
-      window.history.replaceState({}, "", url.toString())
+      stripOAuthCallbackParams(url)
+      window.history.replaceState(window.history.state, "", url.toString())
     }
   }, [urlSearchParams, refetch])
 

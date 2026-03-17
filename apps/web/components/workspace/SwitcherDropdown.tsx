@@ -89,13 +89,18 @@ export function SwitcherDropdown<T>({
 
   // ─── Filter + keyboard navigation ────────────────────────────────────────
 
-  const filtered = useMemo(() => {
-    if (!search) return items
-    const q = search.toLowerCase()
-    return items.filter(item => getLabel(item).toLowerCase().includes(q))
-  }, [items, search, getLabel])
-
   const activeKey = activeItem ? getKey(activeItem) : null
+
+  const filtered = useMemo(() => {
+    const base = search ? items.filter(item => getLabel(item).toLowerCase().includes(search.toLowerCase())) : items
+    if (!activeKey) return base
+    // Active item always first
+    return base.toSorted((a, b) => {
+      const aActive = getKey(a) === activeKey ? 0 : 1
+      const bActive = getKey(b) === activeKey ? 0 : 1
+      return aActive - bActive
+    })
+  }, [items, search, getLabel, getKey, activeKey])
 
   // Reset highlight when search changes
   useEffect(() => setHighlight(-1), [search])

@@ -1,29 +1,35 @@
 /**
  * Layout invariants for the chat + workbench panel split.
  *
- * All sizes are percentages of the panel group.
- * react-resizable-panels enforces: CHAT.min + WORKBENCH.min ≤ 100
- *
- * The workbench is collapsible — when hidden it collapses to 0%.
- * This avoids layout shifts when toggling the workbench on/off.
+ * react-resizable-panels v4: bare numbers = pixels, strings = percentage/units.
+ * We use pixel values for min sizes (stable across viewport widths)
+ * and percentage strings for defaults.
  */
 
 /** Chat panel — the primary panel, always visible */
 export const CHAT_PANEL = {
-  min: 25,
-  default: 25,
+  /** Minimum width in pixels — the resize handle cannot push chat below this */
+  min: 380,
+  /** Default size as percentage of the panel group */
+  default: "30%",
   id: "chat-panel",
 } as const
 
 /** Workbench panel — collapsible secondary panel */
 export const WORKBENCH_PANEL = {
-  min: 20,
-  default: 100 - CHAT_PANEL.default,
+  /** Minimum width in pixels when expanded */
+  min: 200,
+  /** Default size as percentage of the panel group */
+  default: "70%",
+  /** Collapsed to 0 when hidden */
   collapsedSize: 0,
   id: "workbench-panel",
 } as const
 
 export const RESIZE_HANDLE_ID = "chat-workbench-handle"
+
+/** Shared top bar height (px) — sidebar header, tab bar, workbench view switcher */
+export const TOP_BAR_HEIGHT = 52
 
 /** Sidebar collapsed rail layout — shared so adjacent content aligns vertically */
 export const SIDEBAR_RAIL = {

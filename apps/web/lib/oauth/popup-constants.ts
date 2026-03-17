@@ -23,6 +23,16 @@ export const OAUTH_STORAGE_KEY = "oauth_callback_result"
 
 export type OAuthErrorAction = "retry" | "reconnect" | "switch_context" | "contact_admin"
 
+/** OAuth callback URL parameter keys — the canonical list used to build and clean callback URLs */
+export const OAUTH_CALLBACK_PARAMS = ["integration", "status", "message", "error_code", "error_action"] as const
+
+/** Remove all OAuth callback params from a URL (mutates the URL object) */
+export function stripOAuthCallbackParams(url: URL): void {
+  for (const key of OAUTH_CALLBACK_PARAMS) {
+    url.searchParams.delete(key)
+  }
+}
+
 /** OAuth callback message structure */
 export interface OAuthCallbackMessage {
   type: typeof OAUTH_CALLBACK_MESSAGE_TYPE

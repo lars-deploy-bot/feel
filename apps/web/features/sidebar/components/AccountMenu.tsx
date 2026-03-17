@@ -1,12 +1,14 @@
 "use client"
 
 import { LogOut, MessageCircle, Settings } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { createPortal } from "react-dom"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
+import { logError } from "@/lib/client-error-logger"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { resetPostHogIdentity } from "@/lib/posthog"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
+import { usePortalMenu } from "../hooks/usePortalMenu"
 
 interface AccountMenuProps {
   onSettingsClick: () => void
@@ -23,60 +25,17 @@ export function AccountMenu({
   inline,
   userDisplay: externalUserDisplay,
 }: AccountMenuProps) {
-  const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const { open, pos, triggerRef, menuRef, toggle, close } = usePortalMenu("above")
   const { user } = useAuth()
   const { organizations, loading } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
   const [signingOut, setSigningOut] = useState(false)
 
+  // Use provided display name, or derive from user auth object
   const userDisplay = externalUserDisplay ?? user?.firstName ?? user?.name ?? user?.email?.split("@")[0] ?? null
-  const avatarLetter = (userDisplay || "U")[0].toUpperCase()
+  const avatarLetter = (userDisplay ?? "U")[0].toUpperCase()
   const selectedOrg = selectedOrgId ? organizations.find(o => o.org_id === selectedOrgId) : undefined
   const orgName = loading ? null : (selectedOrg?.name ?? organizations[0]?.name ?? null)
-
-  // Position menu above trigger
-  const [pos, setPos] = useState({ bottom: 0, left: 0 })
-
-  const updatePosition = useCallback(() => {
-    const el = triggerRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    setPos({
-      bottom: window.innerHeight - rect.top + 4,
-      left: rect.left,
-    })
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    updatePosition()
-    window.addEventListener("resize", updatePosition)
-    return () => window.removeEventListener("resize", updatePosition)
-  }, [open, updatePosition])
-
-  // Close on click outside
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current?.contains(e.target as Node)) return
-      if (triggerRef.current?.contains(e.target as Node)) return
-      setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false)
-    }
-    document.addEventListener("keydown", handler)
-    return () => document.removeEventListener("keydown", handler)
-  }, [open])
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -84,7 +43,8 @@ export function AccountMenu({
       await fetch("/api/logout", { method: "POST" })
       resetPostHogIdentity()
       window.location.href = "/"
-    } catch {
+    } catch (err) {
+      logError("auth", "Sign-out request failed", { error: err instanceof Error ? err : new Error(String(err)) })
       setSigningOut(false)
     }
   }
@@ -98,7 +58,7 @@ export function AccountMenu({
         <button
           ref={triggerRef}
           type="button"
-          onClick={() => setOpen(prev => !prev)}
+          onClick={toggle}
           className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors cursor-pointer"
           aria-label="Account menu"
         >
@@ -111,7 +71,7 @@ export function AccountMenu({
         <button
           ref={triggerRef}
           type="button"
-          onClick={() => setOpen(prev => !prev)}
+          onClick={toggle}
           className="inline-flex items-center justify-center size-9 rounded-lg hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-100"
           aria-label="Account menu"
         >
@@ -126,7 +86,7 @@ export function AccountMenu({
           <div
             ref={menuRef}
             className="fixed z-[9999] w-56 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] overflow-hidden py-1.5"
-            style={{ bottom: pos.bottom, left: pos.left }}
+            style={pos}
           >
             {/* User info */}
             <div className="px-3 py-2 border-b border-black/[0.06] dark:border-white/[0.06] mb-1">
@@ -139,7 +99,7 @@ export function AccountMenu({
               type="button"
               className={itemClass}
               onClick={() => {
-                setOpen(false)
+                close()
                 onSettingsClick()
               }}
             >
@@ -152,7 +112,7 @@ export function AccountMenu({
                 type="button"
                 className={itemClass}
                 onClick={() => {
-                  setOpen(false)
+                  close()
                   onFeedbackClick()
                 }}
               >

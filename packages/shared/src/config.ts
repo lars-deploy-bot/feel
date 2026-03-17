@@ -35,6 +35,30 @@ import { parseServerConfig, type ServerConfig } from "./server-config-schema.js"
 const isBrowser = typeof globalThis !== "undefined" && "window" in globalThis
 
 /**
+ * Access a Node.js builtin module without static imports (which break browser bundles).
+ * The caller is responsible for ensuring the generic type matches the requested module.
+ * This is safe because we only call it with known module names ("node:fs", "node:url", "node:path")
+ * whose shapes are well-defined and stable.
+ */
+function getBuiltinModule(name: "node:fs"): typeof import("node:fs") | null
+function getBuiltinModule(name: "node:url"): typeof import("node:url") | null
+function getBuiltinModule(name: "node:path"): typeof import("node:path") | null
+function getBuiltinModule(
+  name: string,
+): typeof import("node:fs") | typeof import("node:url") | typeof import("node:path") | null {
+  if (isBrowser || typeof process === "undefined" || typeof process.getBuiltinModule !== "function") {
+    return null
+  }
+
+  // process.getBuiltinModule returns the module or undefined for unknown names.
+  // The overload signatures guarantee callers only pass known module names,
+  // so the return type is safe at call sites.
+  const mod = process.getBuiltinModule(name)
+  if (!mod) return null
+  return mod as typeof import("node:fs") | typeof import("node:url") | typeof import("node:path")
+}
+
+/**
  * Require an environment variable to be set. Throws if missing.
  * Use in standalone scripts that need specific env vars at startup.
  */
@@ -56,14 +80,12 @@ export const CONFIG_PATH = !isBrowser && typeof process !== "undefined" ? (proce
  * and uses ~/.alive/ for workspace-related paths.
  */
 function fileUrlToPathSafe(url: URL): string {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { fileURLToPath } = require("node:url") as { fileURLToPath: (url: URL | string) => string }
-    return fileURLToPath(url)
-  } catch {
-    // Fallback for strict ESM runtimes where require() is unavailable.
-    return decodeURIComponent(url.pathname)
+  const nodeUrl = getBuiltinModule("node:url")
+  if (nodeUrl) {
+    return nodeUrl.fileURLToPath(url)
   }
+
+  return decodeURIComponent(url.pathname)
 }
 
 function extractAliveRootFromPath(filePath: string): string | undefined {
@@ -73,27 +95,26 @@ function extractAliveRootFromPath(filePath: string): string | undefined {
 }
 
 function findAliveRootFromCwd(startDir: string): string {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require("node:fs") as { existsSync: (path: string) => boolean }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const path = require("node:path") as { dirname: (path: string) => string; join: (...paths: string[]) => string }
+  const fs = getBuiltinModule("node:fs")
+  const path = getBuiltinModule("node:path")
 
-    let current = startDir
-    while (true) {
-      const hasTurbo = fs.existsSync(path.join(current, "turbo.json"))
-      const hasSharedConfig = fs.existsSync(path.join(current, "packages", "shared", "src", "config.ts"))
-      if (hasTurbo && hasSharedConfig) {
-        return current
-      }
-
-      const parent = path.dirname(current)
-      if (parent === current) break
-      current = parent
-    }
-  } catch {
-    // Ignore and fallback to the provided cwd
+  if (!fs || !path) {
+    return startDir
   }
+
+  let current = startDir
+  while (true) {
+    const hasTurbo = fs.existsSync(path.join(current, "turbo.json"))
+    const hasSharedConfig = fs.existsSync(path.join(current, "packages", "shared", "src", "config.ts"))
+    if (hasTurbo && hasSharedConfig) {
+      return current
+    }
+
+    const parent = path.dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+
   return startDir
 }
 
@@ -143,10 +164,10 @@ function localDefaults(): Partial<ServerConfig> {
  * Browser: returns empty object
  * Server without config: throws FATAL error
  *
- * Uses require("node:fs") because:
+ * Uses process.getBuiltinModule("node:fs") because:
  * - Static `import from "node:fs"` breaks Turbopack client bundles
- * - Dynamic require works in Bun ESM (production) and Node CJS (tests)
- * - Wrapped in try/catch for strict Node ESM (Playwright) where require is unavailable
+ * - It works in Bun and strict Node ESM workers without relying on bare require()
+ * - Browser builds safely get null and return empty config
  */
 /** True when config was actually loaded from disk (not just empty defaults) */
 let configActuallyLoaded = false
@@ -157,20 +178,16 @@ function loadServerConfig(): Partial<ServerConfig> {
     return {}
   }
 
-  // biome-ignore lint/suspicious/noImplicitAnyLet: fs type depends on runtime
-  let fs
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    fs = require("node:fs")
-  } catch {
-    // Strict Node ESM (e.g., Playwright) where require() is not available.
-    // These environments don't need server config - return empty.
-    return {}
-  }
-
   const streamEnv = process.env.STREAM_ENV
   const isLocalDev = streamEnv === "local" || streamEnv === "standalone"
   const isTestEnv = process.env.CI === "true" || process.env.VITEST === "true"
+
+  const fs = getBuiltinModule("node:fs")
+  if (!fs) {
+    if (isTestEnv) return {}
+    if (isLocalDev) return localDefaults()
+    throw new Error('FATAL: process.getBuiltinModule("node:fs") is unavailable in this runtime.')
+  }
 
   if (!CONFIG_PATH) {
     if (isTestEnv) return {}

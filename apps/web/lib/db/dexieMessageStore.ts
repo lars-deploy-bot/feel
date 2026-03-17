@@ -22,6 +22,7 @@
 import Dexie from "dexie"
 import { create } from "zustand"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
+import { logError } from "@/lib/client-error-logger"
 import { useTabDataStore } from "@/lib/stores/tabDataStore"
 import { isRecord } from "@/lib/utils"
 import {
@@ -52,14 +53,14 @@ import { safeDb } from "./safeDb"
 
 const generateId = () => crypto.randomUUID()
 
-export interface DexieSessionContext {
-  userId: string
-  orgId: string
-}
+import type { SessionContext } from "./useMessageDb"
+
+/** @deprecated Use SessionContext from useMessageDb.ts — identical type, kept for backwards compat */
+export type { SessionContext as DexieSessionContext } from "./useMessageDb"
 
 interface DexieMessageStoreState {
   // Session context - REQUIRED for all operations
-  session: DexieSessionContext | null
+  session: SessionContext | null
   currentWorkspace: string | null
   /** @deprecated Unused — per-tab loading is tracked via loadingTabs instead */
   isLoading: boolean
@@ -78,7 +79,7 @@ interface DexieMessageStoreState {
 
 interface DexieMessageStoreActions {
   // Session management
-  setSession: (session: DexieSessionContext) => void
+  setSession: (session: SessionContext) => void
 
   // Conversation management
   initializeConversation: (workspace: string) => Promise<{ conversationId: string; tabId: string }>
@@ -91,6 +92,7 @@ interface DexieMessageStoreActions {
   archiveConversation: (id: string) => Promise<void>
   unarchiveConversation: (id: string) => Promise<void>
   renameConversation: (id: string, title: string) => Promise<void>
+  setConversationFavorited: (id: string, favorited: boolean) => Promise<void>
   shareConversation: (id: string) => Promise<void>
   unshareConversation: (id: string) => Promise<void>
 
@@ -293,7 +295,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
 
     if (existingTab) {
       if (existingTab.conversationId !== tabGroupId) {
-        console.warn("[dexie] Tab group mismatch for tab, updating conversationId", {
+        logError("dexie", "Tab group mismatch for tab, updating conversationId", {
           tabId,
           from: existingTab.conversationId,
           to: tabGroupId,
@@ -381,6 +383,13 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     await syncRenameConversation(id, session.userId, title)
   },
 
+  setConversationFavorited: async (id, favorited) => {
+    const { session } = get()
+    if (!session) return
+    const db = getMessageDb(session.userId)
+    await safeDb(() => db.conversations.update(id, { favorited }))
+  },
+
   shareConversation: async id => {
     const { session } = get()
     if (!session) return
@@ -411,7 +420,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     const { session } = get()
 
     if (!session || !targetTabId) {
-      console.warn("[dexie] addMessage called without session or targetTabId")
+      logError("dexie", "addMessage called without session or targetTabId")
       return
     }
 
@@ -452,15 +461,13 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
         }
       }
 
-      const effectiveTabGroupId = targetTab?.conversationId ?? null
-      if (!targetTab) {
-        console.warn(`[dexie] addMessage: target tab ${targetTabId} not found in Dexie`)
-      }
-
-      if (!effectiveTabGroupId) {
-        console.warn("[dexie] addMessage called without tabGroupId")
+      const rawTabGroupId = targetTab?.conversationId ?? null
+      if (!rawTabGroupId) {
+        logError("dexie", "addMessage called without resolvable tabGroupId", { targetTabId })
         return
       }
+      // Narrowed — safe to use in closures without non-null assertion
+      const effectiveTabGroupId: string = rawTabGroupId
 
       const now = Date.now()
       const seq = await getNextSeq(db, targetTabId)
@@ -490,7 +497,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
         updates.autoTitleSet = true
       }
 
-      await safeDb(() => db.conversations.update(effectiveTabGroupId!, updates))
+      await safeDb(() => db.conversations.update(effectiveTabGroupId, updates))
 
       const tab = await db.tabs.get(targetTabId)
       if (tab) {
@@ -522,7 +529,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     // Find the target message index
     const targetIndex = allMessages.findIndex(m => m.id === messageId)
     if (targetIndex === -1) {
-      console.warn("[dexie] deleteMessagesAfter: message not found", messageId)
+      logError("dexie", "deleteMessagesAfter: message not found", { messageId })
       return null
     }
 
@@ -533,8 +540,8 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       const msg = allMessages[i]
       // Check if this is an SDK assistant message with a UUID
       if (msg.content.kind === "sdk_message") {
-        const sdkData = msg.content.data as { type?: string; uuid?: string }
-        if (sdkData?.type === "assistant" && sdkData?.uuid) {
+        const sdkData = isRecord(msg.content.data) ? msg.content.data : null
+        if (sdkData?.type === "assistant" && typeof sdkData.uuid === "string") {
           resumeUuid = sdkData.uuid
           break
         }
@@ -542,7 +549,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     }
 
     if (!resumeUuid) {
-      console.warn("[dexie] deleteMessagesAfter: no previous assistant message with UUID found")
+      logError("dexie", "deleteMessagesAfter: no previous assistant message with UUID found", { messageId })
       // Can't delete if there's no previous assistant message to resume from
       return null
     }
@@ -594,7 +601,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       if (message.deletedAt) continue
       if (message.content.kind !== "sdk_message") continue
 
-      const sdkData = message.content.data as { type?: string; uuid?: string } | undefined
+      const sdkData = isRecord(message.content.data) ? message.content.data : null
       if (sdkData?.type === "assistant" && typeof sdkData.uuid === "string" && sdkData.uuid.length > 0) {
         const resumeUuid = sdkData.uuid
         set(state => ({
@@ -805,7 +812,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
 
     set({ isSyncing: true })
     try {
-      await fetchConversations(workspace, session.userId, session.orgId)
+      await fetchConversations(session.userId, session.orgId, workspace)
     } finally {
       set({ isSyncing: false })
     }
@@ -999,6 +1006,7 @@ export const useDexieMessageActions = () =>
     archiveConversation: state.archiveConversation,
     unarchiveConversation: state.unarchiveConversation,
     renameConversation: state.renameConversation,
+    setConversationFavorited: state.setConversationFavorited,
     shareConversation: state.shareConversation,
     unshareConversation: state.unshareConversation,
     addMessage: state.addMessage,
@@ -1026,6 +1034,8 @@ export const useDexieMessageActions = () =>
 // =============================================================================
 
 export {
+  useAllArchivedConversations as useDexieAllArchivedConversations,
+  useAllConversations as useDexieAllConversations,
   useArchivedConversations as useDexieArchivedConversations,
   useConversation as useDexieConversation,
   useConversations as useDexieConversations,

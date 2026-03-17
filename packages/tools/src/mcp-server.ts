@@ -1,15 +1,11 @@
 import { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk"
 import { askAutomationConfigTool } from "./tools/ai/ask-automation-config.js"
 import { askClarificationTool } from "./tools/ai/ask-clarification.js"
-import { askWebsiteConfigTool } from "./tools/ai/ask-website-config.js"
 import { listAutomationsTool } from "./tools/automations/list-automations.js"
 import { debugWorkspaceTool } from "./tools/composite/debug-workspace.js"
 import { readServerLogsTool } from "./tools/debug/read-server-logs.js"
 import { sendReplyTool } from "./tools/email/send-reply.js"
-import { getWorkflowTool } from "./tools/meta/get-workflow.js"
-import { listWorkflowsTool } from "./tools/meta/list-workflows.js"
 import { searchToolsTool } from "./tools/meta/search-tools.js"
-import { generatePersonaTool } from "./tools/personas/generate-persona.js"
 import {
   sandboxedFsBashTool,
   sandboxedFsEditTool,
@@ -23,13 +19,10 @@ import { describeTableTool } from "./tools/supabase/describe-table.js"
 import { listProjectsTool } from "./tools/supabase/list-projects.js"
 import { listTablesTool } from "./tools/supabase/list-tables.js"
 import { runQueryTool } from "./tools/supabase/run-query.js"
-import { getAliveSuperTemplateTool } from "./tools/templates/get-template.js"
 import { browserTool } from "./tools/workspace/browser.js"
 import { checkCodebaseTool } from "./tools/workspace/check-codebase.js"
 import { copySharedAssetTool } from "./tools/workspace/copy-shared-asset.js"
-import { createWebsiteTool } from "./tools/workspace/create-website.js"
 import { deleteFileTool } from "./tools/workspace/delete-file.js"
-import { gitPushTool } from "./tools/workspace/git-push.js"
 import { installPackageTool } from "./tools/workspace/install-package.js"
 import { restartServerTool } from "./tools/workspace/restart-server.js"
 import { switchServeModeTool } from "./tools/workspace/switch-serve-mode.js"
@@ -65,14 +58,9 @@ export const toolsInternalMcp = createSdkMcpServer({
   version: "1.0.0",
   tools: [
     searchToolsTool,
-    getWorkflowTool,
-    listWorkflowsTool,
     debugWorkspaceTool,
-    getAliveSuperTemplateTool,
     readServerLogsTool,
-    generatePersonaTool,
     askClarificationTool,
-    askWebsiteConfigTool,
     askAutomationConfigTool,
     listAutomationsTool,
   ],
@@ -102,8 +90,6 @@ export const workspaceInternalMcp = createSdkMcpServer({
     deleteFileTool,
     switchServeModeTool,
     copySharedAssetTool,
-    createWebsiteTool,
-    gitPushTool,
     browserTool,
   ],
 })

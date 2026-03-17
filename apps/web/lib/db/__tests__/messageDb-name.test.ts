@@ -15,11 +15,10 @@ describe("getMessageDbName", () => {
     expect(getMessageDbName("user-1")).toBe("claude-messages-staging-user-1")
   })
 
-  it("falls back to STREAM_ENV when NEXT_PUBLIC_STREAM_ENV is not set", () => {
+  it("throws when NEXT_PUBLIC_STREAM_ENV is empty", () => {
     vi.stubEnv("NEXT_PUBLIC_STREAM_ENV", "")
-    vi.stubEnv("STREAM_ENV", STREAM_ENV.DEV)
 
-    expect(getMessageDbName("user-2")).toBe("claude-messages-dev-user-2")
+    expect(() => getMessageDbName("user-2")).toThrow("Invalid message DB environment")
   })
 
   it("accepts standalone as a valid message db environment", () => {

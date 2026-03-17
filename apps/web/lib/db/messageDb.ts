@@ -20,7 +20,8 @@ import {
  */
 
 function getMessageDbEnv(): string {
-  const rawEnv = process.env.NEXT_PUBLIC_STREAM_ENV || process.env.STREAM_ENV
+  // "use client" file — only NEXT_PUBLIC_ vars are available at runtime
+  const rawEnv = process.env.NEXT_PUBLIC_STREAM_ENV
 
   switch (rawEnv) {
     case STREAM_ENV.LOCAL:
@@ -55,6 +56,7 @@ export type DbMessageOrigin = "local" | "remote" | "migration"
 
 /** Allowed conversation sources */
 export type { AutomationSourceMetadata, ConversationSource } from "@/lib/conversations/source"
+export { AUTOMATION_RUN_SOURCE } from "@/lib/conversations/source"
 
 /**
  * Tab draft state — persisted to IndexedDB and synced to Supabase.
@@ -97,6 +99,9 @@ export interface DbConversation {
   // Conversation source — required, normalized to "chat" at ingress
   source: ConversationSource
   sourceMetadata?: AutomationSourceMetadata
+  // User-level favorite — Dexie is the single owner of this flag.
+  // Favorited conversations stick in the top section until explicitly unfavorited.
+  favorited?: boolean
   // Soft delete (NEVER hard delete - causes multi-device desync)
   deletedAt?: number
   archivedAt?: number

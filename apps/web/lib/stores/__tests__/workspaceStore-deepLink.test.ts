@@ -295,18 +295,19 @@ describe("autoSelectWorkspace", () => {
     expect(getState().selectedOrgId).toBe("org-A")
   })
 
-  it("with selectedOrgId set but no recents for that org, falls back to global recent", () => {
+  it("with selectedOrgId set but no recents for that org, does NOT cross-org fallback", () => {
     useWorkspaceStoreBase.setState({
       currentWorkspace: null,
       selectedOrgId: "org-A",
       recentWorkspaces: [{ domain: "site-B", orgId: "org-B", lastAccessed: 300 }],
     })
 
-    getActions().autoSelectWorkspace()
+    const didSelect = getActions().autoSelectWorkspace()
 
-    // No org-A recents → fall back to global (org-B), pair moves together
-    expect(getState().currentWorkspace).toBe("site-B")
-    expect(getState().selectedOrgId).toBe("org-B")
+    // No org-A recents → stay on null, don't silently switch to org-B
+    expect(didSelect).toBe(false)
+    expect(getState().currentWorkspace).toBeNull()
+    expect(getState().selectedOrgId).toBe("org-A")
   })
 
   it("without selectedOrgId, picks global most recent", () => {

@@ -255,7 +255,7 @@ describe("Conversation Sync Service", () => {
     it("should skip fetch when offline", async () => {
       Object.defineProperty(navigator, "onLine", { value: false })
 
-      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+      await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
       expect(mockFetch).not.toHaveBeenCalled()
     })
@@ -353,6 +353,18 @@ describe("Conversation Sync Service", () => {
   })
 
   describe("fetchConversations", () => {
+    beforeEach(() => {
+      // Mock window.location for URL construction
+      global.window = {
+        location: { origin: "http://localhost:3000" },
+      } as unknown as Window & typeof globalThis
+    })
+
+    afterEach(() => {
+      // @ts-expect-error cleanup
+      delete global.window
+    })
+
     it("should fetch and store conversations from server", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
@@ -390,13 +402,17 @@ describe("Conversation Sync Service", () => {
               },
             ],
             shared: [],
+            hasMore: false,
+            nextCursor: null,
           }),
       })
 
       mockConversationsGet.mockResolvedValue(null) // No local version
 
-      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+      const result = await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
+      expect(result.hasMore).toBe(false)
+      expect(result.nextCursor).toBeNull()
       expect(mockConversationsPut).toHaveBeenCalledWith(
         expect.objectContaining({
           id: "conv-server-1",
@@ -419,13 +435,15 @@ describe("Conversation Sync Service", () => {
           Promise.resolve({
             own: [{ ...TEST_CONVERSATION, tabs: [] }],
             shared: [],
+            hasMore: false,
+            nextCursor: null,
           }),
       })
 
       // Local has pending changes
       mockConversationsGet.mockResolvedValue({ ...TEST_CONVERSATION, pendingSync: true })
 
-      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+      await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
       // Should NOT overwrite local
       expect(mockConversationsPut).not.toHaveBeenCalled()
@@ -450,12 +468,14 @@ describe("Conversation Sync Service", () => {
               },
             ],
             shared: [],
+            hasMore: false,
+            nextCursor: null,
           }),
       })
 
       mockConversationsGet.mockResolvedValue(null)
 
-      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+      await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
       expect(mockTabsPut).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -588,6 +608,18 @@ describe("Conversation Sync Service", () => {
   })
 
   describe("Source and SourceMetadata Persistence", () => {
+    beforeEach(() => {
+      // Mock window.location for URL construction
+      global.window = {
+        location: { origin: "http://localhost:3000" },
+      } as unknown as Window & typeof globalThis
+    })
+
+    afterEach(() => {
+      // @ts-expect-error cleanup
+      delete global.window
+    })
+
     it("should persist source and sourceMetadata from server to Dexie", async () => {
       const metadata = { job_id: "job_123", claim_run_id: "run_456", triggered_by: "cron" }
       mockFetch.mockResolvedValue({
@@ -604,12 +636,14 @@ describe("Conversation Sync Service", () => {
               },
             ],
             shared: [],
+            hasMore: false,
+            nextCursor: null,
           }),
       })
 
       mockConversationsGet.mockResolvedValue(null) // No local version
 
-      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+      await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
       expect(mockConversationsPut).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -634,12 +668,14 @@ describe("Conversation Sync Service", () => {
               },
             ],
             shared: [],
+            hasMore: false,
+            nextCursor: null,
           }),
       })
 
       mockConversationsGet.mockResolvedValue(null)
 
-      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+      await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
       expect(mockConversationsPut).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -663,12 +699,14 @@ describe("Conversation Sync Service", () => {
               },
             ],
             shared: [],
+            hasMore: false,
+            nextCursor: null,
           }),
       })
 
       mockConversationsGet.mockResolvedValue(null)
 
-      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+      await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
       expect(mockConversationsPut).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -692,12 +730,14 @@ describe("Conversation Sync Service", () => {
               },
             ],
             shared: [],
+            hasMore: false,
+            nextCursor: null,
           }),
       })
 
       mockConversationsGet.mockResolvedValue(null)
 
-      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+      await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
       expect(mockConversationsPut).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -721,12 +761,14 @@ describe("Conversation Sync Service", () => {
               },
             ],
             shared: [],
+            hasMore: false,
+            nextCursor: null,
           }),
       })
 
       mockConversationsGet.mockResolvedValue(null)
 
-      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+      await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
       expect(mockConversationsPut).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -738,6 +780,18 @@ describe("Conversation Sync Service", () => {
   })
 
   describe("syncFromServer", () => {
+    beforeEach(() => {
+      // Mock window.location for URL construction inside fetchConversations
+      global.window = {
+        location: { origin: "http://localhost:3000" },
+      } as unknown as Window & typeof globalThis
+    })
+
+    afterEach(() => {
+      // @ts-expect-error cleanup
+      delete global.window
+    })
+
     it("should return stats after syncing", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
@@ -745,6 +799,8 @@ describe("Conversation Sync Service", () => {
           Promise.resolve({
             own: [{ ...TEST_CONVERSATION, tabs: [] }],
             shared: [],
+            hasMore: false,
+            nextCursor: null,
           }),
       })
 

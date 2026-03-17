@@ -11,6 +11,9 @@ export const CONVERSATION_SOURCES = ["chat", "automation_run"] as const
 
 export type ConversationSource = (typeof CONVERSATION_SOURCES)[number]
 
+/** Typed constant for automation_run source — use instead of inline string literal */
+export const AUTOMATION_RUN_SOURCE: ConversationSource = "automation_run"
+
 /** sourceMetadata shape for automation_run conversations */
 export interface AutomationSourceMetadata {
   job_id: string
