@@ -18,19 +18,9 @@
 
 import { expect, type Page, test } from "@playwright/test"
 import { TokensResponseSchema } from "@/lib/api/types"
-import { isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
-import { TEST_TIMEOUTS } from "./fixtures/test-data"
+import { sendMessageAndCapture } from "./lib/chat-actions"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
-import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
-
-async function sendMessage(page: Page, message: string): Promise<void> {
-  const messageInput = page.locator('[data-testid="message-input"]')
-  const sendButton = page.locator('[data-testid="send-button"]')
-
-  await messageInput.fill(message)
-  await expect(sendButton).toBeEnabled({ timeout: TEST_TIMEOUTS.slow })
-  await sendButton.click()
-}
+import { annotate } from "./lib/log"
 
 /**
  * Fetch current credit balance via the real /api/tokens endpoint.
@@ -62,26 +52,16 @@ test.describe("Credit Charging - Haiku (#282)", () => {
     // 1. Read initial credit balance via real /api/tokens endpoint
     const initialCredits = await getCreditsViaApi(page, user.workspace)
     expect(initialCredits).toBeGreaterThan(0)
-    console.log(`[Credits] Initial balance: ${initialCredits}`)
+    annotate("credits", `Initial balance: ${initialCredits}`)
 
     // 2. Send a simple Haiku message (real Claude API)
-    const responsePromise = page.waitForResponse(isClaudeStreamPostResponse)
-    await sendMessage(page, "Say just the word hello")
-    const response = await responsePromise
-
-    // Transport assertion: 200 OK
-    expect(response.status()).toBe(200)
-
-    // Wait for stream to complete and extract assistant text
-    const ndjson = await response.text()
-    const assistantText = extractAssistantTextFromNDJSON(ndjson)
-    expect(assistantText.length).toBeGreaterThan(0)
-    console.log(`[Credits] Assistant responded: "${assistantText.slice(0, 80)}"`)
+    const { assistantText } = await sendMessageAndCapture(page, "Say just the word hello")
+    annotate("credits", `Assistant responded: "${assistantText.slice(0, 80)}"`)
 
     // 3. Read credit balance after — must be lower
     const finalCredits = await getCreditsViaApi(page, user.workspace)
     const creditsCharged = initialCredits - finalCredits
-    console.log(`[Credits] Final balance: ${finalCredits}, charged: ${creditsCharged}`)
+    annotate("credits", `Final balance: ${finalCredits}, charged: ${creditsCharged}`)
 
     // Positive assertion: credits decreased
     expect(creditsCharged).toBeGreaterThan(0)
