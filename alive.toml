@@ -55,13 +55,13 @@ target_server_path = "sites_root"
 read_only = false
 
 [[runtime.bind_mounts]]
-source = "/srv/webalive/templates"
-target = "/srv/webalive/templates"
+source_server_path = "templates_root"
+target_server_path = "templates_root"
 read_only = true
 
 [[runtime.bind_mounts]]
-source = "/srv/webalive/storage"
-target = "/srv/webalive/storage"
+source_server_path = "images_storage"
+target_server_path = "images_storage"
 read_only = false
 
 [[runtime.bind_mounts]]

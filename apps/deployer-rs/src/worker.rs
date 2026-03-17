@@ -37,7 +37,7 @@ pub async fn run() -> Result<()> {
     tracing_subscriber::fmt().json().with_target(false).init();
 
     let service_env = ServiceEnv::from_env()?;
-    let repo_root = service_env.alive_root.clone();
+    let repo_root = env::current_dir().context("failed to determine working directory (repo root)")?;
     let data_dir = resolve_data_dir()?;
     ensure_data_dirs(&data_dir).await?;
 
