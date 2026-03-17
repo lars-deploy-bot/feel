@@ -193,14 +193,20 @@ export async function tryWorkerPool(params: WorkerPoolParams): Promise<AttemptRe
 
   const allowedTools = Array.from(
     new Set([
-      ...getAllowedTools(cwd, useSuperadminTools, useSuperadminTools, useSuperadminTools),
+      ...getAllowedTools(cwd, useSuperadminTools, useSuperadminTools, useSuperadminTools, "default", "systemd"),
       ...(extraTools ?? []),
     ]),
   )
 
   const agentConfig = {
     allowedTools,
-    disallowedTools: getDisallowedTools(useSuperadminTools, useSuperadminTools, "default", useSuperadminTools),
+    disallowedTools: getDisallowedTools(
+      useSuperadminTools,
+      useSuperadminTools,
+      "default",
+      useSuperadminTools,
+      "systemd",
+    ),
     permissionMode: PERMISSION_MODE,
     settingSources: SETTINGS_SOURCES,
     oauthMcpServers: {} as Record<string, unknown>,

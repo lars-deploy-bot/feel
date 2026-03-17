@@ -870,6 +870,7 @@ async function handleQuery(ipc, requestId, payload) {
       isAdmin: !!agentConfig.isAdmin,
       isSuperadmin: !!agentConfig.isSuperadmin,
       isSuperadminWorkspace: !!agentConfig.isSuperadminWorkspace,
+      executionMode: payload.executionMode,
       mode: streamMode,
       connectedProviders,
     })
