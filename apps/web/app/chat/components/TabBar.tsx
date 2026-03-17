@@ -357,19 +357,27 @@ export function TabBar({
   const closedBtnRef = useRef<HTMLButtonElement>(null)
   const closeMenu = useCallback(() => setShowClosedMenu(false), [])
 
-  // Collapse project pill to letter circle when bar is narrow
+  // Collapse project pill to letter circle when tabs can't fit comfortably.
+  // Uses bar width + tab count — both stable inputs that don't change when the
+  // pill itself collapses, so there's no feedback loop.
   const barRef = useRef<HTMLDivElement>(null)
   const [pillCollapsed, setPillCollapsed] = useState(false)
 
   useEffect(() => {
-    const el = barRef.current
-    if (!el) return
-    const observer = new ResizeObserver(entries => {
-      setPillCollapsed(entries[0].contentRect.width < 480)
-    })
-    observer.observe(el)
+    const bar = barRef.current
+    if (!bar) return
+
+    const check = () => {
+      const barWidth = bar.clientWidth
+      // ~80px per tab pill + ~240px for project chooser, action buttons, and gaps
+      setPillCollapsed(barWidth < tabs.length * 80 + 240)
+    }
+
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(bar)
     return () => observer.disconnect()
-  }, [])
+  }, [tabs.length])
 
   return (
     <div

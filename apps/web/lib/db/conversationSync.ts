@@ -255,7 +255,7 @@ async function buildConversationPayload(db: ReturnType<typeof getMessageDb>, con
  * Handle sync conflict by fetching fresh server data
  */
 async function handleConflict(db: ReturnType<typeof getMessageDb>, conflict: ConflictInfo): Promise<void> {
-  console.warn(`[sync] Conflict detected for ${conflict.conversationId}`, {
+  logError("sync", `Conflict detected for ${conflict.conversationId}`, {
     local: new Date(conflict.localUpdatedAt).toISOString(),
     server: new Date(conflict.serverUpdatedAt).toISOString(),
   })
@@ -394,7 +394,6 @@ async function syncBatch(
       })
     }
 
-    console.error("[sync] Batch sync failed", error)
     logError("sync", "Batch sync failed", {
       error: error instanceof Error ? error : undefined,
       conversationIds: batch.map(b => b.conversationId),
@@ -462,10 +461,6 @@ async function syncSingle(
       nextRetryAt: Date.now() + backoff,
     })
 
-    console.error("[sync] Failed to sync conversation", {
-      conversationId: item.conversationId,
-      error,
-    })
     logError("sync", "Single conversation sync failed", {
       error: error instanceof Error ? error : undefined,
       conversationId: item.conversationId,
@@ -537,7 +532,6 @@ export async function fetchConversations(
     })
 
     if (!response.ok) {
-      console.error("[sync] Failed to fetch conversations:", response.status)
       logError("sync", "Fetch conversations returned non-OK", { status: response.status, workspace })
       return { hasMore: false, nextCursor: null }
     }
@@ -627,7 +621,6 @@ export async function fetchConversations(
 
     return { hasMore: hasMore ?? false, nextCursor: responseCursor ?? null }
   } catch (error) {
-    console.error("[sync] Failed to fetch conversations:", error)
     logError("sync", "Failed to fetch conversations", {
       error: error instanceof Error ? error : undefined,
       workspace,
@@ -682,7 +675,6 @@ async function fetchTabMessagesImpl(
     const response = await fetch(url.toString(), { credentials: "include" })
 
     if (!response.ok) {
-      console.error("[sync] Failed to fetch messages:", response.status)
       logError("sync", "Fetch tab messages returned non-OK", { status: response.status, tabId })
       return { messages: localMessages, hasMore: false }
     }
@@ -748,7 +740,6 @@ async function fetchTabMessagesImpl(
 
     return { messages: updatedMessages, hasMore }
   } catch (error) {
-    console.error("[sync] Failed to fetch messages:", error)
     logError("sync", "Failed to fetch tab messages", {
       error: error instanceof Error ? error : undefined,
       tabId,

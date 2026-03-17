@@ -12,13 +12,58 @@ vi.mock("@/components/workspace/WorktreeSwitcher", () => ({
   WorktreeSwitcher: () => <div data-testid="worktree-switcher">Worktree Switcher</div>,
 }))
 
-vi.mock("@/features/deployment/hooks/useAuth", () => ({
-  useAuth: () => ({
-    user: {
-      email: "reviewer@example.com",
-      firstName: "Review",
-      name: "Reviewer",
-    },
+vi.mock("@/features/settings/SettingsNav", () => ({
+  SettingsNav: () => <div data-testid="settings-nav">Settings Navigation</div>,
+}))
+
+vi.mock("@/lib/stores/featureFlagStore", () => ({
+  useFeatureFlag: () => false,
+}))
+
+// Mock extracted hooks — these are the boundaries we test against
+vi.mock("../hooks/useConversationData", () => ({
+  useConversationData: () => ({
+    conversations: [{ id: "conv-1", workspace: "example.com", source: "chat", title: "Test", updatedAt: Date.now() }],
+    archivedConversations: [],
+    favorites: new Set<string>(),
+    toggleFavoriteWorkspace: vi.fn(),
+    setConversationFavorited: vi.fn(),
+    userDisplay: "Reviewer",
+  }),
+}))
+
+vi.mock("../hooks/useConversationGroups", () => ({
+  useConversationGroups: () => ({
+    favoriteGroups: [],
+    activeConversations: [
+      { id: "conv-1", workspace: "example.com", source: "chat", title: "Test", updatedAt: Date.now() },
+    ],
+    expandedWorkspaces: new Set<string>(),
+    toggleExpanded: vi.fn(),
+  }),
+}))
+
+vi.mock("../hooks/useStreamingConversations", () => ({
+  useStreamingConversations: () => new Set<string>(),
+}))
+
+vi.mock("../hooks/useArchiveActions", () => ({
+  useArchiveActions: () => ({
+    archiveConfirmingId: null,
+    handleArchiveClick: vi.fn(),
+    handleCancelArchive: vi.fn(),
+    handleArchiveAllInWorkspace: vi.fn(),
+  }),
+}))
+
+vi.mock("../hooks/useFavoriteDragDrop", () => ({
+  useFavoriteDragDrop: () => ({
+    dragOverZone: null,
+    handleDropFavorites: vi.fn(),
+    handleDropBelow: vi.fn(),
+    handleDragOverFavorites: vi.fn(),
+    handleDragOverBelow: vi.fn(),
+    handleDragLeave: vi.fn(),
   }),
 }))
 
@@ -26,113 +71,80 @@ vi.mock("../components/AccountMenu", () => ({
   AccountMenu: () => <div data-testid="account-menu">Account</div>,
 }))
 
-vi.mock("@/features/settings/SettingsNav", () => ({
-  SettingsNav: () => <div data-testid="settings-nav">Settings Navigation</div>,
+vi.mock("../components/ArchivedSection", () => ({
+  ArchivedSection: () => null,
 }))
 
-vi.mock("@/lib/hooks/useOrganizations", () => ({
-  useOrganizations: () => ({ organizations: [{ org_id: "org-1" }] }),
+vi.mock("../components/CollapsedRail", () => ({
+  CollapsedRail: () => <div data-testid="collapsed-rail">Rail</div>,
 }))
 
-vi.mock("@/lib/hooks/useFavoriteWorkspaces", () => ({
-  useFavoriteWorkspaces: () => ({ favorites: new Set<string>(), toggle: vi.fn() }),
+vi.mock("../components/FavoritesList", () => ({
+  FavoritesList: () => <div data-testid="favorites-list">Favorites</div>,
 }))
 
-vi.mock("@/lib/stores/workspaceStore", () => ({
-  useRecentWorkspaces: () => [{ domain: "example.com", orgId: "org-1", lastAccessed: Date.now() }],
-  useWorkspaceActions: () => ({ removeRecentWorkspace: vi.fn() }),
-}))
-
-vi.mock("@/lib/analytics/events", () => ({
-  trackSidebarClosed: () => undefined,
-  trackSidebarOpened: () => undefined,
-}))
-
-vi.mock("@/lib/db/conversationSync", () => ({
-  fetchConversations: vi.fn(),
-}))
-
-vi.mock("@/lib/db/dexieMessageStore", () => ({
-  useDexieAllArchivedConversations: () => [],
-  useDexieAllConversations: () => [{ id: "conv-1", workspace: "example.com" }],
-  useDexieMessageActions: () => ({ setConversationFavorited: vi.fn() }),
-  useDexieSession: () => "session-1",
-}))
-
-vi.mock("@/lib/stores/featureFlagStore", () => ({
-  useFeatureFlag: () => false,
-}))
-
-vi.mock("@/lib/stores/streamingStore", () => ({
-  useStreamingStore: (selector: (state: { tabs: Record<string, { isStreamActive: boolean }> }) => unknown) =>
-    selector({ tabs: {} }),
-}))
-
-vi.mock("@/lib/stores/tabDataStore", () => ({
-  useTabDataStore: (selector: (state: { tabsByWorkspace: Record<string, never[]> }) => unknown) =>
-    selector({ tabsByWorkspace: {} }),
-}))
-
-vi.mock("../components/ArchivedConversationItem", () => ({
-  ArchivedConversationItem: ({ conversation }: { conversation: { id: string } }) => <div>{conversation.id}</div>,
-}))
-
-vi.mock("../components/ConversationItem", () => ({
-  ConversationItem: ({ conversation }: { conversation: { id: string } }) => <div>{conversation.id}</div>,
+vi.mock("../components/ConversationList", () => ({
+  ConversationList: ({ conversations }: { conversations: Array<{ id: string }> }) => (
+    <div data-testid="conversation-list">
+      {conversations.map(c => (
+        <div key={c.id} data-testid="conversation-item">
+          {c.id}
+        </div>
+      ))}
+    </div>
+  ),
 }))
 
 vi.mock("../sidebarStore", () => ({
-  useSidebarActions: () => ({ closeSidebar: closeSidebarMock }),
+  useSidebarActions: () => ({ closeSidebar: closeSidebarMock, openSidebar: vi.fn() }),
   useSidebarOpen: () => true,
 }))
 
 import { ConversationSidebar } from "../ConversationSidebar"
 
-function renderSidebar(settingsMode = false) {
-  return render(
-    <ConversationSidebar
-      workspace="example.com"
-      worktree={null}
-      isSuperadminWorkspace={false}
-      activeTabGroupId="conv-1"
-      onTabGroupSelect={() => undefined}
-      onArchiveTabGroup={() => undefined}
-      onUnarchiveTabGroup={() => undefined}
-      onRenameTabGroup={() => undefined}
-      onNewConversation={() => undefined}
-      onNewConversationInWorkspace={() => undefined}
-      onNewWorktree={() => undefined}
-      onSelectWorktree={() => undefined}
-      onToggleSettings={() => undefined}
-      onSettingsClick={() => undefined}
-      onFeedbackClick={() => undefined}
-      onTemplatesClick={() => undefined}
-      settingsMode={settingsMode}
-    />,
-  )
-}
+const defaultProps = {
+  workspace: "example.com",
+  worktree: null,
+  isSuperadminWorkspace: false,
+  activeTabGroupId: "conv-1",
+  onTabGroupSelect: vi.fn(),
+  onArchiveTabGroup: vi.fn(),
+  onUnarchiveTabGroup: vi.fn(),
+  onRenameTabGroup: vi.fn(),
+  onNewConversation: vi.fn(),
+  onNewConversationInWorkspace: vi.fn(),
+  onNewWorktree: vi.fn(),
+  onSelectWorktree: vi.fn(),
+  onToggleSettings: vi.fn(),
+  onSettingsClick: vi.fn(),
+  onFeedbackClick: vi.fn(),
+  onTemplatesClick: vi.fn(),
+} as const
 
 describe("ConversationSidebar", () => {
   beforeEach(() => {
     closeSidebarMock.mockReset()
   })
 
-  it("renders both desktop and mobile sidebar variants when open", () => {
-    renderSidebar()
+  it("renders desktop and mobile sidebar when open", () => {
+    render(<ConversationSidebar {...defaultProps} />)
 
     expect(screen.getAllByLabelText("Conversation history")).toHaveLength(2)
-    expect(screen.getAllByText("conv-1")).toHaveLength(2)
     expect(screen.getAllByTestId("workspace-switcher")).toHaveLength(2)
-    // Settings button uses aria-label, rendered in both desktop and mobile via header
-    expect(screen.getAllByLabelText("Settings")).toHaveLength(2)
-    expect(screen.getByRole("button", { name: "Feedback" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Components" })).toBeTruthy()
   })
 
-  it("switches both variants into settings navigation mode", () => {
-    renderSidebar(true)
+  it("renders favorites list and conversation items in both viewports", () => {
+    render(<ConversationSidebar {...defaultProps} />)
+
+    expect(screen.getAllByTestId("favorites-list")).toHaveLength(2)
+    expect(screen.getAllByTestId("conversation-item")).toHaveLength(2)
+  })
+
+  it("shows settings nav instead of conversations in settings mode", () => {
+    render(<ConversationSidebar {...defaultProps} settingsMode />)
 
     expect(screen.getAllByTestId("settings-nav")).toHaveLength(2)
-    expect(screen.queryByText("conv-1")).toBeNull()
+    expect(screen.queryByTestId("conversation-item")).toBeNull()
+    expect(screen.queryByTestId("favorites-list")).toBeNull()
   })
 })

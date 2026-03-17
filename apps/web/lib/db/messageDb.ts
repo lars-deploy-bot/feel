@@ -56,6 +56,7 @@ export type DbMessageOrigin = "local" | "remote" | "migration"
 
 /** Allowed conversation sources */
 export type { AutomationSourceMetadata, ConversationSource } from "@/lib/conversations/source"
+export { AUTOMATION_RUN_SOURCE } from "@/lib/conversations/source"
 
 /**
  * Tab draft state — persisted to IndexedDB and synced to Supabase.
