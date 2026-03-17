@@ -2,6 +2,7 @@
 
 import { autorun, makeAutoObservable, reaction } from "mobx"
 import { useEffect, useState } from "react"
+import { logError } from "@/lib/client-error-logger"
 import { FAVORITE_WORKSPACES_STORAGE_KEY } from "@/lib/stores/storage-keys"
 
 class FavoriteWorkspacesStore {
@@ -29,8 +30,10 @@ class FavoriteWorkspacesStore {
           if (typeof v === "string") this.favorites.add(v)
         }
       }
-    } catch {
-      // corrupted storage — start fresh
+    } catch (err) {
+      logError("sidebar", "Failed to load favorite workspaces from localStorage", {
+        error: err instanceof Error ? err : new Error(String(err)),
+      })
     }
   }
 

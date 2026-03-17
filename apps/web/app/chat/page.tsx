@@ -3,7 +3,7 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { AnimatePresence, motion } from "framer-motion"
 import { useQueryState } from "nuqs"
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import {
   Panel,
@@ -52,7 +52,7 @@ import {
   trackWorkspaceSelected,
 } from "@/lib/analytics/events"
 import { useDexieMessageActions, useDexieSession } from "@/lib/db/dexieMessageStore"
-import { getMessageDb } from "@/lib/db/messageDb"
+import { AUTOMATION_RUN_SOURCE, getMessageDb } from "@/lib/db/messageDb"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useSessionHeartbeat } from "@/lib/hooks/useSessionHeartbeat"
 import { useAllWorkspacesQuery, type WorkspaceInfo } from "@/lib/hooks/useSettingsQueries"
@@ -188,7 +188,7 @@ function ChatPageContent() {
 
   // Automation transcript polling — automation runs write to app.messages directly
   // (not via Redis stream buffer), so we poll fetchTabMessages() instead.
-  const isAutomationRun = conversation?.source === "automation_run"
+  const isAutomationRun = conversation?.source === AUTOMATION_RUN_SOURCE
   const automationMeta = isAutomationRun ? conversation?.sourceMetadata : undefined
   useAutomationTranscriptPoll({
     isAutomationRun,
@@ -385,12 +385,17 @@ function ChatPageContent() {
   const isSuperadminWorkspace = workspace === SUPERADMIN_WORKSPACE_NAME
   const showWorkbench = showWorkbenchRaw // Show for all workspaces
 
-  // Sync workbench toggle → panel collapse/expand (no layout shift)
-  useEffect(() => {
+  // Sync workbench toggle → panel collapse/expand.
+  // The PanelGroup is only mounted after hydration (isHydrated gate below),
+  // so defaultSize already has the correct persisted value on first render.
+  // This effect only handles runtime toggles after mount.
+  useLayoutEffect(() => {
     const panel = workbenchPanelRef.current
     if (!panel) return
     if (showWorkbench) {
-      panel.expand()
+      if (panel.isCollapsed()) {
+        panel.resize(WORKBENCH_PANEL.default)
+      }
     } else {
       panel.collapse()
     }

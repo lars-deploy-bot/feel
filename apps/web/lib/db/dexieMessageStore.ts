@@ -22,6 +22,7 @@
 import Dexie from "dexie"
 import { create } from "zustand"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
+import { logError } from "@/lib/client-error-logger"
 import { useTabDataStore } from "@/lib/stores/tabDataStore"
 import { isRecord } from "@/lib/utils"
 import {
@@ -52,14 +53,14 @@ import { safeDb } from "./safeDb"
 
 const generateId = () => crypto.randomUUID()
 
-export interface DexieSessionContext {
-  userId: string
-  orgId: string
-}
+import type { SessionContext } from "./useMessageDb"
+
+/** @deprecated Use SessionContext from useMessageDb.ts — identical type, kept for backwards compat */
+export type { SessionContext as DexieSessionContext } from "./useMessageDb"
 
 interface DexieMessageStoreState {
   // Session context - REQUIRED for all operations
-  session: DexieSessionContext | null
+  session: SessionContext | null
   currentWorkspace: string | null
   /** @deprecated Unused — per-tab loading is tracked via loadingTabs instead */
   isLoading: boolean
@@ -78,7 +79,7 @@ interface DexieMessageStoreState {
 
 interface DexieMessageStoreActions {
   // Session management
-  setSession: (session: DexieSessionContext) => void
+  setSession: (session: SessionContext) => void
 
   // Conversation management
   initializeConversation: (workspace: string) => Promise<{ conversationId: string; tabId: string }>
@@ -294,7 +295,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
 
     if (existingTab) {
       if (existingTab.conversationId !== tabGroupId) {
-        console.warn("[dexie] Tab group mismatch for tab, updating conversationId", {
+        logError("dexie", "Tab group mismatch for tab, updating conversationId", {
           tabId,
           from: existingTab.conversationId,
           to: tabGroupId,
@@ -419,7 +420,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     const { session } = get()
 
     if (!session || !targetTabId) {
-      console.warn("[dexie] addMessage called without session or targetTabId")
+      logError("dexie", "addMessage called without session or targetTabId")
       return
     }
 
@@ -460,15 +461,13 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
         }
       }
 
-      const effectiveTabGroupId = targetTab?.conversationId ?? null
-      if (!targetTab) {
-        console.warn(`[dexie] addMessage: target tab ${targetTabId} not found in Dexie`)
-      }
-
-      if (!effectiveTabGroupId) {
-        console.warn("[dexie] addMessage called without tabGroupId")
+      const rawTabGroupId = targetTab?.conversationId ?? null
+      if (!rawTabGroupId) {
+        logError("dexie", "addMessage called without resolvable tabGroupId", { targetTabId })
         return
       }
+      // Narrowed — safe to use in closures without non-null assertion
+      const effectiveTabGroupId: string = rawTabGroupId
 
       const now = Date.now()
       const seq = await getNextSeq(db, targetTabId)
@@ -498,7 +497,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
         updates.autoTitleSet = true
       }
 
-      await safeDb(() => db.conversations.update(effectiveTabGroupId!, updates))
+      await safeDb(() => db.conversations.update(effectiveTabGroupId, updates))
 
       const tab = await db.tabs.get(targetTabId)
       if (tab) {
@@ -530,7 +529,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     // Find the target message index
     const targetIndex = allMessages.findIndex(m => m.id === messageId)
     if (targetIndex === -1) {
-      console.warn("[dexie] deleteMessagesAfter: message not found", messageId)
+      logError("dexie", "deleteMessagesAfter: message not found", { messageId })
       return null
     }
 
@@ -550,7 +549,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     }
 
     if (!resumeUuid) {
-      console.warn("[dexie] deleteMessagesAfter: no previous assistant message with UUID found")
+      logError("dexie", "deleteMessagesAfter: no previous assistant message with UUID found", { messageId })
       // Can't delete if there's no previous assistant message to resume from
       return null
     }

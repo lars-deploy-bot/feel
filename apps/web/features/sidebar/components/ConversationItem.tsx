@@ -3,6 +3,7 @@
 import { Archive, Bot, Check, Pencil, X } from "lucide-react"
 import { useRef, useState } from "react"
 import type { DbConversation } from "@/lib/db/messageDb"
+import { AUTOMATION_RUN_SOURCE } from "@/lib/db/messageDb"
 import { formatTimestamp, workspaceSlug } from "../utils"
 
 function StreamingDot() {
@@ -96,7 +97,7 @@ export function ConversationItem({
             <StreamingDot />
           </span>
         )}
-        {conversation.source === "automation_run" && (
+        {conversation.source === AUTOMATION_RUN_SOURCE && (
           <Bot size={13} strokeWidth={1.75} className="shrink-0 mt-[3px] text-black/20 dark:text-white/20" />
         )}
 
