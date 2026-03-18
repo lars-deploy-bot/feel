@@ -546,18 +546,9 @@ impl RuntimeLifecycle for SystemdRuntimeAdapter {
             let _ = remove_container_if_exists(&legacy_container, log_path).await;
         }
 
-        let systemd = require_systemd_config(params.config)?;
-        let dir = resolve_release_dir(systemd, &params.context.repo_root, &params.environment.name);
-        let current = dir.join("current");
-        let previous = if tokio_fs::try_exists(&current).await.unwrap_or(false) {
-            tokio_fs::read_link(&current).await.ok()
-        } else {
-            None
-        };
-        Ok(RollbackState::Symlink(RollbackSymlink {
-            symlink_path: current,
-            previous_target: previous,
-        }))
+        // The repo IS the runtime — no release directory to snapshot.
+        // Rollback = rebuild from the previous git SHA (handled by the deployer).
+        Ok(RollbackState::None)
     }
 
     async fn activate(
@@ -892,52 +883,16 @@ async fn activate_docker(params: &DeployParams<'_>, log_path: &Path) -> Result<(
 // =============================================================================
 
 async fn activate_systemd(params: &DeployParams<'_>, log_path: &Path) -> Result<()> {
-    let systemd = require_systemd_config(params.config)?;
     let unit = resolve_systemd_unit_name(params.config, &params.environment.name);
-    let dir = resolve_release_dir(systemd, &params.context.repo_root, &params.environment.name);
-    let current = dir.join("current");
-    let release_root = params.context.repo_root.join(&systemd.release_root);
 
-    tokio_fs::create_dir_all(&dir).await
-        .with_context(|| format!("failed to create {}", dir.display()))?;
-
-    let ts = chrono::Utc::now().format("%Y%m%d%H%M%S");
-    let sha = &params.release.git_sha[..std::cmp::min(8, params.release.git_sha.len())];
-    let target = dir.join(format!("{}-{}", ts, sha));
-
-    crate::logging::run_logged_command(
-        { let mut c = Command::new("cp"); c.arg("-a").arg(&release_root).arg(&target); c },
-        log_path, &format!("cp -a {} {}", release_root.display(), target.display()),
-    ).await?;
-
-    if let Some(build_cfg) = &params.config.build {
-        for output in &build_cfg.outputs {
-            if output == &systemd.release_root { continue; }
-            let src = params.context.repo_root.join(output);
-            if !tokio_fs::try_exists(&src).await.unwrap_or(false) { continue; }
-            let dest = target.join(output);
-            if let Some(p) = dest.parent() { let _ = tokio_fs::create_dir_all(p).await; }
-            let _ = crate::logging::run_logged_command(
-                { let mut c = Command::new("cp"); c.arg("-a").arg(&src).arg(&dest); c },
-                log_path, &format!("cp -a {} {}", src.display(), dest.display()),
-            ).await;
-        }
-    }
-
-    // Atomic symlink swap
-    let tmp = dir.join(format!("current.{}", params.deployment_id));
-    let _ = tokio_fs::remove_file(&tmp).await;
-    tokio_fs::symlink(&target, &tmp).await
-        .with_context(|| format!("symlink {} -> {}", tmp.display(), target.display()))?;
-    tokio_fs::rename(&tmp, &current).await
-        .with_context(|| format!("rename {} -> {}", tmp.display(), current.display()))?;
-
-    // Write env file for the systemd unit
-    let env_path = dir.join("current.env");
-    tokio_fs::copy(params.sanitized_env_file, &env_path).await
-        .with_context(|| format!("copy env to {}", env_path.display()))?;
+    // The repo IS the runtime. Turbo builds in-place:
+    //   packages/*/dist/   — workspace packages (workers need these)
+    //   apps/web/.next/    — Next.js build output
+    // The systemd unit runs server.js from the repo root.
+    // No copying, no symlinks, no release directories.
+    // Just restart the unit to pick up the new build.
 
     crate::systemd::restart_systemd_unit(&unit, log_path).await?;
-    append_log(log_path, &format!("activated {} via {}\n", target.display(), unit)).await?;
+    append_log(log_path, &format!("activated via {}\n", unit)).await?;
     Ok(())
 }

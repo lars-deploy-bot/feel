@@ -25,8 +25,12 @@ outputs = [
 
 [systemd]
 unit_template = "alive-{environment}.service"
+# No release directory — the repo IS the runtime.
+# Turbo builds in-place: packages/*/dist/ and apps/web/.next/standalone/.
+# The systemd unit runs server.js from the repo root so workers can
+# resolve @webalive/* workspace packages via the repo's node_modules.
 release_dir_template = ".builds/{environment}"
-release_root = "apps/web/.next/standalone"
+release_root = "."
 
 [runtime]
 kind = "systemd"
