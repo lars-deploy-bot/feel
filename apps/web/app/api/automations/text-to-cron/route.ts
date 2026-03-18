@@ -5,9 +5,12 @@
  * Used by the UI for live preview before saving.
  */
 
+import * as Sentry from "@sentry/nextjs"
 import { z } from "zod"
 import { protectedRoute } from "@/features/auth/lib/protectedRoute"
+import { structuredErrorResponse } from "@/lib/api/responses"
 import { textToCron } from "@/lib/automation/text-to-cron"
+import { ErrorCodes } from "@/lib/error-codes"
 
 const bodySchema = z.object({
   text: z.string().trim().min(1).max(200),
@@ -17,14 +20,17 @@ export const POST = protectedRoute(async ({ req }) => {
   const raw = await req.json()
   const parsed = bodySchema.safeParse(raw)
   if (!parsed.success) {
-    return Response.json({ ok: false, error: "Invalid input" }, { status: 400 })
+    return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 400 })
   }
 
   try {
     const result = await textToCron(parsed.data.text)
     return Response.json({ ok: true, cron: result.cron, timezone: result.timezone })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to parse schedule"
-    return Response.json({ ok: false, error: message }, { status: 422 })
+  } catch (err) {
+    Sentry.captureException(err)
+    return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {
+      status: 422,
+      details: { reason: err instanceof Error ? err.message : "Failed to parse schedule" },
+    })
   }
 })
