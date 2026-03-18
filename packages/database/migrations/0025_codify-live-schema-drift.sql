@@ -87,6 +87,10 @@ BEGIN
 END;
 $function$;
 
+-- Restrict execute to service_role only (called from app server, not client-side)
+REVOKE ALL ON FUNCTION integrations.get_available_integrations(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION integrations.get_available_integrations(text) TO service_role;
+
 -- -----------------------------------------------------------------------------
 -- Columns live in production but absent from repo migrations
 -- -----------------------------------------------------------------------------
@@ -134,15 +138,12 @@ BEGIN
   END IF;
 END $$;
 
+ALTER TABLE app.domains
+  ADD COLUMN IF NOT EXISTS sandbox_id text;
+
 DO $$
 BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'app'
-      AND table_name = 'domains'
-      AND column_name = 'sandbox_id'
-  ) AND NOT EXISTS (
+  IF NOT EXISTS (
     SELECT 1
     FROM pg_constraint
     WHERE connamespace = 'app'::regnamespace
