@@ -11,6 +11,20 @@ import { saveFile } from "./lib/file-ops"
 import { getFileName } from "./lib/file-path"
 import { ErrorMessage, LoadingSpinner, PanelBar } from "./ui"
 
+/** Shared Tab→2-space indent for any textarea */
+function handleTabIndent(e: React.KeyboardEvent<HTMLTextAreaElement>, onChange: (v: string) => void) {
+  if (e.key !== "Tab") return
+  e.preventDefault()
+  const ta = e.currentTarget
+  const start = ta.selectionStart
+  const end = ta.selectionEnd
+  onChange(`${ta.value.substring(0, start)}  ${ta.value.substring(end)}`)
+  requestAnimationFrame(() => {
+    ta.selectionStart = start + 2
+    ta.selectionEnd = start + 2
+  })
+}
+
 interface CodeViewerProps {
   workspace: string
   worktree?: string | null
@@ -36,25 +50,24 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
   const isMarkdown = lang === "markdown"
   const isCsv = lang === "csv" || lang === "tsv"
   const hasPreview = isMarkdown || isCsv
+  const hasChanges = file !== null && editContent !== file.content
 
-  // Sync editor content when file loads or changes
+  // Sync editor content when file loads
   useEffect(() => {
     if (file) setEditContent(file.content)
   }, [file])
 
-  // Reset state on file change
+  // Reset transient state on file change
   useEffect(() => {
     setSaveError(null)
     setSearchOpen(false)
     setSearchQuery("")
   }, [filePath])
 
-  // Preview tracks whether the file type supports it — always on for previewable files
+  // Auto-preview for previewable file types
   useEffect(() => {
     setPreviewing(hasPreview)
   }, [hasPreview, filePath])
-
-  const hasChanges = file !== null && editContent !== file.content
 
   // --- Search ---
 
@@ -62,10 +75,10 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     if (!searchQuery) return []
     const matches: number[] = []
     const lower = editContent.toLowerCase()
-    const queryLower = searchQuery.toLowerCase()
+    const q = searchQuery.toLowerCase()
     let pos = 0
     while (pos < lower.length) {
-      const idx = lower.indexOf(queryLower, pos)
+      const idx = lower.indexOf(q, pos)
       if (idx === -1) break
       matches.push(idx)
       pos = idx + 1
@@ -73,12 +86,11 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     return matches
   }, [editContent, searchQuery])
 
-  // Reset index when matches change
   useEffect(() => {
     setSearchIndex(0)
   }, [searchMatches.length, searchQuery])
 
-  // Select match in textarea
+  // Highlight current match in textarea
   useEffect(() => {
     if (searchMatches.length === 0 || !textareaRef.current || previewing) return
     const matchPos = searchMatches[searchIndex]
@@ -86,20 +98,15 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     const ta = textareaRef.current
     ta.focus()
     ta.setSelectionRange(matchPos, matchPos + searchQuery.length)
-
-    // Scroll textarea to show the match
-    // Calculate approximate line number and scroll to it
-    const textBefore = editContent.substring(0, matchPos)
-    const lineNumber = textBefore.split("\n").length - 1
-    const lineHeight = 21 // 13px * 1.6
-    const scrollTarget = lineNumber * lineHeight - ta.clientHeight / 2
-    ta.scrollTop = Math.max(0, scrollTarget)
+    const lineNumber = editContent.substring(0, matchPos).split("\n").length - 1
+    const lineHeight = 21 // 13px font × 1.6 line-height
+    ta.scrollTop = Math.max(0, lineNumber * lineHeight - ta.clientHeight / 2)
   }, [searchIndex, searchMatches, searchQuery, editContent, previewing])
 
   const handleSearchNav = useCallback(
-    (direction: 1 | -1) => {
+    (dir: 1 | -1) => {
       if (searchMatches.length === 0) return
-      setSearchIndex(prev => (prev + direction + searchMatches.length) % searchMatches.length)
+      setSearchIndex(prev => (prev + dir + searchMatches.length) % searchMatches.length)
     },
     [searchMatches.length],
   )
@@ -116,18 +123,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     textareaRef.current?.focus()
   }, [])
 
-  // --- Save ---
-
-  const handleCopy = async () => {
-    if (!editContent && editContent !== "") return
-    try {
-      await navigator.clipboard.writeText(editContent)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Ignore
-    }
-  }
+  // --- Save / Copy ---
 
   const handleSave = useCallback(async () => {
     setSaving(true)
@@ -141,7 +137,19 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     }
   }, [workspace, filePath, editContent, worktree])
 
-  // Keyboard shortcuts — scoped via workbench handler (not window)
+  const handleCopy = async () => {
+    if (!editContent && editContent !== "") return
+    try {
+      await navigator.clipboard.writeText(editContent)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard not available
+    }
+  }
+
+  // --- Keyboard shortcuts ---
+
   const handleFind = useCallback(
     (e: KeyboardEvent) => {
       e.preventDefault()
@@ -161,11 +169,50 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     { id: "codeviewer-save", key: "s", ctrlOrMeta: true, handler: handleSaveShortcut },
   ])
 
+  // --- Content area ---
+
+  function renderContent() {
+    if (loading) return <LoadingSpinner />
+    if (error) return <ErrorMessage message={error} />
+
+    if (previewing && isMarkdown) {
+      return (
+        <div className="flex-1 overflow-auto">
+          <div className="p-5">
+            <MarkdownDisplay content={file?.content ?? ""} className="text-[14px]" />
+          </div>
+        </div>
+      )
+    }
+
+    if (previewing && isCsv) {
+      return <CsvTable content={file?.content ?? ""} delimiter={lang === "tsv" ? "\t" : ","} />
+    }
+
+    // Markdown/CSV source editing — plain textarea
+    if (hasPreview) {
+      return (
+        <textarea
+          ref={textareaRef}
+          value={editContent}
+          onChange={e => setEditContent(e.target.value)}
+          onKeyDown={e => handleTabIndent(e, setEditContent)}
+          spellCheck={false}
+          className="flex-1 w-full resize-none bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono text-zinc-800 dark:text-zinc-200 p-4 outline-none border-none"
+          style={{ tabSize: 2 }}
+        />
+      )
+    }
+
+    // Code files — always editable with syntax highlighting
+    return <SyntaxEditor content={editContent} language={lang} onChange={setEditContent} textareaRef={textareaRef} />
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <PanelBar className="px-3 gap-1.5">
-        <span className={`${getFileColor(filename)}`}>
+        <span className={getFileColor(filename)}>
           <svg
             width="15"
             height="15"
@@ -315,53 +362,12 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
       )}
 
       {/* Content */}
-      {loading ? (
-        <div className="flex-1 overflow-auto">
-          <LoadingSpinner />
-        </div>
-      ) : error ? (
-        <div className="flex-1 overflow-auto">
-          <ErrorMessage message={error} />
-        </div>
-      ) : previewing && isMarkdown ? (
-        <div className="flex-1 overflow-auto">
-          <div className="p-5">
-            <MarkdownDisplay content={file?.content ?? ""} className="text-[14px]" />
-          </div>
-        </div>
-      ) : previewing && isCsv ? (
-        <CsvTable content={file?.content ?? ""} delimiter={lang === "tsv" ? "\t" : ","} />
-      ) : hasPreview ? (
-        <textarea
-          ref={textareaRef}
-          value={editContent}
-          onChange={e => setEditContent(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === "Tab") {
-              e.preventDefault()
-              const target = e.currentTarget
-              const start = target.selectionStart
-              const end = target.selectionEnd
-              const value = target.value
-              setEditContent(`${value.substring(0, start)}  ${value.substring(end)}`)
-              requestAnimationFrame(() => {
-                target.selectionStart = start + 2
-                target.selectionEnd = start + 2
-              })
-            }
-          }}
-          spellCheck={false}
-          className="flex-1 w-full resize-none bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono text-zinc-800 dark:text-zinc-200 p-4 outline-none border-none"
-          style={{ tabSize: 2 }}
-        />
-      ) : (
-        <SyntaxEditor content={editContent} language={lang} onChange={setEditContent} textareaRef={textareaRef} />
-      )}
+      {renderContent()}
     </div>
   )
 }
 
-// --- Syntax-highlighted editor (overlay: transparent textarea + highlighted pre) ---
+// --- Syntax-highlighted editor (overlay: transparent textarea over highlighted pre) ---
 
 interface SyntaxEditorProps {
   content: string
@@ -382,29 +388,10 @@ const SyntaxEditor = memo(function SyntaxEditor({ content, language, onChange, t
     }
   }, [textareaRef])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Tab") {
-        e.preventDefault()
-        const target = e.currentTarget
-        const start = target.selectionStart
-        const end = target.selectionEnd
-        const value = target.value
-        onChange(`${value.substring(0, start)}  ${value.substring(end)}`)
-        requestAnimationFrame(() => {
-          target.selectionStart = start + 2
-          target.selectionEnd = start + 2
-        })
-      }
-    },
-    [onChange],
-  )
-
   const lines = content.split("\n")
 
   return (
     <div className="relative flex-1 min-h-0">
-      {/* Syntax-highlighted layer (visual, pointer-events disabled) */}
       <pre
         ref={highlightRef}
         className="absolute inset-0 overflow-hidden bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono p-4 m-0"
@@ -424,13 +411,11 @@ const SyntaxEditor = memo(function SyntaxEditor({ content, language, onChange, t
           ))}
         </code>
       </pre>
-
-      {/* Transparent textarea for input (captures all interaction) */}
       <textarea
         ref={textareaRef}
         value={content}
         onChange={e => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onKeyDown={e => handleTabIndent(e, onChange)}
         onScroll={syncScroll}
         spellCheck={false}
         wrap="off"
@@ -441,7 +426,7 @@ const SyntaxEditor = memo(function SyntaxEditor({ content, language, onChange, t
   )
 })
 
-// --- CSV Table Viewer ---
+// --- CSV Table ---
 
 function parseCsvLine(line: string, delimiter: string): string[] {
   const cells: string[] = []
@@ -454,7 +439,7 @@ function parseCsvLine(line: string, delimiter: string): string[] {
       if (ch === '"') {
         if (i + 1 < line.length && line[i + 1] === '"') {
           current += '"'
-          i++ // skip escaped quote
+          i++
         } else {
           inQuotes = false
         }
@@ -474,12 +459,7 @@ function parseCsvLine(line: string, delimiter: string): string[] {
   return cells
 }
 
-interface CsvTableProps {
-  content: string
-  delimiter: string
-}
-
-const CsvTable = memo(function CsvTable({ content, delimiter }: CsvTableProps) {
+const CsvTable = memo(function CsvTable({ content, delimiter }: { content: string; delimiter: string }) {
   const { headers, rows } = useMemo(() => {
     const lines = content.split("\n").filter(l => l.trim() !== "")
     if (lines.length === 0) return { headers: [], rows: [] }

@@ -195,6 +195,9 @@ function parseChildEvent(raw: unknown): ParsedChildEvent {
       return { kind: "stream_ping" }
     case BridgeStreamType.DONE:
       return { kind: "stream_done" }
+    case "rate_limit_event":
+      // SDK billing signal — log server-side, never forward to client
+      return { kind: "stream_ping" }
     case BridgeStreamType.INTERRUPT:
       return {
         kind: "stream_interrupt",
