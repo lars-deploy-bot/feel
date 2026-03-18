@@ -33,7 +33,7 @@ describe("AutomationSidePanel trigger behavior", () => {
 
   it("uses effective one-time mode when editing to avoid schedule field drift", () => {
     expect(panelSource).toContain('const effectiveIsOneTime = isEditing ? triggerType === "one-time" : isOneTime')
-    expect(panelSource).toContain("cron_schedule: hasSchedule && !isOneTimeSubmit ? cronSchedule")
+    expect(panelSource).toContain("schedule_text: hasSchedule && !isOneTimeSubmit ? scheduleText")
     expect(panelSource).toContain(
       "run_at: hasSchedule && isOneTimeSubmit ? toZonedDateTimeIso(oneTimeDate, oneTimeTime, timezone)",
     )

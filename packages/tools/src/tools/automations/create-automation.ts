@@ -1,8 +1,9 @@
 /**
  * create_automation - Create a new automation via the typed API client
  *
- * Wraps POST /api/automations so Claude can create automations
- * after the user fills the ask_automation_config form.
+ * Wraps POST /api/automations so Claude can create automations.
+ * Schedule is specified as plain text (e.g. "every weekday at 9am")
+ * and converted to cron server-side.
  */
 
 import { tool } from "@anthropic-ai/claude-agent-sdk"
@@ -18,9 +19,17 @@ export const createAutomationParamsSchema = {
     .describe("How the automation is triggered: 'cron' for recurring, 'one-time' for single execution"),
   action_type: z.enum(["prompt"]).describe("Action type — currently only 'prompt' is supported"),
   action_prompt: z.string().min(1).describe("The prompt Claude will execute when the automation runs"),
-  cron_schedule: z.string().optional().describe("Cron expression (required for trigger_type=cron), e.g. '0 9 * * *'"),
-  cron_timezone: z.string().optional().describe("Timezone for the cron schedule, e.g. 'Europe/Amsterdam'"),
-  run_at: z.string().optional().describe("ISO timestamp for one-time triggers"),
+  schedule: z
+    .string()
+    .optional()
+    .describe(
+      "Human-readable schedule text for cron triggers, e.g. 'every weekday at 9am', 'every 2 hours', 'daily at noon'. Converted to cron expression server-side.",
+    ),
+  cron_timezone: z
+    .string()
+    .optional()
+    .describe("Timezone for the schedule, e.g. 'Europe/Amsterdam'. Optional if included in schedule text."),
+  run_at: z.string().optional().describe("ISO timestamp for one-time triggers, e.g. '2026-03-01T09:00:00Z'"),
   action_model: z.string().optional().describe("Model override, e.g. 'claude-sonnet-4-6-20250514'"),
   is_active: z.boolean().optional().describe("Whether the automation starts active (default: true)"),
 }
@@ -38,8 +47,11 @@ export async function createAutomation(
 
   const safeParams = parsedParams.data
 
-  if (safeParams.trigger_type === "cron" && !safeParams.cron_schedule) {
-    return errorResult("Invalid automation configuration", "cron_schedule is required for cron automations.")
+  if (safeParams.trigger_type === "cron" && !safeParams.schedule) {
+    return errorResult(
+      "Invalid automation configuration",
+      "schedule is required for cron automations. Provide a human-readable schedule like 'every weekday at 9am'.",
+    )
   }
 
   if (safeParams.trigger_type === "one-time" && !safeParams.run_at) {
@@ -60,7 +72,9 @@ export async function createAutomation(
       trigger_type: safeParams.trigger_type,
       action_type: safeParams.action_type,
       action_prompt: safeParams.action_prompt,
-      cron_schedule: safeParams.cron_schedule ?? null,
+      // Send schedule_text for server-side conversion (no raw cron needed)
+      schedule_text: safeParams.schedule ?? null,
+      cron_schedule: null,
       cron_timezone: safeParams.cron_timezone ?? null,
       run_at: safeParams.run_at ?? null,
       action_model: safeParams.action_model ?? null,
@@ -71,7 +85,7 @@ export async function createAutomation(
 
     const { automation } = data
     const status = automation.is_active ? "active" : "paused"
-    const schedule = describeSchedule(automation)
+    const schedule = describeSchedule(automation, safeParams.schedule)
 
     return {
       content: [
@@ -96,16 +110,23 @@ export async function createAutomation(
   }
 }
 
-function describeSchedule(automation: {
-  trigger_type: string
-  cron_schedule: string | null
-  cron_timezone: string | null
-  run_at: string | null
-}): string {
+function describeSchedule(
+  automation: {
+    trigger_type: string
+    cron_schedule: string | null
+    cron_timezone: string | null
+    run_at: string | null
+  },
+  originalText?: string,
+): string {
   if (automation.trigger_type === "cron") {
-    const cron = automation.cron_schedule ?? "(missing cron expression)"
+    // Show the original human text if available, with the resolved cron
+    const cron = automation.cron_schedule ?? "(pending)"
     const tz = automation.cron_timezone ? ` (${automation.cron_timezone})` : ""
-    return `cron: ${cron}${tz}`
+    if (originalText) {
+      return `${originalText} → ${cron}${tz}`
+    }
+    return `${cron}${tz}`
   }
 
   if (automation.trigger_type === "one-time") {
@@ -129,8 +150,8 @@ REQUIRED FIELDS:
 - action_prompt: What Claude should do when the automation runs
 
 FOR CRON TRIGGERS (trigger_type="cron"):
-- cron_schedule: Cron expression like "0 9 * * *" (required)
-- cron_timezone: Timezone like "Europe/Amsterdam" (optional, defaults to UTC)
+- schedule: Human-readable schedule like "every weekday at 9am", "every 2 hours", "daily at noon", "every monday and friday at 3pm". The server converts this to a cron expression automatically.
+- cron_timezone: Timezone like "Europe/Amsterdam" (optional — can also be included in the schedule text, e.g. "weekdays at 9am amsterdam time")
 
 FOR ONE-TIME TRIGGERS (trigger_type="one-time"):
 - run_at: ISO timestamp like "2026-03-01T09:00:00Z" (required)

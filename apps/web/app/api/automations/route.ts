@@ -193,10 +193,31 @@ export const POST = protectedRoute(async ({ user, req }) => {
 
   const supabase = createServiceAppClient()
 
+  // Resolve schedule_text → cron if provided (text takes priority over raw cron)
+  let resolvedCron = parsed.cron_schedule ?? null
+  let resolvedTimezone = parsed.cron_timezone ?? null
+
+  if (parsed.trigger_type === "cron" && parsed.schedule_text && !parsed.cron_schedule) {
+    try {
+      const { textToCron } = await import("@/lib/automation/text-to-cron")
+      const result = await textToCron(parsed.schedule_text)
+      resolvedCron = result.cron
+      if (result.timezone) {
+        resolvedTimezone = result.timezone
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to parse schedule text"
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: { field: "schedule_text", message },
+      })
+    }
+  }
+
   // Validate and compute cron schedule if present
   let nextRunAt: string | null = null
-  if (parsed.trigger_type === "cron" && parsed.cron_schedule) {
-    const cronCheck = validateCronSchedule(parsed.cron_schedule, parsed.cron_timezone ?? null)
+  if (parsed.trigger_type === "cron" && resolvedCron) {
+    const cronCheck = validateCronSchedule(resolvedCron, resolvedTimezone)
     if (!cronCheck.valid) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
@@ -205,7 +226,7 @@ export const POST = protectedRoute(async ({ user, req }) => {
     }
 
     const nextMs = computeNextRunAtMs(
-      { kind: "cron", expr: parsed.cron_schedule, tz: parsed.cron_timezone ?? undefined },
+      { kind: "cron", expr: resolvedCron, tz: resolvedTimezone ?? undefined },
       Date.now(),
     )
     if (nextMs) {
@@ -224,8 +245,8 @@ export const POST = protectedRoute(async ({ user, req }) => {
         name: parsed.name,
         description: parsed.description ?? null,
         trigger_type: parsed.trigger_type,
-        cron_schedule: parsed.cron_schedule ?? null,
-        cron_timezone: parsed.cron_timezone ?? null,
+        cron_schedule: resolvedCron,
+        cron_timezone: resolvedTimezone,
         run_at: parsed.run_at ?? null,
         action_type: parsed.action_type,
         action_prompt: parsed.action_prompt ?? null,

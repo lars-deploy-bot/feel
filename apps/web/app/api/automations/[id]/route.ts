@@ -125,6 +125,24 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.FORBIDDEN, { status: 403 })
     }
 
+    // Resolve schedule_text → cron if provided
+    if ("schedule_text" in parsed && parsed.schedule_text && existingRow.trigger_type === "cron") {
+      try {
+        const { textToCron } = await import("@/lib/automation/text-to-cron")
+        const result = await textToCron(parsed.schedule_text)
+        ;(parsed as Record<string, unknown>).cron_schedule = result.cron
+        if (result.timezone) {
+          ;(parsed as Record<string, unknown>).cron_timezone = result.timezone
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to parse schedule text"
+        return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+          status: 400,
+          details: { field: "schedule_text", message },
+        })
+      }
+    }
+
     // Build update object from validated parsed body
     const updates: Record<string, unknown> = {}
     const fieldKeys = [

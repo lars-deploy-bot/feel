@@ -137,7 +137,6 @@ export async function GET(request: NextRequest) {
       nextCursor,
     })
   } catch (error) {
-    console.error("[conversations] Unexpected error:", error)
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }

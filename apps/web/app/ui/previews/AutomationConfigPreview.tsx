@@ -47,18 +47,10 @@ export function AutomationConfigPreview() {
   }
 
   const formatSchedule = (r: AutomationConfigResult): string => {
-    switch (r.scheduleType) {
-      case "once":
-        return `Once on ${r.scheduleDate} at ${r.scheduleTime}`
-      case "daily":
-        return `Daily at ${r.scheduleTime}`
-      case "weekly":
-        return `Weekly at ${r.scheduleTime}`
-      case "monthly":
-        return `Monthly at ${r.scheduleTime}`
-      case "custom":
-        return `Cron: ${r.cronExpression}`
+    if (r.scheduleType === "once") {
+      return `Once on ${r.scheduleDate} at ${r.scheduleTime}`
     }
+    return r.scheduleText || r.scheduleType
   }
 
   return (
@@ -150,14 +142,13 @@ export function AutomationConfigPreview() {
 
           <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-3">
             <h3 className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
-              Schedule Types
+              Schedule
             </h3>
             <ul className="space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
-              <li>- Once (specific date/time)</li>
-              <li>- Daily</li>
-              <li>- Weekly</li>
-              <li>- Monthly</li>
-              <li>- Custom (cron expression)</li>
+              <li>- Natural language input</li>
+              <li>- Quick-pick presets</li>
+              <li>- One-time with date/time</li>
+              <li>- Server-side cron conversion</li>
             </ul>
           </div>
 

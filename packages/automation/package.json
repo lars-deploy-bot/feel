@@ -16,6 +16,10 @@
     "./scheduler": {
       "types": "./dist/scheduler.d.ts",
       "import": "./dist/scheduler.js"
+    },
+    "./text-to-cron": {
+      "types": "./dist/text-to-cron.d.ts",
+      "import": "./dist/text-to-cron.js"
     }
   },
   "scripts": {

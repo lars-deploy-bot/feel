@@ -6,7 +6,9 @@ export type AutomationFormData = {
   name: string
   description: string
   trigger_type: TriggerType
-  /** Only set when trigger_type is "cron" */
+  /** Human-readable schedule text, e.g. "weekdays at 9am". Converted to cron server-side. */
+  schedule_text: string
+  /** Only set when trigger_type is "cron" and schedule_text is empty (legacy/direct cron) */
   cron_schedule: string
   /** Only set when trigger_type is "cron" or "one-time" */
   cron_timezone: string

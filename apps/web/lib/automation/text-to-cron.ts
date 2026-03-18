@@ -6,10 +6,13 @@
  */
 
 import { type TextToCronResult, textToCron as textToCronBase } from "@webalive/automation"
-import { env } from "../../../config/env"
 
 export type { TextToCronResult }
 
 export async function textToCron(text: string): Promise<TextToCronResult> {
-  return textToCronBase(text, env.GROQ_API_SECRET)
+  const apiKey = process.env.GROQ_API_SECRET
+  if (!apiKey) {
+    throw new Error("GROQ_API_SECRET environment variable is required")
+  }
+  return textToCronBase(text, apiKey)
 }

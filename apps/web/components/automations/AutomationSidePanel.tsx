@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { isScheduleTrigger, type TriggerType } from "@/lib/api/schemas"
 import { toZonedDateTimeIso } from "@/lib/automation/schedule-conversion"
 import type { AutomationJob, Site } from "@/lib/hooks/useSettingsQueries"
+import { describeCron } from "./cron-scheduler/cron-parser"
 import { GeneralTab } from "./tabs/GeneralTab"
 import { PromptTab } from "./tabs/PromptTab"
 import { ToolsTab } from "./tabs/ToolsTab"
@@ -21,6 +22,14 @@ interface AutomationSidePanelProps {
   editingJob: AutomationJob | null
   onSave: (data: AutomationFormData) => Promise<void>
   saving: boolean
+}
+
+/** Convert an existing cron_schedule to human-readable text for the input field */
+function cronToDisplayText(cronSchedule: string | null): string {
+  if (!cronSchedule) return "weekdays at 9am"
+  const desc = describeCron(cronSchedule)
+  // describeCron returns "Cron: ..." for unrecognized patterns — use that as-is
+  return desc.startsWith("Cron:") ? cronSchedule : desc.toLowerCase()
 }
 
 export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave, saving }: AutomationSidePanelProps) {
@@ -39,9 +48,9 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
   const [model, setModel] = useState<ClaudeModel | "">("")
   const [timeoutSeconds, setTimeoutSeconds] = useState("")
 
-  // Trigger
+  // Trigger — schedule_text replaces cronSchedule
   const [isOneTime, setIsOneTime] = useState(false)
-  const [cronSchedule, setCronSchedule] = useState("0 9 * * 1-5")
+  const [scheduleText, setScheduleText] = useState("weekdays at 9am")
   const [oneTimeDate, setOneTimeDate] = useState("")
   const [oneTimeTime, setOneTimeTime] = useState("09:00")
   const [timezone, setTimezone] = useState("Europe/Amsterdam")
@@ -70,10 +79,10 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
         const pad = (n: number) => String(n).padStart(2, "0")
         setOneTimeDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
         setOneTimeTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`)
-        setCronSchedule("")
+        setScheduleText("")
       } else {
         setIsOneTime(false)
-        setCronSchedule(editingJob.cron_schedule || "0 9 * * 1-5")
+        setScheduleText(cronToDisplayText(editingJob.cron_schedule))
         setOneTimeDate("")
         setOneTimeTime("09:00")
       }
@@ -83,7 +92,7 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
       setSiteId("")
       setSiteSearch("")
       setIsOneTime(false)
-      setCronSchedule("0 9 * * 1-5")
+      setScheduleText("weekdays at 9am")
       setOneTimeDate("")
       setOneTimeTime("09:00")
       setTimezone("Europe/Amsterdam")
@@ -95,7 +104,7 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
 
   // ── Validation ──
   const effectiveIsOneTime = isEditing ? triggerType === "one-time" : isOneTime
-  const scheduleValid = hasSchedule ? (effectiveIsOneTime ? oneTimeDate && oneTimeTime : cronSchedule.trim()) : true
+  const scheduleValid = hasSchedule ? (effectiveIsOneTime ? oneTimeDate && oneTimeTime : scheduleText.trim()) : true
   const isValid = title.trim() && prompt.trim() && siteId && scheduleValid
 
   // ── Submit ──
@@ -110,7 +119,8 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
       name: title,
       description: "",
       trigger_type: effectiveTrigger,
-      cron_schedule: hasSchedule && !isOneTimeSubmit ? cronSchedule : "",
+      schedule_text: hasSchedule && !isOneTimeSubmit ? scheduleText : "",
+      cron_schedule: "", // Let the API convert from schedule_text
       cron_timezone: hasSchedule ? timezone : "",
       run_at: hasSchedule && isOneTimeSubmit ? toZonedDateTimeIso(oneTimeDate, oneTimeTime, timezone) : "",
       action_type: "prompt",
@@ -186,8 +196,8 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
                         isEditing,
                         isOneTime,
                         onOneTimeChange: setIsOneTime,
-                        cronSchedule,
-                        onCronChange: setCronSchedule,
+                        scheduleText,
+                        onScheduleTextChange: setScheduleText,
                         oneTimeDate,
                         onOneTimeDateChange: setOneTimeDate,
                         oneTimeTime,
