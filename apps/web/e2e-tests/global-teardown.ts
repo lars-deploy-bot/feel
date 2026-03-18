@@ -206,14 +206,14 @@ export default async function globalTeardown() {
     }
   }
 
-  // 6. Delete legacy workflow rows (public schema) that reference user_id via clerk_id.
-  // Must run before user deletion to avoid Workflow_clerk_id_fkey failures.
+  // 6. Delete legacy workflow rows (public schema) that reference the user via user_id.
+  // Must run before user deletion to avoid Workflow_user_id_fkey failures.
   if (managedUserIds.length > 0) {
     try {
       const { data: workflows, error: workflowSelectError } = await pub
         .from("Workflow")
         .select("wf_id")
-        .in("clerk_id", managedUserIds)
+        .in("user_id", managedUserIds)
       if (workflowSelectError) throw workflowSelectError
 
       const workflowIds = workflows?.map((w: { wf_id: string }) => w.wf_id) || []
@@ -262,7 +262,7 @@ export default async function globalTeardown() {
       const { count: workflowCount, error: workflowDeleteError } = await pub
         .from("Workflow")
         .delete({ count: "exact" })
-        .in("clerk_id", managedUserIds)
+        .in("user_id", managedUserIds)
       if (workflowDeleteError) throw workflowDeleteError
       stats.workflows = workflowCount || 0
     } catch (error) {

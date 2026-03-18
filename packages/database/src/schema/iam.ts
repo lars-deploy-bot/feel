@@ -51,7 +51,6 @@ export const users = iamSchema.table(
     displayName: text("display_name"),
     avatarUrl: text("avatar_url"),
     passwordHash: text("password_hash"),
-    clerkId: text("clerk_id"), // Legacy Clerk integration
     emailVerified: boolean("email_verified").default(false),
     inviteCode: text("invite_code"),
     status: userStatusEnum("status").default("active").notNull(),
@@ -62,7 +61,6 @@ export const users = iamSchema.table(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
   },
   table => [
-    index("idx_users_clerk_id").on(table.clerkId).where(sql`(clerk_id IS NOT NULL)`),
     uniqueIndex("idx_users_email_ci").on(sql`lower(email)`).where(sql`(email IS NOT NULL)`),
     index("idx_users_invite_code").on(table.inviteCode),
     index("idx_users_is_test_env").on(table.isTestEnv),
