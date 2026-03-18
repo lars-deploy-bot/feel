@@ -106,14 +106,14 @@ fi
 # Schema compatibility gate: verify current code can parse server-config.json.
 # Prevents deploying a build that can't read runtime config (postmortem 2026-03-16).
 # TODO: Move to deployer-rs preflight when deploy pipeline migrates (see plan/execution-substrate/06)
-if ! bun -e "
+if ! SERVER_CONFIG_PATH="$SERVER_CONFIG_PATH" bun -e "
   const { readFileSync } = require('node:fs');
   const { parseServerConfig } = require('@webalive/shared');
-  const raw = readFileSync('$SERVER_CONFIG_PATH', 'utf8');
+  const raw = readFileSync(process.env.SERVER_CONFIG_PATH, 'utf8');
   parseServerConfig(raw);
   console.log('Schema OK');
 " >/tmp/alive-schema-check-"$ENVIRONMENT".log 2>&1; then
-    log_error "Schema compatibility check FAILED — server-config.json contains keys unknown to @webalive/shared"
+    log_error "Schema compatibility check failed (runtime/parse error — see log above)"
     cat /tmp/alive-schema-check-"$ENVIRONMENT".log || true
     phase_end error "server-config.json schema mismatch"
     exit 1

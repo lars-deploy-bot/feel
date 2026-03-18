@@ -2,6 +2,7 @@ import * as crypto from "node:crypto"
 import * as fs from "node:fs"
 import { chown, mkdir } from "node:fs/promises"
 import * as path from "node:path"
+import { SECURITY, SUPERADMIN } from "@webalive/shared"
 
 export interface Workspace {
   root: string
@@ -48,12 +49,34 @@ export function writeAsWorkspaceOwner(
 }
 
 /**
+ * Defense-in-depth: reject workspace roots that aren't under known-safe base directories.
+ * Even if upstream getWorkspace() has a bug, file ops will refuse to touch /root, ~/, etc.
+ */
+function assertSafeWorkspaceRoot(workspaceRoot: string): void {
+  const resolved = path.resolve(workspaceRoot)
+
+  // Superadmin workspace (alive repo) is allowed
+  if (resolved === path.resolve(SUPERADMIN.WORKSPACE_PATH)) return
+
+  // /tmp paths for local tests (E2E, worktrees, etc.)
+  if (resolved.startsWith("/tmp/")) return
+
+  // Must be under an allowed workspace base (SITES_ROOT, E2B_SCRATCH_ROOT, etc.)
+  const allowed = SECURITY.ALLOWED_WORKSPACE_BASES.some(base => resolved === base || resolved.startsWith(`${base}/`))
+  if (allowed) return
+
+  throw new Error(`Workspace root is not under any allowed base: ${resolved}`)
+}
+
+/**
  * Containment guard for file operations
  * Must be called before any file operation to ensure path is within workspace
  */
 export function ensurePathWithinWorkspace(filePath: string, workspaceRoot: string): void {
+  assertSafeWorkspaceRoot(workspaceRoot)
+
   const norm = path.normalize(filePath)
-  if (!norm.startsWith(workspaceRoot + path.sep)) {
+  if (norm !== workspaceRoot && !norm.startsWith(workspaceRoot + path.sep)) {
     throw new Error(`Path outside workspace: ${norm}`)
   }
 }

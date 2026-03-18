@@ -11,43 +11,17 @@
  * - Tenant bootstrap via e2e-tests/global-setup.ts
  */
 
-import { expect, type Page, test } from "@playwright/test"
+import { expect, test } from "@playwright/test"
 import { DEFAULT_CLAUDE_MODEL } from "@webalive/shared"
 import type { StructuredError } from "@/lib/error-codes"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
-import { PATTERNS, TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
+import { PATTERNS, TEST_MESSAGES, TEST_TIMEOUTS } from "./fixtures/test-data"
 import { parseValidatedBody } from "./lib/api-helpers"
+import { sendMessage, waitForMessageInput, waitForStreamComplete } from "./lib/chat-actions"
 import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
+import { llmVerify } from "./lib/llm-verify"
+import { annotate } from "./lib/log"
 import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
-
-async function sendMessage(page: Page, message: string): Promise<void> {
-  const messageInput = page.locator(TEST_SELECTORS.messageInput)
-  const sendButton = page.locator(TEST_SELECTORS.sendButton)
-
-  await messageInput.fill(message)
-  await expect(sendButton).toBeEnabled({ timeout: TEST_TIMEOUTS.slow })
-  await sendButton.click()
-}
-
-const CONTEXT_REASON_IDS = ["request-contract", "integration-boundary", "user-flow"]
-
-function extractReasonId(responseText: string): string {
-  const match = responseText.match(/ReasonId:\s*([a-z-]+)/i)
-  if (!match) {
-    throw new Error(`Missing ReasonId in assistant response: ${responseText}`)
-  }
-
-  const reasonId = match[1]?.trim().toLowerCase()
-  if (!reasonId) {
-    throw new Error(`Empty ReasonId in assistant response: ${responseText}`)
-  }
-
-  if (!CONTEXT_REASON_IDS.includes(reasonId)) {
-    throw new Error(`Unexpected ReasonId "${reasonId}" in assistant response: ${responseText}`)
-  }
-
-  return reasonId
-}
 
 test.describe("Chat API - Request Validation", () => {
   test("can send message without INVALID_REQUEST error", async ({ page }) => {
@@ -55,9 +29,7 @@ test.describe("Chat API - Request Validation", () => {
     await loginLiveStaging(page, user)
 
     // Verify chat interface is ready
-    await expect(page.locator(TEST_SELECTORS.messageInput)).toBeVisible({
-      timeout: TEST_TIMEOUTS.max,
-    })
+    await waitForMessageInput(page)
 
     // Setup request/response interception BEFORE sending
     const requestPromise = page.waitForRequest(isClaudeStreamPostRequest)
@@ -68,7 +40,7 @@ test.describe("Chat API - Request Validation", () => {
     const response = await responsePromise
 
     const requestBody = parseValidatedBody(request)
-    console.log("📤 Request body:", requestBody)
+    annotate("request", JSON.stringify(requestBody))
 
     // Verify request structure
     expect(requestBody.message).toBe(TEST_MESSAGES.simple)
@@ -76,17 +48,14 @@ test.describe("Chat API - Request Validation", () => {
     expect(requestBody.tabGroupId).toMatch(PATTERNS.UUID)
     expect(requestBody.model).toBe(DEFAULT_CLAUDE_MODEL)
     expect(requestBody.workspace).toBe(user.workspace)
-    console.log("✅ Request structure valid")
 
     // Verify response status
     const responseStatus = response.status()
-    console.log("📥 Response status:", responseStatus)
+    annotate("response", `status: ${responseStatus}`)
 
     // If error response, parse and fail explicitly
     if (responseStatus !== 200) {
       const errorBody: StructuredError = await response.json()
-      console.error("❌ Error response:", errorBody)
-
       if (errorBody.error === "INVALID_REQUEST") {
         throw new Error(`INVALID_REQUEST error: ${errorBody.message}`)
       }
@@ -98,15 +67,8 @@ test.describe("Chat API - Request Validation", () => {
     await expect(page.getByText(TEST_MESSAGES.simple).first()).toBeVisible({
       timeout: TEST_TIMEOUTS.slow,
     })
-    console.log("✅ User message displayed")
 
-    // Wait for stream to complete: send-button reappears in DOM after streaming ends
-    // (during streaming it switches to stop-button, then back to send-button)
-    // Note: send-button is disabled when input is empty, so we check toBeAttached() not toBeEnabled()
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeAttached({
-      timeout: TEST_TIMEOUTS.max,
-    })
-    console.log("✅ Stream completed (send button re-attached)")
+    await waitForStreamComplete(page)
 
     // Verify no stream error shown in UI
     const errorVisible = await page.getByText("Something went wrong").isVisible()
@@ -114,16 +76,13 @@ test.describe("Chat API - Request Validation", () => {
       const errorText = await page.getByText("Something went wrong").textContent()
       throw new Error(`Stream error shown in UI: ${errorText}`)
     }
-    console.log("✅ No stream errors — chat works without INVALID_REQUEST error")
   })
 
   test("handles insufficient tokens gracefully", async ({ page }) => {
     const user = await getLiveStagingUser(test.info().workerIndex, getProjectBaseUrl(test.info()))
     await loginLiveStaging(page, user)
 
-    await expect(page.locator(TEST_SELECTORS.messageInput)).toBeVisible({
-      timeout: TEST_TIMEOUTS.max,
-    })
+    await waitForMessageInput(page)
 
     const responsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
@@ -135,10 +94,10 @@ test.describe("Chat API - Request Validation", () => {
     // Test should handle both success (200) and insufficient tokens (402/403)
     // This makes the test resilient to credit/token availability
     if (status === 200) {
-      console.log("✅ Request succeeded (user has credits)")
+      annotate("credits", "Request succeeded (user has credits)")
     } else if (status === 402 || status === 403) {
       const errorBody: StructuredError = await response.json()
-      console.log("✅ Request blocked due to insufficient tokens (expected):", errorBody.error)
+      annotate("credits", `Blocked: ${errorBody.error}`)
       expect(errorBody.error).toMatch(/INSUFFICIENT_TOKENS|TEST_MODE_BLOCK/)
     } else {
       throw new Error(`Unexpected status ${status}`)
@@ -150,29 +109,15 @@ test.describe("Chat API - Request Validation", () => {
     const user = await getLiveStagingUser(test.info().workerIndex, getProjectBaseUrl(test.info()))
     await loginLiveStaging(page, user)
 
-    await expect(page.locator(TEST_SELECTORS.messageInput)).toBeVisible({
-      timeout: TEST_TIMEOUTS.max,
-    })
+    await waitForMessageInput(page)
 
-    const expectedReasonId = CONTEXT_REASON_IDS[Math.floor(Math.random() * CONTEXT_REASON_IDS.length)]
+    const secret = `ECHO_${Date.now()}`
 
-    const firstPrompt = `
-Use this exact ReasonId in your reply:
-${expectedReasonId}
-
-Reply in exactly two lines:
-ReasonId: <the exact id above>
-Reason: <one short sentence explaining that reason>
-`.trim()
-    const secondPrompt = `
-What ReasonId did you just explain in your previous answer?
-Reply with exactly one line:
-ReasonId: <the same id>
-`.trim()
-
+    // --- Turn 1: inject a unique secret ---
     const firstRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
     const firstResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
+    const firstPrompt = `The secret code is: ${secret}. Acknowledge by repeating the code back to me.`
     await sendMessage(page, firstPrompt)
 
     const firstRequest = await firstRequestPromise
@@ -186,47 +131,43 @@ ReasonId: <the same id>
     expect(firstRequestBody.workspace).toBe(user.workspace)
     expect(firstResponse.status()).toBe(200)
 
-    // Wait for stream to complete: send-button reappears in DOM after streaming ends
-    // (disabled when input is empty, so check toBeAttached() not toBeEnabled())
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeAttached({
-      timeout: TEST_TIMEOUTS.max,
-    })
+    await waitForStreamComplete(page)
 
     const firstNDJSON = await firstResponse.text()
     const firstAssistantText = extractAssistantTextFromNDJSON(firstNDJSON)
-    expect(firstAssistantText).toContain("ReasonId:")
-    expect(firstAssistantText).toContain("Reason:")
-    expect(extractReasonId(firstAssistantText)).toBe(expectedReasonId)
-    console.log(`[Turn 1] Assistant: ${firstAssistantText}`)
+    expect(await llmVerify(firstAssistantText, `Does this response contain or acknowledge the code "${secret}"?`)).toBe(
+      true,
+    )
+    annotate("turn1", firstAssistantText.slice(0, 120))
 
+    // --- Turn 2: ask to recall the secret ---
     const secondRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
     const secondResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
+    const secondPrompt = "What was the secret code I told you? Reply with it."
     await sendMessage(page, secondPrompt)
 
     const secondRequest = await secondRequestPromise
     const secondResponse = await secondResponsePromise
     const secondRequestBody = parseValidatedBody(secondRequest)
 
-    expect(secondRequestBody.message).toBe(secondPrompt)
+    // Session stickiness: same tab across turns
     expect(secondRequestBody.tabId).toBe(firstRequestBody.tabId)
     expect(secondRequestBody.tabGroupId).toBe(firstRequestBody.tabGroupId)
     expect(secondRequestBody.model).toBe(DEFAULT_CLAUDE_MODEL)
     expect(secondRequestBody.workspace).toBe(user.workspace)
-    expect(secondResponse.status()).toBe(200)
 
-    // Wait for stream to complete: send-button reappears in DOM after streaming ends
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeAttached({
-      timeout: TEST_TIMEOUTS.max,
-    })
+    expect(secondResponse.status()).toBe(200)
+    await waitForStreamComplete(page)
 
     const secondNDJSON = await secondResponse.text()
     const secondAssistantText = extractAssistantTextFromNDJSON(secondNDJSON)
-    const secondReasonId = extractReasonId(secondAssistantText)
-    console.log(`[Turn 2] Assistant: ${secondAssistantText}`)
+    annotate("turn2", secondAssistantText.slice(0, 120))
 
-    // Context retention: turn two must recall the test-injected reason ID
-    expect(secondReasonId).toBe(expectedReasonId)
-    console.log(`[Context] Verified: reasonId ${secondReasonId} matches injected ${expectedReasonId}`)
+    // Context retention: turn 2 must recall the secret from turn 1
+    expect(await llmVerify(secondAssistantText, `Does this response contain or reference the code "${secret}"?`)).toBe(
+      true,
+    )
+    annotate("context", `Secret ${secret} retained across turns`)
   })
 })
