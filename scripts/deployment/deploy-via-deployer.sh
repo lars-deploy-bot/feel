@@ -195,67 +195,92 @@ rm -f "$PREVIEW_PROXY_LOG"
 phase_end ok "Services deployed"
 
 # =============================================================================
-# 5. Request build (via API)
+# 5-6. Build + Resolve release
 # =============================================================================
 
-phase_start "Requesting build"
+if [[ "$ENVIRONMENT" == "production" ]]; then
+    # Production: promote the latest successful staging release (no fresh build)
+    phase_start "Resolving staging release for promotion"
 
-BUILD_RESPONSE=$(api_post "/api/manager/deploys/builds" \
-    "{\"application_id\": \"$APPLICATION_ID\", \"server_id\": \"$CURRENT_SERVER_ID\", \"git_ref\": \"$GIT_SHA\", \"git_sha\": \"$GIT_SHA\", \"commit_message\": $(printf '%s' "$COMMIT_MSG" | jq -Rs .)}")
+    STAGING_ENV_ID=$(db_query "SELECT environment_id FROM deploy.environments WHERE application_id = '$APPLICATION_ID' AND name = 'staging' AND server_id = '$CURRENT_SERVER_ID' LIMIT 1;")
+    if [[ -z "$STAGING_ENV_ID" ]]; then
+        phase_end error "No staging environment found for promotion"
+        exit 1
+    fi
 
-BUILD_OK=$(printf '%s' "$BUILD_RESPONSE" | jq -r '.ok // false')
-if [[ "$BUILD_OK" != "true" ]]; then
-    BUILD_ERROR=$(printf '%s' "$BUILD_RESPONSE" | jq -r '.error.message // .error // "unknown"')
-    phase_end error "Failed to queue build: $BUILD_ERROR"
-    exit 1
+    RELEASE_ID=$(db_query "
+    SELECT d.release_id
+    FROM deploy.deployments d
+    WHERE d.environment_id = '$STAGING_ENV_ID'
+      AND d.status = 'succeeded'
+    ORDER BY d.created_at DESC
+    LIMIT 1;
+    ")
+
+    if [[ -z "$RELEASE_ID" ]]; then
+        phase_end error "No successful staging deployment found to promote"
+        exit 1
+    fi
+
+    phase_end ok "Promoting release $RELEASE_ID from staging"
+else
+    # Staging: build fresh
+    phase_start "Requesting build"
+
+    BUILD_RESPONSE=$(api_post "/api/manager/deploys/builds" \
+        "{\"application_id\": \"$APPLICATION_ID\", \"server_id\": \"$CURRENT_SERVER_ID\", \"git_ref\": \"$GIT_SHA\", \"git_sha\": \"$GIT_SHA\", \"commit_message\": $(printf '%s' "$COMMIT_MSG" | jq -Rs .)}")
+
+    BUILD_OK=$(printf '%s' "$BUILD_RESPONSE" | jq -r '.ok // false')
+    if [[ "$BUILD_OK" != "true" ]]; then
+        BUILD_ERROR=$(printf '%s' "$BUILD_RESPONSE" | jq -r '.error.message // .error // "unknown"')
+        phase_end error "Failed to queue build: $BUILD_ERROR"
+        exit 1
+    fi
+
+    BUILD_ID=$(printf '%s' "$BUILD_RESPONSE" | jq -r '.data.build_id')
+    log_step "Build: $BUILD_ID"
+    log_step "Branch: $GIT_REF (pinned to ${GIT_SHA:0:12})"
+
+    # Poll build status
+    ELAPSED=0
+    while [[ $ELAPSED -lt $BUILD_TIMEOUT_SECONDS ]]; do
+        BUILD_STATUS=$(db_query "SELECT status FROM deploy.builds WHERE build_id = '$BUILD_ID';")
+        case "$BUILD_STATUS" in
+            succeeded)
+                ARTIFACT_REF=$(db_query "SELECT artifact_ref FROM deploy.builds WHERE build_id = '$BUILD_ID';")
+                phase_end ok "Build succeeded ($ARTIFACT_REF)"
+                break
+                ;;
+            failed)
+                ERROR=$(db_query "SELECT error_message FROM deploy.builds WHERE build_id = '$BUILD_ID';")
+                phase_end error "Build failed: $ERROR"
+                exit 1
+                ;;
+            pending|running)
+                sleep "$STATUS_POLL_INTERVAL_SECONDS"
+                ELAPSED=$((ELAPSED + STATUS_POLL_INTERVAL_SECONDS))
+                ;;
+            *)
+                phase_end error "Unexpected build status: $BUILD_STATUS"
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ $ELAPSED -ge $BUILD_TIMEOUT_SECONDS ]]; then
+        phase_end error "Build timed out after ${BUILD_TIMEOUT_SECONDS}s"
+        exit 1
+    fi
+
+    # Resolve release from build
+    phase_start "Resolving release"
+    RELEASE_ID=$(db_query "SELECT release_id FROM deploy.releases WHERE build_id = '$BUILD_ID' LIMIT 1;")
+    if [[ -z "$RELEASE_ID" ]]; then
+        phase_end error "No release found for build $BUILD_ID"
+        exit 1
+    fi
+    phase_end ok "Release $RELEASE_ID"
 fi
-
-BUILD_ID=$(printf '%s' "$BUILD_RESPONSE" | jq -r '.data.build_id')
-log_step "Build: $BUILD_ID"
-log_step "Branch: $GIT_REF (pinned to ${GIT_SHA:0:12})"
-
-# Poll build status
-ELAPSED=0
-while [[ $ELAPSED -lt $BUILD_TIMEOUT_SECONDS ]]; do
-    BUILD_STATUS=$(db_query "SELECT status FROM deploy.builds WHERE build_id = '$BUILD_ID';")
-    case "$BUILD_STATUS" in
-        succeeded)
-            ARTIFACT_REF=$(db_query "SELECT artifact_ref FROM deploy.builds WHERE build_id = '$BUILD_ID';")
-            phase_end ok "Build succeeded ($ARTIFACT_REF)"
-            break
-            ;;
-        failed)
-            ERROR=$(db_query "SELECT error_message FROM deploy.builds WHERE build_id = '$BUILD_ID';")
-            phase_end error "Build failed: $ERROR"
-            exit 1
-            ;;
-        pending|running)
-            sleep "$STATUS_POLL_INTERVAL_SECONDS"
-            ELAPSED=$((ELAPSED + STATUS_POLL_INTERVAL_SECONDS))
-            ;;
-        *)
-            phase_end error "Unexpected build status: $BUILD_STATUS"
-            exit 1
-            ;;
-    esac
-done
-
-if [[ $ELAPSED -ge $BUILD_TIMEOUT_SECONDS ]]; then
-    phase_end error "Build timed out after ${BUILD_TIMEOUT_SECONDS}s"
-    exit 1
-fi
-
-# =============================================================================
-# 6. Resolve release
-# =============================================================================
-
-phase_start "Resolving release"
-RELEASE_ID=$(db_query "SELECT release_id FROM deploy.releases WHERE build_id = '$BUILD_ID' LIMIT 1;")
-if [[ -z "$RELEASE_ID" ]]; then
-    phase_end error "No release found for build $BUILD_ID"
-    exit 1
-fi
-phase_end ok "Release $RELEASE_ID"
 
 # =============================================================================
 # 7. Deploy (via API)

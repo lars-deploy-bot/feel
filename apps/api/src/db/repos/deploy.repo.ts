@@ -86,13 +86,13 @@ export async function findEnvironmentById(environmentId: string): Promise<Deploy
 export async function findEnvironmentByApplicationAndName(
   applicationId: string,
   name: DeployEnvironmentName,
+  serverId?: string,
 ): Promise<DeployEnvironmentRow | null> {
-  const { data, error } = await deploy
-    .from("environments")
-    .select("*")
-    .eq("application_id", applicationId)
-    .eq("name", name)
-    .maybeSingle()
+  let query = deploy.from("environments").select("*").eq("application_id", applicationId).eq("name", name)
+  if (serverId) {
+    query = query.eq("server_id", serverId)
+  }
+  const { data, error } = await query.maybeSingle()
 
   if (error) {
     throw formatDeployError(`fetch ${name} environment for application ${applicationId}`, error.message)

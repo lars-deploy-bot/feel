@@ -298,6 +298,7 @@ export async function queueDeployment(
     const stagingEnvironment = await deployRepo.findEnvironmentByApplicationAndName(
       environment.application_id,
       DEPLOY_ENVIRONMENT_STAGING,
+      environment.server_id,
     )
 
     if (!stagingEnvironment) {
