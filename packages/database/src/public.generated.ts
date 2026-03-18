@@ -12,7 +12,6 @@ export type Database = {
     Tables: {
       DataSet: {
         Row: {
-          clerk_id: string
           created_at: string
           data_format: string | null
           dataset_id: string
@@ -20,9 +19,9 @@ export type Database = {
           name: string
           status: string | null
           updated_at: string
+          user_id: string
         }
         Insert: {
-          clerk_id?: string
           created_at?: string
           data_format?: string | null
           dataset_id?: string
@@ -30,9 +29,9 @@ export type Database = {
           name: string
           status?: string | null
           updated_at?: string
+          user_id?: string
         }
         Update: {
-          clerk_id?: string
           created_at?: string
           data_format?: string | null
           dataset_id?: string
@@ -40,6 +39,7 @@ export type Database = {
           name?: string
           status?: string | null
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -128,34 +128,33 @@ export type Database = {
       }
       Evaluator: {
         Row: {
-          clerk_id: string
           config: Json | null
           created_at: string
           evaluator_id: string
           name: string
           rubric: Json | null
+          user_id: string
         }
         Insert: {
-          clerk_id?: string
           config?: Json | null
           created_at?: string
           evaluator_id?: string
           name: string
           rubric?: Json | null
+          user_id?: string
         }
         Update: {
-          clerk_id?: string
           config?: Json | null
           created_at?: string
           evaluator_id?: string
           name?: string
           rubric?: Json | null
+          user_id?: string
         }
         Relationships: []
       }
       EvolutionRun: {
         Row: {
-          clerk_id: string | null
           config: Json
           end_time: string | null
           evolution_type: string | null
@@ -164,9 +163,9 @@ export type Database = {
           run_id: string
           start_time: string
           status: Database["public"]["Enums"]["EvolutionRunStatus"]
+          user_id: string | null
         }
         Insert: {
-          clerk_id?: string | null
           config: Json
           end_time?: string | null
           evolution_type?: string | null
@@ -175,9 +174,9 @@ export type Database = {
           run_id?: string
           start_time?: string
           status?: Database["public"]["Enums"]["EvolutionRunStatus"]
+          user_id?: string | null
         }
         Update: {
-          clerk_id?: string | null
           config?: Json
           end_time?: string | null
           evolution_type?: string | null
@@ -186,40 +185,40 @@ export type Database = {
           run_id?: string
           start_time?: string
           status?: Database["public"]["Enums"]["EvolutionRunStatus"]
+          user_id?: string | null
         }
         Relationships: []
       }
       feedback: {
         Row: {
-          clerk_id: string | null
           content: string
           context: string | null
           created_at: string | null
           feedback_id: string
           status: string | null
+          user_id: string | null
         }
         Insert: {
-          clerk_id?: string | null
           content: string
           context?: string | null
           created_at?: string | null
           feedback_id?: string
           status?: string | null
+          user_id?: string | null
         }
         Update: {
-          clerk_id?: string | null
           content?: string
           context?: string | null
           created_at?: string | null
           feedback_id?: string
           status?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
       Generation: {
         Row: {
           best_workflow_version_id: string | null
-          clerk_id: string | null
           comment: string | null
           end_time: string | null
           feedback: string | null
@@ -227,10 +226,10 @@ export type Database = {
           number: number
           run_id: string
           start_time: string
+          user_id: string | null
         }
         Insert: {
           best_workflow_version_id?: string | null
-          clerk_id?: string | null
           comment?: string | null
           end_time?: string | null
           feedback?: string | null
@@ -238,10 +237,10 @@ export type Database = {
           number: number
           run_id: string
           start_time?: string
+          user_id?: string | null
         }
         Update: {
           best_workflow_version_id?: string | null
-          clerk_id?: string | null
           comment?: string | null
           end_time?: string | null
           feedback?: string | null
@@ -249,6 +248,7 @@ export type Database = {
           number?: number
           run_id?: string
           start_time?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -503,24 +503,24 @@ export type Database = {
       }
       Workflow: {
         Row: {
-          clerk_id: string | null
           created_at: string
           description: string
           updated_at: string
+          user_id: string | null
           wf_id: string
         }
         Insert: {
-          clerk_id?: string | null
           created_at?: string
           description: string
           updated_at?: string
+          user_id?: string | null
           wf_id?: string
         }
         Update: {
-          clerk_id?: string | null
           created_at?: string
           description?: string
           updated_at?: string
+          user_id?: string | null
           wf_id?: string
         }
         Relationships: []
@@ -776,7 +776,6 @@ export type Database = {
         }
         Returns: string
       }
-      current_clerk_id: { Args: never; Returns: string }
       gen_prefixed_id: { Args: { p_prefix: string }; Returns: string }
       gen_short_id: { Args: never; Returns: string }
       lockbox_delete: {

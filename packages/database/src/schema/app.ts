@@ -79,6 +79,7 @@ export const domains = appSchema.table(
     domainId: text("domain_id").default(sql`gen_prefixed_id('dom_'::text)`).primaryKey().notNull(),
     hostname: text("hostname").notNull(),
     port: integer("port").notNull(),
+    sandboxId: text("sandbox_id"),
     orgId: text("org_id"),
     serverId: text("server_id"),
     isTestEnv: boolean("is_test_env").default(false),
@@ -101,6 +102,7 @@ export const domains = appSchema.table(
       foreignColumns: [servers.serverId],
       name: "domains_server_id_fkey",
     }),
+    unique("domains_sandbox_id_key").on(table.sandboxId),
     unique("workspaces_hostname_key").on(table.hostname),
   ],
 )
@@ -257,6 +259,7 @@ export const automationJobs = appSchema.table(
     actionFormatPrompt: text("action_format_prompt"),
     actionSource: jsonb("action_source"),
     actionTargetPage: text("action_target_page"),
+    actionThinking: text("action_thinking"),
     actionTimeoutSeconds: integer("action_timeout_seconds").default(300),
     skills: text("skills").array().default([]),
 
@@ -456,12 +459,19 @@ export const userProfile = appSchema.table(
   "user_profile",
   {
     userProfileId: text("user_profile_id").default(sql`gen_prefixed_id('usr_pr'::text)`).primaryKey().notNull(),
-    clerkId: text("clerk_id").notNull(), // References user_id
+    userId: text("user_id").notNull(),
     about: text("about"),
     goals: text("goals"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
   },
-  table => [unique("user_profile_clerk_id_key").on(table.clerkId)],
+  table => [
+    unique("user_profile_user_id_key").on(table.userId),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.userId],
+      name: "user_profile_user_id_fkey",
+    }).onDelete("cascade"),
+  ],
 )
 
 /**
@@ -471,7 +481,7 @@ export const gatewaySettings = appSchema.table(
   "gateway_settings",
   {
     gatewaySettingId: text("gateway_setting_id").default(sql`gen_prefixed_id('gw_'::text)`).primaryKey().notNull(),
-    clerkId: text("clerk_id").notNull(), // References user_id
+    userId: text("user_id").notNull(),
     gateway: text("gateway").notNull(), // 'openai-api', 'openrouter-api', 'groq-api', 'anthropic-api'
     isEnabled: boolean("is_enabled").default(true).notNull(),
     enabledModels: jsonb("enabled_models").default([]).notNull(),
@@ -479,13 +489,13 @@ export const gatewaySettings = appSchema.table(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
   },
   table => [
-    index("idx_gateway_settings_clerk").on(table.clerkId),
+    index("idx_gateway_settings_user_id").on(table.userId),
     foreignKey({
-      columns: [table.clerkId],
+      columns: [table.userId],
       foreignColumns: [users.userId],
-      name: "gateway_settings_clerk_id_fkey",
+      name: "gateway_settings_user_id_fkey",
     }).onDelete("cascade"),
-    unique("gateway_settings_clerk_id_gateway_key").on(table.clerkId, table.gateway),
+    unique("gateway_settings_user_id_gateway_key").on(table.userId, table.gateway),
     check(
       "gateway_settings_gateway_check",
       sql`gateway = ANY (ARRAY['openai-api'::text, 'openrouter-api'::text, 'groq-api'::text, 'anthropic-api'::text])`,
@@ -502,6 +512,10 @@ export const feedback = appSchema.table("feedback", {
   content: text("content").notNull(),
   context: jsonb("context"), // Page, conversation, etc.
   status: text("status").default("new"),
+  githubIssueUrl: text("github_issue_url"),
+  awareEmailSent: text("aware_email_sent"),
+  fixedEmailSent: text("fixed_email_sent"),
+  closedAt: timestamp("closed_at", { withTimezone: true, mode: "string" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow(),
 })
 
@@ -518,7 +532,6 @@ export const errors = appSchema.table(
     location: text("location").notNull(),
     env: text("env").notNull(), // 'development', 'production'
     severity: severityLevelEnum("severity").default("error").notNull(),
-    clerkId: text("clerk_id"),
     error: jsonb("error"),
     totalCount: integer("total_count").default(1).notNull(),
     lastSeen: timestamp("last_seen", { withTimezone: true, mode: "string" }).defaultNow().notNull(),

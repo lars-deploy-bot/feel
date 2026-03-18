@@ -217,6 +217,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           draft: Json | null
+          draft_attachments: Json | null
           last_message_at: string | null
           message_count: number
           name: string
@@ -228,6 +229,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           draft?: Json | null
+          draft_attachments?: Json | null
           last_message_at?: string | null
           message_count?: number
           name?: string
@@ -239,6 +241,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           draft?: Json | null
+          draft_attachments?: Json | null
           last_message_at?: string | null
           message_count?: number
           name?: string
@@ -364,7 +367,6 @@ export type Database = {
       }
       errors: {
         Row: {
-          clerk_id: string | null
           created_at: string
           env: string
           error: Json | null
@@ -378,7 +380,6 @@ export type Database = {
           total_count: number
         }
         Insert: {
-          clerk_id?: string | null
           created_at?: string
           env: string
           error?: Json | null
@@ -392,7 +393,6 @@ export type Database = {
           total_count?: number
         }
         Update: {
-          clerk_id?: string | null
           created_at?: string
           env?: string
           error?: Json | null
@@ -448,31 +448,31 @@ export type Database = {
       }
       gateway_settings: {
         Row: {
-          clerk_id: string
           created_at: string
           enabled_models: Json
           gateway: string
           gateway_setting_id: string
           is_enabled: boolean
           updated_at: string
+          user_id: string
         }
         Insert: {
-          clerk_id: string
           created_at?: string
           enabled_models?: Json
           gateway: string
           gateway_setting_id?: string
           is_enabled?: boolean
           updated_at?: string
+          user_id: string
         }
         Update: {
-          clerk_id?: string
           created_at?: string
           enabled_models?: Json
           gateway?: string
           gateway_setting_id?: string
           is_enabled?: boolean
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -673,23 +673,23 @@ export type Database = {
       user_profile: {
         Row: {
           about: string | null
-          clerk_id: string
           created_at: string
           goals: string | null
+          user_id: string
           user_profile_id: string
         }
         Insert: {
           about?: string | null
-          clerk_id: string
           created_at?: string
           goals?: string | null
+          user_id: string
           user_profile_id?: string
         }
         Update: {
           about?: string | null
-          clerk_id?: string
           created_at?: string
           goals?: string | null
+          user_id?: string
           user_profile_id?: string
         }
         Relationships: []
