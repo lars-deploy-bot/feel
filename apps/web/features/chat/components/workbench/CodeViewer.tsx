@@ -138,7 +138,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
   }, [workspace, filePath, editContent, worktree])
 
   const handleCopy = async () => {
-    if (!editContent && editContent !== "") return
+    if (!editContent) return
     try {
       await navigator.clipboard.writeText(editContent)
       setCopied(true)
@@ -276,7 +276,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
         <button
           type="button"
           onClick={handleCopy}
-          disabled={!editContent && editContent !== ""}
+          disabled={!editContent}
           className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors disabled:opacity-30"
           title={copied ? "Copied!" : "Copy"}
         >

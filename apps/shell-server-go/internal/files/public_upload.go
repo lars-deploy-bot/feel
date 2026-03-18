@@ -115,6 +115,14 @@ func (h *Handler) PublicUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Clean up upload directory on failure.
+	cleanupUploadDir := true
+	defer func() {
+		if cleanupUploadDir {
+			_ = os.RemoveAll(uploadDir)
+		}
+	}()
+
 	var totalBytes int64
 	var fileCount int
 
@@ -199,6 +207,7 @@ func (h *Handler) PublicUpload(w http.ResponseWriter, r *http.Request) {
 	elapsed := time.Since(started).Round(time.Millisecond)
 	filesLog.Info("public-upload: %s — %d files, %d bytes in %s", uploadID, fileCount, totalBytes, elapsed)
 
+	cleanupUploadDir = false
 	response.JSON(w, http.StatusOK, map[string]any{
 		"success":    true,
 		"uploadId":   uploadID,
@@ -241,7 +250,14 @@ func streamPartToDisk(destPath string, part io.Reader, totalBytes *int64) (int64
 	return written, nil
 }
 
-// extractPublicZip extracts a zip file into destDir.
+const (
+	// maxExtractedBytes caps total extracted output to prevent zip bombs.
+	maxExtractedBytes int64 = 20 << 30 // 20 GB
+	// maxExtractedEntries caps the number of extracted files.
+	maxExtractedEntries = 10_000
+)
+
+// extractPublicZip extracts a zip file into destDir with size and entry limits.
 func extractPublicZip(zipPath, destDir string) (int, error) {
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
@@ -250,6 +266,7 @@ func extractPublicZip(zipPath, destDir string) (int, error) {
 	defer zr.Close()
 
 	var count int
+	var totalExtracted int64
 	for _, f := range zr.File {
 		name := filepath.Clean(f.Name)
 		if strings.HasPrefix(name, "..") || strings.HasPrefix(name, "/") {
@@ -261,6 +278,15 @@ func extractPublicZip(zipPath, destDir string) (int, error) {
 		if f.FileInfo().IsDir() {
 			os.MkdirAll(target, 0755)
 			continue
+		}
+
+		if count >= maxExtractedEntries {
+			return count, fmt.Errorf("zip bomb protection: exceeded %d entries", maxExtractedEntries)
+		}
+
+		// Check uncompressed size before extracting.
+		if totalExtracted+int64(f.UncompressedSize64) > maxExtractedBytes {
+			return count, fmt.Errorf("zip bomb protection: extracted size would exceed %d bytes", maxExtractedBytes)
 		}
 
 		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
@@ -278,13 +304,22 @@ func extractPublicZip(zipPath, destDir string) (int, error) {
 			return count, fmt.Errorf("create %s: %w", name, err)
 		}
 
-		_, copyErr := io.Copy(dst, src)
+		// Use LimitReader to enforce per-entry size limit at extraction time too.
+		remaining := maxExtractedBytes - totalExtracted
+		written, copyErr := io.Copy(dst, io.LimitReader(src, remaining+1))
 		src.Close()
 		dst.Close()
+
+		if written > remaining {
+			os.Remove(target)
+			return count, fmt.Errorf("zip bomb protection: extracted bytes exceeded limit during copy")
+		}
+
 		if copyErr != nil {
 			return count, fmt.Errorf("copy %s: %w", name, copyErr)
 		}
 
+		totalExtracted += written
 		count++
 	}
 
