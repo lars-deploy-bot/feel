@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { DashboardPage } from "./pages/DashboardPage"
 import { EditPage } from "./pages/EditPage"
 import { LoginPage } from "./pages/LoginPage"
+import { PublicUploadPage } from "./pages/PublicUploadPage"
 import { ShellPage } from "./pages/ShellPage"
 import { UploadPage } from "./pages/UploadPage"
 import { useConfigStore } from "./store/config"
@@ -99,6 +100,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/public-upload" element={<PublicUploadPage />} />
       {/* Fallback - redirect to login */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
