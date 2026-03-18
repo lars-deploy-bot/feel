@@ -186,11 +186,6 @@ function renderMessageContent(message: UIMessage, options?: RenderMessageOptions
     }
 
     default:
-      return (
-        <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-2 rounded">
-          <div className="font-medium mb-1">Unknown Message Type</div>
-          <pre className="text-xs">{JSON.stringify(message.content, null, 2)}</pre>
-        </div>
-      )
+      return null
   }
 }
