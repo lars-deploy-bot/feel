@@ -70,15 +70,22 @@ describe("deploysRoutes", () => {
     })
 
     const app = buildTestApp()
+    const body = {
+      application_id: "dep_app_123",
+      server_id: "srv_test",
+      git_ref: "main",
+      git_sha: "abc123",
+      commit_message: "test commit",
+    }
     const response = await app.request("http://localhost/api/manager/deploys/builds", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ application_id: "dep_app_123" }),
+      body: JSON.stringify(body),
     })
 
     expect(response.status).toBe(201)
     expect(okSchema.parse(await response.json()).ok).toBe(true)
-    expect(queueBuild).toHaveBeenCalledWith("dep_app_123", undefined)
+    expect(queueBuild).toHaveBeenCalledWith(body)
   })
 
   it("rejects invalid deployment payloads", async () => {

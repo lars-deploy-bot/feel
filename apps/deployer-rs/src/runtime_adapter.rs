@@ -531,8 +531,21 @@ impl RuntimeLifecycle for SystemdRuntimeAdapter {
     async fn prepare_rollback(
         &self,
         params: &DeployParams<'_>,
-        _log_path: &Path,
+        log_path: &Path,
     ) -> Result<RollbackState> {
+        // Stop any legacy Docker container that might hold the port
+        let legacy_container = deployment_container_name(
+            &params.config.project.slug,
+            &params.environment.name,
+        );
+        if container_is_running(&legacy_container).await.unwrap_or(false) {
+            append_log(
+                log_path,
+                &format!("stopping legacy Docker container {} to free port\n", legacy_container),
+            ).await?;
+            let _ = remove_container_if_exists(&legacy_container, log_path).await;
+        }
+
         let systemd = require_systemd_config(params.config)?;
         let dir = resolve_release_dir(systemd, &params.context.repo_root, &params.environment.name);
         let current = dir.join("current");

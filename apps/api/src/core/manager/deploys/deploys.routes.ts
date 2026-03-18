@@ -8,14 +8,7 @@ import {
   DEPLOY_TASK_STATUSES,
 } from "@webalive/database"
 import type { AppBindings } from "../../../types/hono"
-import {
-  listDeployApplications,
-  queueBuild,
-  queueDeployment,
-  readBuildLog,
-  readDeploymentLog,
-  shipPipeline,
-} from "./deploys.service"
+import { listDeployApplications, queueBuild, queueDeployment, readBuildLog, readDeploymentLog } from "./deploys.service"
 
 // =============================================================================
 // Shared Zod schemas (reused across routes and emitted into the OpenAPI spec)
@@ -149,17 +142,26 @@ const createBuildRoute = createRoute({
         "application/json": {
           schema: z
             .object({
-              application_id: z
-                .string()
-                .trim()
-                .min(1)
-                .openapi({ description: "The application to build", example: "dep_app_bd57129d0218c50d" }),
-              git_ref: z
-                .string()
-                .trim()
-                .min(1)
-                .optional()
-                .openapi({ description: "Git ref to build (branch, tag, or SHA). Defaults to HEAD.", example: "main" }),
+              application_id: z.string().trim().min(1).openapi({
+                description: "The application to build",
+                example: "dep_app_bd57129d0218c50d",
+              }),
+              server_id: z.string().trim().min(1).openapi({
+                description: "Server to build on (from server-config.json serverId)",
+                example: "srv_alive_dot_best_138_201_56_93",
+              }),
+              git_ref: z.string().trim().min(1).openapi({
+                description: "Git ref (branch name or SHA)",
+                example: "main",
+              }),
+              git_sha: z.string().trim().min(1).openapi({
+                description: "Resolved git commit SHA",
+                example: "7f92e71a...",
+              }),
+              commit_message: z.string().trim().min(1).openapi({
+                description: "Commit message for the build",
+                example: "feat: add systemd runtime adapter",
+              }),
             })
             .strict(),
         },
@@ -263,64 +265,6 @@ const getDeploymentLogRoute = createRoute({
   },
 })
 
-const shipRoute = createRoute({
-  method: "post",
-  path: "/ship",
-  tags: ["Deploys"],
-  summary: "Full build + deploy pipeline",
-  description:
-    "The single entry point for deploying. Queues a build, waits for it to succeed, " +
-    "resolves the release, queues a deployment, and waits for it to succeed. " +
-    "This is the API equivalent of `make staging` or `make production`. " +
-    "The request blocks until the full pipeline completes (up to ~15 minutes).",
-  request: {
-    body: {
-      required: true,
-      content: {
-        "application/json": {
-          schema: z
-            .object({
-              application_id: z.string().trim().min(1).openapi({
-                description: "The application to build and deploy",
-                example: "dep_app_bd57129d0218c50d",
-              }),
-              environment: z.enum(DEPLOY_ENVIRONMENT_NAMES).openapi({
-                description: "Target environment",
-                example: "staging",
-              }),
-              git_ref: z.string().trim().min(1).optional().openapi({
-                description: "Git ref to build. Defaults to HEAD.",
-                example: "main",
-              }),
-            })
-            .strict(),
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      description: "Pipeline completed successfully",
-      content: {
-        "application/json": {
-          schema: z.object({
-            ok: z.literal(true),
-            data: z.object({
-              build: BuildSchema,
-              release_id: z.string(),
-              deployment: DeploymentSchema,
-            }),
-          }),
-        },
-      },
-    },
-    409: {
-      description: "Pipeline failed (build error, deployment error, conflict, or timeout)",
-      content: { "application/json": { schema: ErrorSchema } },
-    },
-  },
-})
-
 // =============================================================================
 // Wire routes to handlers
 // =============================================================================
@@ -347,7 +291,7 @@ export const deploysRoutes = new OpenAPIHono<AppBindings>({
   })
   .openapi(createBuildRoute, async c => {
     const body = c.req.valid("json")
-    const build = await queueBuild(body.application_id, body.git_ref)
+    const build = await queueBuild(body)
     return c.json({ ok: true as const, data: build }, 201)
   })
   .openapi(createDeploymentRoute, async c => {
@@ -366,9 +310,4 @@ export const deploysRoutes = new OpenAPIHono<AppBindings>({
     const log = await readDeploymentLog(id)
     c.header("Content-Type", "text/plain; charset=utf-8")
     return c.text(log, 200)
-  })
-  .openapi(shipRoute, async c => {
-    const body = c.req.valid("json")
-    const result = await shipPipeline(body.application_id, body.environment, body.git_ref)
-    return c.json({ ok: true as const, data: result }, 200)
   })
