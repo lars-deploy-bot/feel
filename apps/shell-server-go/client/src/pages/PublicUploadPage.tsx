@@ -36,7 +36,7 @@ const MAX_SIZE = 10 * 1024 * 1024 * 1024 // 10 GB
 
 export function PublicUploadPage() {
   const [state, setState] = useState<UploadState>("idle")
-  const [password, setPassword] = useState(() => localStorage.getItem("upload-pw") || "")
+  const [password, setPassword] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -88,9 +88,6 @@ export function PublicUploadPage() {
     const formData = new FormData()
     formData.append("password", password)
     formData.append("file", file)
-
-    // Remember password for next time.
-    localStorage.setItem("upload-pw", password)
 
     const xhr = new XMLHttpRequest()
     abortRef.current = xhr
@@ -149,7 +146,7 @@ export function PublicUploadPage() {
 
     xhr.open("POST", "/api/public/upload")
     xhr.send(formData)
-  }, [file])
+  }, [file, password])
 
   const cancel = useCallback(() => {
     abortRef.current?.abort()
@@ -186,7 +183,7 @@ export function PublicUploadPage() {
         <div className="w-full max-w-xl">
           {/* Password */}
           <input
-            type="text"
+            type="password"
             placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
