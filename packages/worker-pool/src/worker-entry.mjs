@@ -16,7 +16,7 @@
  *   WORKER_WORKSPACE_KEY - Workspace identifier
  */
 
-import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, statSync } from "node:fs"
+import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, readdirSync, statSync } from "node:fs"
 import { createConnection } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -524,6 +524,24 @@ function dropPrivileges() {
       mkdirSync(configProjectsDir, { recursive: true, mode: 0o1777 })
     } else {
       chmodSync(configProjectsDir, 0o1777)
+    }
+
+    // Fix project subdirectories: the CLI creates them with 700 owned by whichever
+    // UID ran first. When workers cycle through different UIDs for the same workspace
+    // path, subsequent UIDs can't write session files → resume fails silently.
+    // Fix: make subdirs 1777 (like /tmp) so any workspace user can write sessions.
+    const projectEntries = readdirSync(configProjectsDir, { withFileTypes: true })
+    for (const entry of projectEntries) {
+      if (!entry.isDirectory()) continue
+      const subdir = join(configProjectsDir, entry.name)
+      try {
+        const subdirMode = statSync(subdir).mode & 0o777
+        if (subdirMode !== 0o1777 && (subdirMode & 0o022) !== 0o022) {
+          chmodSync(subdir, 0o1777)
+        }
+      } catch (e) {
+        console.error(`[worker] Failed to fix project subdir permissions for ${entry.name}: ${e.message}`)
+      }
     }
   } catch (e) {
     console.error(`[worker] Failed to ensure projects dir permissions: ${e.message}`)

@@ -6,8 +6,9 @@ import {
   type TestTenant,
 } from "@/app/api/test/test-route-schemas"
 import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
-import { TEST_TIMEOUTS } from "./fixtures/test-data"
+import { TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
 import { login } from "./helpers"
+import { sendMessage, waitForMessageInput } from "./lib/chat-actions"
 import { getProjectBaseUrl } from "./lib/live-tenant"
 import { parseNDJSONEvents } from "./lib/ndjson"
 import { buildE2ETestHeaders } from "./lib/test-headers"
@@ -98,14 +99,14 @@ test.describe("Superadmin Terminal Mode (live)", () => {
     const user = await bootstrapLiveSuperadminUser(test.info().workerIndex, baseUrl)
     await login(page, user)
     await page.waitForURL("**/chat", { timeout: TEST_TIMEOUTS.max })
-    await expect(page.locator('[data-testid="workspace-ready"]')).toBeAttached({ timeout: TEST_TIMEOUTS.max })
+    await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({ timeout: TEST_TIMEOUTS.max })
 
     const storageValue = await page.evaluate(key => localStorage.getItem(key), WORKSPACE_STORAGE.KEY)
     if (!storageValue) throw new Error("Workspace storage missing after login")
     const parsed = parseWorkspaceStorageValue(storageValue)
     expect(parsed.state.currentWorkspace).toBe(user.workspace)
 
-    await expect(page.locator('[data-testid="message-input"]')).toBeVisible({ timeout: TEST_TIMEOUTS.slow })
+    await waitForMessageInput(page)
 
     const modeButton = page.getByRole("button", { name: /Mode:/ })
     await expect(modeButton).toBeVisible({ timeout: TEST_TIMEOUTS.slow })
@@ -120,8 +121,7 @@ test.describe("Superadmin Terminal Mode (live)", () => {
     const streamRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
     const streamResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
-    await page.locator('[data-testid="message-input"]').fill(prompt)
-    await page.locator('[data-testid="send-button"]').click()
+    await sendMessage(page, prompt)
 
     const streamRequest = await streamRequestPromise
     const requestBody = streamRequest.postDataJSON() as { streamMode?: string }

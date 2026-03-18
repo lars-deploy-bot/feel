@@ -1,17 +1,17 @@
 import { expect, type Page, test } from "@playwright/test"
-import {
-  type TestE2BDomain,
-  TestE2BDomainResponseSchema,
-  type TestE2BDomainUpdateBody,
-} from "@/app/api/test/test-route-schemas"
 import { apiSchemas, FilesListResponseSchema, FilesUploadResponseSchema } from "@/lib/api/schemas"
 import { ErrorCodes } from "@/lib/error-codes"
 import { CANCEL_ENDPOINT_STATUS } from "@/lib/stream/cancel-status"
-import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
+import { isClaudeStreamPostRequest } from "@/lib/stream/claude-stream-request-matchers"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
-import { getLiveStagingUser, getProjectBaseUrl, loginLiveStaging } from "./lib/live-tenant"
-import { extractAssistantTextFromNDJSON } from "./lib/ndjson"
-import { buildE2ETestHeaders } from "./lib/test-headers"
+import { sendMessage, sendMessageAndCapture } from "./lib/chat-actions"
+import {
+  getDomainRuntime,
+  getLiveStagingUser,
+  getProjectBaseUrl,
+  loginLiveStaging,
+  updateTestDomainRuntime,
+} from "./lib/live-tenant"
 
 const EXPECTED_CANCEL_STATUSES = new Set<string>([
   CANCEL_ENDPOINT_STATUS.CANCELLED,
@@ -20,85 +20,9 @@ const EXPECTED_CANCEL_STATUSES = new Set<string>([
   CANCEL_ENDPOINT_STATUS.ALREADY_COMPLETE,
 ])
 
-function getDomainRuntime(baseUrl: string, workspace: string): Promise<TestE2BDomain>
-function getDomainRuntime(
-  baseUrl: string,
-  workspace: string,
-  options: { allow404AsNull: true },
-): Promise<TestE2BDomain | null>
-async function getDomainRuntime(
-  baseUrl: string,
-  workspace: string,
-  options?: { allow404AsNull?: boolean },
-): Promise<TestE2BDomain | null> {
-  const response = await fetch(`${baseUrl}/api/test/e2b-domain?workspace=${encodeURIComponent(workspace)}`, {
-    method: "GET",
-    headers: buildE2ETestHeaders(),
-  })
-
-  if (response.status === 404 && options?.allow404AsNull) {
-    return null
-  }
-
-  if (!response.ok) {
-    throw new Error(`e2b-domain GET failed (${response.status})`)
-  }
-
-  const payload = TestE2BDomainResponseSchema.parse(await response.json())
-  if (!payload.ok) {
-    throw new Error("e2b-domain GET returned ok=false")
-  }
-
-  return payload.domain
-}
-
-async function updateDomainRuntime(baseUrl: string, payload: TestE2BDomainUpdateBody): Promise<TestE2BDomain> {
-  const response = await fetch(`${baseUrl}/api/test/e2b-domain`, {
-    method: "POST",
-    headers: buildE2ETestHeaders(true),
-    body: JSON.stringify(payload),
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    const errorCode = typeof error.error === "string" ? error.error : "unknown_error"
-    throw new Error(`e2b-domain POST failed (${response.status}): ${errorCode}`)
-  }
-
-  const data = TestE2BDomainResponseSchema.parse(await response.json())
-  return data.domain
-}
-
-async function sendMessage(page: Page, message: string): Promise<string> {
-  const messageInput = page.locator('[data-testid="message-input"]')
-  const sendButton = page.locator('[data-testid="send-button"]')
-
-  await messageInput.fill(message)
-  await expect(sendButton).toBeEnabled({ timeout: TEST_TIMEOUTS.slow })
-
-  const streamResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
-  await sendButton.click()
-  const response = await streamResponsePromise
-
-  expect(response.status()).toBe(200)
-  const requestId = response.headers()["x-request-id"]
-  expect(typeof requestId).toBe("string")
-  expect(requestId.length).toBeGreaterThan(0)
-
-  const ndjson = await response.text()
-  const assistantText = extractAssistantTextFromNDJSON(ndjson)
-  expect(assistantText.length).toBeGreaterThan(0)
-  return assistantText
-}
-
 async function cancelLatestStreamViaTab(page: Page, workspace: string, message: string): Promise<string> {
-  const messageInput = page.locator('[data-testid="message-input"]')
-  const sendButton = page.locator('[data-testid="send-button"]')
-
   const streamRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
-  await messageInput.fill(message)
-  await expect(sendButton).toBeEnabled({ timeout: TEST_TIMEOUTS.slow })
-  await sendButton.click()
+  await sendMessage(page, message)
 
   const streamRequest = await streamRequestPromise
   const bodyRaw = streamRequest.postData()
@@ -142,7 +66,7 @@ test.describe("E2B Mother - Phases 0-6", () => {
 
     // Deterministic cleanup for shared staging data
     const restoreSystemd = async () => {
-      await updateDomainRuntime(baseUrl, {
+      await updateTestDomainRuntime(baseUrl, {
         workspace: user.workspace,
         executionMode: "systemd",
         killSandbox: true,
@@ -185,14 +109,14 @@ export default defineConfig({
       expect(initialRuntime.is_test_env).toBe(true)
 
       // Seed test files on host workspace (systemd mode) for sync verification
-      await updateDomainRuntime(baseUrl, {
+      await updateTestDomainRuntime(baseUrl, {
         workspace: user.workspace,
         executionMode: "systemd",
         seedHostFiles: SEED_FILES,
       })
 
       // Phase 1: switch to E2B with clean sandbox baseline
-      const e2bRuntime = await updateDomainRuntime(baseUrl, {
+      const e2bRuntime = await updateTestDomainRuntime(baseUrl, {
         workspace: user.workspace,
         executionMode: "e2b",
         killSandbox: true,
@@ -205,7 +129,7 @@ export default defineConfig({
       await loginLiveStaging(page, user)
 
       // Phase 2: real chat creates the sandbox
-      const assistantText = await sendMessage(page, "Reply with exactly READY.")
+      const { assistantText } = await sendMessageAndCapture(page, "Reply with exactly READY.")
       expect(assistantText.toLowerCase()).toContain("ready")
 
       const runningRuntime = await getDomainRuntime(baseUrl, user.workspace)
@@ -329,7 +253,7 @@ export default defineConfig({
       expect(terminalData.ok).toBe(true)
       expect(terminalData.wsUrl).toContain("/e2b/ws?lease=")
 
-      await updateDomainRuntime(baseUrl, {
+      await updateTestDomainRuntime(baseUrl, {
         workspace: user.workspace,
         executionMode: "e2b",
         killSandbox: true,
@@ -347,7 +271,7 @@ export default defineConfig({
       )
 
       // Recreate a running sandbox for the next phases
-      await sendMessage(page, "Reply with exactly READY-AGAIN.")
+      await sendMessageAndCapture(page, "Reply with exactly READY-AGAIN.")
       await expect
         .poll(
           async () => {
@@ -373,7 +297,7 @@ export default defineConfig({
         "Write a very long response: count from 1 to 400, one number per line, with no extra text.",
       )
       expect(EXPECTED_CANCEL_STATUSES.has(cancelStatus)).toBe(true)
-      await sendMessage(page, "Reply with exactly LOCK-RELEASED.")
+      await sendMessageAndCapture(page, "Reply with exactly LOCK-RELEASED.")
 
       // Phase 6: force dead, then recreate and assert a new sandbox id
       const runtimeBeforeRotate = await getDomainRuntime(baseUrl, user.workspace)
@@ -382,7 +306,7 @@ export default defineConfig({
       }
       const previousSandboxId = runtimeBeforeRotate.sandbox_id
 
-      await updateDomainRuntime(baseUrl, {
+      await updateTestDomainRuntime(baseUrl, {
         workspace: user.workspace,
         executionMode: "e2b",
         killSandbox: true,
@@ -390,7 +314,7 @@ export default defineConfig({
         restartWorkspaceWorkers: true,
       })
 
-      await sendMessage(page, "Reply with exactly SANDBOX-RECREATED.")
+      await sendMessageAndCapture(page, "Reply with exactly SANDBOX-RECREATED.")
       await expect
         .poll(
           async () => {
@@ -413,7 +337,7 @@ export default defineConfig({
       }
     } finally {
       // Clean up seeded test files from host workspace
-      await updateDomainRuntime(baseUrl, {
+      await updateTestDomainRuntime(baseUrl, {
         workspace: user.workspace,
         executionMode: "systemd",
         cleanHostFiles: SEED_FILE_PATHS,

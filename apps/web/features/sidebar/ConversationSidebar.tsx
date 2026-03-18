@@ -405,27 +405,27 @@ function SidebarFooter({
         </div>
       )}
 
-      {isMobile && (
+      {isMobile && (onFeedbackClick || onTemplatesClick) && (
         <div className={`flex items-center gap-1 px-3 py-2 shrink-0 border-t ${styles.borderSubtle}`}>
-          {(
-            [
-              { icon: MessageCircle, label: "Feedback", action: onFeedbackClick },
-              { icon: Layers, label: "Components", action: onTemplatesClick },
-            ] as const
-          ).map(({ icon: Icon, label, action }) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => {
-                action?.()
-                closeSidebar()
-              }}
-              className="inline-flex items-center gap-2 h-8 px-3 rounded-lg text-[13px] text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-100"
-            >
-              <Icon size={15} strokeWidth={1.5} />
-              {label}
-            </button>
-          ))}
+          {[
+            { icon: MessageCircle, label: "Feedback", action: onFeedbackClick },
+            { icon: Layers, label: "Components", action: onTemplatesClick },
+          ].map(({ icon: Icon, label, action }) =>
+            action ? (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  action()
+                  closeSidebar()
+                }}
+                className="inline-flex items-center gap-2 h-8 px-3 rounded-lg text-[13px] text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-100"
+              >
+                <Icon size={15} strokeWidth={1.5} />
+                {label}
+              </button>
+            ) : null,
+          )}
         </div>
       )}
 

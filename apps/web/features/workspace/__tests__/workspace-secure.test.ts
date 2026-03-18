@@ -84,8 +84,11 @@ describe("Workspace Security - Path Traversal Prevention", () => {
       }
     })
 
-    it("should handle workspace root path strictly", () => {
-      expect(() => ensurePathWithinWorkspace(workspaceRoot, workspaceRoot)).toThrow(/outside.*workspace/i)
+    it("should allow workspace root path itself", () => {
+      // Workspace root is valid — ensureDirectoryAsWorkspaceOwner passes it
+      // when writing files at the root level. The file write route separately
+      // blocks writing a file AT the workspace root (resolvedPath === resolvedWorkspace).
+      expect(() => ensurePathWithinWorkspace(workspaceRoot, workspaceRoot)).not.toThrow()
     })
 
     it("should handle trailing slashes correctly", () => {
@@ -141,6 +144,24 @@ describe("Workspace Security - Path Traversal Prevention", () => {
         const fullPath = path.join(workspaceRoot, attack)
         expect(() => ensurePathWithinWorkspace(fullPath, workspaceRoot)).toThrow()
       }
+    })
+  })
+
+  describe("Workspace Root Validation", () => {
+    it("should reject dangerous workspace roots", () => {
+      const dangerousRoots = ["/root", "/home/user", "/etc", "/", "/tmp", "/var"]
+
+      for (const root of dangerousRoots) {
+        expect(
+          () => ensurePathWithinWorkspace(`${root}/file.txt`, root),
+          `Should reject workspace root: ${root}`,
+        ).toThrow(/not under any allowed base/i)
+      }
+    })
+
+    it("should accept valid workspace roots", () => {
+      // Regular site workspace
+      expect(() => ensurePathWithinWorkspace(path.join(workspaceRoot, "file.txt"), workspaceRoot)).not.toThrow()
     })
   })
 

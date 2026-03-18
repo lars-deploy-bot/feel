@@ -195,6 +195,9 @@ function parseChildEvent(raw: unknown): ParsedChildEvent {
       return { kind: "stream_ping" }
     case BridgeStreamType.DONE:
       return { kind: "stream_done" }
+    case "rate_limit_event":
+      // SDK billing signal — log server-side, never forward to client
+      return { kind: "stream_ping" }
     case BridgeStreamType.INTERRUPT:
       return {
         kind: "stream_interrupt",
@@ -509,7 +512,12 @@ async function processChildEvent(
     case "stream_ping":
     case "stream_done":
     case "stream_interrupt":
+      break
     case "unknown":
+      Sentry.captureMessage(`Unknown stream event type: ${childEvent.rawType}`, {
+        level: "warning",
+        extra: { rawType: childEvent.rawType, raw: childEvent.raw },
+      })
       break
     default:
       assertNever(childEvent, "Unhandled parsed child event kind in processChildEvent")
@@ -734,21 +742,17 @@ function buildStreamMessage(
       return interruptMessage
     }
     case "unknown": {
-      const fallbackError: BridgeErrorMessage = {
-        type: BridgeStreamType.ERROR,
+      // Sentry capture happens in processChildEvent — silently drop from client stream
+      const silentPing: BridgePingMessage = {
+        type: BridgeStreamType.PING,
         requestId,
         messageId,
         streamSeq,
         tabId,
         timestamp,
-        data: {
-          error: ErrorCodes.STREAM_ERROR,
-          code: ErrorCodes.STREAM_ERROR,
-          message: getErrorMessage(ErrorCodes.STREAM_ERROR),
-          details: `Unexpected stream event type: ${childEvent.rawType}`,
-        },
+        data: {},
       }
-      return fallbackError
+      return silentPing
     }
     default:
       return assertNever(childEvent, "Unhandled parsed child event kind in buildStreamMessage")

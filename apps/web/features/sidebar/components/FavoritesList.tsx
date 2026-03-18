@@ -38,7 +38,7 @@ export function FavoritesList({
 }: FavoritesListProps) {
   return (
     <ul
-      className={`flex flex-col gap-2 pb-1 min-h-[40px] rounded-lg transition-colors duration-150 list-none p-0 m-0 ${
+      className={`flex flex-col gap-2 pb-1 min-h-[40px] max-h-[40vh] overflow-y-auto shrink-0 rounded-lg transition-colors duration-150 list-none p-0 m-0 ${
         dragOverZone === "favorites" ? "bg-black/[0.03] dark:bg-white/[0.03]" : ""
       }`}
       onDrop={onDrop}

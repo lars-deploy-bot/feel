@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronRight } from "lucide-react"
-import { useState } from "react"
+import { useId, useState } from "react"
 import type { DbConversation } from "@/lib/db/messageDb"
 import { ArchivedConversationItem } from "./ArchivedConversationItem"
 
@@ -13,6 +13,7 @@ interface ArchivedSectionProps {
 
 export function ArchivedSection({ archivedConversations, onUnarchiveTabGroup, onTabGroupClick }: ArchivedSectionProps) {
   const [expanded, setExpanded] = useState(false)
+  const archivedListId = useId()
 
   if (archivedConversations.length === 0) return null
 
@@ -21,6 +22,8 @@ export function ArchivedSection({ archivedConversations, onUnarchiveTabGroup, on
       <button
         type="button"
         onClick={() => setExpanded(prev => !prev)}
+        aria-expanded={expanded}
+        aria-controls={archivedListId}
         className="flex items-center gap-2 px-3 py-2 mx-2 rounded-lg w-[calc(100%-16px)] text-[13px] text-black/30 dark:text-white/30 hover:bg-black/[0.025] dark:hover:bg-white/[0.025] transition-colors duration-100"
       >
         <ChevronRight
@@ -34,7 +37,7 @@ export function ArchivedSection({ archivedConversations, onUnarchiveTabGroup, on
         </span>
       </button>
       {expanded && (
-        <div className="max-h-40 overflow-y-auto pb-1">
+        <div id={archivedListId} className="max-h-40 overflow-y-auto pb-1">
           {archivedConversations.map(conversation => (
             <ArchivedConversationItem
               key={conversation.id}
