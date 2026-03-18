@@ -5,6 +5,7 @@ import { ErrorCodes } from "@/lib/error-codes"
 import { type CancelState, createNDJSONStream } from "../ndjson-stream-handler"
 
 const sentryCaptureExceptionMock = vi.hoisted(() => vi.fn())
+const sentryCaptureMessageMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@sentry/nextjs", () => ({
   withScope: (
@@ -16,6 +17,7 @@ vi.mock("@sentry/nextjs", () => ({
       setContext: () => {},
     }),
   captureException: sentryCaptureExceptionMock,
+  captureMessage: sentryCaptureMessageMock,
 }))
 
 // Default test model - using Haiku for tests
@@ -402,7 +404,9 @@ describe("NDJSON Stream Handler", () => {
       expect((firstCallError as Error).message).toContain("source=assistant_message.error")
     })
 
-    it("emits stream_error for unknown child event types", async () => {
+    it("sends unknown child event types to Sentry as silent ping, not error", async () => {
+      sentryCaptureMessageMock.mockClear()
+
       const mockChildStream = new ReadableStream({
         start(controller) {
           const unknownEvent = JSON.stringify({
@@ -430,9 +434,13 @@ describe("NDJSON Stream Handler", () => {
 
       const decoded = new TextDecoder().decode(firstChunk.value)
       const parsed = JSON.parse(decoded)
-      expect(parsed.type).toBe("stream_error")
-      expect(parsed.data.error).toBe(ErrorCodes.STREAM_ERROR)
-      expect(String(parsed.data.details)).toContain("stream_totally_unknown")
+      expect(parsed.type).toBe("stream_ping")
+
+      // Verify Sentry captured the unknown event
+      expect(sentryCaptureMessageMock).toHaveBeenCalledWith(
+        "Unknown stream event type: stream_totally_unknown",
+        expect.objectContaining({ level: "warning" }),
+      )
     })
   })
 
