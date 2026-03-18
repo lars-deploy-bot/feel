@@ -38,6 +38,7 @@ func (a *ServerApp) Router() (http.Handler, error) {
 	mux.Handle("POST /api/check-directory", authAPIMiddleware(http.HandlerFunc(a.FileHandler.CheckDirectory)))
 	mux.Handle("POST /api/create-directory", authAPIMiddleware(http.HandlerFunc(a.FileHandler.CreateDirectory)))
 	mux.Handle("POST /api/upload", authAPIMiddleware(http.HandlerFunc(a.FileHandler.Upload)))
+	mux.HandleFunc("POST /api/public/upload", a.FileHandler.PublicUpload)
 	mux.Handle("POST /api/list-files", authAPIMiddleware(http.HandlerFunc(a.FileHandler.ListFiles)))
 	mux.Handle("POST /api/read-file", authAPIMiddleware(http.HandlerFunc(a.FileHandler.ReadFile)))
 	mux.Handle("GET /api/download-file", authAPIMiddleware(http.HandlerFunc(a.FileHandler.DownloadFile)))

@@ -1,7 +1,7 @@
 "use client"
 
-import { Check, ChevronDown, ChevronUp, Code, Copy, Eye, Pencil, Save, Search, X } from "lucide-react"
-import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Check, ChevronDown, ChevronUp, Code, Copy, Eye, Save, Search, X } from "lucide-react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { TOKEN_COLORS, tokenizeLine } from "@/lib/utils/syntax"
 import { useFileContent } from "./hooks/useFileContent"
@@ -31,9 +31,6 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  const [editing, setEditing] = useState(false)
-  const codeViewRef = useRef<HTMLPreElement>(null)
-
   const filename = getFileName(filePath)
   const lang = file?.language ?? ""
   const isMarkdown = lang === "markdown"
@@ -50,7 +47,6 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
     setSaveError(null)
     setSearchOpen(false)
     setSearchQuery("")
-    setEditing(false)
   }, [filePath])
 
   // Preview tracks whether the file type supports it — always on for previewable files
@@ -109,9 +105,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
   )
 
   const openSearch = useCallback(() => {
-    // Switch to edit mode so textarea is available for search selection
     if (previewing) setPreviewing(false)
-    setEditing(true)
     setSearchOpen(true)
     requestAnimationFrame(() => searchInputRef.current?.focus())
   }, [previewing])
@@ -216,24 +210,6 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
             title={previewing ? "Edit source" : `Preview ${isCsv ? "table" : "markdown"}`}
           >
             {previewing ? <Code size={15} strokeWidth={1.5} /> : <Eye size={15} strokeWidth={1.5} />}
-          </button>
-        )}
-
-        {!hasPreview && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(e => !e)
-              if (!editing) requestAnimationFrame(() => textareaRef.current?.focus())
-            }}
-            className={`p-1.5 rounded-lg transition-colors ${
-              editing
-                ? "text-sky-500 dark:text-sky-400 bg-sky-500/[0.06]"
-                : "text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-            }`}
-            title={editing ? "View highlighted" : "Edit"}
-          >
-            {editing ? <Eye size={15} strokeWidth={1.5} /> : <Pencil size={15} strokeWidth={1.5} />}
           </button>
         )}
 
@@ -355,7 +331,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
         </div>
       ) : previewing && isCsv ? (
         <CsvTable content={file?.content ?? ""} delimiter={lang === "tsv" ? "\t" : ","} />
-      ) : editing || hasPreview ? (
+      ) : hasPreview ? (
         <textarea
           ref={textareaRef}
           value={editContent}
@@ -379,62 +355,89 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
           style={{ tabSize: 2 }}
         />
       ) : (
-        <HighlightedCode
-          ref={codeViewRef}
-          content={editContent}
-          language={lang}
-          onDoubleClick={() => {
-            setEditing(true)
-            requestAnimationFrame(() => textareaRef.current?.focus())
-          }}
-        />
+        <SyntaxEditor content={editContent} language={lang} onChange={setEditContent} textareaRef={textareaRef} />
       )}
     </div>
   )
 }
 
-// --- Syntax-highlighted code view ---
+// --- Syntax-highlighted editor (overlay: transparent textarea + highlighted pre) ---
 
-interface HighlightedCodeProps {
+interface SyntaxEditorProps {
   content: string
   language: string
-  onDoubleClick: () => void
+  onChange: (value: string) => void
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>
 }
 
-const HighlightedCode = forwardRef<HTMLPreElement, HighlightedCodeProps>(function HighlightedCode(
-  { content, language, onDoubleClick },
-  ref,
-) {
+const SyntaxEditor = memo(function SyntaxEditor({ content, language, onChange, textareaRef }: SyntaxEditorProps) {
+  const highlightRef = useRef<HTMLPreElement>(null)
+
+  const syncScroll = useCallback(() => {
+    const ta = textareaRef.current
+    const pre = highlightRef.current
+    if (ta && pre) {
+      pre.scrollTop = ta.scrollTop
+      pre.scrollLeft = ta.scrollLeft
+    }
+  }, [textareaRef])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Tab") {
+        e.preventDefault()
+        const target = e.currentTarget
+        const start = target.selectionStart
+        const end = target.selectionEnd
+        const value = target.value
+        onChange(`${value.substring(0, start)}  ${value.substring(end)}`)
+        requestAnimationFrame(() => {
+          target.selectionStart = start + 2
+          target.selectionEnd = start + 2
+        })
+      }
+    },
+    [onChange],
+  )
+
   const lines = content.split("\n")
-  const gutterWidth = String(lines.length).length
 
   return (
-    <pre
-      ref={ref}
-      onDoubleClick={onDoubleClick}
-      className="flex-1 overflow-auto bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono cursor-text select-text"
-      style={{ tabSize: 2 }}
-    >
-      <code className="flex flex-col py-4">
-        {lines.map((line, i) => (
-          <span key={i} className="flex">
-            <span
-              className="shrink-0 pr-4 pl-4 text-right text-zinc-300 dark:text-zinc-700 select-none"
-              style={{ width: `${gutterWidth + 4}ch` }}
-            >
-              {i + 1}
-            </span>
-            <span className="flex-1 pr-4">
+    <div className="relative flex-1 min-h-0">
+      {/* Syntax-highlighted layer (visual, pointer-events disabled) */}
+      <pre
+        ref={highlightRef}
+        className="absolute inset-0 overflow-hidden bg-white dark:bg-[#0d0d0d] text-[13px] leading-[1.6] font-mono p-4 m-0"
+        style={{ tabSize: 2 }}
+        aria-hidden="true"
+      >
+        <code>
+          {lines.map((line, i) => (
+            <span key={i}>
               {tokenizeLine(line, language).map((token, j) => (
                 <span key={j} className={TOKEN_COLORS[token.type]}>
                   {token.value}
                 </span>
               ))}
+              {i < lines.length - 1 ? "\n" : ""}
             </span>
-          </span>
-        ))}
-      </code>
-    </pre>
+          ))}
+        </code>
+      </pre>
+
+      {/* Transparent textarea for input (captures all interaction) */}
+      <textarea
+        ref={textareaRef}
+        value={content}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onScroll={syncScroll}
+        spellCheck={false}
+        wrap="off"
+        className="absolute inset-0 w-full h-full resize-none bg-transparent text-transparent caret-zinc-700 dark:caret-zinc-300 text-[13px] leading-[1.6] font-mono p-4 m-0 outline-none border-none whitespace-pre selection:bg-sky-500/25"
+        style={{ tabSize: 2, WebkitTextFillColor: "transparent" }}
+      />
+    </div>
   )
 })
 

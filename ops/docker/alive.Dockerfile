@@ -39,7 +39,7 @@ WORKDIR /app
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
-       procps jq curl git systemd rsync sudo dbus \
+       procps jq curl git systemd rsync sudo dbus ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
