@@ -16,7 +16,15 @@ path = "."
 
 [build]
 setup_command = "bun install --frozen-lockfile"
-command = "bun run build:libs && bun run --filter @webalive/web build"
+# Build, then symlink static assets + public into standalone output.
+# Next.js standalone doesn't include static files — server.js expects
+# them at {__dirname}/.next/static and {__dirname}/public.
+command = """
+bun run build:libs && bun run --filter @webalive/web build && \
+ln -sfn $(pwd)/apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static && \
+ln -sfn $(pwd)/apps/web/public apps/web/.next/standalone/apps/web/public && \
+ln -sfn $(pwd)/packages apps/web/.next/standalone/packages
+"""
 outputs = [
   "apps/web/.next/standalone",
   "apps/web/.next/static",
