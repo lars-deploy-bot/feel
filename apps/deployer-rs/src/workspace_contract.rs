@@ -112,6 +112,7 @@ pub(crate) enum RuntimeKind {
     Host,
     E2b,
     Hetzner,
+    Systemd,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

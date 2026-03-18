@@ -24,7 +24,8 @@ use crate::db::{
     claim_next_build, claim_next_deployment, mark_build_succeeded, mark_deployment_succeeded,
     record_release, renew_lease,
 };
-use crate::docker::{remove_container_if_exists, wait_for_container_stability, wait_for_health};
+use crate::docker::{remove_container_if_exists, wait_for_container_stability};
+use crate::health::wait_for_health;
 use crate::logging::{
     build_log_path, prepare_log, read_task_snapshot, run_logged_command, TaskPipeline,
 };
@@ -166,6 +167,8 @@ fn host_runtime_adapter_maps_environment_to_runtime_target() {
         container_port: 3000,
         healthcheck_path: "/api/health".to_string(),
         network_mode: Some(RuntimeNetworkMode::Host),
+        privileged: false,
+        pid_mode: None,
         bind_mounts: Vec::new(),
     };
 
@@ -1389,8 +1392,9 @@ CMD ["sh","-c","test \"$PUBLIC_MARKER\" = \"ready\" && test -z \"$MAILER_API_KEY
         .await
         .expect("failed to prepare log");
 
-    let dockerfile_path = source_dir.join(&alive_config.docker.dockerfile);
-    let build_context = source_dir.join(&alive_config.docker.context);
+    let docker_config = alive_config.docker.as_ref().expect("docker config required for this test");
+    let dockerfile_path = source_dir.join(&docker_config.dockerfile);
+    let build_context = source_dir.join(&docker_config.context);
     let mut build_command = Command::new("docker");
     build_command
         .env("DOCKER_BUILDKIT", "1")
@@ -1399,7 +1403,7 @@ CMD ["sh","-c","test \"$PUBLIC_MARKER\" = \"ready\" && test -z \"$MAILER_API_KEY
         .arg("--file")
         .arg(&dockerfile_path)
         .arg("--target")
-        .arg(&alive_config.docker.target)
+        .arg(&docker_config.target)
         .arg("--tag")
         .arg(&image_ref);
     for secret in resolve_build_secrets(&context.repo_root, &alive_config, &context.env)

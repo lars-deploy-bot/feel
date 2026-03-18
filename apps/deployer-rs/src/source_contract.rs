@@ -113,6 +113,18 @@ impl BuildArtifact {
         })
     }
 
+    pub(crate) fn build_directory(release_dir: &str, build_input: &BuildInput) -> Result<Self> {
+        if release_dir.trim().is_empty() {
+            return Err(anyhow!("release_dir must not be empty"));
+        }
+
+        Ok(Self {
+            image_ref: format!("dir:{}:{}", release_dir, build_input.short_identity()),
+            local_image_id: None,
+            artifact_digest: None,
+        })
+    }
+
     pub(crate) fn with_local_image_id(mut self, local_image_id: String) -> Result<Self> {
         if local_image_id.trim().is_empty() {
             return Err(anyhow!("local_image_id must not be empty"));
@@ -121,11 +133,4 @@ impl BuildArtifact {
         Ok(self)
     }
 
-    pub(crate) fn with_artifact_digest(mut self, artifact_digest: String) -> Result<Self> {
-        if artifact_digest.trim().is_empty() {
-            return Err(anyhow!("artifact_digest must not be empty"));
-        }
-        self.artifact_digest = Some(artifact_digest);
-        Ok(self)
-    }
 }

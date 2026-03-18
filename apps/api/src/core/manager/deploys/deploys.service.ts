@@ -19,7 +19,21 @@ import type {
 } from "./deploys.types"
 
 const DEPLOYER_DATA_DIR = "/var/lib/alive/deployer"
+const DEPLOYER_URL = "http://127.0.0.1:5095"
 const LOG_TAIL_LINES = 400
+const BUILD_POLL_INTERVAL_MS = 2_000
+const BUILD_TIMEOUT_MS = 600_000
+const DEPLOY_POLL_INTERVAL_MS = 2_000
+const DEPLOY_TIMEOUT_MS = 300_000
+
+/** Notify deployer-rs to check for pending work immediately. Best-effort — never throws. */
+async function pokeDeployer(): Promise<void> {
+  try {
+    await fetch(`${DEPLOYER_URL}/poke`, { method: "POST", signal: AbortSignal.timeout(2_000) })
+  } catch {
+    // Non-fatal — deployer will poll on its own within 5s
+  }
+}
 
 function mapBuild(build: deployRepo.DeployBuildRow): ManagerDeployBuild {
   return {
@@ -246,6 +260,7 @@ export async function queueBuild(applicationId: string, gitRef?: string): Promis
     git_ref: gitRef?.trim() || "HEAD",
   })
 
+  await pokeDeployer()
   return mapBuild(build)
 }
 
@@ -305,6 +320,7 @@ export async function queueDeployment(
     promoted_from_deployment_id: promotedFromDeploymentId,
   })
 
+  await pokeDeployer()
   return mapDeployment(deployment, environment)
 }
 
@@ -324,4 +340,95 @@ export async function readDeploymentLog(deploymentId: string): Promise<string> {
   }
 
   return readLogFile(deployment.deployment_log_path)
+}
+
+// =============================================================================
+// Ship pipeline — full build → deploy orchestration
+// =============================================================================
+
+export interface ShipResult {
+  build: ManagerDeployBuild
+  release_id: string
+  deployment: ManagerDeployDeployment
+}
+
+/**
+ * Full build → deploy pipeline. This is the API equivalent of `deploy-via-deployer.sh`.
+ *
+ * 1. Queue build → poke deployer → poll until succeeded
+ * 2. Resolve release from build
+ * 3. Queue deployment → poke deployer → poll until succeeded
+ *
+ * Returns the final build, release, and deployment.
+ * Throws on any failure (build failed, deployment failed, timeout).
+ */
+export async function shipPipeline(
+  applicationId: string,
+  environmentName: string,
+  gitRef?: string,
+): Promise<ShipResult> {
+  // 1. Queue build
+  const build = await queueBuild(applicationId, gitRef)
+
+  // 2. Wait for build to complete
+  const completedBuild = await pollBuildUntilDone(build.build_id)
+  if (completedBuild.status !== "succeeded") {
+    throw new ConflictError(`Build failed: ${completedBuild.error_message ?? "unknown error"}`)
+  }
+
+  // 3. Resolve release
+  const release = await deployRepo.findReleaseByBuildId(completedBuild.build_id)
+  if (!release) {
+    throw new NotFoundError(`No release found for build ${completedBuild.build_id}`)
+  }
+
+  // 4. Resolve environment
+  const application = await deployRepo.findApplicationById(applicationId)
+  const environments = await deployRepo.findEnvironmentsByApplicationIds([application.application_id])
+  const environment = environments.find(e => e.name === environmentName)
+  if (!environment) {
+    throw new NotFoundError(`No environment '${environmentName}' found for application ${applicationId}`)
+  }
+
+  // 5. Queue deployment
+  const deployment = await queueDeployment(environment.environment_id, release.release_id)
+
+  // 6. Wait for deployment to complete
+  const completedDeployment = await pollDeploymentUntilDone(deployment.deployment_id, environment)
+  if (completedDeployment.status !== "succeeded") {
+    throw new ConflictError(`Deployment failed: ${completedDeployment.error_message ?? "unknown error"}`)
+  }
+
+  return {
+    build: completedBuild,
+    release_id: release.release_id,
+    deployment: completedDeployment,
+  }
+}
+
+async function pollBuildUntilDone(buildId: string): Promise<ManagerDeployBuild> {
+  const deadline = Date.now() + BUILD_TIMEOUT_MS
+  while (Date.now() < deadline) {
+    const build = await deployRepo.findBuildById(buildId)
+    if (build.status === "succeeded" || build.status === "failed") {
+      return mapBuild(build)
+    }
+    await new Promise(resolve => setTimeout(resolve, BUILD_POLL_INTERVAL_MS))
+  }
+  throw new ConflictError(`Build ${buildId} timed out after ${BUILD_TIMEOUT_MS / 1000}s`)
+}
+
+async function pollDeploymentUntilDone(
+  deploymentId: string,
+  environment: deployRepo.DeployEnvironmentRow,
+): Promise<ManagerDeployDeployment> {
+  const deadline = Date.now() + DEPLOY_TIMEOUT_MS
+  while (Date.now() < deadline) {
+    const deployment = await deployRepo.findDeploymentById(deploymentId)
+    if (deployment.status === "succeeded" || deployment.status === "failed") {
+      return mapDeployment(deployment, environment)
+    }
+    await new Promise(resolve => setTimeout(resolve, DEPLOY_POLL_INTERVAL_MS))
+  }
+  throw new ConflictError(`Deployment ${deploymentId} timed out after ${DEPLOY_TIMEOUT_MS / 1000}s`)
 }

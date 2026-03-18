@@ -167,6 +167,22 @@ export async function findReleaseById(releaseId: string): Promise<DeployReleaseR
   return data
 }
 
+export async function findReleaseByBuildId(buildId: string): Promise<DeployReleaseRow | null> {
+  const { data, error } = await deploy
+    .from("releases")
+    .select("*")
+    .eq("build_id", buildId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw formatDeployError(`fetch release for build ${buildId}`, error.message)
+  }
+
+  return data
+}
+
 export async function findDeploymentsByEnvironmentIds(
   environmentIds: string[],
   limit = 30,

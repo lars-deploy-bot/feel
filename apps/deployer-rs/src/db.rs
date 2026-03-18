@@ -515,33 +515,41 @@ pub(crate) async fn record_release(
     alive_toml_snapshot: &str,
     build_fingerprint: &str,
 ) -> Result<String> {
+    let artifact_kind = if artifact_ref.starts_with("dir:") {
+        "build_directory"
+    } else {
+        "docker_image"
+    };
     let row = client
         .query_one(
-            "
-            INSERT INTO deploy.releases (
-              application_id,
-              build_id,
-              git_sha,
-              commit_message,
-              artifact_kind,
-              artifact_ref,
-              artifact_digest,
-              alive_toml_snapshot,
-              metadata
-            )
-            VALUES (
-              $1,
-              $2,
-              $3,
-              $4,
-              'docker_image'::deploy.artifact_kind,
-              $5,
-              $6,
-              $7,
-              jsonb_build_object('build_fingerprint', $8::text)
-            )
-            RETURNING release_id
-            ",
+            &format!(
+                "
+                INSERT INTO deploy.releases (
+                  application_id,
+                  build_id,
+                  git_sha,
+                  commit_message,
+                  artifact_kind,
+                  artifact_ref,
+                  artifact_digest,
+                  alive_toml_snapshot,
+                  metadata
+                )
+                VALUES (
+                  $1,
+                  $2,
+                  $3,
+                  $4,
+                  '{}'::deploy.artifact_kind,
+                  $5,
+                  $6,
+                  $7,
+                  jsonb_build_object('build_fingerprint', $8::text)
+                )
+                RETURNING release_id
+                ",
+                artifact_kind
+            ),
             &[
                 &application_id,
                 &build_id,

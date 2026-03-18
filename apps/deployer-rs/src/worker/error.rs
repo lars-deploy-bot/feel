@@ -73,11 +73,6 @@ pub(crate) enum TaskExecutionError {
         #[source]
         source: AnyhowError,
     },
-    #[error("rollback failed")]
-    Rollback {
-        #[source]
-        source: AnyhowError,
-    },
     #[error("database transition failed")]
     DbTransition {
         #[source]
@@ -166,12 +161,6 @@ impl TaskExecutionError {
 
     pub(crate) fn public_health(source: impl Into<AnyhowError>) -> Self {
         Self::PublicHealth {
-            source: source.into(),
-        }
-    }
-
-    pub(crate) fn rollback(source: impl Into<AnyhowError>) -> Self {
-        Self::Rollback {
             source: source.into(),
         }
     }

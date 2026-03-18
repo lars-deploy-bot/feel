@@ -10,18 +10,18 @@ use tokio_postgres::Client;
 use super::error::TaskExecutionError;
 use super::with_lease_heartbeat;
 use crate::config::{parse_alive_toml, resolve_build_secrets, validate_application_matches_config};
-use crate::constants::BUILD_TIMEOUT;
 use crate::db::{
     fetch_application, find_reusable_release, mark_build_failed, mark_build_succeeded,
     record_release,
 };
-use crate::docker::{image_exists_locally, resolve_local_artifact_digest};
 use crate::fingerprint::compute_build_fingerprint;
 use crate::github::{cleanup_source_snapshot, export_github_snapshot, resolve_github_commit};
-use crate::logging::{run_logged_command_with_timeout, TaskPipeline};
-use crate::source_contract::{BuildArtifact, BuildInput, SourceKind};
+use crate::logging::TaskPipeline;
+use crate::runtime_adapter::{ResolvedRuntimeAdapter, RuntimeAdapter};
+use crate::source_contract::{BuildInput, SourceKind};
 use crate::types::{
-    AliveConfig, ClaimedBuild, LeaseTarget, ServiceContext, SourceAdapter, TaskEventType, TaskStage,
+    AliveConfig, BuildParams, ClaimedBuild, LeaseTarget, ServiceContext, SourceAdapter,
+    TaskEventType, TaskStage,
 };
 use crate::workspace_contract::PolicyVersion;
 
@@ -47,20 +47,6 @@ pub(crate) struct PreparedBuildSource {
     pub(crate) build_input: BuildInput,
     pub(crate) alive_config: AliveConfig,
     pub(crate) alive_toml_snapshot: String,
-}
-
-fn runtime_build_metadata(
-    prepared_source: &PreparedBuildSource,
-    build: &ClaimedBuild,
-) -> [(&'static str, String); 3] {
-    [
-        (
-            "ALIVE_BUILD_COMMIT",
-            prepared_source.build_input.release_git_sha.clone(),
-        ),
-        ("ALIVE_BUILD_BRANCH", build.git_ref.clone()),
-        ("ALIVE_BUILD_TIME", chrono::Utc::now().to_rfc3339()),
-    ]
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -169,6 +155,25 @@ fn resolve_release_git_metadata(build: &ClaimedBuild) -> Result<(String, String)
     Ok((build.git_sha.clone(), build.commit_message.clone()))
 }
 
+/// For Docker builds, the build context is `docker.context` relative to source root.
+/// For systemd builds, the build context is the source root itself.
+fn resolve_build_context_dir(config: &AliveConfig, source_dir: &Path) -> PathBuf {
+    if let Some(docker) = &config.docker {
+        source_dir.join(&docker.context)
+    } else {
+        source_dir.to_path_buf()
+    }
+}
+
+fn resolve_build_context_relative(config: &AliveConfig) -> String {
+    if let Some(docker) = &config.docker {
+        docker.context.clone()
+    } else {
+        ".".to_string()
+    }
+}
+
+
 pub(crate) async fn prepare_build_source(
     application: &crate::types::ApplicationRow,
     context: &ServiceContext,
@@ -184,13 +189,15 @@ pub(crate) async fn prepare_build_source(
             let (release_git_sha, release_commit_message) = resolve_release_git_metadata(build)?;
             let source_dir =
                 resolve_local_source_root(&context.repo_root, &alive_config.source.path)?;
+            let build_context = resolve_build_context_dir(&alive_config, &source_dir);
+            let build_context_relative = resolve_build_context_relative(&alive_config);
             let build_context_fingerprint =
-                compute_local_source_identity(&source_dir, &alive_config.docker.context).await?;
+                compute_local_source_identity(&source_dir, &build_context_relative).await?;
             return Ok(PreparedBuildSource {
                 build_input: BuildInput::new(
                     SourceKind::LocalFs,
                     source_dir.clone(),
-                    source_dir.join(&alive_config.docker.context),
+                    build_context,
                     format!("snap_local_fs_{}", build_context_fingerprint),
                     build_context_fingerprint.clone(),
                     build_context_fingerprint,
@@ -230,14 +237,16 @@ pub(crate) async fn prepare_build_source(
         .with_context(|| format!("failed to read {}", config_path.display()))?;
     let alive_config = parse_alive_toml(&alive_toml_snapshot)?;
     validate_application_matches_config(application, &alive_config)?;
+    let build_context = resolve_build_context_dir(&alive_config, temp_source_dir);
+    let build_context_relative = resolve_build_context_relative(&alive_config);
     let build_context_fingerprint =
-        compute_local_source_identity(temp_source_dir, &alive_config.docker.context).await?;
+        compute_local_source_identity(temp_source_dir, &build_context_relative).await?;
 
     Ok(PreparedBuildSource {
         build_input: BuildInput::new(
             SourceKind::Git,
             temp_source_dir.to_path_buf(),
-            temp_source_dir.join(&alive_config.docker.context),
+            build_context,
             format!("snap_git_{}", resolved_commit.sha),
             resolved_commit.sha.clone(),
             build_context_fingerprint,
@@ -379,12 +388,16 @@ pub(super) async fn process_build(
         .await
         .map_err(TaskExecutionError::db_transition)?
         {
-            let artifact_exists = image_exists_locally(&existing_release.artifact_digest)
+            let runtime_adapter = ResolvedRuntimeAdapter::from_config(
+                prepared_source.alive_config.runtime.kind,
+            ).map_err(TaskExecutionError::build_validation)?;
+            let artifact_exists = runtime_adapter
+                .artifact_exists_locally(
+                    &existing_release.artifact_ref,
+                    &existing_release.artifact_digest,
+                )
                 .await
-                .map_err(TaskExecutionError::artifact_publish)?
-                || image_exists_locally(&existing_release.artifact_ref)
-                    .await
-                    .map_err(TaskExecutionError::artifact_publish)?;
+                .map_err(TaskExecutionError::artifact_publish)?;
             if !artifact_exists {
                 reuse_release_stage
                     .append_debug(&format!(
@@ -489,146 +502,38 @@ pub(super) async fn process_build(
                 .await?;
         }
 
-        let dockerfile_path = prepared_source
-            .build_input
-            .source_root
-            .join(&prepared_source.alive_config.docker.dockerfile);
-        assert_path_contained(
-            &dockerfile_path,
-            &prepared_source.build_input.source_root,
-            "dockerfile",
-        )
-            .map_err(TaskExecutionError::build_validation)?;
-        let build_context = prepared_source.build_input.build_context.clone();
-        assert_path_contained(
-            &build_context,
-            &prepared_source.build_input.source_root,
-            "docker context",
-        )
-            .map_err(TaskExecutionError::build_validation)?;
-        let mut artifact = BuildArtifact::local_image(
-            &prepared_source.alive_config.docker.image_repository,
-            &prepared_source.build_input,
-        )
-        .map_err(TaskExecutionError::build_validation)?;
-        let iid_file = context
-            .data_dir
-            .join("iids")
-            .join(format!("{}.txt", build.build_id));
-        let buildx_config_dir = context.data_dir.join("buildx-config");
-
-        if tokio_fs::try_exists(&iid_file)
+        // =========================================================================
+        // Build + Publish via adapter (Docker or Systemd — no branching here)
+        // =========================================================================
+        let runtime_adapter = ResolvedRuntimeAdapter::from_config(
+            prepared_source.alive_config.runtime.kind,
+        ).map_err(TaskExecutionError::build_validation)?;
+        let build_params = BuildParams {
+            source_root: &prepared_source.build_input.source_root,
+            alive_config: &prepared_source.alive_config,
+            build_input: &prepared_source.build_input,
+            build_secrets: &build_secrets,
+            build_id: &build.build_id,
+            git_ref: &build.git_ref,
+            data_dir: &context.data_dir,
+        };
+        let artifact_result = runtime_adapter
+            .build_and_publish(&build_params, &pipeline, 4, 5)
             .await
-            .with_context(|| format!("failed to stat {}", iid_file.display()))
-            .map_err(TaskExecutionError::build_image)?
-        {
-            tokio_fs::remove_file(&iid_file)
-                .await
-                .with_context(|| format!("failed to remove {}", iid_file.display()))
-                .map_err(TaskExecutionError::build_image)?;
-        }
-
-        let build_image_stage = pipeline
-            .start_stage(4, TaskStage::BuildImage, &format!("building {}", artifact.image_ref))
-            .await?;
-        let mut command = Command::new("docker");
-        command
-            .env("DOCKER_BUILDKIT", "1")
-            .env("BUILDX_CONFIG", &buildx_config_dir)
-            .arg("build")
-            .arg("--file")
-            .arg(&dockerfile_path)
-            .arg("--target")
-            .arg(&prepared_source.alive_config.docker.target)
-            .arg("--tag")
-            .arg(&artifact.image_ref)
-            .arg("--iidfile")
-            .arg(&iid_file);
-
-        for secret in &build_secrets {
-            command.arg("--secret").arg(format!(
-                "id={},src={}",
-                secret.id,
-                secret.source.display()
-            ));
-        }
-
-        for (name, value) in runtime_build_metadata(&prepared_source, build) {
-            command.arg("--build-arg").arg(format!("{name}={value}"));
-        }
-
-        command.arg(&build_context);
-
-        if let Err(error) = run_logged_command_with_timeout(
-            command,
-            build_image_stage.debug_path(),
-            &format!("docker build {} ({})", build.build_id, artifact.image_ref),
-            BUILD_TIMEOUT,
-        )
-        .await
-        {
-            let typed_error = TaskExecutionError::build_image(error);
-            build_image_stage
-                .finish_error(&typed_error.display_full())
-                .await?;
-            return Err(typed_error.into());
-        }
-
-        let local_image_id = tokio_fs::read_to_string(&iid_file)
-            .await
-            .with_context(|| format!("failed to read {}", iid_file.display()))
-            .map_err(TaskExecutionError::build_image)?
-            .trim()
-            .to_string();
-        artifact = artifact
-            .with_local_image_id(local_image_id.clone())
             .map_err(TaskExecutionError::build_image)?;
-        build_image_stage
-            .append_debug(&format!("built local image id {}\n", local_image_id))
-            .await?;
-        build_image_stage
-            .finish_ok(&format!("image built as {}", artifact.image_ref))
-            .await?;
+        let artifact_ref = artifact_result.artifact_ref_str().to_string();
+        let artifact_digest = artifact_result.artifact_digest_str().to_string();
+        pipeline.emit(
+            TaskEventType::ArtifactPushed,
+            json!({
+                "artifact_ref": &artifact_ref,
+                "artifact_digest": &artifact_digest,
+            }),
+        ).await?;
 
-        let publish_stage = pipeline
-            .start_stage(
-                5,
-                TaskStage::PublishArtifact,
-                "resolving local artifact digest",
-            )
-            .await?;
-        let artifact_digest = match resolve_local_artifact_digest(
-            &artifact.image_ref,
-            publish_stage.debug_path(),
-        )
-        .await
-        {
-                Ok(digest) => digest,
-                Err(error) => {
-                    let typed_error = TaskExecutionError::artifact_publish(error);
-                    publish_stage
-                        .finish_error(&typed_error.display_full())
-                        .await?;
-                    return Err(typed_error.into());
-                }
-            };
-        artifact = artifact
-            .with_artifact_digest(artifact_digest.clone())
-            .map_err(TaskExecutionError::artifact_publish)?;
-        pipeline
-            .emit(
-                TaskEventType::ArtifactPushed,
-                json!({
-                    "artifact_ref": artifact.image_ref,
-                    "artifact_digest": artifact_digest,
-                    "debug_log_path": publish_stage.debug_path().display().to_string(),
-                }),
-            )
-            .await?;
-        publish_stage
-            .finish_ok(&format!("resolved {}", artifact_digest))
-            .await?;
-
+        // =========================================================================
+        // Common: record release and mark build success
+        // =========================================================================
         let record_release_stage = pipeline
             .start_stage(
                 6,
@@ -642,7 +547,7 @@ pub(super) async fn process_build(
             &build.application_id,
             &prepared_source.build_input.release_git_sha,
             &prepared_source.build_input.release_commit_message,
-            &artifact.image_ref,
+            &artifact_ref,
             &artifact_digest,
             &prepared_source.alive_toml_snapshot,
             &build_fingerprint,
@@ -657,7 +562,7 @@ pub(super) async fn process_build(
             &prepared_source.build_input.release_git_sha,
             &prepared_source.build_input.release_commit_message,
             &prepared_source.alive_toml_snapshot,
-            &artifact.image_ref,
+            &artifact_ref,
             &artifact_digest,
             &log_path,
         )
