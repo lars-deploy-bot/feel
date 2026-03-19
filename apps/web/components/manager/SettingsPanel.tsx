@@ -185,7 +185,7 @@ export function SettingsPanel({
         <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#1a1a1a]">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Backup Websites</h3>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            Push changes to GitHub (lars-deploy-bot/all_websites)
+            Push changes to GitHub (eenlars/all_websites)
           </p>
         </div>
         <div className="p-6">

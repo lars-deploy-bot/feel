@@ -10,7 +10,7 @@ import { getRequestId } from "@/lib/request-id"
 /**
  * POST /api/manager/backup
  *
- * Backup websites to GitHub (lars-deploy-bot/all_websites)
+ * Backup websites to GitHub (eenlars/all_websites)
  */
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req)
