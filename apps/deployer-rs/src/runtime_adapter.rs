@@ -69,7 +69,7 @@ use crate::logging::{append_log, run_logged_command_with_timeout, TaskPipeline};
 use crate::source_contract::BuildArtifact;
 use crate::types::{
     AliveConfig, ArtifactRef, BuildParams, DeployParams, EnvironmentRow,
-    RollbackState, RollbackSymlink, RuntimeConfig, RuntimeKindConfig, RuntimeLabel,
+    RollbackState, RuntimeConfig, RuntimeKindConfig, RuntimeLabel,
     RuntimeNetworkMode,
 };
 use crate::workspace_contract::{RuntimeKind, RuntimeTarget};
@@ -724,14 +724,6 @@ fn resolve_systemd_unit_name(config: &AliveConfig, environment_name: &str) -> St
     config.systemd.as_ref()
         .map(|s| s.unit_template.replace("{environment}", environment_name))
         .unwrap_or_else(|| format!("alive-{}.service", environment_name))
-}
-
-fn resolve_release_dir(
-    systemd: &crate::types::SystemdConfig,
-    repo_root: &Path,
-    environment_name: &str,
-) -> std::path::PathBuf {
-    repo_root.join(systemd.release_dir_template.replace("{environment}", environment_name))
 }
 
 // =============================================================================
