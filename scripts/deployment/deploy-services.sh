@@ -3,7 +3,7 @@
 # Deploy standalone services (API + Manager)
 # =============================================================================
 # Builds and restarts the API (Hono), Manager (Vite + Bun), and the Rust deployer.
-# Fails fast if not on main branch.
+# API and Manager require main branch; deployer can build from any branch.
 #
 # Usage:
 #   ./deploy-services.sh              # Deploy all
@@ -107,7 +107,11 @@ done
 # =============================================================================
 # Guards
 # =============================================================================
-require_branch "main"
+# API and Manager deploy to production services — require main branch.
+# Deployer is infrastructure and can be built from any branch.
+if [ "$DEPLOY_API" = true ] || [ "$DEPLOY_MANAGER" = true ]; then
+    require_branch "main"
+fi
 
 # =============================================================================
 # Deploy API

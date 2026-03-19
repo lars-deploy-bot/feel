@@ -49,6 +49,8 @@ export interface InternalToolDescriptor {
   visibility?: ToolVisibility
   /** Restrict to specific roles. Default: all roles */
   roles?: readonly ToolRole[]
+  /** Service name from alive.toml [services.*] that must be enabled. */
+  requiresService?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +178,7 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     tier: "core",
     reason: "Browser control is available in site and platform workspaces.",
     workspaceKinds: ["site", "platform"],
+    requiresService: "browser-control",
   },
 
   // --- DISCOVERABLE workspace tools ---

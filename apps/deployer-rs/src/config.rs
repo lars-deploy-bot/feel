@@ -13,7 +13,7 @@ use url::Url;
 
 use crate::types::{
     AliveConfig, ApplicationRow, BindMount, EnvironmentPolicy, EnvironmentRow, ResolvedBuildSecret,
-    RuntimeNetworkMode, ServerConfigIdentity, ServiceContext, ServiceEnv,
+    RuntimeKindConfig, RuntimeNetworkMode, ServerConfigIdentity, ServiceContext, ServiceEnv,
 };
 
 impl ServiceEnv {
@@ -73,7 +73,34 @@ pub(crate) fn parse_alive_toml(content: &str) -> Result<AliveConfig> {
     if config.schema != 1 {
         return Err(anyhow!("unsupported alive.toml schema {}", config.schema));
     }
+    validate_runtime_sections(&config)?;
     Ok(config)
+}
+
+fn validate_runtime_sections(config: &AliveConfig) -> Result<()> {
+    match config.runtime.kind {
+        RuntimeKindConfig::Systemd => {
+            if config.systemd.is_none() {
+                return Err(anyhow!(
+                    "runtime.kind = \"systemd\" requires a [systemd] section in alive.toml"
+                ));
+            }
+            if config.build.is_none() {
+                return Err(anyhow!(
+                    "runtime.kind = \"systemd\" requires a [build] section in alive.toml"
+                ));
+            }
+        }
+        RuntimeKindConfig::Host => {
+            if config.docker.is_none() {
+                return Err(anyhow!(
+                    "runtime.kind = \"host\" requires a [docker] section in alive.toml"
+                ));
+            }
+        }
+        RuntimeKindConfig::E2b | RuntimeKindConfig::Hetzner => {}
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_application_matches_config(

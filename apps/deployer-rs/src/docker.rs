@@ -7,8 +7,7 @@ use tokio::process::Command;
 use tokio::time::sleep;
 
 use crate::constants::{
-    HEALTH_TIMEOUT, LOCAL_BIND_IP, PUBLIC_HEALTH_TIMEOUT, STABILIZATION_POLL_INTERVAL,
-    STABILIZATION_WINDOW,
+    LOCAL_BIND_IP, STABILIZATION_POLL_INTERVAL, STABILIZATION_WINDOW,
 };
 use crate::logging::{append_log, run_logged_command};
 use crate::types::RollbackContainer;
@@ -62,103 +61,6 @@ pub(crate) async fn resolve_local_artifact_digest(
     )
     .await?;
     Ok(image_id)
-}
-
-pub(crate) async fn stop_and_disable_systemd_unit(unit: &str, log_path: &Path) -> Result<()> {
-    let is_active = Command::new("systemctl")
-        .arg("is-active")
-        .arg("--quiet")
-        .arg(unit)
-        .output()
-        .await
-        .context("failed to check systemd unit status")?;
-
-    if is_active.status.success() {
-        append_log(log_path, &format!("stopping systemd unit {}\n", unit)).await?;
-
-        let stop_output = Command::new("systemctl")
-            .arg("stop")
-            .arg(unit)
-            .output()
-            .await
-            .context("failed to stop systemd unit")?;
-
-        if !stop_output.status.success() {
-            let stderr = command_stderr(&stop_output)?;
-            append_log(log_path, &format!("systemctl stop stderr: {}\n", stderr)).await?;
-            return Err(anyhow!("failed to stop systemd unit {}: {}", unit, stderr));
-        }
-    } else if is_active.status.code() == Some(3) {
-        append_log(
-            log_path,
-            &format!("systemd unit {} is not active, skipping stop\n", unit),
-        )
-        .await?;
-    } else {
-        let stderr = command_stderr(&is_active)?;
-        return Err(anyhow!(
-            "failed to determine whether systemd unit {} is active: {}",
-            unit,
-            stderr.trim()
-        ));
-    }
-
-    let disable_output = Command::new("systemctl")
-        .arg("disable")
-        .arg(unit)
-        .output()
-        .await
-        .context("failed to disable systemd unit")?;
-
-    if !disable_output.status.success() {
-        let stderr = command_stderr(&disable_output)?;
-        append_log(log_path, &format!("systemctl disable stderr: {}\n", stderr)).await?;
-        // Not fatal — the unit is already stopped
-    }
-
-    append_log(
-        log_path,
-        &format!("systemd unit {} stopped and disabled\n", unit),
-    )
-    .await?;
-    Ok(())
-}
-
-pub(crate) async fn start_and_enable_systemd_unit(unit: &str, log_path: &Path) -> Result<()> {
-    let enable_output = Command::new("systemctl")
-        .arg("enable")
-        .arg(unit)
-        .output()
-        .await
-        .context("failed to enable systemd unit")?;
-    if !enable_output.status.success() {
-        let stderr = command_stderr(&enable_output)?;
-        append_log(log_path, &format!("systemctl enable stderr: {}\n", stderr)).await?;
-        return Err(anyhow!(
-            "failed to enable systemd unit {}: {}",
-            unit,
-            stderr
-        ));
-    }
-
-    let start_output = Command::new("systemctl")
-        .arg("start")
-        .arg(unit)
-        .output()
-        .await
-        .context("failed to start systemd unit")?;
-    if !start_output.status.success() {
-        let stderr = command_stderr(&start_output)?;
-        append_log(log_path, &format!("systemctl start stderr: {}\n", stderr)).await?;
-        return Err(anyhow!("failed to start systemd unit {}: {}", unit, stderr));
-    }
-
-    append_log(
-        log_path,
-        &format!("systemd unit {} enabled and started\n", unit),
-    )
-    .await?;
-    Ok(())
 }
 
 pub(crate) async fn image_exists_locally(image_ref: &str) -> Result<bool> {
@@ -377,51 +279,6 @@ pub(crate) async fn remove_container_if_exists(
     .await
 }
 
-pub(crate) async fn wait_for_health(port: u16, path: &str, log_path: &Path) -> Result<StatusCode> {
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build()
-        .context("failed to build reqwest client")?;
-    let health_path = if path.starts_with('/') {
-        path.to_string()
-    } else {
-        format!("/{}", path)
-    };
-    let url = format!("http://{}:{}{}", LOCAL_BIND_IP, port, health_path);
-    let started = Instant::now();
-    let mut last_status: Option<StatusCode> = None;
-
-    append_log(log_path, &format!("health check: {}\n", url)).await?;
-
-    while started.elapsed() < HEALTH_TIMEOUT {
-        match client.get(&url).send().await {
-            Ok(response) => {
-                let status = response.status();
-                append_log(log_path, &format!("health response: {}\n", status)).await?;
-                last_status = Some(status);
-                if status.is_success() {
-                    return Ok(status);
-                }
-            }
-            Err(error) => {
-                append_log(log_path, &format!("health error: {}\n", error)).await?;
-            }
-        }
-
-        sleep(Duration::from_secs(1)).await;
-    }
-
-    if let Some(status) = last_status {
-        return Err(anyhow!("health check timed out after {:?}", HEALTH_TIMEOUT)
-            .context(format!("last status {}", status)));
-    }
-
-    Err(anyhow!(
-        "health check timed out after {:?} without a response",
-        HEALTH_TIMEOUT
-    ))
-}
-
 pub(crate) async fn wait_for_container_stability(
     container_name: &str,
     port: u16,
@@ -489,60 +346,6 @@ pub(crate) async fn wait_for_container_stability(
     }
 
     last_status.context("stability health check never returned a status")
-}
-
-pub(crate) async fn wait_for_public_health(
-    hostname: &str,
-    path: &str,
-    log_path: &Path,
-) -> Result<StatusCode> {
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build()
-        .context("failed to build reqwest client")?;
-    let health_path = if path.starts_with('/') {
-        path.to_string()
-    } else {
-        format!("/{}", path)
-    };
-    let url = format!("https://{}{}", hostname, health_path);
-    let started = Instant::now();
-    let mut last_status: Option<StatusCode> = None;
-
-    append_log(log_path, &format!("public health check: {}\n", url)).await?;
-
-    while started.elapsed() < PUBLIC_HEALTH_TIMEOUT {
-        match client.get(&url).send().await {
-            Ok(response) => {
-                let status = response.status();
-                append_log(log_path, &format!("public health response: {}\n", status)).await?;
-                last_status = Some(status);
-                if status.is_success() {
-                    return Ok(status);
-                }
-            }
-            Err(error) => {
-                append_log(log_path, &format!("public health error: {}\n", error)).await?;
-            }
-        }
-
-        sleep(Duration::from_secs(1)).await;
-    }
-
-    if let Some(status) = last_status {
-        return Err(anyhow!(
-            "public health check timed out after {:?} for {}",
-            PUBLIC_HEALTH_TIMEOUT,
-            hostname
-        )
-        .context(format!("last status {}", status)));
-    }
-
-    Err(anyhow!(
-        "public health check timed out after {:?} for {} without a response",
-        PUBLIC_HEALTH_TIMEOUT,
-        hostname
-    ))
 }
 
 pub(crate) async fn container_is_running(container_name: &str) -> Result<bool> {

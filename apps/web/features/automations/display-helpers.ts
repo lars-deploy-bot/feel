@@ -5,6 +5,8 @@
  * Import from here instead of re-implementing.
  */
 
+import { describeCron } from "@/lib/automation/cron-description"
+
 /** Format a past ISO date as a relative time string ("now", "5m ago", "3h ago", "2d ago") */
 export function relTime(d: string | null): string {
   if (!d) return "—"
@@ -47,7 +49,9 @@ interface TrigLabelInput {
   email_address?: string | null
 }
 
-/** Human-readable trigger label ("Daily at 9:00", "On email", "Webhook") */
+/**
+ * Human-readable trigger label using describeCron for rich display.
+ */
 export function trigLabel(a: TrigLabelInput): string {
   if (a.trigger_type === "email") {
     return a.email_address ? a.email_address : "On email"
@@ -55,14 +59,8 @@ export function trigLabel(a: TrigLabelInput): string {
   if (a.trigger_type === "webhook") return "Webhook"
   if (a.trigger_type === "one-time") return "One-time"
   if (!a.cron_schedule) return "—"
-  const parts = a.cron_schedule.split(" ")
-  if (parts.length < 5) return a.cron_schedule
-  const [min, hr, , , wd] = parts
-  const time = `${hr.padStart(2, "0")}:${min.padStart(2, "0")}`
-  if (wd === "*") return `Daily ${time}`
-  if (wd === "1-5") return `Weekdays ${time}`
-  if (wd === "1") return `Mon ${time}`
-  return a.cron_schedule
+
+  return describeCron(a.cron_schedule)
 }
 
 /** Minimal shape needed by healthScore */

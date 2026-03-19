@@ -230,7 +230,7 @@ export const OAUTH_MCP_PROVIDERS = {
     ],
   },
   google_search_console: {
-    url: "internal", // Tools call mini-tools service (port 1235), not a separate MCP server
+    url: "http://localhost:8089/mcp",
     oauthKey: "google_search_console", // Dedicated token slot (uses Google OAuth credentials)
     friendlyName: "Google Search Console",
     description: "Analyze search performance and rankings",

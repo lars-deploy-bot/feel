@@ -18,6 +18,7 @@ const REPO_DIR = PATHS.BACKUP_REPO
 const SSH_KEY = "/root/.ssh/id_lars_deploy_bot"
 const MAX_FILES_PER_SITE = 200
 const GIT_TIMEOUT_MS = 30_000 // 30s per git command
+const GIT_MAX_BUFFER = 10 * 1024 * 1024 // 10MB — /srv/webalive can have 20K+ changed files
 
 interface BackupStats {
   stagedFiles: number
@@ -36,6 +37,7 @@ function gitExec(args: string[], cwd: string = REPO_DIR, timeoutMs: number = GIT
       cwd,
       encoding: "utf-8",
       timeout: timeoutMs,
+      maxBuffer: GIT_MAX_BUFFER,
       env: {
         ...process.env,
         GIT_SSH_COMMAND: `ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no`,

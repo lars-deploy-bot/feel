@@ -10,175 +10,46 @@ repo_owner = "lars-deploy-bot"
 repo_name = "feel"
 default_branch = "main"
 
-[setup]
-command = "bun install --frozen-lockfile"
+[source]
+adapter = "local_fs"
+path = "."
 
 [build]
-command = "bun run build:libs && bun run --filter @webalive/web build"
+setup_command = "bun install --frozen-lockfile"
+# Build, then symlink static assets + public into standalone output.
+# Next.js standalone doesn't include static files — server.js expects
+# them at {__dirname}/.next/static and {__dirname}/public.
+# Build, then fix standalone output for systemd runtime:
+# 1. Symlink static assets + public (Next.js standalone excludes them)
+# 2. Remove @webalive stubs from standalone node_modules (they're empty
+#    shells that shadow the real packages). NODE_PATH in the systemd unit
+#    points to the repo's node_modules where the real built packages live.
+command = """
+bun run build:libs && bun run --filter @webalive/web build && \
+ln -sfn $(pwd)/apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static && \
+ln -sfn $(pwd)/apps/web/public apps/web/.next/standalone/apps/web/public && \
+rm -rf apps/web/.next/standalone/node_modules/@webalive
+"""
 outputs = [
   "apps/web/.next/standalone",
   "apps/web/.next/static",
   "apps/web/public",
 ]
-environment = "build"
 
-[release]
-root = "apps/web/.next/standalone"
-
-[docker]
-context = "."
-dockerfile = "ops/docker/alive.Dockerfile"
-target = "runtime"
-image_repository = "alive-control/alive"
-
-[source]
-adapter = "local_fs"
-path = "."
+[systemd]
+unit_template = "alive-{environment}.service"
+# No release directory — the repo IS the runtime.
+# Turbo builds in-place: packages/*/dist/ and apps/web/.next/standalone/.
+# The systemd unit runs server.js from the repo root so workers can
+# resolve @webalive/* workspace packages via the repo's node_modules.
+release_dir_template = ".builds/{environment}"
+release_root = "."
 
 [runtime]
-kind = "host"
+kind = "systemd"
 env_file = "apps/web/.env.production"
 container_port = 3000
 healthcheck_path = "/api/health"
-network_mode = "host"
-privileged = true
-pid_mode = "host"
-
-[[runtime.bind_mounts]]
-source_env = "SERVER_CONFIG_PATH"
-target = "/var/lib/alive/server-config.json"
-read_only = true
-
-[[runtime.bind_mounts]]
-source_server_path = "sites_root"
-target_server_path = "sites_root"
-read_only = false
-
-[[runtime.bind_mounts]]
-source_server_path = "templates_root"
-target_server_path = "templates_root"
-read_only = true
-
-[[runtime.bind_mounts]]
-source_server_path = "images_storage"
-target_server_path = "images_storage"
-read_only = false
-
-# E2B scratch workspaces (local workspace for E2B-mode sites)
-[[runtime.bind_mounts]]
-source = "/srv/webalive/e2b-scratch"
-target = "/srv/webalive/e2b-scratch"
-read_only = false
-
-[[runtime.bind_mounts]]
-source = "/root/.claude"
-target = "/root/.claude"
-read_only = false
-
-# Claude CLI config file
-[[runtime.bind_mounts]]
-source = "/root/.claude.json"
-target = "/root/.claude.json"
-read_only = true
-
-# System user/group databases (useradd runs inside container for site deploys)
-[[runtime.bind_mounts]]
-source = "/etc/passwd"
-target = "/etc/passwd"
-read_only = false
-
-[[runtime.bind_mounts]]
-source = "/etc/group"
-target = "/etc/group"
-read_only = false
-
-[[runtime.bind_mounts]]
-source = "/etc/shadow"
-target = "/etc/shadow"
-read_only = false
-
-[[runtime.bind_mounts]]
-source = "/etc/gshadow"
-target = "/etc/gshadow"
-read_only = false
-
-# Site environment files (systemd reads these on the host)
-[[runtime.bind_mounts]]
-source = "/etc/sites"
-target = "/etc/sites"
-read_only = false
-
-# Claude CLI launcher shims
-[[runtime.bind_mounts]]
-source = "/root/.local/bin"
-target = "/root/.local/bin"
-read_only = true
-
-# Claude CLI installation payload
-[[runtime.bind_mounts]]
-source = "/root/.local/share/claude"
-target = "/root/.local/share/claude"
-read_only = false
-
-# Claude CLI lock/state directories
-[[runtime.bind_mounts]]
-source = "/root/.local/state/claude"
-target = "/root/.local/state/claude"
-read_only = false
-
-# Claude SDK session storage (persistent across restarts)
-[[runtime.bind_mounts]]
-source = "/var/lib/claude-sessions"
-target = "/var/lib/claude-sessions"
-read_only = false
-
-# D-Bus socket (systemctl needs to talk to host systemd)
-[[runtime.bind_mounts]]
-source = "/run/dbus/system_bus_socket"
-target = "/run/dbus/system_bus_socket"
-read_only = false
-
-# Systemd runtime (needed for systemctl to manage host services)
-[[runtime.bind_mounts]]
-source = "/run/systemd"
-target = "/run/systemd"
-read_only = false
-
-# Systemd unit files (site@.service, template@.service live here)
-[[runtime.bind_mounts]]
-source = "/etc/systemd"
-target = "/etc/systemd"
-read_only = false
-
-# Generated Caddy config and alive state
-[[runtime.bind_mounts]]
-source = "/var/lib/alive"
-target = "/var/lib/alive"
-read_only = false
-
-# Caddy config for routing regeneration
-[[runtime.bind_mounts]]
-source = "/etc/caddy"
-target = "/etc/caddy"
-read_only = false
-
-# Bun runtime (needed for site deployments)
-[[runtime.bind_mounts]]
-source = "/root/.bun"
-target = "/root/.bun"
-read_only = true
-
-# Caddy binary (needed for caddy validate in site-controller)
-[[runtime.bind_mounts]]
-source = "/usr/bin/caddy"
-target = "/usr/bin/caddy"
-read_only = true
-
-# Alive repo (site-controller needs scripts, .env.production, templates)
-[[runtime.bind_mounts]]
-source_server_path = "alive_root"
-target_server_path = "alive_root"
-read_only = true
 
 [[build_secrets]]
 id = "build_env"
@@ -187,6 +58,10 @@ path = "apps/web/.env.production"
 [[build_secrets]]
 id = "server_config"
 env = "SERVER_CONFIG_PATH"
+
+[services.browser-control]
+enabled = true
+port = 5061
 
 [policies.staging]
 allow_email = false
@@ -204,9 +79,9 @@ blocked_env_keys = [
   "MAILGUN_API_KEY",
   "MAILJET_API_KEY",
 ]
-forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin", SYSTEMD_IGNORE_CHROOT = "1" }
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin" }
 
 [policies.production]
 allow_email = true
 blocked_env_keys = []
-forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin", SYSTEMD_IGNORE_CHROOT = "1" }
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin" }

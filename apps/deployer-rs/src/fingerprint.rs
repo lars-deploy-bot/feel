@@ -17,8 +17,20 @@ struct BuildFingerprint<'a> {
     policy_version: &'a str,
     config_path: &'a str,
     alive_toml_snapshot: &'a str,
-    docker: BuildDockerFingerprint<'a>,
+    #[serde(flatten)]
+    build_kind: BuildKindFingerprint<'a>,
     build_secrets: Vec<BuildSecretFingerprint>,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum BuildKindFingerprint<'a> {
+    Docker {
+        docker: BuildDockerFingerprint<'a>,
+    },
+    Systemd {
+        systemd: BuildSystemdFingerprint<'a>,
+    },
 }
 
 #[derive(Serialize)]
@@ -27,6 +39,14 @@ struct BuildDockerFingerprint<'a> {
     dockerfile: &'a str,
     target: &'a str,
     image_repository: &'a str,
+}
+
+#[derive(Serialize)]
+struct BuildSystemdFingerprint<'a> {
+    build_command: &'a str,
+    setup_command: Option<&'a str>,
+    build_outputs: &'a [String],
+    release_root: &'a str,
 }
 
 #[derive(Serialize)]
@@ -54,6 +74,38 @@ pub(crate) async fn compute_build_fingerprint(
     }
     secret_fingerprints.sort_by(|left, right| left.id.cmp(&right.id));
 
+    let build_kind = if let Some(docker) = &alive_config.docker {
+        BuildKindFingerprint::Docker {
+            docker: BuildDockerFingerprint {
+                context: &docker.context,
+                dockerfile: &docker.dockerfile,
+                target: &docker.target,
+                image_repository: &docker.image_repository,
+            },
+        }
+    } else if let (Some(build_config), Some(systemd_config)) =
+        (&alive_config.build, &alive_config.systemd)
+    {
+        BuildKindFingerprint::Systemd {
+            systemd: BuildSystemdFingerprint {
+                build_command: &build_config.command,
+                setup_command: build_config.setup_command.as_deref(),
+                build_outputs: &build_config.outputs,
+                release_root: &systemd_config.release_root,
+            },
+        }
+    } else {
+        // Fallback for configs that have neither — shouldn't happen after validation
+        BuildKindFingerprint::Systemd {
+            systemd: BuildSystemdFingerprint {
+                build_command: "",
+                setup_command: None,
+                build_outputs: &[],
+                release_root: "",
+            },
+        }
+    };
+
     let fingerprint = BuildFingerprint {
         version: BUILD_FINGERPRINT_VERSION,
         deployer_version: env!("CARGO_PKG_VERSION"),
@@ -63,12 +115,7 @@ pub(crate) async fn compute_build_fingerprint(
         policy_version: build_input.policy_version.as_str(),
         config_path,
         alive_toml_snapshot,
-        docker: BuildDockerFingerprint {
-            context: &alive_config.docker.context,
-            dockerfile: &alive_config.docker.dockerfile,
-            target: &alive_config.docker.target,
-            image_repository: &alive_config.docker.image_repository,
-        },
+        build_kind,
         build_secrets: secret_fingerprints,
     };
 

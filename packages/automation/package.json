@@ -16,6 +16,10 @@
     "./scheduler": {
       "types": "./dist/scheduler.d.ts",
       "import": "./dist/scheduler.js"
+    },
+    "./text-to-cron": {
+      "types": "./dist/text-to-cron.d.ts",
+      "import": "./dist/text-to-cron.js"
     }
   },
   "scripts": {
@@ -24,7 +28,8 @@
     "type-check": "tsgo --noEmit",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "ci": "biome ci ."
+    "ci": "biome ci .",
+    "test": "bun test src/__tests__"
   },
   "dependencies": {
     "croner": "^9.0.0"

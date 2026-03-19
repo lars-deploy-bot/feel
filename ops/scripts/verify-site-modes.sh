@@ -27,19 +27,18 @@ SITES=$(jq -r '.sites | keys[]' "$REGISTRY" 2>/dev/null)
 for DOMAIN in $SITES; do
   SLUG=$(echo "$DOMAIN" | sed 's/\./-/g')
   SERVICE="site@${SLUG}.service"
-  OVERRIDE_PATH="$OVERRIDE_DIR/${SERVICE}.d/override.conf"
+  SERVICE_DIR="$OVERRIDE_DIR/${SERVICE}.d"
 
   EXPECTED_MODE=$(jq -r ".sites.\"$DOMAIN\"" "$REGISTRY")
 
-  # Check if override exists
-  if [ ! -f "$OVERRIDE_PATH" ]; then
-    log_message "WARN: No override for $DOMAIN (expected: $EXPECTED_MODE)"
-    MISMATCHES=$((MISMATCHES + 1))
-    continue
+  # Extract actual mode: serve-mode.conf is canonical, override.conf is legacy fallback
+  if [ -f "$SERVICE_DIR/serve-mode.conf" ]; then
+    ACTUAL_MODE=$(grep -oP "bun run \K\w+" "$SERVICE_DIR/serve-mode.conf" 2>/dev/null || echo "unknown")
+  elif [ -f "$SERVICE_DIR/override.conf" ]; then
+    ACTUAL_MODE=$(grep -oP "bun run \K\w+" "$SERVICE_DIR/override.conf" 2>/dev/null || echo "dev")
+  else
+    ACTUAL_MODE="dev"
   fi
-
-  # Extract actual mode
-  ACTUAL_MODE=$(grep -oP "bun run \K\w+" "$OVERRIDE_PATH" 2>/dev/null || echo "unknown")
 
   if [ "$ACTUAL_MODE" != "$EXPECTED_MODE" ]; then
     log_message "MISMATCH: $DOMAIN - Expected: $EXPECTED_MODE, Actual: $ACTUAL_MODE"

@@ -16,5 +16,8 @@
 
 // Re-export scheduler functions
 export { computeNextRunAtMs, validateCronExpression } from "./scheduler.js"
+export type { TextToCronResult } from "./text-to-cron.js"
+// Re-export text-to-cron
+export { textToCron } from "./text-to-cron.js"
 // Re-export types
 export type { AutomationSchedule, ScheduleAt, ScheduleCron, ScheduleEvery } from "./types.js"

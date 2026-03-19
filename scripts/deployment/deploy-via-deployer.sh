@@ -1,15 +1,15 @@
 #!/bin/bash
 # =============================================================================
-# Deploy via deployer-rs
+# Deploy via API → deployer-rs
 # =============================================================================
 # Usage: ./deploy-via-deployer.sh <staging|production>
 #
-# Triggers a build+deploy through the deployer-rs control plane.
-# Inserts a build row, waits for it to succeed, then inserts a deployment row
-# and waits for that to succeed. Fails fast on any error.
+# Triggers a build+deploy through the Alive API.
+# The API validates and inserts DB rows, then pokes the deployer-rs worker.
+# This script polls the DB for status (build succeeded? deployment succeeded?).
 #
 # Environment: SKIP_E2E=1 to skip E2E tests
-# Requires: psql, curl, jq
+# Requires: curl, jq, psql (for DB lifecycle + status polling)
 # =============================================================================
 
 set -euo pipefail
@@ -28,7 +28,7 @@ if [[ "$ENVIRONMENT" != "staging" && "$ENVIRONMENT" != "production" ]]; then
     exit 1
 fi
 
-# Load DB credentials
+# Load credentials
 source "$PROJECT_ROOT/apps/web/.env.production"
 export PGPASSWORD="$DATABASE_PASSWORD"
 DB_URL="${DATABASE_URL:?DATABASE_URL must be set in apps/web/.env.production}"
@@ -45,11 +45,14 @@ if [[ -z "$CURRENT_SERVER_ID" ]]; then
     exit 1
 fi
 
+API_URL="http://127.0.0.1:5080"
 DEPLOYER_HEALTH="http://127.0.0.1:5095"
 APPLICATION_ID="dep_app_bd57129d0218c50d"
 GIT_REF="$(git rev-parse --abbrev-ref HEAD)"
 GIT_SHA="$(git rev-parse HEAD)"
 COMMIT_MSG="$(git log -1 --format=%s)"
+AUTH_HEADER="Authorization: Bearer ${ALIVE_PASSCODE:?ALIVE_PASSCODE must be set}"
+
 BUILD_TIMEOUT_SECONDS=600
 DEPLOY_TIMEOUT_SECONDS=300
 STATUS_POLL_INTERVAL_SECONDS=3
@@ -64,17 +67,21 @@ _TOTAL_PHASES=8
 db_query() {
     local sql="$1"
     local output
-
     if ! output=$(psql "$DB_URL" -v ON_ERROR_STOP=1 -t -A -c "$sql" 2>&1); then
         log_error "Database query failed: $output"
         return 1
     fi
-
     printf '%s\n' "$output" | { grep -v '^INSERT \|^UPDATE \|^DELETE ' || true; }
 }
 
-sql_escape() {
-    printf '%s' "$1" | sed -e "s/'/''/g" -e 's/\\/\\\\/g'
+api_post() {
+    local path="$1"
+    local body="$2"
+    curl -sf -X POST \
+        -H "Content-Type: application/json" \
+        -H "$AUTH_HEADER" \
+        -d "$body" \
+        "$API_URL$path" 2>&1
 }
 
 # =============================================================================
@@ -103,9 +110,6 @@ if [[ "$HEALTH_OK" != "true" ]]; then
     exit 1
 fi
 
-# Schema compatibility gate: verify current code can parse server-config.json.
-# Prevents deploying a build that can't read runtime config (postmortem 2026-03-16).
-# TODO: Move to deployer-rs preflight when deploy pipeline migrates (see plan/execution-substrate/06)
 if ! SERVER_CONFIG_PATH="$SERVER_CONFIG_PATH" bun -e "
   const { readFileSync } = require('node:fs');
   const { parseServerConfig } = require('@webalive/shared');
@@ -113,7 +117,7 @@ if ! SERVER_CONFIG_PATH="$SERVER_CONFIG_PATH" bun -e "
   parseServerConfig(raw);
   console.log('Schema OK');
 " >/tmp/alive-schema-check-"$ENVIRONMENT".log 2>&1; then
-    log_error "Schema compatibility check failed (runtime/parse error — see log above)"
+    log_error "Schema compatibility check failed"
     cat /tmp/alive-schema-check-"$ENVIRONMENT".log || true
     phase_end error "server-config.json schema mismatch"
     exit 1
@@ -135,7 +139,7 @@ fi
 phase_end ok "deployer-rs healthy, environment $ENVIRONMENT_ID"
 
 # =============================================================================
-# 2. Database lifecycle (migrations → drift check → seed)
+# 2. Database lifecycle
 # =============================================================================
 
 phase_start "Running database lifecycle"
@@ -167,7 +171,6 @@ fi
 # =============================================================================
 
 phase_start "Syncing ops timers"
-
 sync_script="$SCRIPT_DIR/lib/sync-ops-timers.sh"
 if [[ -x "$sync_script" ]]; then
     "$sync_script" 2>/dev/null || true
@@ -175,11 +178,10 @@ fi
 phase_end ok "Ops timers synced"
 
 # =============================================================================
-# 4. Deploy preview-proxy + services
+# 4. Deploy services
 # =============================================================================
 
 phase_start "Deploying services"
-
 PREVIEW_PROXY_LOG="$(mktemp /tmp/alive-preview-proxy.XXXXXX.log)"
 if "$SCRIPT_DIR/deploy-preview-proxy.sh" >"$PREVIEW_PROXY_LOG" 2>&1; then
     tail -n 5 "$PREVIEW_PROXY_LOG" || true
@@ -193,100 +195,117 @@ rm -f "$PREVIEW_PROXY_LOG"
 phase_end ok "Services deployed"
 
 # =============================================================================
-# 5. Request build
+# 5-6. Build + Resolve release
 # =============================================================================
 
-phase_start "Requesting build"
+if [[ "$ENVIRONMENT" == "production" ]]; then
+    # Production: promote the latest successful staging release (no fresh build)
+    phase_start "Resolving staging release for promotion"
 
-BUILD_ID=$(db_query "
-INSERT INTO deploy.builds (application_id, server_id, git_ref, git_sha, commit_message, status)
-VALUES ('$APPLICATION_ID', '$CURRENT_SERVER_ID', '$GIT_SHA', '$GIT_SHA', '$(sql_escape "$COMMIT_MSG")', 'pending')
-RETURNING build_id;
-")
+    STAGING_ENV_ID=$(db_query "SELECT environment_id FROM deploy.environments WHERE application_id = '$APPLICATION_ID' AND name = 'staging' AND server_id = '$CURRENT_SERVER_ID' LIMIT 1;")
+    if [[ -z "$STAGING_ENV_ID" ]]; then
+        phase_end error "No staging environment found for promotion"
+        exit 1
+    fi
 
-if [[ -z "$BUILD_ID" ]]; then
-    phase_end error "Failed to insert build row"
-    exit 1
+    RELEASE_ID=$(db_query "
+    SELECT d.release_id
+    FROM deploy.deployments d
+    WHERE d.environment_id = '$STAGING_ENV_ID'
+      AND d.status = 'succeeded'
+    ORDER BY d.created_at DESC
+    LIMIT 1;
+    ")
+
+    if [[ -z "$RELEASE_ID" ]]; then
+        phase_end error "No successful staging deployment found to promote"
+        exit 1
+    fi
+
+    phase_end ok "Promoting release $RELEASE_ID from staging"
+else
+    # Staging: build fresh
+    phase_start "Requesting build"
+
+    BUILD_RESPONSE=$(api_post "/api/manager/deploys/builds" \
+        "{\"application_id\": \"$APPLICATION_ID\", \"server_id\": \"$CURRENT_SERVER_ID\", \"git_ref\": \"$GIT_SHA\", \"git_sha\": \"$GIT_SHA\", \"commit_message\": $(printf '%s' "$COMMIT_MSG" | jq -Rs .)}")
+
+    BUILD_OK=$(printf '%s' "$BUILD_RESPONSE" | jq -r '.ok // false')
+    if [[ "$BUILD_OK" != "true" ]]; then
+        BUILD_ERROR=$(printf '%s' "$BUILD_RESPONSE" | jq -r '.error.message // .error // "unknown"')
+        phase_end error "Failed to queue build: $BUILD_ERROR"
+        exit 1
+    fi
+
+    BUILD_ID=$(printf '%s' "$BUILD_RESPONSE" | jq -r '.data.build_id')
+    log_step "Build: $BUILD_ID"
+    log_step "Branch: $GIT_REF (pinned to ${GIT_SHA:0:12})"
+
+    # Poll build status
+    ELAPSED=0
+    while [[ $ELAPSED -lt $BUILD_TIMEOUT_SECONDS ]]; do
+        BUILD_STATUS=$(db_query "SELECT status FROM deploy.builds WHERE build_id = '$BUILD_ID';")
+        case "$BUILD_STATUS" in
+            succeeded)
+                ARTIFACT_REF=$(db_query "SELECT artifact_ref FROM deploy.builds WHERE build_id = '$BUILD_ID';")
+                phase_end ok "Build succeeded ($ARTIFACT_REF)"
+                break
+                ;;
+            failed)
+                ERROR=$(db_query "SELECT error_message FROM deploy.builds WHERE build_id = '$BUILD_ID';")
+                phase_end error "Build failed: $ERROR"
+                exit 1
+                ;;
+            pending|running)
+                sleep "$STATUS_POLL_INTERVAL_SECONDS"
+                ELAPSED=$((ELAPSED + STATUS_POLL_INTERVAL_SECONDS))
+                ;;
+            *)
+                phase_end error "Unexpected build status: $BUILD_STATUS"
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ $ELAPSED -ge $BUILD_TIMEOUT_SECONDS ]]; then
+        phase_end error "Build timed out after ${BUILD_TIMEOUT_SECONDS}s"
+        exit 1
+    fi
+
+    # Resolve release from build
+    phase_start "Resolving release"
+    RELEASE_ID=$(db_query "SELECT release_id FROM deploy.releases WHERE build_id = '$BUILD_ID' LIMIT 1;")
+    if [[ -z "$RELEASE_ID" ]]; then
+        phase_end error "No release found for build $BUILD_ID"
+        exit 1
+    fi
+    phase_end ok "Release $RELEASE_ID"
 fi
 
-log_step "Build: $BUILD_ID"
-log_step "Branch: $GIT_REF (pinned to ${GIT_SHA:0:12})"
-
-# Wait for build
-BUILD_TIMEOUT="$BUILD_TIMEOUT_SECONDS"
-ELAPSED=0
-while [[ $ELAPSED -lt $BUILD_TIMEOUT ]]; do
-    BUILD_STATUS=$(db_query "SELECT status FROM deploy.builds WHERE build_id = '$BUILD_ID';")
-
-    case "$BUILD_STATUS" in
-        succeeded)
-            ARTIFACT_REF=$(db_query "SELECT artifact_ref FROM deploy.builds WHERE build_id = '$BUILD_ID';")
-            phase_end ok "Build succeeded ($ARTIFACT_REF)"
-            break
-            ;;
-        failed)
-            ERROR=$(db_query "SELECT error_message FROM deploy.builds WHERE build_id = '$BUILD_ID';")
-            phase_end error "Build failed: $ERROR"
-            echo "  Debug: curl $DEPLOYER_HEALTH/tasks/build/$BUILD_ID"
-            exit 1
-            ;;
-        pending|running)
-            sleep "$STATUS_POLL_INTERVAL_SECONDS"
-            ELAPSED=$((ELAPSED + STATUS_POLL_INTERVAL_SECONDS))
-            ;;
-        *)
-            phase_end error "Unexpected build status: $BUILD_STATUS"
-            exit 1
-            ;;
-    esac
-done
-
-if [[ $ELAPSED -ge $BUILD_TIMEOUT ]]; then
-    phase_end error "Build timed out after ${BUILD_TIMEOUT}s"
-    exit 1
-fi
-
 # =============================================================================
-# 6. Resolve release
-# =============================================================================
-
-phase_start "Resolving release"
-
-RELEASE_ID=$(db_query "SELECT release_id FROM deploy.releases WHERE build_id = '$BUILD_ID' LIMIT 1;")
-
-if [[ -z "$RELEASE_ID" ]]; then
-    phase_end error "No release found for build $BUILD_ID"
-    exit 1
-fi
-
-phase_end ok "Release $RELEASE_ID"
-
-# =============================================================================
-# 7. Deploy
+# 7. Deploy (via API)
 # =============================================================================
 
 phase_start "Deploying to $ENVIRONMENT"
 
-DEPLOYMENT_ID=$(db_query "
-INSERT INTO deploy.deployments (environment_id, release_id, status, action)
-VALUES ('$ENVIRONMENT_ID', '$RELEASE_ID', 'pending', 'deploy')
-RETURNING deployment_id;
-")
+DEPLOY_RESPONSE=$(api_post "/api/manager/deploys/deployments" \
+    "{\"environment_id\": \"$ENVIRONMENT_ID\", \"release_id\": \"$RELEASE_ID\"}")
 
-if [[ -z "$DEPLOYMENT_ID" ]]; then
-    phase_end error "Failed to insert deployment row"
+DEPLOY_OK=$(printf '%s' "$DEPLOY_RESPONSE" | jq -r '.ok // false')
+if [[ "$DEPLOY_OK" != "true" ]]; then
+    DEPLOY_ERROR=$(printf '%s' "$DEPLOY_RESPONSE" | jq -r '.error.message // .error // "unknown"')
+    phase_end error "Failed to queue deployment: $DEPLOY_ERROR"
     exit 1
 fi
 
+DEPLOYMENT_ID=$(printf '%s' "$DEPLOY_RESPONSE" | jq -r '.data.deployment_id')
 log_step "Deployment: $DEPLOYMENT_ID"
 
-# Wait for deployment
-DEPLOY_TIMEOUT="$DEPLOY_TIMEOUT_SECONDS"
+# Poll deployment status
 ELAPSED=0
 LAST_STAGE=""
-while [[ $ELAPSED -lt $DEPLOY_TIMEOUT ]]; do
+while [[ $ELAPSED -lt $DEPLOY_TIMEOUT_SECONDS ]]; do
     DEPLOY_STATUS=$(db_query "SELECT status FROM deploy.deployments WHERE deployment_id = '$DEPLOYMENT_ID';")
-
     case "$DEPLOY_STATUS" in
         succeeded)
             HC_STATUS=$(db_query "SELECT healthcheck_status FROM deploy.deployments WHERE deployment_id = '$DEPLOYMENT_ID';")
@@ -296,7 +315,6 @@ while [[ $ELAPSED -lt $DEPLOY_TIMEOUT ]]; do
         failed)
             ERROR=$(db_query "SELECT error_message FROM deploy.deployments WHERE deployment_id = '$DEPLOYMENT_ID';")
             phase_end error "Deployment failed: $ERROR"
-            echo "  Debug: curl $DEPLOYER_HEALTH/tasks/deployment/$DEPLOYMENT_ID"
             exit 1
             ;;
         pending|running)
@@ -315,8 +333,8 @@ while [[ $ELAPSED -lt $DEPLOY_TIMEOUT ]]; do
     esac
 done
 
-if [[ $ELAPSED -ge $DEPLOY_TIMEOUT ]]; then
-    phase_end error "Deployment timed out after ${DEPLOY_TIMEOUT}s"
+if [[ $ELAPSED -ge $DEPLOY_TIMEOUT_SECONDS ]]; then
+    phase_end error "Deployment timed out after ${DEPLOY_TIMEOUT_SECONDS}s"
     exit 1
 fi
 

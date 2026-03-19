@@ -19,7 +19,17 @@ import type {
 } from "./deploys.types"
 
 const DEPLOYER_DATA_DIR = "/var/lib/alive/deployer"
+const DEPLOYER_URL = "http://127.0.0.1:5095"
 const LOG_TAIL_LINES = 400
+
+/** Notify deployer-rs to check for pending work immediately. Best-effort — never throws. */
+async function pokeDeployer(): Promise<void> {
+  try {
+    await fetch(`${DEPLOYER_URL}/poke`, { method: "POST", signal: AbortSignal.timeout(2_000) })
+  } catch {
+    // Non-fatal — deployer will poll on its own within 5s
+  }
+}
 
 function mapBuild(build: deployRepo.DeployBuildRow): ManagerDeployBuild {
   return {
@@ -234,18 +244,33 @@ export async function listDeployApplications(): Promise<ManagerDeployApplication
   })
 }
 
-export async function queueBuild(applicationId: string, gitRef?: string): Promise<ManagerDeployBuild> {
-  await deployRepo.findApplicationById(applicationId)
-  const runningBuild = await deployRepo.findRunningBuildByApplicationId(applicationId)
+export interface QueueBuildParams {
+  application_id: string
+  server_id: string
+  git_ref: string
+  git_sha: string
+  commit_message: string
+}
+
+export async function queueBuild(params: QueueBuildParams): Promise<ManagerDeployBuild> {
+  await deployRepo.findApplicationById(params.application_id)
+  const runningBuild = await deployRepo.findRunningBuildByApplicationId(params.application_id)
   if (runningBuild) {
     throw new ConflictError("A build is already running for this application")
   }
 
   const build = await deployRepo.createBuild({
-    application_id: applicationId,
-    git_ref: gitRef?.trim() || "HEAD",
+    application_id: params.application_id,
+    git_ref: params.git_ref,
+    // server_id, git_sha, commit_message required by DB but missing from generated types (needs gen:types refresh)
+    ...({
+      server_id: params.server_id,
+      git_sha: params.git_sha,
+      commit_message: params.commit_message,
+    } as Record<string, string>),
   })
 
+  await pokeDeployer()
   return mapBuild(build)
 }
 
@@ -273,6 +298,7 @@ export async function queueDeployment(
     const stagingEnvironment = await deployRepo.findEnvironmentByApplicationAndName(
       environment.application_id,
       DEPLOY_ENVIRONMENT_STAGING,
+      environment.server_id,
     )
 
     if (!stagingEnvironment) {
@@ -305,6 +331,7 @@ export async function queueDeployment(
     promoted_from_deployment_id: promotedFromDeploymentId,
   })
 
+  await pokeDeployer()
   return mapDeployment(deployment, environment)
 }
 

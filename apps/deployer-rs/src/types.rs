@@ -18,6 +18,7 @@ pub(crate) struct ServiceContext {
 pub(crate) struct AppState {
     pub(crate) health: Arc<RwLock<HealthState>>,
     pub(crate) data_dir: PathBuf,
+    pub(crate) poke: Arc<tokio::sync::Notify>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -58,8 +59,13 @@ pub(crate) struct AliveConfig {
     pub(crate) project: ProjectConfig,
     #[serde(default)]
     pub(crate) source: SourceConfig,
-    pub(crate) docker: DockerConfig,
+    #[serde(default)]
+    pub(crate) docker: Option<DockerConfig>,
+    #[serde(default)]
+    pub(crate) systemd: Option<SystemdConfig>,
     pub(crate) runtime: RuntimeConfig,
+    #[serde(default)]
+    pub(crate) build: Option<BuildConfig>,
     #[serde(default)]
     pub(crate) build_secrets: Vec<BuildSecret>,
     #[serde(default)]
@@ -134,6 +140,26 @@ pub(crate) enum RuntimeKindConfig {
     Host,
     E2b,
     Hetzner,
+    Systemd,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub(crate) struct SystemdConfig {
+    /// Template for the systemd unit name, e.g. "alive-{environment}.service"
+    pub(crate) unit_template: String,
+    /// Template for the release directory, e.g. ".builds/{environment}"
+    #[allow(dead_code)]
+    pub(crate) release_dir_template: String,
+    /// Path within the build output that becomes the runtime root (relative to repo root)
+    pub(crate) release_root: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub(crate) struct BuildConfig {
+    pub(crate) setup_command: Option<String>,
+    pub(crate) command: String,
+    /// Paths relative to repo root that constitute the build output
+    pub(crate) outputs: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -277,6 +303,83 @@ pub(crate) enum LeaseTarget {
 pub(crate) struct RollbackContainer {
     pub(crate) original_name: String,
     pub(crate) rollback_name: String,
+}
+
+pub(crate) struct RollbackSymlink {
+    pub(crate) symlink_path: PathBuf,
+    pub(crate) previous_target: Option<PathBuf>,
+}
+
+// =============================================================================
+// Adapter types — shared interface between Docker and Systemd runtimes
+// =============================================================================
+
+/// Opaque reference to a build artifact produced by a runtime adapter.
+pub(crate) enum ArtifactRef {
+    DockerImage {
+        image_ref: String,
+        image_digest: String,
+    },
+    Directory {
+        artifact_ref: String,
+        content_digest: String,
+    },
+}
+
+impl ArtifactRef {
+    pub(crate) fn artifact_ref_str(&self) -> &str {
+        match self {
+            Self::DockerImage { image_ref, .. } => image_ref,
+            Self::Directory { artifact_ref, .. } => artifact_ref,
+        }
+    }
+
+    pub(crate) fn artifact_digest_str(&self) -> &str {
+        match self {
+            Self::DockerImage { image_digest, .. } => image_digest,
+            Self::Directory { content_digest, .. } => content_digest,
+        }
+    }
+}
+
+/// Saved state for rollback. Each adapter produces its own variant.
+pub(crate) enum RollbackState {
+    Container(RollbackContainer),
+    #[allow(dead_code)]
+    Symlink(RollbackSymlink),
+    None,
+}
+
+/// A human-readable label for the runtime instance (for logging/reconciliation).
+pub(crate) struct RuntimeLabel(pub(crate) String);
+
+impl std::fmt::Display for RuntimeLabel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+/// Parameters for the build phase, passed to the adapter.
+pub(crate) struct BuildParams<'a> {
+    pub(crate) source_root: &'a std::path::Path,
+    pub(crate) alive_config: &'a AliveConfig,
+    pub(crate) build_input: &'a crate::source_contract::BuildInput,
+    pub(crate) build_secrets: &'a [ResolvedBuildSecret],
+    pub(crate) build_id: &'a str,
+    pub(crate) git_ref: &'a str,
+    pub(crate) data_dir: &'a std::path::Path,
+}
+
+/// Parameters for the deployment phase, passed to the adapter.
+pub(crate) struct DeployParams<'a> {
+    pub(crate) config: &'a AliveConfig,
+    pub(crate) environment: &'a EnvironmentRow,
+    pub(crate) release: &'a ReleaseRow,
+    pub(crate) deployment_id: &'a str,
+    pub(crate) context: &'a ServiceContext,
+    pub(crate) sanitized_env_file: &'a std::path::Path,
+    pub(crate) host_port: u16,
+    pub(crate) network_mode: RuntimeNetworkMode,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]

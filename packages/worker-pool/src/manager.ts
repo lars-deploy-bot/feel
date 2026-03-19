@@ -1834,7 +1834,7 @@ export class WorkerPoolManager extends EventEmitter {
       }
     }
 
-    const { stdout } = await execFileAsync("ps", ["-eo", "pid=,ppid=,etimes=,args="])
+    const { stdout } = await execFileAsync("/usr/bin/ps", ["-eo", "pid=,ppid=,etimes=,args="])
     const lines = stdout.split("\n")
 
     for (const line of lines) {

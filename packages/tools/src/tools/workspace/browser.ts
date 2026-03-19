@@ -104,7 +104,7 @@ async function callBrowserService(
           message.includes("fetch failed")
         ) {
           throw new Error(
-            "Browser control service is not running. It needs to be started as a systemd service (browser-control.service).",
+            "Browser control service is not running. Enable it in alive.toml [services.browser-control] and start the container in alive-services.",
           )
         }
         throw err

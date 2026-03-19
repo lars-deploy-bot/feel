@@ -8,6 +8,7 @@ import {
   type ConversationSource,
   normalizeConversationSourcePayload,
 } from "@/lib/conversations/source"
+import type { MessageStatus, MessageType } from "@/lib/conversations/sync-types"
 
 /**
  * Dexie.js IndexedDB Schema for Message Storage
@@ -50,8 +51,10 @@ export function getMessageDbName(userId: string): string {
 // Use adapters (toUIMessage/fromUIMessage) to convert.
 
 export type ConversationVisibility = "private" | "shared"
-export type DbMessageType = "user" | "assistant" | "tool_use" | "tool_result" | "thinking" | "system" | "sdk_message"
-export type DbMessageStatus = "streaming" | "complete" | "interrupted" | "error"
+/** Derived from shared MESSAGE_TYPES constant — see lib/conversations/sync-types.ts */
+export type DbMessageType = MessageType
+/** Derived from shared MESSAGE_STATUSES constant — see lib/conversations/sync-types.ts */
+export type DbMessageStatus = MessageStatus
 export type DbMessageOrigin = "local" | "remote" | "migration"
 
 /** Allowed conversation sources */

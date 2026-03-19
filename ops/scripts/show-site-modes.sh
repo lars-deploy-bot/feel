@@ -19,11 +19,13 @@ for SITE_PATH in "$SITES_DIR"/*; do
   DOMAIN=$(basename "$SITE_PATH")
   SLUG=$(echo "$DOMAIN" | sed 's/\./-/g')
   SERVICE="site@${SLUG}.service"
-  OVERRIDE_PATH="$OVERRIDE_DIR/${SERVICE}.d/override.conf"
+  SERVICE_DIR="$OVERRIDE_DIR/${SERVICE}.d"
 
-  # Get actual mode
-  if [ -f "$OVERRIDE_PATH" ]; then
-    ACTUAL=$(grep -oP "bun run \K\w+" "$OVERRIDE_PATH" 2>/dev/null || echo "unknown")
+  # Get actual mode: serve-mode.conf is canonical, override.conf is legacy fallback
+  if [ -f "$SERVICE_DIR/serve-mode.conf" ]; then
+    ACTUAL=$(grep -oP "bun run \K\w+" "$SERVICE_DIR/serve-mode.conf" 2>/dev/null || echo "unknown")
+  elif [ -f "$SERVICE_DIR/override.conf" ]; then
+    ACTUAL=$(grep -oP "bun run \K\w+" "$SERVICE_DIR/override.conf" 2>/dev/null || echo "default")
   else
     ACTUAL="default"
   fi

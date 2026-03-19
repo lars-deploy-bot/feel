@@ -61,6 +61,7 @@ export interface StreamToolContext {
   workspaceKind: StreamWorkspaceKind
   mode: StreamMode
   connectedProviders: string[]
+  enabledServices: string[]
 }
 
 export interface StreamToolPolicy {
@@ -70,6 +71,8 @@ export interface StreamToolPolicy {
   requiresUserApproval?: boolean
   /** Restrict tool to specific modes. Omit to allow in all modes (default). */
   modes?: readonly StreamMode[]
+  /** Service name from alive.toml [services.*] that must be enabled. */
+  requiresService?: string
   reason: string
 }
 
@@ -100,6 +103,8 @@ export interface StreamToolContextInput {
   executionMode: ExecutionMode
   mode?: StreamMode
   connectedProviders?: string[]
+  /** Service names enabled in alive.toml [services.*]. Tools with requiresService are excluded when their service is missing. */
+  enabledServices?: string[]
 }
 
 function dedupeStrings(values: string[]): string[] {
@@ -125,12 +130,14 @@ export function createStreamToolContext(input: StreamToolContextInput): StreamTo
   const role = getStreamToolRole(!!input.isAdmin, !!input.isSuperadmin)
   const workspaceKind = getStreamWorkspaceKind(!!input.isSuperadminWorkspace, input.executionMode)
   const connectedProviders = dedupeStrings((input.connectedProviders ?? []).filter(Boolean))
+  const enabledServices = dedupeStrings((input.enabledServices ?? []).filter(Boolean))
 
   return {
     role,
     workspaceKind,
     mode: input.mode ?? "default",
     connectedProviders,
+    enabledServices,
   }
 }
 
@@ -537,6 +544,7 @@ function descriptorToPolicy(d: InternalToolDescriptor): StreamToolPolicy {
     ...(d.workspaceKinds ? { workspaceKinds: d.workspaceKinds } : {}),
     ...(d.visibility ? { visibility: d.visibility } : {}),
     ...(d.roles ? { roles: d.roles } : {}),
+    ...(d.requiresService ? { requiresService: d.requiresService } : {}),
   })
 }
 
@@ -763,6 +771,15 @@ export function getStreamToolDecision(toolName: string, context: StreamToolConte
       visibleToClient,
       policyFound: true,
       reason: policy.reason,
+    }
+  }
+
+  if (policy.requiresService && !context.enabledServices.includes(policy.requiresService)) {
+    return {
+      executable: false,
+      visibleToClient: false,
+      policyFound: true,
+      reason: `Tool requires service "${policy.requiresService}" (enable in alive.toml [services.${policy.requiresService}]).`,
     }
   }
 
@@ -995,6 +1012,7 @@ export function getStreamAllowedTools(
   mode: StreamMode = "default",
   connectedProviders: string[] = [],
   executionMode: ExecutionMode,
+  enabledServices: string[] = [],
 ): string[] {
   const context = createStreamToolContext({
     isAdmin,
@@ -1003,6 +1021,7 @@ export function getStreamAllowedTools(
     mode,
     connectedProviders,
     executionMode,
+    enabledServices,
   })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).allowedTools
 }
@@ -1048,6 +1067,26 @@ export interface StreamMcpServerConfig {
 }
 
 /**
+ * Build HTTP MCP server configs for connected OAuth providers.
+ * Skips "internal" URLs (those providers have tools built into @webalive/tools).
+ */
+export function buildOAuthMcpServers(oauthTokens: Record<string, string>): Record<string, StreamMcpServerConfig> {
+  const servers: Record<string, StreamMcpServerConfig> = {}
+  for (const [providerKey, config] of Object.entries(OAUTH_MCP_PROVIDERS)) {
+    if (config.url === "internal") continue
+    const token = oauthTokens[providerKey]
+    if (token) {
+      servers[providerKey] = {
+        type: "http",
+        url: config.url,
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    }
+  }
+  return servers
+}
+
+/**
  * Get MCP servers configuration for Stream mode.
  */
 export function getStreamMcpServers<T>(
@@ -1058,20 +1097,7 @@ export function getStreamMcpServers<T>(
     "alive-workspace": internalMcpServers["alive-workspace"],
     "alive-tools": internalMcpServers["alive-tools"],
     "alive-sandboxed-fs": internalMcpServers["alive-sandboxed-fs"],
-  }
-
-  // Add OAuth MCP servers for connected providers
-  for (const [providerKey, config] of Object.entries(OAUTH_MCP_PROVIDERS)) {
-    const token = oauthTokens[providerKey]
-    if (token) {
-      servers[providerKey] = {
-        type: "http",
-        url: config.url,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    }
+    ...buildOAuthMcpServers(oauthTokens),
   }
 
   // Add global MCP servers (always available, no auth required)

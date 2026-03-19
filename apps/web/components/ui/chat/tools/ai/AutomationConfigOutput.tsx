@@ -57,18 +57,14 @@ export function validateAutomationConfig(data: unknown): data is AutomationConfi
 }
 
 function formatScheduleDescription(result: AutomationConfigResult): string {
-  switch (result.scheduleType) {
-    case "once":
-      return `Once on ${result.scheduleDate} at ${result.scheduleTime}`
-    case "daily":
-      return `Daily at ${result.scheduleTime} (${result.timezone})`
-    case "weekly":
-      return `Weekly at ${result.scheduleTime} (${result.timezone})`
-    case "monthly":
-      return `Monthly at ${result.scheduleTime} (${result.timezone})`
-    case "custom":
-      return `Cron: ${result.cronExpression} (${result.timezone})`
+  if (result.scheduleType === "once") {
+    return `Once on ${result.scheduleDate} at ${result.scheduleTime}`
   }
+  // For recurring schedules, show the human-readable text
+  if (result.scheduleText) {
+    return `${result.scheduleText} (${result.timezone})`
+  }
+  return `${result.scheduleType} at ${result.scheduleTime} (${result.timezone})`
 }
 
 function formatAutomationCreatedMessage(result: AutomationConfigResult): string {

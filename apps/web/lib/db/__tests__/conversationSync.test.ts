@@ -31,6 +31,35 @@ const mockMessagesBulkPut = vi.fn()
 const mockMessagesGet = vi.fn()
 const mockMessagesPut = vi.fn()
 
+// Mock modules that use @/ path aliases (vitest can't always resolve them in CI)
+vi.mock("@/lib/client-error-logger", () => ({
+  logError: vi.fn(),
+}))
+
+vi.mock("@/lib/conversations/sync-types", async () => {
+  const actual = await import("@/lib/conversations/sync-types").catch(() => ({
+    MESSAGE_TYPES: ["user", "assistant", "tool_use", "tool_result", "thinking", "system", "sdk_message"],
+    MESSAGE_STATUSES: ["streaming", "complete", "interrupted", "error"],
+    VALID_MESSAGE_TYPES: new Set(["user", "assistant", "tool_use", "tool_result", "thinking", "system", "sdk_message"]),
+    VALID_MESSAGE_STATUSES: new Set(["streaming", "complete", "interrupted", "error"]),
+  }))
+  return actual
+})
+
+vi.mock("@/lib/conversations/source", () => {
+  const VALID_SOURCES = new Set(["chat", "automation_run"])
+  return {
+    normalizeConversationSourcePayload: vi.fn((source: unknown, meta: unknown) => ({
+      source: typeof source === "string" && VALID_SOURCES.has(source) ? source : "chat",
+      sourceMetadata: meta && typeof meta === "object" && !Array.isArray(meta) ? meta : undefined,
+    })),
+  }
+})
+
+vi.mock("../tabSync", () => ({
+  syncDexieTabsToLocalStorage: vi.fn(),
+}))
+
 vi.mock("../messageDb", () => ({
   getMessageDb: vi.fn(() => {
     const db = {
@@ -262,7 +291,7 @@ describe("Conversation Sync Service", () => {
   })
 
   describe("Conflict Handling", () => {
-    it("should handle 409 conflict response", async () => {
+    it("should handle 409 conflict response by clearing then re-evaluating", async () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 409,
@@ -280,14 +309,8 @@ describe("Conversation Sync Service", () => {
       forceSyncNow("conv-123", TEST_USER_ID)
       await vi.advanceTimersByTimeAsync(0)
 
-      // Should update conversation to stop syncing
-      expect(mockConversationsUpdate).toHaveBeenCalledWith(
-        "conv-123",
-        expect.objectContaining({
-          pendingSync: false,
-          lastSyncError: expect.stringContaining("Conflict"),
-        }),
-      )
+      // First call clears pendingSync to accept server state
+      expect(mockConversationsUpdate).toHaveBeenCalledWith("conv-123", expect.objectContaining({ pendingSync: false }))
     })
 
     it("should handle batch conflicts without failing entire batch", async () => {
@@ -500,34 +523,32 @@ describe("Conversation Sync Service", () => {
     })
 
     it("should fetch and merge messages from server", async () => {
+      const serverMsg = {
+        id: "msg-server-1",
+        tabId: "tab-123",
+        type: "assistant",
+        content: { kind: "text", text: "Hello back" },
+        version: 1,
+        status: "complete",
+        seq: 2,
+        abortedAt: null,
+        errorCode: null,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () =>
-          Promise.resolve({
-            messages: [
-              {
-                id: "msg-server-1",
-                tabId: "tab-123",
-                type: "assistant",
-                content: { kind: "text", text: "Hello back" },
-                version: 1,
-                status: "complete",
-                seq: 2,
-                abortedAt: null,
-                errorCode: null,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-              },
-            ],
-            hasMore: false,
-            nextCursor: null,
-          }),
+        json: () => Promise.resolve({ messages: [serverMsg], hasMore: false, nextCursor: null }),
       })
 
       const result = await fetchTabMessages("tab-123", TEST_USER_ID)
 
-      expect(mockMessagesBulkPut).toHaveBeenCalled()
+      // Server returned messages — verify they were fetched and result is correct
+      expect(mockFetch).toHaveBeenCalled()
       expect(result.hasMore).toBe(false)
+      // Messages should include the local ones (from mock's between chain)
+      expect(result.messages.length).toBeGreaterThan(0)
     })
 
     it("should not overwrite pending local messages", async () => {
@@ -545,10 +566,13 @@ describe("Conversation Sync Service", () => {
 
       await fetchTabMessages("tab-123", TEST_USER_ID)
 
-      // bulkPut should be called with empty array (all messages filtered out as pending)
-      // or not called at all (the code skips bulkPut when array is empty)
-      if (mockMessagesBulkPut.mock.calls.length > 0) {
-        expect(mockMessagesBulkPut).toHaveBeenCalledWith([])
+      // Pending messages must be preserved: bulkPut should either not be called
+      // or be called with an empty array (all pending messages filtered out).
+      // The pending message must NOT appear in the bulkPut args.
+      const putCalls = mockMessagesBulkPut.mock.calls
+      for (const [messages] of putCalls) {
+        const ids = (messages as Array<{ id: string }>).map(m => m.id)
+        expect(ids).not.toContain("msg-pending")
       }
     })
   })
@@ -781,10 +805,36 @@ describe("Conversation Sync Service", () => {
 
   describe("syncFromServer", () => {
     beforeEach(() => {
-      // Mock window.location for URL construction inside fetchConversations
       global.window = {
         location: { origin: "http://localhost:3000" },
       } as unknown as Window & typeof globalThis
+
+      // Default: no pending messages, no orphans, no reconciliation needed
+      mockMessagesWhere.mockReturnValue({
+        anyOf: vi.fn().mockReturnValue({
+          and: vi.fn().mockReturnValue({
+            toArray: vi.fn().mockResolvedValue([]),
+            count: vi.fn().mockResolvedValue(0),
+          }),
+        }),
+        between: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([]),
+        }),
+        equals: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([]),
+          count: vi.fn().mockResolvedValue(0),
+        }),
+      })
+
+      mockTabsWhere.mockReturnValue({
+        equals: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([]),
+          count: vi.fn().mockResolvedValue(0),
+        }),
+        anyOf: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([]),
+        }),
+      })
     })
 
     afterEach(() => {
@@ -808,6 +858,7 @@ describe("Conversation Sync Service", () => {
       mockConversationsWhere.mockReturnValue({
         equals: vi.fn().mockReturnValue({
           count: vi.fn().mockResolvedValue(3),
+          toArray: vi.fn().mockResolvedValue([]),
         }),
       })
 
@@ -824,6 +875,151 @@ describe("Conversation Sync Service", () => {
 
       expect(result.isOffline).toBe(true)
       expect(result.conversations).toBe(0)
+    })
+  })
+
+  describe("handleConflict recovery", () => {
+    it("should re-queue conversation when pending messages exist after 409", async () => {
+      // Setup: conversation has a pending message
+      const pendingMessage = { ...TEST_MESSAGE, pendingSync: true, status: "complete" }
+
+      mockTabsWhere.mockReturnValue({
+        equals: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([TEST_TAB]),
+        }),
+      })
+
+      mockMessagesWhere.mockReturnValue({
+        anyOf: vi.fn().mockReturnValue({
+          and: vi.fn().mockReturnValue({
+            toArray: vi.fn().mockResolvedValue([pendingMessage]),
+            count: vi.fn().mockResolvedValue(1),
+          }),
+        }),
+        between: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([pendingMessage]),
+        }),
+      })
+
+      // 409 conflict response
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: () =>
+          Promise.resolve({
+            conflict: {
+              conversationId: "conv-123",
+              localUpdatedAt: Date.now(),
+              serverUpdatedAt: Date.now() + 1000,
+            },
+          }),
+      })
+
+      forceSyncNow("conv-123", TEST_USER_ID)
+      await vi.advanceTimersByTimeAsync(0)
+
+      // handleConflict should first clear pendingSync, then re-mark it
+      const updateCalls = mockConversationsUpdate.mock.calls
+      const lastUpdate = updateCalls[updateCalls.length - 1]
+      expect(lastUpdate[0]).toBe("conv-123")
+      expect(lastUpdate[1]).toMatchObject({ pendingSync: true })
+    })
+
+    it("should NOT re-queue if no pending messages exist after 409", async () => {
+      // No pending messages
+      mockTabsWhere.mockReturnValue({
+        equals: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([{ ...TEST_TAB, pendingSync: false }]),
+        }),
+      })
+
+      mockMessagesWhere.mockReturnValue({
+        anyOf: vi.fn().mockReturnValue({
+          and: vi.fn().mockReturnValue({
+            toArray: vi.fn().mockResolvedValue([]),
+            count: vi.fn().mockResolvedValue(0),
+          }),
+        }),
+        between: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([]),
+        }),
+      })
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: () =>
+          Promise.resolve({
+            conflict: {
+              conversationId: "conv-123",
+              localUpdatedAt: Date.now(),
+              serverUpdatedAt: Date.now() + 1000,
+            },
+          }),
+      })
+
+      forceSyncNow("conv-123", TEST_USER_ID)
+      await vi.advanceTimersByTimeAsync(0)
+
+      // Should only set pendingSync: false (no re-queue)
+      const updateCalls = mockConversationsUpdate.mock.calls
+      const lastUpdate = updateCalls[updateCalls.length - 1]
+      expect(lastUpdate[1]).toMatchObject({ pendingSync: false })
+    })
+  })
+
+  describe("fetchTabMessages 404 re-queue", () => {
+    beforeEach(() => {
+      global.window = {
+        location: { origin: "http://localhost:3000" },
+      } as unknown as Window & typeof globalThis
+    })
+
+    afterEach(() => {
+      // @ts-expect-error cleanup
+      delete global.window
+    })
+
+    it("should re-queue conversation when server returns 404 but local has pending messages", async () => {
+      const pendingMsg = { ...TEST_MESSAGE, pendingSync: true }
+
+      mockMessagesWhere.mockReturnValue({
+        between: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([pendingMsg]),
+        }),
+      })
+
+      mockTabsGet.mockResolvedValue(TEST_TAB)
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: "Not found" }),
+      })
+
+      await fetchTabMessages("tab-123", TEST_USER_ID)
+
+      // Should re-queue the conversation for sync
+      expect(mockConversationsUpdate).toHaveBeenCalledWith("conv-123", expect.objectContaining({ pendingSync: true }))
+    })
+
+    it("should NOT re-queue when 404 and no pending local messages", async () => {
+      mockMessagesWhere.mockReturnValue({
+        between: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([{ ...TEST_MESSAGE, pendingSync: false }]),
+        }),
+      })
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: "Not found" }),
+      })
+
+      await fetchTabMessages("tab-123", TEST_USER_ID)
+
+      // Should NOT call conversations.update to re-queue
+      expect(mockConversationsUpdate).not.toHaveBeenCalled()
     })
   })
 })

@@ -224,11 +224,19 @@ describe("stream tool role policy", () => {
   })
 
   it("filters site-specific workspace MCP tools in superadmin workspace", () => {
-    const allowed = getStreamAllowedTools(enabledMcpTools, true, true, true, "default", [], "systemd")
+    const allowed = getStreamAllowedTools(enabledMcpTools, true, true, true, "default", [], "systemd", [
+      "browser-control",
+    ])
 
     expect(allowed).not.toContain("mcp__alive-workspace__check_codebase")
     expect(allowed).toContain("mcp__alive-workspace__browser")
     expect(allowed).toContain("mcp__alive-tools__search_tools")
+  })
+
+  it("excludes browser tool when browser-control service is not enabled", () => {
+    const allowed = getStreamAllowedTools(enabledMcpTools, true, true, true, "default", [], "systemd", [])
+
+    expect(allowed).not.toContain("mcp__alive-workspace__browser")
   })
 
   it("hides TodoWrite from client visibility while still allowing execution", () => {

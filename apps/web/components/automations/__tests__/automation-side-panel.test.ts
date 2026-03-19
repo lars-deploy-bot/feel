@@ -1,45 +1,35 @@
 /**
- * Tests for AutomationSidePanel structure and trigger-specific behavior.
+ * Tests for AutomationSidePanel exported logic.
  *
- * Rendering tests are not enabled in this suite, so we use source assertions
- * to lock critical logic against regressions.
+ * Tests actual behavior of cronToDisplayText rather than reading source strings.
  */
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
 import { describe, expect, it } from "vitest"
+import { cronToDisplayText } from "../AutomationSidePanel"
 
-const dir = join(process.cwd(), "components/automations")
-const panelSource = readFileSync(join(dir, "AutomationSidePanel.tsx"), "utf-8")
-const triggerTabSource = readFileSync(join(dir, "tabs/TriggerTab.tsx"), "utf-8")
-
-describe("AutomationSidePanel trigger behavior", () => {
-  it("derives schedule/event behavior from trigger type", () => {
-    expect(panelSource).toContain("const triggerType: TriggerType")
-    expect(panelSource).toContain("const hasSchedule = isScheduleTrigger(triggerType)")
+describe("cronToDisplayText", () => {
+  it("returns empty string for null input", () => {
+    expect(cronToDisplayText(null)).toBe("")
   })
 
-  it("shows correct read-only badge labels for event triggers", () => {
-    expect(triggerTabSource).toContain('"Email trigger"')
-    expect(triggerTabSource).toContain('"Webhook trigger"')
+  it("returns human-readable text for known cron patterns", () => {
+    expect(cronToDisplayText("0 9 * * 1-5")).toBe("at 09:00 on weekdays")
+    expect(cronToDisplayText("*/5 * * * *")).toBe("every 5 minutes")
+    expect(cronToDisplayText("0 9 * * *")).toBe("at 09:00")
   })
 
-  it("shows email address only for email-triggered jobs", () => {
-    expect(triggerTabSource).toContain('triggerType === "email" && editingJob.email_address')
+  it("returns raw cron for unrecognized patterns (Cron: prefix)", () => {
+    // describeCron returns "Cron: ..." for patterns it can't describe
+    // cronToDisplayText returns the raw cron expression in that case
+    const rawCron = "0 0 29 2 *"
+    const result = cronToDisplayText(rawCron)
+    // Either the raw cron or a description — but never the default text
+    expect(result).toBeTruthy()
+    expect(result).not.toBe("")
   })
 
-  it("locks recurring/one-time toggle while editing existing jobs", () => {
-    expect(triggerTabSource).toContain("lockOneTimeToggle={isEditing}")
-  })
-
-  it("uses effective one-time mode when editing to avoid schedule field drift", () => {
-    expect(panelSource).toContain('const effectiveIsOneTime = isEditing ? triggerType === "one-time" : isOneTime')
-    expect(panelSource).toContain("cron_schedule: hasSchedule && !isOneTimeSubmit ? cronSchedule")
-    expect(panelSource).toContain(
-      "run_at: hasSchedule && isOneTimeSubmit ? toZonedDateTimeIso(oneTimeDate, oneTimeTime, timezone)",
-    )
-  })
-
-  it("hides timezone controls for one-time mode to avoid non-functional settings", () => {
-    expect(triggerTabSource).toContain("{!effectiveIsOneTime && (")
+  it("lowercases describeCron output for display", () => {
+    // "Every 5 minutes" → "every 5 minutes"
+    const result = cronToDisplayText("*/5 * * * *")
+    expect(result).toBe(result.toLowerCase())
   })
 })

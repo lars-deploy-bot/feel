@@ -15,9 +15,18 @@
  * - Cross-device sync: populates localStorage tabStore from Dexie on fetch
  */
 
+import Dexie from "dexie"
 import { logError } from "@/lib/client-error-logger"
 import { normalizeConversationSourcePayload } from "@/lib/conversations/source"
-import { type DbConversation, type DbMessage, type DbTab, getMessageDb, type TabDraft } from "./messageDb"
+import {
+  type ConflictInfo,
+  type ConversationsResponse,
+  type MessagesResponse,
+  type SyncResult,
+  VALID_MESSAGE_STATUSES,
+  VALID_MESSAGE_TYPES,
+} from "@/lib/conversations/sync-types"
+import { type DbConversation, type DbMessage, type DbMessageContent, type DbTab, getMessageDb } from "./messageDb"
 import { syncDexieTabsToLocalStorage } from "./tabSync"
 
 // =============================================================================
@@ -30,120 +39,17 @@ const MAX_RETRY_MS = 60000
 const BATCH_SIZE = 10 // Max conversations per batch request
 
 // =============================================================================
-// API Response Types (boundary validation)
+// Runtime Narrowing (uses shared constants from sync-types.ts)
 // =============================================================================
 
-/** Tab shape returned by GET /api/conversations */
-interface ServerTab {
-  id: string
-  conversationId: string
-  name: string
-  position: number
-  messageCount: number
-  lastMessageAt: number | null
-  createdAt: number
-  closedAt: number | null
-  draft: TabDraft | null
-}
-
-/** Conversation shape returned by GET /api/conversations */
-interface ServerConversation {
-  id: string
-  workspace: string
-  orgId: string
-  creatorId: string
-  title: string
-  visibility: "private" | "shared"
-  messageCount: number
-  lastMessageAt: number | null
-  firstUserMessageId: string | null
-  autoTitleSet: boolean
-  createdAt: number
-  updatedAt: number
-  deletedAt: number | null
-  archivedAt: number | null
-  source: unknown
-  sourceMetadata: unknown
-  tabs: ServerTab[]
-}
-
-/** Response shape from GET /api/conversations */
-interface ConversationsResponse {
-  own: ServerConversation[]
-  shared: ServerConversation[]
-  hasMore?: boolean
-  nextCursor?: string | null
-}
-
-/** Message shape returned by GET /api/conversations/messages */
-interface ServerMessage {
-  id: string
-  tabId: string
-  type: string
-  content: DbMessage["content"]
-  version: number
-  status: string
-  seq: number
-  abortedAt: number | null
-  errorCode: string | null
-  createdAt: number
-  updatedAt: number
-}
-
-/** Response shape from GET /api/conversations/messages */
-interface MessagesResponse {
-  messages: ServerMessage[]
-  hasMore: boolean
-  nextCursor: string | null
-}
-
-// =============================================================================
-// Runtime Narrowing
-// =============================================================================
-
-const VALID_MESSAGE_TYPES: ReadonlySet<string> = new Set([
-  "user",
-  "assistant",
-  "tool_use",
-  "tool_result",
-  "thinking",
-  "system",
-  "sdk_message",
-])
-
-/** Narrow a raw message type string to DbMessageType, defaulting to "system" */
 function normalizeMessageType(raw: string): DbMessage["type"] {
   if (VALID_MESSAGE_TYPES.has(raw)) return raw as DbMessage["type"]
   return "system"
 }
 
-const VALID_MESSAGE_STATUSES: ReadonlySet<string> = new Set(["streaming", "complete", "interrupted", "error"])
-
-/** Narrow a raw message status string to DbMessageStatus, defaulting to "complete" */
 function normalizeMessageStatus(raw: string): DbMessage["status"] {
   if (VALID_MESSAGE_STATUSES.has(raw)) return raw as DbMessage["status"]
   return "complete"
-}
-
-// =============================================================================
-// Types
-// =============================================================================
-
-interface ConflictInfo {
-  conversationId: string
-  localUpdatedAt: number
-  serverUpdatedAt: number
-}
-
-interface SyncResult {
-  success: boolean
-  synced: {
-    conversations: number
-    tabs: number
-    messages: number
-  }
-  conflicts?: ConflictInfo[]
-  errors?: string[]
 }
 
 // =============================================================================
@@ -252,21 +158,56 @@ async function buildConversationPayload(db: ReturnType<typeof getMessageDb>, con
 }
 
 /**
- * Handle sync conflict by fetching fresh server data
+ * Handle sync conflict by fetching fresh server state, then re-queue
+ * if local pending messages/tabs still need to reach the server.
+ *
+ * Previous behavior just cleared remoteUpdatedAt and hoped the next user
+ * action would trigger a refresh — leaving pending messages stranded forever
+ * if the user reloaded before that happened.
  */
-async function handleConflict(db: ReturnType<typeof getMessageDb>, conflict: ConflictInfo): Promise<void> {
+async function handleConflict(
+  db: ReturnType<typeof getMessageDb>,
+  conflict: ConflictInfo,
+  userId: string,
+): Promise<void> {
   logError("sync", `Conflict detected for ${conflict.conversationId}`, {
     local: new Date(conflict.localUpdatedAt).toISOString(),
     server: new Date(conflict.serverUpdatedAt).toISOString(),
   })
 
-  // Mark conversation as needing refresh from server
+  // Step 1: Accept the server's version of the conversation metadata.
+  // Clear remoteUpdatedAt so the next fetchConversations overwrites local metadata.
   await db.conversations.update(conflict.conversationId, {
     pendingSync: false,
-    lastSyncError: "Conflict: server has newer data. Will refresh on next fetch.",
-    // Clear remoteUpdatedAt to force full refresh
+    lastSyncError: undefined,
     remoteUpdatedAt: undefined,
   })
+
+  // Step 2: Check if there are still pending messages or tabs that never made it.
+  const tabs = await db.tabs.where("conversationId").equals(conflict.conversationId).toArray()
+  const tabIds = tabs.map(t => t.id)
+  const hasPendingTabs = tabs.some(t => t.pendingSync === true)
+  const hasPendingMessages =
+    tabIds.length > 0 &&
+    (await db.messages
+      .where("tabId")
+      .anyOf(tabIds)
+      .and(m => m.pendingSync === true && m.status !== "streaming")
+      .count()) > 0
+
+  if (hasPendingTabs || hasPendingMessages) {
+    // Step 3: Re-mark conversation for sync so pending data gets another chance.
+    // Use a short delay to let the server state settle after the conflict.
+    await db.conversations.update(conflict.conversationId, {
+      pendingSync: true,
+      lastSyncError: `Conflict resolved, retrying ${hasPendingMessages ? "messages" : "tabs"}`,
+      nextRetryAt: Date.now() + INITIAL_RETRY_MS,
+    })
+
+    // Step 4: Feed the conversation back into the in-memory sync queue.
+    // The INITIAL_RETRY_MS delay in queueSync's debounce gives the server time to settle.
+    setTimeout(() => queueSync(conflict.conversationId, userId), INITIAL_RETRY_MS)
+  }
 }
 
 /**
@@ -303,11 +244,11 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
     // Split into batches
     for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
       const batch = payloads.slice(i, i + BATCH_SIZE)
-      await syncBatch(db, batch)
+      await syncBatch(db, batch, userId)
     }
   } else {
     // Single conversation - use direct endpoint
-    await syncSingle(db, payloads[0])
+    await syncSingle(db, payloads[0], userId)
   }
 }
 
@@ -317,6 +258,7 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
 async function syncBatch(
   db: ReturnType<typeof getMessageDb>,
   batch: Array<{ conversationId: string; payload: Awaited<ReturnType<typeof buildConversationPayload>> }>,
+  userId: string,
 ): Promise<void> {
   try {
     const response = await fetch("/api/conversations/sync", {
@@ -338,7 +280,7 @@ async function syncBatch(
     // Handle conflicts
     if (result.conflicts) {
       for (const conflict of result.conflicts) {
-        await handleConflict(db, conflict)
+        await handleConflict(db, conflict, userId)
       }
     }
 
@@ -407,6 +349,7 @@ async function syncBatch(
 async function syncSingle(
   db: ReturnType<typeof getMessageDb>,
   item: { conversationId: string; payload: Awaited<ReturnType<typeof buildConversationPayload>> },
+  userId: string,
 ): Promise<void> {
   try {
     const response = await fetch("/api/conversations/sync", {
@@ -423,7 +366,7 @@ async function syncSingle(
     if (response.status === 409) {
       // Conflict
       const { conflict } = await response.json()
-      await handleConflict(db, conflict)
+      await handleConflict(db, conflict, userId)
       return
     }
 
@@ -496,12 +439,97 @@ export async function syncFromServer(
 
   await fetchConversations(userId, orgId, workspace)
 
+  // Drain orphaned pending data: find conversations that have pending
+  // messages/tabs but are not themselves marked pendingSync (the handleConflict bug).
+  await drainOrphanedPendingData(userId, workspace)
+
+  // Reconcile: fetch messages for tabs where server has more than local.
+  // This closes the server→client gap where messages exist in Supabase
+  // but were never lazy-loaded into IndexedDB.
+  await reconcileMessageCounts(userId, workspace)
+
   // Count what we have locally now
   const db = getMessageDb(userId)
   const conversations = await db.conversations.where("workspace").equals(workspace).count()
   const tabs = await db.tabs.count() // Approximate, not filtered by workspace
 
   return { conversations, tabs, isOffline: false }
+}
+
+/**
+ * Find conversations with pending messages/tabs that are NOT marked for sync
+ * (orphans from prior conflict handling) and re-queue them.
+ */
+async function drainOrphanedPendingData(userId: string, workspace: string): Promise<void> {
+  const db = getMessageDb(userId)
+
+  // Get all pending messages
+  const pendingMessages = await db.messages.where("pendingSync").equals(1).toArray()
+  if (pendingMessages.length === 0) return
+
+  // Map pending messages → tab → conversation
+  const pendingTabIds = Array.from(new Set(pendingMessages.map(m => m.tabId)))
+  const tabs = await db.tabs.where("id").anyOf(pendingTabIds).toArray()
+  const conversationIds = new Set(tabs.map(t => t.conversationId))
+
+  // Also check for pending tabs directly
+  const pendingTabs = await db.tabs.where("pendingSync").equals(1).toArray()
+  for (const t of pendingTabs) conversationIds.add(t.conversationId)
+
+  // Filter to conversations in this workspace that are NOT already queued
+  let requeued = 0
+  for (const convId of Array.from(conversationIds)) {
+    const conv = await db.conversations.get(convId)
+    if (!conv || conv.workspace !== workspace || conv.pendingSync) continue
+
+    await db.conversations.update(convId, { pendingSync: true })
+    queueSync(convId, userId)
+    requeued++
+  }
+
+  if (requeued > 0) {
+    logError("sync", `Drained ${requeued} conversations with orphaned pending data`, { workspace })
+  }
+}
+
+/**
+ * Detect tabs where server has more messages than local IndexedDB and fetch them.
+ * Uses messageCount from tab metadata (already synced via fetchConversations)
+ * to avoid unnecessary network requests for tabs that are already complete.
+ */
+async function reconcileMessageCounts(userId: string, workspace: string): Promise<void> {
+  const db = getMessageDb(userId)
+
+  // Get all conversations in this workspace
+  const conversations = await db.conversations.where("workspace").equals(workspace).toArray()
+  const conversationIds = conversations.map(c => c.id)
+  if (conversationIds.length === 0) return
+
+  // Get all tabs for these conversations
+  const tabs = await db.tabs.where("conversationId").anyOf(conversationIds).toArray()
+
+  // Compare local message count with server-reported count for each tab
+  const tabsToFetch: string[] = []
+  for (const tab of tabs) {
+    const serverCount = tab.messageCount ?? 0
+    if (serverCount === 0) continue
+
+    const localCount = await db.messages.where("tabId").equals(tab.id).count()
+    if (serverCount > localCount) {
+      tabsToFetch.push(tab.id)
+    }
+  }
+
+  if (tabsToFetch.length === 0) return
+
+  // Fetch missing messages in parallel (bounded concurrency)
+  const RECONCILE_CONCURRENCY = 3
+  for (let i = 0; i < tabsToFetch.length; i += RECONCILE_CONCURRENCY) {
+    const batch = tabsToFetch.slice(i, i + RECONCILE_CONCURRENCY)
+    await Promise.all(batch.map(tabId => fetchTabMessages(tabId, userId)))
+  }
+
+  logError("sync", `Reconciled ${tabsToFetch.length} tabs with missing messages`, { workspace })
 }
 
 /**
@@ -661,7 +689,10 @@ async function fetchTabMessagesImpl(
 ): Promise<{ messages: DbMessage[]; hasMore: boolean }> {
   const db = getMessageDb(userId)
 
-  const localMessages = await db.messages.where("[tabId+seq]").between([tabId, -Infinity], [tabId, Infinity]).toArray()
+  const localMessages = await db.messages
+    .where("[tabId+seq]")
+    .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
+    .toArray()
 
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return { messages: localMessages, hasMore: false }
@@ -676,6 +707,26 @@ async function fetchTabMessagesImpl(
 
     if (!response.ok) {
       logError("sync", "Fetch tab messages returned non-OK", { status: response.status, tabId })
+
+      // If server returned 404 but we have pending local messages, the tab
+      // hasn't been synced yet. Re-queue the conversation so the tab + messages
+      // get pushed to the server instead of being silently lost.
+      if (response.status === 404) {
+        const pendingLocal = localMessages.filter(m => m.pendingSync)
+        if (pendingLocal.length > 0) {
+          const tab = await db.tabs.get(tabId)
+          if (tab) {
+            await db.conversations.update(tab.conversationId, { pendingSync: true })
+            queueSync(tab.conversationId, userId)
+            logError(
+              "sync",
+              `Tab ${tabId} not on server but has ${pendingLocal.length} pending messages, re-queued`,
+              {},
+            )
+          }
+        }
+      }
+
       return { messages: localMessages, hasMore: false }
     }
 
@@ -698,7 +749,7 @@ async function fetchTabMessagesImpl(
           id: msg.id,
           tabId: msg.tabId,
           type: normalizeMessageType(msg.type),
-          content: msg.content,
+          content: msg.content as DbMessageContent,
           createdAt: msg.createdAt,
           updatedAt: msg.updatedAt,
           version: msg.version,
@@ -719,7 +770,7 @@ async function fetchTabMessagesImpl(
       // Don't rely on counts as "fully synced" signal, but keep them honest.
       const mergedMessages = await db.messages
         .where("[tabId+seq]")
-        .between([tabId, -Infinity], [tabId, Infinity])
+        .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
         .toArray()
 
       const lastMsg =
@@ -735,7 +786,7 @@ async function fetchTabMessagesImpl(
 
     const updatedMessages = await db.messages
       .where("[tabId+seq]")
-      .between([tabId, -Infinity], [tabId, Infinity])
+      .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
       .toArray()
 
     return { messages: updatedMessages, hasMore }

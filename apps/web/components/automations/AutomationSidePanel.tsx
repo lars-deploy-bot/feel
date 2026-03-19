@@ -4,6 +4,8 @@ import type { ClaudeModel } from "@webalive/shared"
 import { isValidClaudeModel } from "@webalive/shared"
 import { useEffect, useState } from "react"
 import { isScheduleTrigger, type TriggerType } from "@/lib/api/schemas"
+import { describeCron } from "@/lib/automation/cron-description"
+import { DEFAULT_SCHEDULE_TEXT, DEFAULT_TIMEZONE } from "@/lib/automation/form-options"
 import { toZonedDateTimeIso } from "@/lib/automation/schedule-conversion"
 import type { AutomationJob, Site } from "@/lib/hooks/useSettingsQueries"
 import { GeneralTab } from "./tabs/GeneralTab"
@@ -23,6 +25,14 @@ interface AutomationSidePanelProps {
   saving: boolean
 }
 
+/** Convert an existing cron_schedule to human-readable text for the input field */
+export function cronToDisplayText(cronSchedule: string | null): string {
+  if (!cronSchedule) return ""
+  const desc = describeCron(cronSchedule)
+  // describeCron returns "Cron: ..." for unrecognized patterns — use that as-is
+  return desc.startsWith("Cron:") ? cronSchedule : desc.toLowerCase()
+}
+
 export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave, saving }: AutomationSidePanelProps) {
   const isEditing = !!editingJob
   const triggerType: TriggerType = editingJob?.trigger_type ?? "cron"
@@ -39,12 +49,12 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
   const [model, setModel] = useState<ClaudeModel | "">("")
   const [timeoutSeconds, setTimeoutSeconds] = useState("")
 
-  // Trigger
+  // Trigger — schedule_text replaces cronSchedule
   const [isOneTime, setIsOneTime] = useState(false)
-  const [cronSchedule, setCronSchedule] = useState("0 9 * * 1-5")
+  const [scheduleText, setScheduleText] = useState(DEFAULT_SCHEDULE_TEXT)
   const [oneTimeDate, setOneTimeDate] = useState("")
   const [oneTimeTime, setOneTimeTime] = useState("09:00")
-  const [timezone, setTimezone] = useState("Europe/Amsterdam")
+  const [timezone, setTimezone] = useState<string>(DEFAULT_TIMEZONE)
 
   // Tools
   const [skills, setSkills] = useState<string[]>([])
@@ -59,7 +69,7 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
       setPrompt(editingJob.action_prompt || "")
       setSiteId(editingJob.site_id)
       setSiteSearch(sites.find(s => s.id === editingJob.site_id)?.hostname || "")
-      setTimezone(editingJob.cron_timezone || "Europe/Amsterdam")
+      setTimezone(editingJob.cron_timezone || DEFAULT_TIMEZONE)
       setTimeoutSeconds(editingJob.action_timeout_seconds ? String(editingJob.action_timeout_seconds) : "")
       setModel(isValidClaudeModel(editingJob.action_model) ? editingJob.action_model : "")
       setSkills(editingJob.skills ?? [])
@@ -70,10 +80,10 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
         const pad = (n: number) => String(n).padStart(2, "0")
         setOneTimeDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
         setOneTimeTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`)
-        setCronSchedule("")
+        setScheduleText("")
       } else {
         setIsOneTime(false)
-        setCronSchedule(editingJob.cron_schedule || "0 9 * * 1-5")
+        setScheduleText(cronToDisplayText(editingJob.cron_schedule))
         setOneTimeDate("")
         setOneTimeTime("09:00")
       }
@@ -83,10 +93,10 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
       setSiteId("")
       setSiteSearch("")
       setIsOneTime(false)
-      setCronSchedule("0 9 * * 1-5")
+      setScheduleText(DEFAULT_SCHEDULE_TEXT)
       setOneTimeDate("")
       setOneTimeTime("09:00")
-      setTimezone("Europe/Amsterdam")
+      setTimezone(DEFAULT_TIMEZONE)
       setTimeoutSeconds("")
       setModel("")
       setSkills([])
@@ -95,7 +105,7 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
 
   // ── Validation ──
   const effectiveIsOneTime = isEditing ? triggerType === "one-time" : isOneTime
-  const scheduleValid = hasSchedule ? (effectiveIsOneTime ? oneTimeDate && oneTimeTime : cronSchedule.trim()) : true
+  const scheduleValid = hasSchedule ? (effectiveIsOneTime ? oneTimeDate && oneTimeTime : scheduleText.trim()) : true
   const isValid = title.trim() && prompt.trim() && siteId && scheduleValid
 
   // ── Submit ──
@@ -110,7 +120,8 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
       name: title,
       description: "",
       trigger_type: effectiveTrigger,
-      cron_schedule: hasSchedule && !isOneTimeSubmit ? cronSchedule : "",
+      schedule_text: hasSchedule && !isOneTimeSubmit ? scheduleText : "",
+      cron_schedule: "", // Let the API convert from schedule_text
       cron_timezone: hasSchedule ? timezone : "",
       run_at: hasSchedule && isOneTimeSubmit ? toZonedDateTimeIso(oneTimeDate, oneTimeTime, timezone) : "",
       action_type: "prompt",
@@ -186,8 +197,8 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
                         isEditing,
                         isOneTime,
                         onOneTimeChange: setIsOneTime,
-                        cronSchedule,
-                        onCronChange: setCronSchedule,
+                        scheduleText,
+                        onScheduleTextChange: setScheduleText,
                         oneTimeDate,
                         onOneTimeDateChange: setOneTimeDate,
                         oneTimeTime,

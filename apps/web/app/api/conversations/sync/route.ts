@@ -15,87 +15,21 @@ import type { Json } from "@webalive/database"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import type {
+  BatchSyncRequest,
+  ConflictInfo,
+  SyncConversationPayload,
+  SyncMessagePayload,
+  SyncRequest,
+  SyncTabPayload,
+} from "@/lib/conversations/sync-types"
 import { ErrorCodes } from "@/lib/error-codes"
 import type { AppConversationInsert, AppConversationTabInsert, AppMessageInsert } from "@/lib/supabase/app"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
 
-// =============================================================================
-// Types
-// =============================================================================
-
-interface ConversationData {
-  id: string
-  workspace: string
-  orgId: string
-  title: string
-  visibility: "private" | "shared"
-  messageCount: number
-  lastMessageAt: number | null
-  firstUserMessageId: string | null
-  autoTitleSet: boolean
-  createdAt: number
-  updatedAt: number
-  deletedAt: number | null
-  archivedAt: number | null
-  /** Last known server updated_at for conflict detection */
-  remoteUpdatedAt?: number | null
-}
-
-interface TabData {
-  id: string
-  conversationId: string
-  name: string
-  position: number
-  messageCount: number
-  lastMessageAt: number | null
-  createdAt: number
-  closedAt: number | null
-  draft: Json | null
-}
-
-interface MessageData {
-  id: string
-  tabId: string
-  type: "user" | "assistant" | "tool_use" | "tool_result" | "thinking" | "system" | "sdk_message"
-  content: unknown
-  version: number
-  status: "streaming" | "complete" | "interrupted" | "error"
-  seq: number
-  abortedAt: number | null
-  errorCode: string | null
-  createdAt: number
-  updatedAt: number
-}
-
-/** Single conversation sync (backwards compatible) */
-interface SyncConversationPayload {
-  conversation: ConversationData
-  tabs: TabData[]
-  messages: MessageData[]
-}
-
-/** Batch sync for multiple conversations */
-interface BatchSyncPayload {
-  conversations: Array<{
-    conversation: ConversationData
-    tabs: TabData[]
-    messages: MessageData[]
-  }>
-}
-
-interface ConflictInfo {
-  conversationId: string
-  localUpdatedAt: number
-  serverUpdatedAt: number
-}
-
-interface SyncResult {
+interface SyncRouteResult {
   ok: boolean
-  synced: {
-    conversations: number
-    tabs: number
-    messages: number
-  }
+  synced: { conversations: number; tabs: number; messages: number }
   conflicts?: ConflictInfo[]
   errors?: string[]
 }
@@ -107,9 +41,9 @@ interface SyncResult {
 async function syncSingleConversation(
   supabase: Awaited<ReturnType<typeof createRLSAppClient>>,
   userId: string,
-  conversation: ConversationData,
-  tabs: TabData[],
-  messages: MessageData[],
+  conversation: SyncConversationPayload,
+  tabs: SyncTabPayload[],
+  messages: SyncMessagePayload[],
 ): Promise<{ ok: boolean; conflict?: ConflictInfo; error?: string; tabCount: number; messageCount: number }> {
   // Check for conflicts if remoteUpdatedAt is provided
   if (conversation.remoteUpdatedAt) {
@@ -160,7 +94,6 @@ async function syncSingleConversation(
     .upsert(conversationRow, { onConflict: "conversation_id" })
 
   if (convoError) {
-    console.error("[sync] Failed to upsert conversation:", convoError)
     Sentry.captureException(new Error(`Sync upsert conversation failed: ${convoError.message}`), {
       tags: { conversationId: conversation.id },
     })
@@ -178,13 +111,12 @@ async function syncSingleConversation(
       last_message_at: tab.lastMessageAt ? new Date(tab.lastMessageAt).toISOString() : null,
       created_at: new Date(tab.createdAt).toISOString(),
       closed_at: tab.closedAt ? new Date(tab.closedAt).toISOString() : null,
-      draft: tab.draft,
+      draft: (tab.draft ?? undefined) as Json | undefined,
     }))
 
     const { error: tabsError } = await supabase.from("conversation_tabs").upsert(tabRows, { onConflict: "tab_id" })
 
     if (tabsError) {
-      console.error("[sync] Failed to upsert tabs:", tabsError)
       Sentry.captureException(new Error(`Sync upsert tabs failed: ${tabsError.message}`), {
         tags: { conversationId: conversation.id },
       })
@@ -211,7 +143,6 @@ async function syncSingleConversation(
     const { error: messagesError } = await supabase.from("messages").upsert(messageRows, { onConflict: "message_id" })
 
     if (messagesError) {
-      console.error("[sync] Failed to upsert messages:", messagesError)
       Sentry.captureException(new Error(`Sync upsert messages failed: ${messagesError.message}`), {
         tags: { conversationId: conversation.id },
       })
@@ -242,8 +173,8 @@ export async function POST(request: NextRequest) {
 
     if (isBatch) {
       // Batch sync: multiple conversations
-      const payload = body as BatchSyncPayload
-      const result: SyncResult = {
+      const payload = body as BatchSyncRequest
+      const result: SyncRouteResult = {
         ok: true,
         synced: { conversations: 0, tabs: 0, messages: 0 },
         conflicts: [],
@@ -282,7 +213,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Single conversation sync (backwards compatible)
-    const payload = body as SyncConversationPayload
+    const payload = body as SyncRequest
     const { conversation, tabs, messages } = payload
 
     if (!conversation.orgId) {
@@ -316,7 +247,6 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("[sync] Unexpected error:", error)
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }

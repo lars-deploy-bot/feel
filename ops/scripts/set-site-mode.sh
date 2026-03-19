@@ -27,21 +27,28 @@ esac
 
 SLUG=$(echo "$DOMAIN" | sed 's/\./-/g')
 SERVICE="site@${SLUG}.service"
-OVERRIDE_PATH="$OVERRIDE_DIR/${SERVICE}.d/override.conf"
+SERVICE_DIR="$OVERRIDE_DIR/${SERVICE}.d"
+SERVE_MODE_PATH="$SERVICE_DIR/serve-mode.conf"
 
 echo "Setting $DOMAIN to $MODE mode..."
 
-# Create override directory if needed
-mkdir -p "$(dirname "$OVERRIDE_PATH")"
-
-# Create/update override config
-cat > "$OVERRIDE_PATH" << EOF
+if [ "$MODE" = "dev" ]; then
+  # Dev is the base template default — remove serve-mode.conf
+  rm -f "$SERVE_MODE_PATH"
+  # Strip legacy ExecStart from override.conf if present
+  if [ -f "$SERVICE_DIR/override.conf" ]; then
+    sed -i '/^ExecStart/d' "$SERVICE_DIR/override.conf"
+  fi
+else
+  # Create override directory if needed
+  mkdir -p "$SERVICE_DIR"
+  cat > "$SERVE_MODE_PATH" << EOF
 [Service]
 ExecStart=
 ExecStart=/bin/sh -c 'exec /usr/local/bin/bun run $MODE'
 EOF
-
-chmod 644 "$OVERRIDE_PATH"
+  chmod 644 "$SERVE_MODE_PATH"
+fi
 
 # Update registry
 if [ -f "$REGISTRY" ]; then

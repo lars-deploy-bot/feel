@@ -1,7 +1,7 @@
 import type { TriggerType } from "@/lib/api/schemas"
 import { TIMEZONE_OPTIONS } from "@/lib/automation/form-options"
 import type { AutomationJob } from "@/lib/hooks/useSettingsQueries"
-import { CronScheduler } from "../cron-scheduler"
+import { ScheduleInput } from "../ScheduleInput"
 
 const selectChevron = {
   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
@@ -14,8 +14,8 @@ interface ScheduleTriggerProps {
   isEditing: boolean
   isOneTime: boolean
   onOneTimeChange: (v: boolean) => void
-  cronSchedule: string
-  onCronChange: (v: string) => void
+  scheduleText: string
+  onScheduleTextChange: (v: string) => void
   oneTimeDate: string
   onOneTimeDateChange: (v: string) => void
   oneTimeTime: string
@@ -52,8 +52,8 @@ function ScheduleTrigger({
   isEditing,
   isOneTime,
   onOneTimeChange,
-  cronSchedule,
-  onCronChange,
+  scheduleText,
+  onScheduleTextChange,
   oneTimeDate,
   onOneTimeDateChange,
   oneTimeTime,
@@ -64,9 +64,9 @@ function ScheduleTrigger({
 }: ScheduleTriggerProps) {
   return (
     <div className="space-y-3">
-      <CronScheduler
-        value={cronSchedule}
-        onChange={onCronChange}
+      <ScheduleInput
+        value={scheduleText}
+        onChange={onScheduleTextChange}
         showOneTime={true}
         lockOneTimeToggle={isEditing}
         isOneTime={isOneTime}

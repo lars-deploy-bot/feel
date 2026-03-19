@@ -22,3 +22,12 @@ export const TIMEZONE_OPTIONS = [
   { label: "Los Angeles (PST/PDT)", value: "America/Los_Angeles" },
   { label: "UTC", value: "UTC" },
 ] as const
+
+/** Default timezone — first entry in TIMEZONE_OPTIONS */
+export const DEFAULT_TIMEZONE = TIMEZONE_OPTIONS[0].value
+
+/** Default schedule text for new recurring automations */
+export const DEFAULT_SCHEDULE_TEXT = "weekdays at 9am"
+
+/** Max length for schedule_text input (matches API validation) */
+export const SCHEDULE_TEXT_MAX_LENGTH = 200

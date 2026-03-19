@@ -11,9 +11,21 @@ import type { ReqInput, TriggerType } from "@/lib/api/schemas"
 import { isScheduleTrigger, validateRequest } from "@/lib/api/schemas"
 import { scheduleResultToApiPayload } from "@/lib/automation/schedule-conversion"
 
+// ── Helpers ─────────────────────────────────────────────────────────
+
+/** Build schedule fields for cron triggers: prefer schedule_text over raw cron_schedule */
+function buildScheduleFields(triggerType: TriggerType, data: AutomationFormData) {
+  if (!isScheduleTrigger(triggerType) || triggerType !== "cron") return {}
+  return data.schedule_text
+    ? { schedule_text: data.schedule_text, cron_timezone: data.cron_timezone }
+    : { cron_schedule: data.cron_schedule, cron_timezone: data.cron_timezone }
+}
+
 // ── Create ──────────────────────────────────────────────────────────
 
 export function buildCreatePayload(data: AutomationFormData) {
+  const scheduleFields = buildScheduleFields(data.trigger_type, data)
+
   const fields: ReqInput<"automations/create"> = {
     site_id: data.site_id,
     name: data.name,
@@ -24,9 +36,7 @@ export function buildCreatePayload(data: AutomationFormData) {
     skills: data.skills,
     action_timeout_seconds: data.action_timeout_seconds,
     action_model: data.action_model,
-    ...(isScheduleTrigger(data.trigger_type) && data.trigger_type === "cron"
-      ? { cron_schedule: data.cron_schedule, cron_timezone: data.cron_timezone }
-      : {}),
+    ...scheduleFields,
     ...(isScheduleTrigger(data.trigger_type) && data.trigger_type === "one-time" ? { run_at: data.run_at } : {}),
     ...(data.action_type === "prompt" ? { action_prompt: data.action_prompt } : {}),
     ...(data.action_type === "sync"
@@ -40,6 +50,8 @@ export function buildCreatePayload(data: AutomationFormData) {
 // ── Update ──────────────────────────────────────────────────────────
 
 export function buildUpdatePayload(data: AutomationFormData, existingTriggerType: TriggerType) {
+  const scheduleFields = buildScheduleFields(existingTriggerType, data)
+
   const fields: ReqInput<"automations/update"> = {
     name: data.name,
     description: data.description || null,
@@ -47,9 +59,7 @@ export function buildUpdatePayload(data: AutomationFormData, existingTriggerType
     skills: data.skills,
     action_timeout_seconds: data.action_timeout_seconds,
     action_model: data.action_model,
-    ...(isScheduleTrigger(existingTriggerType) && existingTriggerType === "cron"
-      ? { cron_schedule: data.cron_schedule, cron_timezone: data.cron_timezone }
-      : {}),
+    ...scheduleFields,
     ...(isScheduleTrigger(existingTriggerType) && existingTriggerType === "one-time" ? { run_at: data.run_at } : {}),
     ...(data.action_type === "prompt" ? { action_prompt: data.action_prompt } : {}),
     ...(data.action_type === "sync"
@@ -69,16 +79,41 @@ export function buildUpdatePayload(data: AutomationFormData, existingTriggerType
  * scheduleResultToApiPayload.
  */
 export function configResultToFormData(result: AutomationConfigResult): AutomationFormData {
-  const schedule = scheduleResultToApiPayload(result)
+  const isCron = result.scheduleType !== "once"
+
+  // For cron triggers, pass schedule_text so the API converts server-side.
+  // For one-time triggers, compute run_at directly.
+  if (!isCron) {
+    const schedule = scheduleResultToApiPayload(result)
+    return {
+      site_id: result.siteId,
+      name: result.name,
+      description: "",
+      trigger_type: "one-time",
+      schedule_text: "",
+      cron_schedule: "",
+      cron_timezone: "",
+      run_at: schedule.trigger_type === "one-time" ? schedule.run_at : "",
+      action_type: "prompt",
+      action_prompt: result.prompt,
+      action_source: "",
+      action_target_page: "",
+      action_timeout_seconds: null,
+      action_model: result.model,
+      skills: [],
+      is_active: true,
+    }
+  }
 
   return {
     site_id: result.siteId,
     name: result.name,
     description: "",
-    trigger_type: schedule.trigger_type === "one-time" ? "one-time" : "cron",
-    cron_schedule: schedule.trigger_type === "cron" ? schedule.cron_schedule : "",
-    cron_timezone: schedule.trigger_type === "cron" ? schedule.cron_timezone : "",
-    run_at: schedule.trigger_type === "one-time" ? schedule.run_at : "",
+    trigger_type: "cron",
+    schedule_text: result.scheduleText || "",
+    cron_schedule: "",
+    cron_timezone: result.timezone,
+    run_at: "",
     action_type: "prompt",
     action_prompt: result.prompt,
     action_source: "",

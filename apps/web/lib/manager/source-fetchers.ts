@@ -90,15 +90,18 @@ async function checkServeMode(
   slug: string,
   prefix: "site" | "template" = "site",
 ): Promise<"dev" | "build" | "unknown"> {
-  const overridePath = `/etc/systemd/system/${prefix}@${slug}.service.d/override.conf`
-  try {
-    const { stdout } = await execAsync(`cat "${overridePath}" 2>/dev/null || echo ""`)
-    if (stdout.includes("preview")) return "build"
-    if (stdout.includes("dev") || stdout.trim() === "") return "dev"
-    return "dev"
-  } catch {
-    return "dev"
+  const serviceDir = `/etc/systemd/system/${prefix}@${slug}.service.d`
+  // serve-mode.conf is canonical (written by switch_serve_mode), override.conf is legacy fallback
+  for (const file of ["serve-mode.conf", "override.conf"]) {
+    try {
+      const { stdout } = await execAsync(`cat "${serviceDir}/${file}" 2>/dev/null || echo ""`)
+      if (stdout.includes("preview") || stdout.includes("bun run start")) return "build"
+      if (stdout.includes("bun run dev")) return "dev"
+    } catch {
+      // File doesn't exist, try next
+    }
   }
+  return "dev"
 }
 
 /**

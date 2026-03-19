@@ -12,7 +12,7 @@ use anyhow::{anyhow, Context, Result};
 use axum::extract::Path;
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::Utc;
 use hostname::get as get_hostname;
@@ -54,9 +54,11 @@ pub async fn run() -> Result<()> {
     };
 
     let health = Arc::new(RwLock::new(HealthState::default()));
+    let poke = Arc::new(tokio::sync::Notify::new());
     let state = AppState {
         health: health.clone(),
         data_dir: context.data_dir.clone(),
+        poke: poke.clone(),
     };
 
     let health_server = tokio::spawn(run_health_server(state));
@@ -132,6 +134,9 @@ pub async fn run() -> Result<()> {
                 info!(message = "received SIGTERM, shutting down gracefully");
                 break;
             }
+            _ = poke.notified() => {
+                // Woken up by POST /poke — check for work immediately
+            }
             _ = sleep(POLL_INTERVAL) => {}
         }
     }
@@ -170,6 +175,7 @@ async fn run_health_server(state: AppState) -> Result<()> {
     let router = Router::new()
         .route("/health", get(health_handler))
         .route("/health/details", get(health_details_handler))
+        .route("/poke", post(poke_handler))
         .route("/tasks/{kind}/{id}", get(task_snapshot_handler))
         .with_state(state);
 
@@ -183,6 +189,11 @@ async fn run_health_server(state: AppState) -> Result<()> {
         .context("health server terminated unexpectedly")?;
 
     Ok(())
+}
+
+async fn poke_handler(State(state): State<AppState>) -> Json<serde_json::Value> {
+    state.poke.notify_one();
+    Json(json!({ "ok": true }))
 }
 
 async fn health_handler(State(state): State<AppState>) -> Json<HealthResponse> {

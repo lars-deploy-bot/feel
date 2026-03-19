@@ -79,7 +79,6 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       },
     })
   } catch (error) {
-    console.error("[Automations API] GET by ID error:", error)
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
@@ -125,6 +124,25 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.FORBIDDEN, { status: 403 })
     }
 
+    // Resolve schedule_text → cron if provided
+    let resolvedCron: string | undefined
+    let resolvedTimezone: string | undefined
+    if ("schedule_text" in parsed && parsed.schedule_text && existingRow.trigger_type === "cron") {
+      try {
+        const { resolveScheduleText } = await import("@/lib/automation/text-to-cron")
+        const userTz = ("cron_timezone" in parsed ? parsed.cron_timezone : undefined) ?? null
+        const result = await resolveScheduleText(parsed.schedule_text, userTz)
+        resolvedCron = result.cron
+        resolvedTimezone = result.timezone ?? undefined
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to parse schedule text"
+        return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+          status: 400,
+          details: { field: "schedule_text", message },
+        })
+      }
+    }
+
     // Build update object from validated parsed body
     const updates: Record<string, unknown> = {}
     const fieldKeys = [
@@ -146,6 +164,14 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       if (field in parsed) {
         updates[field] = parsed[field as keyof typeof parsed]
       }
+    }
+
+    // Apply resolved schedule_text → cron values (overwrite any cron_schedule from parsed body)
+    if (resolvedCron !== undefined) {
+      updates.cron_schedule = resolvedCron
+    }
+    if (resolvedTimezone !== undefined) {
+      updates.cron_timezone = resolvedTimezone
     }
 
     const existingTrigger = existingRow.trigger_type as TriggerType
@@ -263,7 +289,6 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const { data, error } = await supabase.from("automation_jobs").update(updates).eq("id", id).select().single()
 
     if (error) {
-      console.error("[Automations API] Update error:", error)
       Sentry.captureException(error)
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
@@ -280,7 +305,6 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     return alrighty("automations/update", { automation: data, nextRunsPreview: nextRunsDisplay })
   } catch (error) {
-    console.error("[Automations API] PATCH error:", error)
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
@@ -318,14 +342,12 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     const { error } = await supabase.from("automation_jobs").delete().eq("id", id)
 
     if (error) {
-      console.error("[Automations API] Delete error:", error)
       Sentry.captureException(error)
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
 
     return alrighty("automations/delete", {})
   } catch (error) {
-    console.error("[Automations API] DELETE error:", error)
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }

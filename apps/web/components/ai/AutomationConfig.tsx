@@ -2,23 +2,20 @@
  * Automation Configuration Component
  *
  * Interactive form for creating a scheduled automation task.
- * Adapted from AutomationsSettings for use in chat context.
+ * Two steps: task details → schedule.
  *
- * Best practices applied:
- * - Inline validation on blur
- * - Clear, actionable error messages
- * - Progress indicator showing current position
- * - Keyboard navigation (Enter to proceed)
- * - Data preserved when navigating back
+ * Users describe their schedule in plain English (e.g. "every weekday at 9am").
+ * Text-to-cron conversion happens server-side at save time.
  */
 
 "use client"
 
-import { CLAUDE_MODELS, type ClaudeModel, getModelDisplayName } from "@webalive/shared"
-import { Calendar, Check, ChevronRight, Clock, Cpu, Globe, Zap } from "lucide-react"
+import { CLAUDE_MODELS, type ClaudeModel, getModelDisplayName, isValidClaudeModel } from "@webalive/shared"
+import { Check, ChevronRight, Clock, Cpu, Globe, Zap } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { ScheduleInput } from "@/components/automations/ScheduleInput"
 import { getInitialSiteSelection, SiteCombobox, type SiteOption } from "@/components/automations/SiteCombobox"
-import { MODEL_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/automation/form-options"
+import { DEFAULT_TIMEZONE, MODEL_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/automation/form-options"
 
 // =============================================================================
 // TYPES
@@ -41,10 +38,11 @@ export interface AutomationConfigResult {
   name: string
   prompt: string
   model: ClaudeModel
-  scheduleType: "once" | "daily" | "weekly" | "monthly" | "custom"
+  scheduleType: "once" | "custom"
+  /** Human-readable schedule text, e.g. "every weekday at 9am" */
+  scheduleText: string
   scheduleTime: string // HH:MM format
   scheduleDate?: string // YYYY-MM-DD for one-time
-  cronExpression?: string // For custom
   timezone: string
 }
 
@@ -53,20 +51,6 @@ interface AutomationConfigProps {
   onComplete: (result: AutomationConfigResult) => void
   onCancel?: () => void
 }
-
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-const REPEAT_OPTIONS = [
-  { label: "No repeat", value: "once", description: "Run once at a specific time" },
-  { label: "Daily", value: "daily", description: "Every day at the same time" },
-  { label: "Weekly", value: "weekly", description: "Every week on the same day" },
-  { label: "Monthly", value: "monthly", description: "Every month on the same date" },
-  { label: "Custom", value: "custom", description: "Use a cron expression" },
-] as const
-
-type RepeatValue = (typeof REPEAT_OPTIONS)[number]["value"]
 
 // =============================================================================
 // COMPONENT
@@ -84,20 +68,19 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
   const [model, setModel] = useState<ClaudeModel>(data.defaultModel || CLAUDE_MODELS.HAIKU_4_5)
 
   // Schedule fields
-  const [scheduleType, setScheduleType] = useState<RepeatValue>("daily")
+  const [isOneTime, setIsOneTime] = useState(false)
+  const [scheduleText, setScheduleText] = useState("every day at 9am")
   const [scheduleDate, setScheduleDate] = useState(() => {
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
     return tomorrow.toISOString().split("T")[0]
   })
   const [scheduleTime, setScheduleTime] = useState("09:00")
-  const [cronExpression, setCronExpression] = useState("")
-  const [timezone, setTimezone] = useState("Europe/Amsterdam")
+  const [timezone, setTimezone] = useState<string>(DEFAULT_TIMEZONE)
 
   // Validation
   const [nameError, setNameError] = useState<string | null>(null)
   const [promptError, setPromptError] = useState<string | null>(null)
-  const [cronError, setCronError] = useState<string | null>(null)
 
   const nameInputRef = useRef<HTMLInputElement>(null)
   const promptInputRef = useRef<HTMLTextAreaElement>(null)
@@ -121,13 +104,6 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
     return null
   }, [])
 
-  const validateCron = useCallback((value: string): string | null => {
-    if (!value.trim()) return "Please enter a cron expression"
-    const parts = value.trim().split(/\s+/)
-    if (parts.length !== 5) return "Cron expression must have 5 parts (min hour day month weekday)"
-    return null
-  }, [])
-
   const handleNext = useCallback(() => {
     if (step === "basics") {
       const nameErr = validateName(name)
@@ -145,28 +121,20 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
         return
       }
       if (!selectedSite) {
-        // Auto-select first site if only one
         if (data.sites.length === 1) {
           const onlySite = data.sites[0]
           if (!onlySite) return
           setSiteId(onlySite.id)
           setSiteSearch(onlySite.hostname)
         } else {
-          return // Can't proceed without site
+          return
         }
       }
       setStep("schedule")
     } else if (step === "schedule") {
-      if (scheduleType === "custom") {
-        const cronErr = validateCron(cronExpression)
-        if (cronErr) {
-          setCronError(cronErr)
-          return
-        }
-      }
       setStep("confirm")
     }
-  }, [step, name, prompt, siteId, scheduleType, cronExpression, validateName, validatePrompt, validateCron, data.sites])
+  }, [step, name, prompt, siteId, validateName, validatePrompt, data.sites])
 
   const handleBack = useCallback(() => {
     if (step === "schedule") setStep("basics")
@@ -186,10 +154,10 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
       name,
       prompt,
       model,
-      scheduleType,
+      scheduleType: isOneTime ? "once" : "custom",
+      scheduleText: isOneTime ? "" : scheduleText,
       scheduleTime,
-      scheduleDate: scheduleType === "once" ? scheduleDate : undefined,
-      cronExpression: scheduleType === "custom" ? cronExpression : undefined,
+      scheduleDate: isOneTime ? scheduleDate : undefined,
       timezone,
     })
   }, [
@@ -197,14 +165,13 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
     name,
     prompt,
     model,
-    scheduleType,
+    isOneTime,
+    scheduleText,
     scheduleTime,
     scheduleDate,
-    cronExpression,
     timezone,
     data.sites,
     onComplete,
-    setStep,
   ])
 
   const handleKeyDown = useCallback(
@@ -234,7 +201,7 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
   const selectedSite = data.sites.find(s => s.id === siteId) ?? (data.sites.length === 1 ? data.sites[0] : undefined)
   const hasValidSiteSelection = data.sites.some(site => site.id === siteId) || data.sites.length === 1
   const canProceedBasics = name.trim().length >= 3 && prompt.trim().length >= 10 && hasValidSiteSelection
-  const canProceedSchedule = scheduleType !== "custom" || cronExpression.trim().length > 0
+  const canProceedSchedule = isOneTime ? scheduleDate && scheduleTime : scheduleText.trim().length > 0
 
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 w-full max-w-xl">
@@ -374,7 +341,9 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
                     <select
                       id="automation-model"
                       value={model}
-                      onChange={e => setModel(e.target.value as ClaudeModel)}
+                      onChange={e => {
+                        if (isValidClaudeModel(e.target.value)) setModel(e.target.value)
+                      }}
                       className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent pl-9 pr-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus-visible:outline-none hover:border-zinc-300 dark:hover:border-zinc-600 cursor-pointer"
                     >
                       {MODEL_OPTIONS.map(opt => (
@@ -392,211 +361,41 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
           {/* Step: Schedule */}
           {step === "schedule" && (
             <div className="h-full duration-300 animate-in fade-in slide-in-from-right-4">
-              <div className="flex h-full flex-col gap-0 overflow-y-auto outline-none">
-                {/* Section 1: Schedule Type */}
-                <div className="flex flex-col gap-4 px-4 pt-4 pb-6 border-b border-black/[0.08] dark:border-white/[0.08]">
-                  <div className="flex flex-col gap-2">
-                    <h3 className="text-sm font-semibold text-black dark:text-white">When should it run?</h3>
-                    <p className="text-xs text-black/50 dark:text-white/50">Choose how often this automation repeats</p>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    {REPEAT_OPTIONS.map(option => {
-                      const isSelected = scheduleType === option.value
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => setScheduleType(option.value)}
-                          className={`flex cursor-pointer items-start gap-3 rounded-xl p-3 transition-all duration-150 text-left ${
-                            isSelected
-                              ? "bg-blue-500/10 dark:bg-blue-500/10 border border-blue-500/30 dark:border-blue-500/30"
-                              : "bg-black/[0.02] dark:bg-white/[0.02] border border-transparent hover:bg-black/[0.05] dark:hover:bg-white/[0.05]"
-                          }`}
-                        >
-                          <div className="flex h-5 w-5 items-center justify-center pt-0.5 flex-shrink-0">
-                            <div
-                              className={`size-4 rounded-full border-2 transition-all ${
-                                isSelected
-                                  ? "border-blue-600 dark:border-blue-400 bg-blue-600 dark:bg-blue-400"
-                                  : "border-black/30 dark:border-white/30 bg-white dark:bg-black"
-                              }`}
-                            />
-                          </div>
-                          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                            <p className="text-sm font-medium text-black dark:text-white">{option.label}</p>
-                            <p className="text-xs text-black/50 dark:text-white/50">{option.description}</p>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
+              <div className="flex h-full flex-col gap-4 overflow-y-auto p-4 outline-none">
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-sm font-semibold text-black dark:text-white">When should it run?</h3>
+                  <p className="text-xs text-black/50 dark:text-white/50">Describe the schedule in plain English</p>
                 </div>
 
-                {/* Section 2: Time & Date Inputs */}
-                <div
-                  className={`flex flex-col gap-4 px-4 py-6 ${scheduleType === "custom" ? "border-b border-black/[0.08] dark:border-white/[0.08]" : ""}`}
-                >
-                  {scheduleType !== "custom" && (
-                    <>
-                      <div className="flex flex-col gap-2">
-                        <h3 className="text-sm font-semibold text-black dark:text-white">Schedule details</h3>
-                        <p className="text-xs text-black/50 dark:text-white/50">Set the time and other specifics</p>
-                      </div>
+                <ScheduleInput
+                  value={scheduleText}
+                  onChange={setScheduleText}
+                  showOneTime={true}
+                  isOneTime={isOneTime}
+                  onOneTimeChange={setIsOneTime}
+                  oneTimeDate={scheduleDate}
+                  oneTimeTime={scheduleTime}
+                  onOneTimeDateChange={setScheduleDate}
+                  onOneTimeTimeChange={setScheduleTime}
+                />
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-2">
-                          <label
-                            htmlFor="schedule-time"
-                            className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
-                          >
-                            Time
-                          </label>
-                          <div className="relative">
-                            <Clock
-                              size={16}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40 pointer-events-none"
-                            />
-                            <input
-                              id="schedule-time"
-                              type="time"
-                              value={scheduleTime}
-                              onChange={e => setScheduleTime(e.target.value)}
-                              className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] pl-10 pr-3 py-2.5 text-sm text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12]"
-                            />
-                          </div>
-                        </div>
-
-                        {scheduleType === "once" && (
-                          <div className="flex flex-col gap-2">
-                            <label
-                              htmlFor="schedule-date"
-                              className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
-                            >
-                              Date
-                            </label>
-                            <div className="relative">
-                              <Calendar
-                                size={16}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40 pointer-events-none"
-                              />
-                              <input
-                                id="schedule-date"
-                                type="date"
-                                value={scheduleDate}
-                                onChange={e => setScheduleDate(e.target.value)}
-                                className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] pl-10 pr-3 py-2.5 text-sm text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12]"
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {scheduleType !== "once" && (
-                          <div className="flex flex-col gap-2">
-                            <label
-                              htmlFor="schedule-timezone"
-                              className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
-                            >
-                              Timezone
-                            </label>
-                            <select
-                              id="schedule-timezone"
-                              value={timezone}
-                              onChange={e => setTimezone(e.target.value)}
-                              className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2.5 text-sm text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12] cursor-pointer"
-                            >
-                              {TIMEZONE_OPTIONS.map(tz => (
-                                <option key={tz.value} value={tz.value}>
-                                  {tz.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Custom cron */}
-                  {scheduleType === "custom" && (
-                    <>
-                      <div className="flex flex-col gap-2">
-                        <h3 className="text-sm font-semibold text-black dark:text-white">Custom schedule</h3>
-                        <p className="text-xs text-black/50 dark:text-white/50">
-                          Enter a cron expression for advanced scheduling
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col gap-3">
-                        <div className="flex flex-col gap-2">
-                          <label
-                            htmlFor="cron-expression"
-                            className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
-                          >
-                            Cron expression
-                          </label>
-                          <input
-                            id="cron-expression"
-                            type="text"
-                            value={cronExpression}
-                            onChange={e => {
-                              setCronExpression(e.target.value)
-                              if (cronError) setCronError(null)
-                            }}
-                            onBlur={() => {
-                              if (cronExpression.trim()) setCronError(validateCron(cronExpression))
-                            }}
-                            placeholder="0 9 * * 1-5"
-                            aria-invalid={!!cronError}
-                            className={`w-full rounded-xl border bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2.5 text-sm font-mono placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none transition-all text-black dark:text-white ${
-                              cronError
-                                ? "border-red-300 dark:border-red-700 focus:ring-1 focus:ring-red-500/50"
-                                : "border-black/[0.08] dark:border-white/[0.08] focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 hover:border-black/[0.12] dark:hover:border-white/[0.12]"
-                            }`}
-                          />
-                        </div>
-
-                        {cronError && (
-                          <p
-                            className="text-xs text-red-500 dark:text-red-400 bg-red-500/5 dark:bg-red-500/5 border border-red-200/30 dark:border-red-700/30 rounded-lg px-3 py-2"
-                            role="alert"
-                          >
-                            {cronError}
-                          </p>
-                        )}
-
-                        <div className="bg-blue-500/5 dark:bg-blue-500/5 border border-blue-200/30 dark:border-blue-700/30 rounded-lg px-3 py-2.5">
-                          <p className="text-xs text-black/60 dark:text-white/60 leading-relaxed">
-                            <span className="font-semibold">Format:</span> minute hour day month weekday
-                            <br />
-                            <span className="font-mono text-black/50 dark:text-white/50">0 9 * * 1-5</span> = weekdays
-                            at 9am
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-2 pt-2">
-                        <label
-                          htmlFor="cron-timezone"
-                          className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
-                        >
-                          Timezone
-                        </label>
-                        <select
-                          id="cron-timezone"
-                          value={timezone}
-                          onChange={e => setTimezone(e.target.value)}
-                          className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2.5 text-sm text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12] cursor-pointer"
-                        >
-                          {TIMEZONE_OPTIONS.map(tz => (
-                            <option key={tz.value} value={tz.value}>
-                              {tz.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </>
-                  )}
+                {/* Timezone */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="schedule-timezone" className="text-xs font-medium text-black/60 dark:text-white/60">
+                    Timezone
+                  </label>
+                  <select
+                    id="schedule-timezone"
+                    value={timezone}
+                    onChange={e => setTimezone(e.target.value)}
+                    className="w-full rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2 text-sm text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all cursor-pointer"
+                  >
+                    {TIMEZONE_OPTIONS.map(tz => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -608,40 +407,17 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
               <div className="flex h-full flex-col gap-3 overflow-y-auto p-4 outline-none">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">Ready to create your automation:</p>
                 <div className="space-y-2">
-                  <div className="flex flex-col gap-0.5 px-2 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                    <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Task</p>
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{name}</p>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 px-2 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                    <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">
-                      Website
-                    </p>
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {selectedSite?.hostname || data.sites[0]?.hostname}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 px-2 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                    <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">
-                      Schedule
-                    </p>
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {scheduleType === "once" && `${scheduleDate} at ${scheduleTime}`}
-                      {scheduleType === "daily" && `Daily at ${scheduleTime}`}
-                      {scheduleType === "weekly" && `Weekly at ${scheduleTime}`}
-                      {scheduleType === "monthly" && `Monthly at ${scheduleTime}`}
-                      {scheduleType === "custom" && `Cron: ${cronExpression}`}
-                      {scheduleType !== "once" && ` (${timezone.split("/")[1] || timezone})`}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 px-2 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                    <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">
-                      Model
-                    </p>
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{getModelDisplayName(model)}</p>
-                  </div>
+                  <ConfirmRow label="Task" value={name} />
+                  <ConfirmRow label="Website" value={selectedSite?.hostname || data.sites[0]?.hostname || "—"} />
+                  <ConfirmRow
+                    label="Schedule"
+                    value={
+                      isOneTime
+                        ? `${scheduleDate} at ${scheduleTime}`
+                        : `${scheduleText} (${timezone.split("/")[1] || timezone})`
+                    }
+                  />
+                  <ConfirmRow label="Model" value={getModelDisplayName(model)} />
 
                   <div className="flex flex-col gap-0.5 px-2 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
                     <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">
@@ -733,6 +509,15 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function ConfirmRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 px-2 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+      <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{value}</p>
     </div>
   )
 }

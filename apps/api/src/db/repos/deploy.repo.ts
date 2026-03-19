@@ -86,13 +86,13 @@ export async function findEnvironmentById(environmentId: string): Promise<Deploy
 export async function findEnvironmentByApplicationAndName(
   applicationId: string,
   name: DeployEnvironmentName,
+  serverId?: string,
 ): Promise<DeployEnvironmentRow | null> {
-  const { data, error } = await deploy
-    .from("environments")
-    .select("*")
-    .eq("application_id", applicationId)
-    .eq("name", name)
-    .maybeSingle()
+  let query = deploy.from("environments").select("*").eq("application_id", applicationId).eq("name", name)
+  if (serverId) {
+    query = query.eq("server_id", serverId)
+  }
+  const { data, error } = await query.maybeSingle()
 
   if (error) {
     throw formatDeployError(`fetch ${name} environment for application ${applicationId}`, error.message)
@@ -162,6 +162,22 @@ export async function findReleaseById(releaseId: string): Promise<DeployReleaseR
 
   if (!data) {
     throw new NotFoundError(`Deploy release ${releaseId} not found`)
+  }
+
+  return data
+}
+
+export async function findReleaseByBuildId(buildId: string): Promise<DeployReleaseRow | null> {
+  const { data, error } = await deploy
+    .from("releases")
+    .select("*")
+    .eq("build_id", buildId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw formatDeployError(`fetch release for build ${buildId}`, error.message)
   }
 
   return data

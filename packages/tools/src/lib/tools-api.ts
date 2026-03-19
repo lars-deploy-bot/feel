@@ -59,6 +59,7 @@ export const toolsSchemas = {
         trigger_type: ToolCreateTriggerTypeSchema,
         action_type: ToolCreateActionTypeSchema,
         action_prompt: z.string().nullable().optional(),
+        schedule_text: z.string().nullable().optional(),
         cron_schedule: z.string().nullable().optional(),
         cron_timezone: z.string().nullable().optional(),
         run_at: z.string().nullable().optional(),

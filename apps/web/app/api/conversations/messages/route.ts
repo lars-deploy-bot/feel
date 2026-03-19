@@ -60,8 +60,7 @@ export async function GET(request: NextRequest) {
     const { data: messages, error: msgError } = await dbQuery
 
     if (msgError) {
-      console.error("[messages] Failed to fetch messages:", msgError)
-      Sentry.captureException(msgError)
+      Sentry.captureException(msgError, { extra: { tabId } })
       return structuredErrorResponse(ErrorCodes.QUERY_FAILED, { status: 500 })
     }
 
@@ -90,7 +89,6 @@ export async function GET(request: NextRequest) {
       nextCursor: hasMore ? resultMessages[resultMessages.length - 1].created_at : null,
     })
   } catch (error) {
-    console.error("[messages] Unexpected error:", error)
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }

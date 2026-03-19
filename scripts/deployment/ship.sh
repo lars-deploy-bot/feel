@@ -144,6 +144,24 @@ fi
 echo ""
 
 # -----------------------------------------------------------------------------
+# Auto-rebuild deployer if its source changed
+# -----------------------------------------------------------------------------
+DEPLOYER_BINARY="$PROJECT_ROOT/target/release/alive-deployer-rs"
+if [[ -f "$DEPLOYER_BINARY" ]]; then
+    BINARY_MTIME=$(stat -c %Y "$DEPLOYER_BINARY")
+    NEWEST_SOURCE=$(find "$PROJECT_ROOT/apps/deployer-rs/src" "$PROJECT_ROOT/apps/deployer-rs/Cargo.toml" -newer "$DEPLOYER_BINARY" 2>/dev/null | head -1)
+    if [[ -n "$NEWEST_SOURCE" ]]; then
+        log_info "Deployer source changed since last build — rebuilding..."
+        "$SCRIPT_DIR/deploy-services.sh" --deployer
+        log_success "Deployer rebuilt"
+    fi
+else
+    log_info "Deployer binary not found — building..."
+    "$SCRIPT_DIR/deploy-services.sh" --deployer
+    log_success "Deployer built"
+fi
+
+# -----------------------------------------------------------------------------
 # Deploy Staging
 # -----------------------------------------------------------------------------
 if [ "$DEPLOY_STAGING" = true ]; then

@@ -35,16 +35,16 @@ for SITE_PATH in "$SITES_DIR"/*; do
   DOMAIN=$(basename "$SITE_PATH")
   SLUG=$(echo "$DOMAIN" | sed 's/\./-/g')
   SERVICE="site@${SLUG}.service"
-  OVERRIDE_PATH="$OVERRIDE_DIR/${SERVICE}.d/override.conf"
+  SERVICE_DIR="$OVERRIDE_DIR/${SERVICE}.d"
 
-  # Check if override exists
-  if [ ! -f "$OVERRIDE_PATH" ]; then
-    log_message "WARN: No override config for $DOMAIN (using base template: dev)"
-    continue
+  # Extract mode: serve-mode.conf is canonical, override.conf is legacy fallback
+  if [ -f "$SERVICE_DIR/serve-mode.conf" ]; then
+    CURRENT_MODE=$(grep -oP "bun run \K\w+" "$SERVICE_DIR/serve-mode.conf" 2>/dev/null || echo "unknown")
+  elif [ -f "$SERVICE_DIR/override.conf" ]; then
+    CURRENT_MODE=$(grep -oP "bun run \K\w+" "$SERVICE_DIR/override.conf" 2>/dev/null || echo "dev")
+  else
+    CURRENT_MODE="dev"
   fi
-
-  # Extract the mode from override
-  CURRENT_MODE=$(grep -oP "bun run \K\w+" "$OVERRIDE_PATH" 2>/dev/null || echo "unknown")
 
   # Extract mode from registry (if exists)
   REGISTRY_MODE=$(jq -r ".sites.\"$DOMAIN\"" "$REGISTRY" 2>/dev/null || echo "null")

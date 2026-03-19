@@ -8,6 +8,7 @@ function buildFormData(overrides: Partial<AutomationFormData> = {}): AutomationF
     name: "Test Automation",
     description: "",
     trigger_type: "cron",
+    schedule_text: "",
     cron_schedule: "0 9 * * *",
     cron_timezone: "Europe/Amsterdam",
     run_at: "",
@@ -35,6 +36,24 @@ describe("buildCreatePayload", () => {
     })
     // run_at should not be in the payload
     expect("run_at" in payload).toBe(false)
+  })
+
+  it("sends schedule_text instead of cron_schedule when schedule_text is set", () => {
+    const data = buildFormData({
+      trigger_type: "cron",
+      schedule_text: "every weekday at 9am",
+      cron_schedule: "",
+      cron_timezone: "Europe/Amsterdam",
+    })
+    const payload = buildCreatePayload(data)
+
+    expect(payload).toMatchObject({
+      trigger_type: "cron",
+      schedule_text: "every weekday at 9am",
+      cron_timezone: "Europe/Amsterdam",
+    })
+    // When schedule_text is set, cron_schedule should not be sent
+    expect("cron_schedule" in payload).toBe(false)
   })
 
   it("includes run_at for one-time trigger", () => {
@@ -95,6 +114,17 @@ describe("buildUpdatePayload", () => {
     })
   })
 
+  it("sends schedule_text for cron trigger when set", () => {
+    const data = buildFormData({ schedule_text: "daily at 2:30pm", cron_schedule: "" })
+    const payload = buildUpdatePayload(data, "cron")
+
+    expect(payload).toMatchObject({
+      schedule_text: "daily at 2:30pm",
+      cron_timezone: "Europe/Amsterdam",
+    })
+    expect("cron_schedule" in payload).toBe(false)
+  })
+
   it("strips schedule fields for event triggers", () => {
     const data = buildFormData({ cron_schedule: "leftover" })
     const payload = buildUpdatePayload(data, "webhook")
@@ -112,14 +142,15 @@ describe("buildUpdatePayload", () => {
 })
 
 describe("configResultToFormData", () => {
-  it("converts daily schedule to cron form data", () => {
+  it("converts recurring schedule to form data with schedule_text", () => {
     const result = {
       siteId: "site-1",
       siteName: "test.test.example",
       name: "Daily Task",
       prompt: "Update content",
       model: "claude-sonnet-4-6" as const,
-      scheduleType: "daily" as const,
+      scheduleType: "custom" as const,
+      scheduleText: "every day at 9am",
       scheduleTime: "09:00",
       timezone: "Europe/Amsterdam",
     }
@@ -130,7 +161,8 @@ describe("configResultToFormData", () => {
       site_id: "site-1",
       name: "Daily Task",
       trigger_type: "cron",
-      cron_schedule: "0 9 * * *",
+      schedule_text: "every day at 9am",
+      cron_schedule: "",
       cron_timezone: "Europe/Amsterdam",
       action_type: "prompt",
       action_prompt: "Update content",
@@ -147,6 +179,7 @@ describe("configResultToFormData", () => {
       prompt: "Do once",
       model: "claude-sonnet-4-6" as const,
       scheduleType: "once" as const,
+      scheduleText: "",
       scheduleTime: "14:30",
       scheduleDate: "2026-03-01",
       timezone: "Europe/Amsterdam",
@@ -160,5 +193,6 @@ describe("configResultToFormData", () => {
       run_at: "2026-03-01T13:30:00.000Z",
     })
     expect(formData.cron_schedule).toBe("")
+    expect(formData.schedule_text).toBe("")
   })
 })

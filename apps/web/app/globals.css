@@ -258,14 +258,15 @@ input:-webkit-autofill:active {
   display: none;
 }
 
-/* Thin scrollbar — hidden by default, fades in on hover */
+/* Thin scrollbar — always thin, overlays content (no layout shift) */
 .scrollbar-thin {
-  scrollbar-width: none;
-  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  overflow: overlay;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
-  width: 3px;
+  width: 6px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
@@ -275,11 +276,9 @@ input:-webkit-autofill:active {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 3px;
-  transition: background 0.3s;
 }
 
 .scrollbar-thin:hover {
-  scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }
 
