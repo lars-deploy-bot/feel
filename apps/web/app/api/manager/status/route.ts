@@ -185,7 +185,7 @@ async function checkServeMode(domain: string): Promise<"dev" | "build" | "unknow
       const { stdout } = await execAsync(`cat "${serviceDir}/${file}" 2>/dev/null || echo ""`)
       if (stdout.includes("preview") || stdout.includes("bun run start")) return "build"
       if (stdout.includes("bun run dev")) return "dev"
-    } catch {
+    } catch (_err) {
       // File doesn't exist, try next
     }
   }

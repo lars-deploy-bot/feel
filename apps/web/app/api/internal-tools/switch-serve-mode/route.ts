@@ -201,7 +201,7 @@ export async function POST(req: Request) {
           try {
             unlinkSync(serveModeConf)
             console.log(`[switch-serve-mode ${requestId}] Removed ${serveModeConf} (back to default dev mode)`)
-          } catch {
+          } catch (_err) {
             // Already gone
           }
           // Migrate legacy: strip ExecStart from override.conf so base template's dev mode wins
@@ -216,7 +216,7 @@ export async function POST(req: Request) {
               writeFileSync(overrideConf, cleaned, { encoding: "utf-8" })
               console.log(`[switch-serve-mode ${requestId}] Stripped legacy ExecStart from override.conf`)
             }
-          } catch {
+          } catch (_err) {
             // No override.conf
           }
         } else {
@@ -235,7 +235,7 @@ export async function POST(req: Request) {
         for (const cachePath of devCaches) {
           try {
             await runAsWorkspaceUser({ command: "rm", args: ["-rf", cachePath], workspaceRoot, timeout: 5000 })
-          } catch {
+          } catch (_err) {
             // Cache dir may not exist
           }
         }
@@ -248,7 +248,7 @@ export async function POST(req: Request) {
 
           try {
             unlinkSync(serveModeConf)
-          } catch {
+          } catch (_err) {
             /* already gone */
           }
           execSync("systemctl daemon-reload", { encoding: "utf-8", timeout: 10000 })
