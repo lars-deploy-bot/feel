@@ -30,7 +30,14 @@ export const SETTINGS_SOURCES = STREAM_SETTINGS_SOURCES
  */
 export function getAllowedTools(_workspacePath, isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode) {
   const enabledServices = getEnabledServices()
-  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode, enabledServices })
+  const context = createStreamToolContext({
+    isAdmin,
+    isSuperadmin,
+    isSuperadminWorkspace,
+    mode,
+    executionMode,
+    enabledServices,
+  })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).allowedTools
 }
 
@@ -45,7 +52,14 @@ export function getAllowedTools(_workspacePath, isAdmin, isSuperadmin, isSuperad
  */
 export function getDisallowedTools(isAdmin, isSuperadmin, mode, isSuperadminWorkspace, executionMode) {
   const enabledServices = getEnabledServices()
-  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode, enabledServices })
+  const context = createStreamToolContext({
+    isAdmin,
+    isSuperadmin,
+    isSuperadminWorkspace,
+    mode,
+    executionMode,
+    enabledServices,
+  })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).disallowedTools
 }
 

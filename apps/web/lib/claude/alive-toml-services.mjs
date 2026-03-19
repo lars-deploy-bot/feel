@@ -25,9 +25,9 @@ export function parseEnabledServices(content) {
 
   // Match [services.X] sections and check for enabled = true
   const sectionRegex = /^\[services\.([^\]]+)\]/gm
-  let match
+  let match = sectionRegex.exec(content)
 
-  while ((match = sectionRegex.exec(content)) !== null) {
+  while (match !== null) {
     const serviceName = match[1]
     const sectionStart = match.index + match[0].length
 
@@ -39,6 +39,8 @@ export function parseEnabledServices(content) {
     if (/^\s*enabled\s*=\s*true\s*$/m.test(sectionContent)) {
       enabled.push(serviceName)
     }
+
+    match = sectionRegex.exec(content)
   }
 
   return enabled
