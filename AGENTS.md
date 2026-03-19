@@ -28,8 +28,8 @@ Both servers run the same codebase. Server 1 is primary production, Server 2 is 
 
 Use the `/roadmap` skill to manage issues, milestones, and the project board. This is the source of truth for what we're building and what's next.
 
-- **GitHub Project**: [Alive Roadmap](https://github.com/users/eenlars/projects/1) (board #1, owner: eenlars)
-- **Repo**: `eenlars/alive`
+- **GitHub Project**: [Alive Roadmap](https://github.com/users/lars-deploy-bot/projects/1) (board #1, owner: lars-deploy-bot)
+- **Repo**: `lars-deploy-bot/feel`
 - When creating issues, always assign a milestone and add to the project board
 - When fixing a bug or completing a feature, close the related issue with a comment
 - Use `/roadmap` to check project state before starting work
@@ -703,12 +703,12 @@ const { data } = await iam.rpc('deduct_credits', {
 
 ### Template Sites Maintenance
 
-**Template sites** live in `/srv/webalive/templates/`, a dedicated git repo (`eenlars/alive-templates`) that contains all template source code. Templates are the starting points when deploying new sites — each template is a complete Vite project that gets rsync'd to the new site's workspace. They also run as live previews so users can see them before choosing.
+**Template sites** live in `/srv/webalive/templates/`, a dedicated git repo (`lars-deploy-bot/feel-templates`) that contains all template source code. Templates are the starting points when deploying new sites — each template is a complete Vite project that gets rsync'd to the new site's workspace. They also run as live previews so users can see them before choosing.
 
-**Location**: `/srv/webalive/templates/` (git repo: `eenlars/alive-templates`)
+**Location**: `/srv/webalive/templates/` (git repo: `lars-deploy-bot/feel-templates`)
 **Systemd**: `template@{slug}.service` (separate from `site@` services)
 **Config**: `server-config.json` → `paths.templatesRoot` (default: `/srv/webalive/templates`). The old `templates` key is rejected at parse time by `rejectRemovedKeys()`.
-**Server**: Templates only run on **Server 1** (alive.best). Server 2 has no local template sites — the preview proxy cannot reach them there (see [#98](https://github.com/eenlars/alive/issues/98)).
+**Server**: Templates only run on **Server 1** (alive.best). Server 2 has no local template sites — the preview proxy cannot reach them there (see [#98](https://github.com/lars-deploy-bot/feel/issues/98)).
 **Push**: `GIT_SSH_COMMAND="ssh -i /root/.ssh/id_lars_deploy_bot" git push` (from `/srv/webalive/templates/`)
 
 **Template sites** (in Supabase `app.templates`):

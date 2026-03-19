@@ -89,7 +89,7 @@ Dev server (Bun/Vite) → Live preview via reverse proxy
 ## Quick start
 
 ```bash
-git clone https://github.com/eenlars/alive.git && cd alive
+git clone https://github.com/lars-deploy-bot/feel.git && cd alive
 bun install
 bun run setup
 

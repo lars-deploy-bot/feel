@@ -20,7 +20,7 @@ const FIELDS: FeedbackField[] = [
   {
     key: "github_issue_url",
     label: "GitHub Issue",
-    placeholder: "https://github.com/eenlars/alive/issues/...",
+    placeholder: "https://github.com/lars-deploy-bot/feel/issues/...",
     type: "input",
   },
   {

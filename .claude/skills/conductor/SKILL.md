@@ -20,7 +20,7 @@ Run a strict issue-to-PR pipeline with parallel worktrees and tight scope contro
 1. List open PRs and open issues. only do this for the milestones that are not too far away, so first list the milestones and then only do this for the milestones that are not too far away:
 
 ```bash
-gh milestone list --repo eenlars/alive --state open --limit 50
+gh milestone list --repo lars-deploy-bot/feel --state open --limit 50
 ```
 
 then for each milestone, list the open PRs and open issues:
@@ -66,7 +66,7 @@ Output a short batching table for the user:
 
 For each selected issue, define:
 
-- branch name: `eenlars/<issue-id>-<slug>`
+- branch name: `lars-deploy-bot/<issue-id>-<slug>`
 - single-sentence objective
 - strict out-of-scope list
 

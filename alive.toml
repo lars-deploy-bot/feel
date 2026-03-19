@@ -6,8 +6,8 @@ display_name = "Alive"
 kind = "turbo"
 root = "."
 workspace = "apps/web"
-repo_owner = "eenlars"
-repo_name = "alive"
+repo_owner = "lars-deploy-bot"
+repo_name = "feel"
 default_branch = "main"
 
 [setup]

@@ -53,7 +53,7 @@ function FeedbackActions({
       key: "githubIssueUrl",
       label: "GitHub Issue",
       value: entry.githubIssueUrl,
-      placeholder: "https://github.com/eenlars/alive/issues/...",
+      placeholder: "https://github.com/lars-deploy-bot/feel/issues/...",
     },
     {
       key: "awareEmailSent",

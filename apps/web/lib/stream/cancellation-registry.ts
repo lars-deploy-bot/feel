@@ -234,7 +234,7 @@ export function getRegistryState(): Array<{
  * the user clicking Stop — it kills active streams, not just orphans.
  *
  * Previously set to 3 minutes which killed every Opus conversation >3min.
- * See: https://github.com/eenlars/alive/issues/126
+ * See: https://github.com/lars-deploy-bot/feel/issues/126
  */
 const TTL_MS = 90 * 60 * 1000 // 90 minutes
 const CLEANUP_INTERVAL_MS = 1 * 60 * 1000 // 1 minute

@@ -7,7 +7,7 @@
  * Fix: consume the param once on mount, set workspace, clear param.
  * A ref guard prevents re-consumption even if the effect re-runs.
  *
- * @see https://github.com/eenlars/alive/issues/343
+ * @see https://github.com/lars-deploy-bot/feel/issues/343
  */
 
 import { parseWorkspaceStorageValue, WORKSPACE_STORAGE } from "@webalive/shared"

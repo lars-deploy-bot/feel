@@ -1,6 +1,6 @@
 [Unit]
 Description=Fix site permissions every 15 minutes
-Documentation=https://github.com/eenlars/webalive
+Documentation=https://github.com/lars-deploy-bot/feel
 
 [Timer]
 # Run every 15 minutes

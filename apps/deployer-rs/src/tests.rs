@@ -61,8 +61,8 @@ schema = 1
 [project]
 slug = "alive"
 display_name = "Alive"
-repo_owner = "eenlars"
-repo_name = "alive"
+repo_owner = "lars-deploy-bot"
+repo_name = "feel"
 default_branch = "main"
 
 [docker]
@@ -93,8 +93,8 @@ schema = 1
 [project]
 slug = "alive"
 display_name = "Alive"
-repo_owner = "eenlars"
-repo_name = "alive"
+repo_owner = "lars-deploy-bot"
+repo_name = "feel"
 default_branch = "main"
 
 [source]
@@ -202,8 +202,8 @@ schema = 1
 [project]
 slug = "alive"
 display_name = "Alive"
-repo_owner = "eenlars"
-repo_name = "alive"
+repo_owner = "lars-deploy-bot"
+repo_name = "feel"
 default_branch = "main"
 
 [source]
@@ -229,8 +229,8 @@ healthcheck_path = "/health"
     let application = ApplicationRow {
         slug: "alive".to_string(),
         display_name: "Alive".to_string(),
-        repo_owner: "eenlars".to_string(),
-        repo_name: "alive".to_string(),
+        repo_owner: "lars-deploy-bot".to_string(),
+        repo_name: "feel".to_string(),
         default_branch: "main".to_string(),
         config_path: "alive.toml".to_string(),
     };

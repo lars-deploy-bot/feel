@@ -150,7 +150,7 @@ An issue should be **one clear thing someone can investigate and fix**. Not a pr
 ```bash
 GIT_SSH_COMMAND="ssh -i /root/.ssh/id_lars_deploy_bot -o IdentitiesOnly=yes" \
 gh issue create \
-  --repo eenlars/alive \
+  --repo lars-deploy-bot/feel \
   --title "Observation: short factual title" \
   --body "$(cat <<'EOF'
 ## Observation

@@ -1,6 +1,6 @@
 [Unit]
 Description=Google Calendar MCP Server (HTTP with Bearer token auth)
-Documentation=https://github.com/eenlars/alive
+Documentation=https://github.com/lars-deploy-bot/feel
 After=network.target
 
 [Service]
