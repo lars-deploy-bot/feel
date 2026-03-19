@@ -65,7 +65,7 @@ const SEED_CARDS: KanbanCard[] = [
     description: "WebSocket connections drop silently when the preview proxy restarts.",
     notes: "",
     attachments: [
-      { url: "https://github.com/eenlars/alive/issues/42", label: "Issue #42" },
+      { url: "https://github.com/lars-deploy-bot/feel/issues/42", label: "Issue #42" },
       { url: "https://sentry.sonno.tech/issues/891", label: "Sentry #891" },
     ],
     createdAt: "2026-03-13T09:01:00Z",

@@ -9,8 +9,8 @@ Manage the Alive project roadmap, issues, and milestones via the GitHub CLI.
 
 ## Project Details
 
-- **Repo**: `eenlars/alive`
-- **Project board**: #1 "Alive Roadmap" (owner: `eenlars`)
+- **Repo**: `lars-deploy-bot/feel`
+- **Project board**: #1 "Alive Roadmap" (owner: `lars-deploy-bot`)
 - **Project ID**: `PVT_kwHOAgKQf84BOvXp`
 
 ## Milestones
@@ -40,7 +40,7 @@ Use labels only for stable taxonomy/state. Use project fields for planning metad
 Before adding any label, query the live repo labels:
 
 ```bash
-gh label list --repo eenlars/alive --limit 500
+gh label list --repo lars-deploy-bot/feel --limit 500
 ```
 
 Do not assume static label sets from docs. The live repo is authoritative.
@@ -79,21 +79,21 @@ When creating an epic:
 ### View project state
 ```bash
 # List all open issues
-gh issue list --repo eenlars/alive --state open --limit 50
+gh issue list --repo lars-deploy-bot/feel --state open --limit 50
 
 # List issues by milestone
-gh issue list --repo eenlars/alive --milestone "Cleanup & DevEx"
+gh issue list --repo lars-deploy-bot/feel --milestone "Cleanup & DevEx"
 
 # List project items with fields
-gh project item-list 1 --owner eenlars --format json
+gh project item-list 1 --owner lars-deploy-bot --format json
 
 # View milestones
-gh api repos/eenlars/alive/milestones --jq '.[] | "\(.title): \(.open_issues) open, \(.closed_issues) closed"'
+gh api repos/lars-deploy-bot/feel/milestones --jq '.[] | "\(.title): \(.open_issues) open, \(.closed_issues) closed"'
 ```
 
 ### Create an issue
 ```bash
-gh issue create --repo eenlars/alive \
+gh issue create --repo lars-deploy-bot/feel \
   --title "Short descriptive title" \
   --body "$(cat <<'EOF'
 ## Summary
@@ -113,24 +113,24 @@ EOF
 ### Update an issue
 ```bash
 # Add to milestone
-gh issue edit <number> --repo eenlars/alive --milestone "Cleanup & DevEx"
+gh issue edit <number> --repo lars-deploy-bot/feel --milestone "Cleanup & DevEx"
 
 # Add labels
-gh issue edit <number> --repo eenlars/alive --add-label "security"
+gh issue edit <number> --repo lars-deploy-bot/feel --add-label "security"
 
 # Close with comment
-gh issue close <number> --repo eenlars/alive --comment "Fixed in <commit>"
+gh issue close <number> --repo lars-deploy-bot/feel --comment "Fixed in <commit>"
 ```
 
 ### Add issue to project board
 ```bash
-gh project item-add 1 --owner eenlars --url "https://github.com/eenlars/alive/issues/<number>"
+gh project item-add 1 --owner lars-deploy-bot --url "https://github.com/lars-deploy-bot/feel/issues/<number>"
 ```
 
 ### Set project field on an item
 ```bash
 # Get item ID first
-gh project item-list 1 --owner eenlars --format json | jq '.items[] | select(.content.number == <issue_number>) | .id'
+gh project item-list 1 --owner lars-deploy-bot --format json | jq '.items[] | select(.content.number == <issue_number>) | .id'
 
 # Set priority (need field ID: PVTSSF_lAHOAgKQf84BOvXpzg9Wk4U)
 gh project item-edit --project-id PVT_kwHOAgKQf84BOvXp --id <item_id> --field-id PVTSSF_lAHOAgKQf84BOvXpzg9Wk4U --single-select-option-id <option_id>

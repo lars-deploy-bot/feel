@@ -1,6 +1,6 @@
 [Unit]
 Description=Daily website backup to GitHub
-Documentation=https://github.com/eenlars/all_websites
+Documentation=https://github.com/lars-deploy-bot/all_websites
 
 [Timer]
 # Run at 2:00 AM every day

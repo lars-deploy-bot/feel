@@ -425,7 +425,7 @@ fi
 # =============================================================================
 CONFIG_PATH="${SERVER_CONFIG_PATH:-/var/lib/alive/server-config.json}"
 TEMPLATES_ROOT=$(python3 -c "import json; print(json.load(open('$CONFIG_PATH')).get('paths',{}).get('templatesRoot',''))" 2>/dev/null || echo "")
-TEMPLATES_REPO="https://github.com/eenlars/alive-templates.git"
+TEMPLATES_REPO="https://github.com/lars-deploy-bot/alive-templates.git"
 
 if [ -z "$TEMPLATES_ROOT" ]; then
     log_warn "paths.templatesRoot not set in server-config.json — skipping templates sync"

@@ -10,7 +10,7 @@
  * while we used 5.90.20, creating two copies. The QueryClientProvider
  * set context on 5.90.20 but useQuery in settings read from 5.66.0.
  *
- * @see https://github.com/eenlars/alive/pull/31
+ * @see https://github.com/lars-deploy-bot/feel/pull/31
  */
 
 import { execSync } from "node:child_process"

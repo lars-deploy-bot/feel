@@ -13,7 +13,7 @@
  *
  * Stream lifecycle verified: start → message → complete
  *
- * @see https://github.com/eenlars/alive/issues/185
+ * @see https://github.com/lars-deploy-bot/feel/issues/185
  */
 
 import { BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
