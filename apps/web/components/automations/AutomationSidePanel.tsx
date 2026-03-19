@@ -4,9 +4,10 @@ import type { ClaudeModel } from "@webalive/shared"
 import { isValidClaudeModel } from "@webalive/shared"
 import { useEffect, useState } from "react"
 import { isScheduleTrigger, type TriggerType } from "@/lib/api/schemas"
+import { describeCron } from "@/lib/automation/cron-description"
+import { DEFAULT_SCHEDULE_TEXT, DEFAULT_TIMEZONE } from "@/lib/automation/form-options"
 import { toZonedDateTimeIso } from "@/lib/automation/schedule-conversion"
 import type { AutomationJob, Site } from "@/lib/hooks/useSettingsQueries"
-import { describeCron } from "./cron-scheduler/cron-parser"
 import { GeneralTab } from "./tabs/GeneralTab"
 import { PromptTab } from "./tabs/PromptTab"
 import { ToolsTab } from "./tabs/ToolsTab"
@@ -25,8 +26,8 @@ interface AutomationSidePanelProps {
 }
 
 /** Convert an existing cron_schedule to human-readable text for the input field */
-function cronToDisplayText(cronSchedule: string | null): string {
-  if (!cronSchedule) return "weekdays at 9am"
+export function cronToDisplayText(cronSchedule: string | null): string {
+  if (!cronSchedule) return ""
   const desc = describeCron(cronSchedule)
   // describeCron returns "Cron: ..." for unrecognized patterns — use that as-is
   return desc.startsWith("Cron:") ? cronSchedule : desc.toLowerCase()
@@ -50,10 +51,10 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
 
   // Trigger — schedule_text replaces cronSchedule
   const [isOneTime, setIsOneTime] = useState(false)
-  const [scheduleText, setScheduleText] = useState("weekdays at 9am")
+  const [scheduleText, setScheduleText] = useState(DEFAULT_SCHEDULE_TEXT)
   const [oneTimeDate, setOneTimeDate] = useState("")
   const [oneTimeTime, setOneTimeTime] = useState("09:00")
-  const [timezone, setTimezone] = useState("Europe/Amsterdam")
+  const [timezone, setTimezone] = useState<string>(DEFAULT_TIMEZONE)
 
   // Tools
   const [skills, setSkills] = useState<string[]>([])
@@ -68,7 +69,7 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
       setPrompt(editingJob.action_prompt || "")
       setSiteId(editingJob.site_id)
       setSiteSearch(sites.find(s => s.id === editingJob.site_id)?.hostname || "")
-      setTimezone(editingJob.cron_timezone || "Europe/Amsterdam")
+      setTimezone(editingJob.cron_timezone || DEFAULT_TIMEZONE)
       setTimeoutSeconds(editingJob.action_timeout_seconds ? String(editingJob.action_timeout_seconds) : "")
       setModel(isValidClaudeModel(editingJob.action_model) ? editingJob.action_model : "")
       setSkills(editingJob.skills ?? [])
@@ -92,10 +93,10 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
       setSiteId("")
       setSiteSearch("")
       setIsOneTime(false)
-      setScheduleText("weekdays at 9am")
+      setScheduleText(DEFAULT_SCHEDULE_TEXT)
       setOneTimeDate("")
       setOneTimeTime("09:00")
-      setTimezone("Europe/Amsterdam")
+      setTimezone(DEFAULT_TIMEZONE)
       setTimeoutSeconds("")
       setModel("")
       setSkills([])

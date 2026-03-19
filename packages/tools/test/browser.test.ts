@@ -100,7 +100,7 @@ describe("browserAction", () => {
       expect(result.content[0]).toEqual(
         expect.objectContaining({
           type: "text",
-          text: expect.stringContaining("browser-control.service"),
+          text: expect.stringContaining("alive.toml"),
         }),
       )
     })
@@ -113,7 +113,7 @@ describe("browserAction", () => {
       expect(result.content[0]).toEqual(
         expect.objectContaining({
           type: "text",
-          text: expect.stringContaining("browser-control.service"),
+          text: expect.stringContaining("alive.toml"),
         }),
       )
     })
@@ -126,7 +126,7 @@ describe("browserAction", () => {
       expect(result.content[0]).toEqual(
         expect.objectContaining({
           type: "text",
-          text: expect.stringContaining("browser-control.service"),
+          text: expect.stringContaining("alive.toml"),
         }),
       )
     })

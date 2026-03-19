@@ -4,7 +4,7 @@ import { scheduleResultToApiPayload } from "../schedule-conversion"
 
 function buildResult(overrides: Partial<AutomationScheduleInput> = {}): AutomationScheduleInput {
   return {
-    scheduleType: "daily",
+    scheduleType: "custom",
     scheduleTime: "09:00",
     timezone: "Europe/Amsterdam",
     ...overrides,
@@ -12,16 +12,6 @@ function buildResult(overrides: Partial<AutomationScheduleInput> = {}): Automati
 }
 
 describe("scheduleResultToApiPayload", () => {
-  it('converts daily "09:00" to cron "0 9 * * *"', () => {
-    const result = scheduleResultToApiPayload(buildResult({ scheduleType: "daily", scheduleTime: "09:00" }))
-
-    expect(result).toEqual({
-      trigger_type: "cron",
-      cron_schedule: "0 9 * * *",
-      cron_timezone: "Europe/Amsterdam",
-    })
-  })
-
   it("converts one-time schedules to one-time trigger with timezone-aware run_at", () => {
     const runDate = "2026-03-01"
     const runTime = "14:30"
@@ -71,25 +61,6 @@ describe("scheduleResultToApiPayload", () => {
     })
   })
 
-  it("uses current day defaults for weekly and monthly when no picker exists", () => {
-    const now = new Date(2026, 6, 15, 12, 0, 0)
-
-    const weekly = scheduleResultToApiPayload(buildResult({ scheduleType: "weekly" }), now)
-    const monthly = scheduleResultToApiPayload(buildResult({ scheduleType: "monthly" }), now)
-
-    expect(weekly).toEqual({
-      trigger_type: "cron",
-      cron_schedule: `0 9 * * ${now.getDay()}`,
-      cron_timezone: "Europe/Amsterdam",
-    })
-
-    expect(monthly).toEqual({
-      trigger_type: "cron",
-      cron_schedule: `0 9 ${now.getDate()} * *`,
-      cron_timezone: "Europe/Amsterdam",
-    })
-  })
-
   it("throws for one-time local times that do not exist in the selected timezone", () => {
     expect(() =>
       scheduleResultToApiPayload(
@@ -101,5 +72,27 @@ describe("scheduleResultToApiPayload", () => {
         }),
       ),
     ).toThrow('Invalid local date/time "2026-03-29T02:30" for timezone "Europe/Amsterdam"')
+  })
+
+  it("throws when one-time schedule is missing scheduleDate", () => {
+    expect(() =>
+      scheduleResultToApiPayload(
+        buildResult({
+          scheduleType: "once",
+          scheduleDate: undefined,
+        }),
+      ),
+    ).toThrow("Missing scheduleDate for one-time automation")
+  })
+
+  it("throws when custom schedule is missing cronExpression", () => {
+    expect(() =>
+      scheduleResultToApiPayload(
+        buildResult({
+          scheduleType: "custom",
+          cronExpression: undefined,
+        }),
+      ),
+    ).toThrow("Missing cron expression for custom schedule")
   })
 })

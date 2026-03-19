@@ -59,6 +59,10 @@ path = "apps/web/.env.production"
 id = "server_config"
 env = "SERVER_CONFIG_PATH"
 
+[services.browser-control]
+enabled = true
+port = 5061
+
 [policies.staging]
 allow_email = false
 blocked_env_keys = [

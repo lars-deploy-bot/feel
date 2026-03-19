@@ -10,12 +10,12 @@
 
 "use client"
 
-import { CLAUDE_MODELS, type ClaudeModel, getModelDisplayName } from "@webalive/shared"
+import { CLAUDE_MODELS, type ClaudeModel, getModelDisplayName, isValidClaudeModel } from "@webalive/shared"
 import { Check, ChevronRight, Clock, Cpu, Globe, Zap } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ScheduleInput } from "@/components/automations/ScheduleInput"
 import { getInitialSiteSelection, SiteCombobox, type SiteOption } from "@/components/automations/SiteCombobox"
-import { MODEL_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/automation/form-options"
+import { DEFAULT_TIMEZONE, MODEL_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/automation/form-options"
 
 // =============================================================================
 // TYPES
@@ -38,12 +38,11 @@ export interface AutomationConfigResult {
   name: string
   prompt: string
   model: ClaudeModel
-  scheduleType: "once" | "daily" | "weekly" | "monthly" | "custom"
+  scheduleType: "once" | "custom"
   /** Human-readable schedule text, e.g. "every weekday at 9am" */
   scheduleText: string
   scheduleTime: string // HH:MM format
   scheduleDate?: string // YYYY-MM-DD for one-time
-  cronExpression?: string // Legacy, unused — API converts from scheduleText
   timezone: string
 }
 
@@ -77,7 +76,7 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
     return tomorrow.toISOString().split("T")[0]
   })
   const [scheduleTime, setScheduleTime] = useState("09:00")
-  const [timezone, setTimezone] = useState("Europe/Amsterdam")
+  const [timezone, setTimezone] = useState<string>(DEFAULT_TIMEZONE)
 
   // Validation
   const [nameError, setNameError] = useState<string | null>(null)
@@ -342,7 +341,9 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
                     <select
                       id="automation-model"
                       value={model}
-                      onChange={e => setModel(e.target.value as ClaudeModel)}
+                      onChange={e => {
+                        if (isValidClaudeModel(e.target.value)) setModel(e.target.value)
+                      }}
                       className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent pl-9 pr-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus-visible:outline-none hover:border-zinc-300 dark:hover:border-zinc-600 cursor-pointer"
                     >
                       {MODEL_OPTIONS.map(opt => (

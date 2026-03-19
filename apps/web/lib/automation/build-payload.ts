@@ -11,17 +11,20 @@ import type { ReqInput, TriggerType } from "@/lib/api/schemas"
 import { isScheduleTrigger, validateRequest } from "@/lib/api/schemas"
 import { scheduleResultToApiPayload } from "@/lib/automation/schedule-conversion"
 
+// ── Helpers ─────────────────────────────────────────────────────────
+
+/** Build schedule fields for cron triggers: prefer schedule_text over raw cron_schedule */
+function buildScheduleFields(triggerType: TriggerType, data: AutomationFormData) {
+  if (!isScheduleTrigger(triggerType) || triggerType !== "cron") return {}
+  return data.schedule_text
+    ? { schedule_text: data.schedule_text, cron_timezone: data.cron_timezone }
+    : { cron_schedule: data.cron_schedule, cron_timezone: data.cron_timezone }
+}
+
 // ── Create ──────────────────────────────────────────────────────────
 
 export function buildCreatePayload(data: AutomationFormData) {
-  // If schedule_text is set, send it to the API for server-side conversion.
-  // Otherwise fall back to raw cron_schedule (legacy/direct cron input).
-  const scheduleFields =
-    isScheduleTrigger(data.trigger_type) && data.trigger_type === "cron"
-      ? data.schedule_text
-        ? { schedule_text: data.schedule_text, cron_timezone: data.cron_timezone }
-        : { cron_schedule: data.cron_schedule, cron_timezone: data.cron_timezone }
-      : {}
+  const scheduleFields = buildScheduleFields(data.trigger_type, data)
 
   const fields: ReqInput<"automations/create"> = {
     site_id: data.site_id,
@@ -47,12 +50,7 @@ export function buildCreatePayload(data: AutomationFormData) {
 // ── Update ──────────────────────────────────────────────────────────
 
 export function buildUpdatePayload(data: AutomationFormData, existingTriggerType: TriggerType) {
-  const scheduleFields =
-    isScheduleTrigger(existingTriggerType) && existingTriggerType === "cron"
-      ? data.schedule_text
-        ? { schedule_text: data.schedule_text, cron_timezone: data.cron_timezone }
-        : { cron_schedule: data.cron_schedule, cron_timezone: data.cron_timezone }
-      : {}
+  const scheduleFields = buildScheduleFields(existingTriggerType, data)
 
   const fields: ReqInput<"automations/update"> = {
     name: data.name,

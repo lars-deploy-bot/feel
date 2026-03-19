@@ -35,6 +35,9 @@ export interface TextToCronResult {
   timezone: string | null
 }
 
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+const GROQ_MODEL = "llama-3.3-70b-versatile"
+const GROQ_MAX_TOKENS = 50
 const GROQ_TIMEOUT_MS = 10_000
 
 function validateTimezone(tz: string | null): string | null {
@@ -58,20 +61,20 @@ export async function textToCron(text: string, groqApiKey: string): Promise<Text
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS)
 
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const response = await fetch(GROQ_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${groqApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model: GROQ_MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: text },
       ],
       temperature: 0,
-      max_tokens: 50,
+      max_tokens: GROQ_MAX_TOKENS,
     }),
     signal: controller.signal,
   }).finally(() => {

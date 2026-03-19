@@ -299,6 +299,7 @@ export {
   WEBSITE_SLUG_MIN_LENGTH,
 } from "./tools/mcp-settings.js"
 export {
+  buildOAuthMcpServers,
   buildStreamToolRuntimeConfig,
   createStreamCanUseTool,
   createStreamToolContext,

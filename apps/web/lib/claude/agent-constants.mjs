@@ -1,8 +1,8 @@
 import {
+  buildOAuthMcpServers,
   buildStreamToolRuntimeConfig,
   createStreamToolContext,
   getStreamMcpServers,
-  OAUTH_MCP_PROVIDERS,
   STREAM_INTERRUPT_SOURCES,
   STREAM_PERMISSION_MODE,
   STREAM_SETTINGS_SOURCES,
@@ -10,6 +10,7 @@ import {
   STREAM_TYPES,
 } from "@webalive/shared"
 import { getEnabledMcpToolNames, streamInternalMcpServers } from "@webalive/tools"
+import { getEnabledServices } from "./alive-toml-services.mjs"
 
 // Re-export stream types
 export { STREAM_TYPES, STREAM_SYNTHETIC_MESSAGE_TYPES, STREAM_INTERRUPT_SOURCES }
@@ -28,7 +29,8 @@ export const SETTINGS_SOURCES = STREAM_SETTINGS_SOURCES
  * @returns {string[]} Base allowed tools list
  */
 export function getAllowedTools(_workspacePath, isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode) {
-  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode })
+  const enabledServices = getEnabledServices()
+  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode, enabledServices })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).allowedTools
 }
 
@@ -42,7 +44,8 @@ export function getAllowedTools(_workspacePath, isAdmin, isSuperadmin, isSuperad
  * @returns {string[]} Disallowed tools list
  */
 export function getDisallowedTools(isAdmin, isSuperadmin, mode, isSuperadminWorkspace, executionMode) {
-  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode })
+  const enabledServices = getEnabledServices()
+  const context = createStreamToolContext({ isAdmin, isSuperadmin, isSuperadminWorkspace, mode, executionMode, enabledServices })
   return buildStreamToolRuntimeConfig(getEnabledMcpToolNames, context).disallowedTools
 }
 
@@ -63,18 +66,7 @@ export function getMcpServers(_workspacePath, options = {}) {
  * @returns {Object} OAuth MCP servers configuration (serializable)
  */
 export function getOAuthMcpServers(oauthTokens = {}) {
-  const servers = {}
-  for (const [providerKey, config] of Object.entries(OAUTH_MCP_PROVIDERS)) {
-    const token = oauthTokens[providerKey]
-    if (token) {
-      servers[providerKey] = {
-        type: "http",
-        url: config.url,
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    }
-  }
-  return servers
+  return buildOAuthMcpServers(oauthTokens)
 }
 
 /**

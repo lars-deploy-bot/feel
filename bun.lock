@@ -135,6 +135,24 @@
         "vitest": "4.0.17",
       },
     },
+    "apps/mcp-servers/google-search-console": {
+      "name": "@webalive/mcp-google-search-console",
+      "version": "1.0.0",
+      "bin": {
+        "mcp-google-search-console": "./dist/index.js",
+      },
+      "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.26.0",
+        "commander": "^13.1.0",
+        "express": "^4.21.2",
+      },
+      "devDependencies": {
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.5.2",
+        "typescript": "^5.9.3",
+        "vitest": "4.0.17",
+      },
+    },
     "apps/mcp-servers/outlook": {
       "name": "@webalive/mcp-outlook",
       "version": "1.0.0",
@@ -1325,6 +1343,8 @@
     "@webalive/mcp-gmail": ["@webalive/mcp-gmail@workspace:apps/mcp-servers/gmail"],
 
     "@webalive/mcp-google-calendar": ["@webalive/mcp-google-calendar@workspace:apps/mcp-servers/google-calendar"],
+
+    "@webalive/mcp-google-search-console": ["@webalive/mcp-google-search-console@workspace:apps/mcp-servers/google-search-console"],
 
     "@webalive/mcp-outlook": ["@webalive/mcp-outlook@workspace:apps/mcp-servers/outlook"],
 
@@ -2716,6 +2736,8 @@
 
     "@webalive/mcp-google-calendar/@types/node": ["@types/node@22.19.11", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w=="],
 
+    "@webalive/mcp-google-search-console/@types/node": ["@types/node@22.19.11", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w=="],
+
     "@webalive/mcp-outlook/@types/node": ["@types/node@22.19.11", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w=="],
 
     "@webalive/redis/@types/node": ["@types/node@20.19.33", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-Rs1bVAIdBs5gbTIKza/tgpMuG1k3U/UMJLWecIMxNdJFDMzcM5LOiLVRYh3PilWEYDIeUDv7bpiHPLPsbydGcw=="],
@@ -2985,6 +3007,8 @@
     "@webalive/mcp-gmail/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "@webalive/mcp-google-calendar/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+
+    "@webalive/mcp-google-search-console/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "@webalive/mcp-outlook/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 

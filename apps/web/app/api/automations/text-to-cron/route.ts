@@ -9,11 +9,12 @@ import * as Sentry from "@sentry/nextjs"
 import { z } from "zod"
 import { protectedRoute } from "@/features/auth/lib/protectedRoute"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { SCHEDULE_TEXT_MAX_LENGTH } from "@/lib/automation/form-options"
 import { textToCron } from "@/lib/automation/text-to-cron"
 import { ErrorCodes } from "@/lib/error-codes"
 
 const bodySchema = z.object({
-  text: z.string().trim().min(1).max(200),
+  text: z.string().trim().min(1).max(SCHEDULE_TEXT_MAX_LENGTH),
 })
 
 export const POST = protectedRoute(async ({ req }) => {

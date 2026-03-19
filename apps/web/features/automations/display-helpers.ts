@@ -5,7 +5,7 @@
  * Import from here instead of re-implementing.
  */
 
-import { describeCron } from "@/components/automations/cron-scheduler/cron-parser"
+import { describeCron } from "@/lib/automation/cron-description"
 
 /** Format a past ISO date as a relative time string ("now", "5m ago", "3h ago", "2d ago") */
 export function relTime(d: string | null): string {

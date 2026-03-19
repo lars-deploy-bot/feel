@@ -13,7 +13,10 @@
 
 import { Check, Clock, Loader2 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { describeCron } from "./cron-scheduler/cron-parser"
+import { describeCron } from "@/lib/automation/cron-description"
+import { SCHEDULE_TEXT_MAX_LENGTH } from "@/lib/automation/form-options"
+
+const PREVIEW_DEBOUNCE_MS = 800
 
 const QUICK_PICKS = [
   { text: "every 5 minutes", cron: "*/5 * * * *" },
@@ -110,13 +113,18 @@ export function ScheduleInput({
         if (data.ok) {
           setPreview({ cron: data.cron, timezone: data.timezone, loading: false, error: null })
         } else {
-          setPreview({ cron: "", timezone: null, loading: false, error: data.error || "Could not parse schedule" })
+          setPreview({
+            cron: "",
+            timezone: null,
+            loading: false,
+            error: data.message || data.details?.reason || "Could not parse schedule",
+          })
         }
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return
         setPreview({ cron: "", timezone: null, loading: false, error: "Failed to check schedule" })
       }
-    }, 800)
+    }, PREVIEW_DEBOUNCE_MS)
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -198,6 +206,7 @@ export function ScheduleInput({
               value={value}
               onChange={e => onChange(e.target.value)}
               placeholder="e.g. every weekday at 9am"
+              maxLength={SCHEDULE_TEXT_MAX_LENGTH}
               className="w-full h-10 px-3 pr-8 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.12] dark:focus:ring-white/[0.12] transition-all"
             />
             {preview.loading && (

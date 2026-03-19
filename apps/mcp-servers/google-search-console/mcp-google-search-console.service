@@ -1,0 +1,23 @@
+[Unit]
+Description=Google Search Console MCP Server (HTTP with Bearer token auth)
+Documentation=https://github.com/eenlars/alive
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/webalive/alive/apps/mcp-servers/google-search-console
+ExecStart=/usr/bin/node dist/index.js --transport http --port 8089
+Restart=always
+RestartSec=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mcp-google-search-console
+
+# Environment
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

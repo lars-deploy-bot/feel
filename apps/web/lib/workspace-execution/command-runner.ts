@@ -66,22 +66,28 @@ export function detectServeMode(workspacePath: string): ServeMode {
   const domain = basename(sitePath)
   const serviceSlug = domain.replace(/\./g, "-")
   const serviceName = `site@${serviceSlug}.service`
-  const overrideConf = `/etc/systemd/system/${serviceName}.d/override.conf`
+  const serviceDir = `/etc/systemd/system/${serviceName}.d`
+  // serve-mode.conf is the canonical source (written by switch_serve_mode)
+  // Fall back to override.conf for legacy sites that haven't switched yet
+  const serveModeConf = `${serviceDir}/serve-mode.conf`
+  const overrideConf = `${serviceDir}/override.conf`
 
-  try {
-    const content = readFileSync(overrideConf, "utf-8")
-    if (content.includes("bun run dev")) {
-      return "dev"
+  for (const confPath of [serveModeConf, overrideConf]) {
+    try {
+      const content = readFileSync(confPath, "utf-8")
+      if (content.includes("bun run dev")) {
+        return "dev"
+      }
+      // "bun run preview" and "bun run start" are both production modes
+      if (content.includes("bun run preview") || content.includes("bun run start")) {
+        return "build"
+      }
+    } catch {
+      // File doesn't exist, try next
     }
-    // "bun run preview" and "bun run start" are both production modes
-    if (content.includes("bun run preview") || content.includes("bun run start")) {
-      return "build"
-    }
-    return "unknown"
-  } catch {
-    // No override file means default (dev mode)
-    return "dev"
   }
+  // No config files means default (dev mode from base template)
+  return "dev"
 }
 
 /**

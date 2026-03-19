@@ -977,6 +977,7 @@ export async function POST(req: NextRequest) {
         isAdmin: user.isAdmin, // Enables admin-only tool policy (TaskStop)
         isSuperadmin: user.isSuperadmin, // Superadmin gets elevated tool policy
         isSuperadminWorkspace, // Whether accessing the alive workspace specifically
+        executionMode: isSuperadminWorkspace ? "systemd" : domainRecord.execution_mode,
         permissionMode: effectivePermissionMode, // Plan mode: "plan" = read-only exploration
         streamMode,
       })

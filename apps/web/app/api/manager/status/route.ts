@@ -178,21 +178,18 @@ async function checkDnsResolution(
 
 async function checkServeMode(domain: string): Promise<"dev" | "build" | "unknown"> {
   const slug = domain.replace(/\./g, "-")
-  const overridePath = `/etc/systemd/system/site@${slug}.service.d/override.conf`
-
-  try {
-    const { stdout } = await execAsync(`cat "${overridePath}" 2>/dev/null || echo ""`)
-    if (stdout.includes("preview")) {
-      return "build"
+  const serviceDir = `/etc/systemd/system/site@${slug}.service.d`
+  // serve-mode.conf is canonical (written by switch_serve_mode), override.conf is legacy fallback
+  for (const file of ["serve-mode.conf", "override.conf"]) {
+    try {
+      const { stdout } = await execAsync(`cat "${serviceDir}/${file}" 2>/dev/null || echo ""`)
+      if (stdout.includes("preview") || stdout.includes("bun run start")) return "build"
+      if (stdout.includes("bun run dev")) return "dev"
+    } catch {
+      // File doesn't exist, try next
     }
-    if (stdout.includes("dev") || stdout.trim() === "") {
-      return "dev"
-    }
-    return "dev" // Default to dev if no override
-  } catch (_err) {
-    // Expected: override file may not exist
-    return "dev"
   }
+  return "dev" // No config = base template dev mode
 }
 
 async function checkViteConfigPort(

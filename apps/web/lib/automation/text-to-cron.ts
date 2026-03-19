@@ -16,3 +16,19 @@ export async function textToCron(text: string): Promise<TextToCronResult> {
   }
   return textToCronBase(text, apiKey)
 }
+
+/**
+ * Resolve schedule_text → cron expression, respecting timezone priority:
+ * user's explicit timezone wins over Groq-inferred timezone.
+ *
+ * Used by both create and update routes to avoid duplicating this logic.
+ */
+export async function resolveScheduleText(
+  scheduleText: string,
+  userTimezone: string | null,
+): Promise<{ cron: string; timezone: string | null }> {
+  const result = await textToCron(scheduleText)
+  // User's explicit timezone takes priority over Groq-inferred one
+  const timezone = userTimezone ?? result.timezone
+  return { cron: result.cron, timezone }
+}

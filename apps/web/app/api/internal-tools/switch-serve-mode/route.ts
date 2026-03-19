@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs"
 import { basename, dirname, join } from "node:path"
 import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
       const serviceSlug = domain.replace(/\./g, "-")
       const serviceName = `site@${serviceSlug}.service`
       const overrideDir = `/etc/systemd/system/${serviceName}.d`
-      const overrideConf = join(overrideDir, "override.conf")
+      const serveModeConf = join(overrideDir, "serve-mode.conf")
 
       // Detect current mode before switching
       const previousMode = detectServeMode(workspaceRoot)
@@ -195,49 +195,62 @@ export async function POST(req: Request) {
           }
         }
 
-        // Update systemd override configuration
-        // Use ${PORT} from EnvironmentFile - systemd loads /etc/sites/<slug>.env
-        const execStart =
-          mode === "dev"
-            ? `/bin/sh -c 'exec /usr/local/bin/bun run dev --port \${PORT:-3333} --host 0.0.0.0'`
-            : `/bin/sh -c 'exec /usr/local/bin/bun run preview --port \${PORT:-3333} --host 0.0.0.0'`
+        // Serve mode lives in its own drop-in (never touch override.conf resource limits)
+        if (mode === "dev") {
+          // Dev is the base template default — remove serve-mode.conf
+          try {
+            unlinkSync(serveModeConf)
+            console.log(`[switch-serve-mode ${requestId}] Removed ${serveModeConf} (back to default dev mode)`)
+          } catch {
+            // Already gone
+          }
+          // Migrate legacy: strip ExecStart from override.conf so base template's dev mode wins
+          const overrideConf = join(overrideDir, "override.conf")
+          try {
+            const content = readFileSync(overrideConf, "utf-8")
+            if (content.includes("ExecStart")) {
+              const cleaned = content
+                .split("\n")
+                .filter(line => !line.startsWith("ExecStart"))
+                .join("\n")
+              writeFileSync(overrideConf, cleaned, { encoding: "utf-8" })
+              console.log(`[switch-serve-mode ${requestId}] Stripped legacy ExecStart from override.conf`)
+            }
+          } catch {
+            // No override.conf
+          }
+        } else {
+          const execStart = `/bin/sh -c 'exec /usr/local/bin/bun run preview --port \${PORT:-3333} --host 0.0.0.0'`
 
-        // Preserve existing resource limit overrides (LimitNPROC, MemoryMax, etc.)
-        let existingLimits = ""
-        if (existsSync(overrideConf)) {
-          const existing = readFileSync(overrideConf, "utf-8")
-          const preserveKeys = ["LimitNPROC", "MemoryMax", "CPUQuota", "LimitNOFILE"]
-          const preserved = existing.split("\n").filter(line => preserveKeys.some(key => line.startsWith(`${key}=`)))
-          if (preserved.length > 0) {
-            existingLimits = `${preserved.join("\n")}\n`
+          if (!existsSync(overrideDir)) {
+            mkdirSync(overrideDir, { recursive: true })
+          }
+
+          writeFileSync(serveModeConf, `[Service]\nExecStart=\nExecStart=${execStart}\n`, { encoding: "utf-8" })
+          console.log(`[switch-serve-mode ${requestId}] Updated ${serveModeConf}`)
+        }
+
+        // Clear caches before restart to prevent stale deps across mode switches
+        const devCaches = ["node_modules/.vite", "node_modules/.cache", ".swc", "tsconfig.tsbuildinfo"]
+        for (const cachePath of devCaches) {
+          try {
+            await runAsWorkspaceUser({ command: "rm", args: ["-rf", cachePath], workspaceRoot, timeout: 5000 })
+          } catch {
+            // Cache dir may not exist
           }
         }
 
-        const overrideContent = `[Service]
-ExecStart=
-ExecStart=${execStart}
-${existingLimits}`
-
-        // Ensure override directory exists
-        if (!existsSync(overrideDir)) {
-          mkdirSync(overrideDir, { recursive: true })
-        }
-
-        // Write override configuration
-        writeFileSync(overrideConf, overrideContent, { encoding: "utf-8" })
-        console.log(`[switch-serve-mode ${requestId}] Updated ${overrideConf}`)
-
-        // Reload systemd and restart service with recovery
         execSync("systemctl daemon-reload", { encoding: "utf-8", timeout: 10000 })
         const restartResult = restartSystemdService(serviceName)
 
         if (!restartResult.success && mode === "build") {
-          // Build/preview mode crashed the service — revert to dev mode automatically
           console.warn(`[switch-serve-mode ${requestId}] Service crashed in build mode, reverting to dev mode`)
 
-          const devExecStart = `/bin/sh -c 'exec /usr/local/bin/bun run dev --port \${PORT:-3333} --host 0.0.0.0'`
-          const devOverride = `[Service]\nExecStart=\nExecStart=${devExecStart}\n${existingLimits}`
-          writeFileSync(overrideConf, devOverride, { encoding: "utf-8" })
+          try {
+            unlinkSync(serveModeConf)
+          } catch {
+            /* already gone */
+          }
           execSync("systemctl daemon-reload", { encoding: "utf-8", timeout: 10000 })
 
           const fallbackResult = restartSystemdService(serviceName)

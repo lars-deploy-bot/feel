@@ -1,5 +1,5 @@
 export interface AutomationScheduleInput {
-  scheduleType: "once" | "daily" | "weekly" | "monthly" | "custom"
+  scheduleType: "once" | "custom"
   scheduleTime: string
   scheduleDate?: string
   cronExpression?: string
@@ -48,11 +48,6 @@ function parseScheduleTime(scheduleTime: string): { hour: number; minute: number
   }
 
   return { hour, minute }
-}
-
-function toCronTimePrefix(scheduleTime: string): string {
-  const { hour, minute } = parseScheduleTime(scheduleTime)
-  return `${minute} ${hour}`
 }
 
 function createTimezoneFormatter(timezone: string): Intl.DateTimeFormat {
@@ -142,9 +137,7 @@ export function toZonedDateTimeIso(scheduleDate: string, scheduleTime: string, t
   return new Date(utcTimestamp).toISOString()
 }
 
-export function scheduleResultToApiPayload(result: AutomationScheduleInput, now = new Date()): SchedulePayload {
-  const timePrefix = toCronTimePrefix(result.scheduleTime)
-
+export function scheduleResultToApiPayload(result: AutomationScheduleInput): SchedulePayload {
   switch (result.scheduleType) {
     case "once": {
       if (!result.scheduleDate) {
@@ -156,27 +149,6 @@ export function scheduleResultToApiPayload(result: AutomationScheduleInput, now 
         run_at: toZonedDateTimeIso(result.scheduleDate, result.scheduleTime, result.timezone),
       }
     }
-
-    case "daily":
-      return {
-        trigger_type: "cron",
-        cron_schedule: `${timePrefix} * * *`,
-        cron_timezone: result.timezone,
-      }
-
-    case "weekly":
-      return {
-        trigger_type: "cron",
-        cron_schedule: `${timePrefix} * * ${now.getDay()}`,
-        cron_timezone: result.timezone,
-      }
-
-    case "monthly":
-      return {
-        trigger_type: "cron",
-        cron_schedule: `${timePrefix} ${now.getDate()} * *`,
-        cron_timezone: result.timezone,
-      }
 
     case "custom": {
       const cronExpression = result.cronExpression?.trim()

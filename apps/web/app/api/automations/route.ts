@@ -102,7 +102,6 @@ export const GET = protectedRoute(async ({ user, req }) => {
   const { data, error } = await jobsQuery.returns<AutomationListRow[]>()
 
   if (error) {
-    console.error("[Automations API] Query error:", error)
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.QUERY_FAILED, { status: 500 })
   }
@@ -193,14 +192,14 @@ export const POST = protectedRoute(async ({ user, req }) => {
 
   const supabase = createServiceAppClient()
 
-  // Resolve schedule_text → cron if provided (text takes priority over raw cron)
+  // Resolve schedule_text → cron if provided (text always takes priority over raw cron)
   let resolvedCron = parsed.cron_schedule ?? null
   let resolvedTimezone = parsed.cron_timezone ?? null
 
-  if (parsed.trigger_type === "cron" && parsed.schedule_text && !parsed.cron_schedule) {
+  if (parsed.trigger_type === "cron" && parsed.schedule_text) {
     try {
-      const { textToCron } = await import("@/lib/automation/text-to-cron")
-      const result = await textToCron(parsed.schedule_text)
+      const { resolveScheduleText } = await import("@/lib/automation/text-to-cron")
+      const result = await resolveScheduleText(parsed.schedule_text, parsed.cron_timezone ?? null)
       resolvedCron = result.cron
       if (result.timezone) {
         resolvedTimezone = result.timezone
@@ -263,7 +262,6 @@ export const POST = protectedRoute(async ({ user, req }) => {
     .single()
 
   if (error) {
-    console.error("[Automations API] Insert error:", error)
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
