@@ -14,7 +14,13 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { env, getRedisUrl } from "@webalive/env/server"
-import { createRedisClient } from "@webalive/redis"
+import {
+  _resetSharedClient,
+  getCircuitBreakerStatus,
+  getSharedClient,
+  recordSharedFailure,
+  recordSharedSuccess,
+} from "@webalive/redis"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { timingSafeCompare } from "@/lib/auth/timing-safe"
 import { getBuildInfo } from "@/lib/build-info"
@@ -86,23 +92,13 @@ async function isAuthorizedForDeepHealth(req: Request): Promise<boolean> {
   return false
 }
 
-// Singleton Redis client for health checks (reuse connection)
-// In standalone mode, this will be null (Redis not available)
-let healthCheckRedis: ReturnType<typeof createRedisClient> | null = null
-let healthCheckRedisInitialized = false
-
 function getHealthCheckRedis() {
-  if (!healthCheckRedisInitialized) {
-    healthCheckRedis = createRedisClient(getRedisUrl())
-    healthCheckRedisInitialized = true
-  }
-  return healthCheckRedis
+  return getSharedClient(getRedisUrl())
 }
 
-// For testing: reset singleton
+// For testing: reset shared client state
 export function _resetHealthCheckRedis() {
-  healthCheckRedis = null
-  healthCheckRedisInitialized = false
+  _resetSharedClient()
 }
 
 /**
@@ -116,7 +112,7 @@ async function checkRedis(): Promise<ServiceHealth> {
 
     // Redis absent: expected in standalone mode, misconfiguration otherwise
     if (!redis) {
-      const isStandalone = env.STREAM_ENV === "standalone"
+      const isStandalone = env.ALIVE_ENV === "standalone"
       return {
         status: isStandalone ? "connected" : "disconnected",
         responseTimeMs: Math.round(performance.now() - start),
@@ -133,27 +129,37 @@ async function checkRedis(): Promise<ServiceHealth> {
     const responseTimeMs = Math.round(performance.now() - start)
 
     if (result === "PONG") {
+      recordSharedSuccess()
       return {
         status: "connected",
         responseTimeMs,
         details: {
           state: redis.status,
+          circuitBreaker: getCircuitBreakerStatus(),
         },
       }
     }
 
+    recordSharedFailure()
     return {
       status: "error",
       responseTimeMs,
       error: `Unexpected ping response: ${result}`,
+      details: {
+        circuitBreaker: getCircuitBreakerStatus(),
+      },
     }
   } catch (error) {
+    recordSharedFailure()
     Sentry.captureException(error)
     const responseTimeMs = Math.round(performance.now() - start)
     return {
       status: "disconnected",
       responseTimeMs,
       error: error instanceof Error ? error.message : String(error),
+      details: {
+        circuitBreaker: getCircuitBreakerStatus(),
+      },
     }
   }
 }
@@ -165,7 +171,7 @@ async function checkRedis(): Promise<ServiceHealth> {
  */
 async function checkDatabase(): Promise<ServiceHealth> {
   // Standalone mode - no database available
-  if (env.STREAM_ENV === "standalone") {
+  if (env.ALIVE_ENV === "standalone") {
     return {
       status: "connected", // Report as "connected" since it's expected in standalone
       responseTimeMs: 0,

@@ -1,13 +1,13 @@
-import { STREAM_ENV } from "@webalive/shared"
+import { ALIVE_ENV } from "@webalive/shared"
 import { EmailProviderError } from "./types"
 
 export function isEmailDeliveryDisabled(): boolean {
   const nodeEnv = process.env.NODE_ENV?.toString()
-  const streamEnv = process.env.STREAM_ENV
-  if (!streamEnv && nodeEnv !== "production") {
+  const aliveEnv = process.env.ALIVE_ENV
+  if (!aliveEnv && nodeEnv !== "production") {
     return true
   }
-  return nodeEnv === "staging" || streamEnv === STREAM_ENV.STAGING
+  return nodeEnv === "staging" || aliveEnv === ALIVE_ENV.STAGING
 }
 
 export function assertEmailDeliveryAllowed(channel: string): void {

@@ -12,8 +12,13 @@
     "ci": "biome ci ."
   },
   "dependencies": {
-    "@sentry/node": "^10.39.0",
+    "@sentry/node": "^10.45.0",
     "@webalive/shared": "workspace:*",
-    "e2b": "^2.14.1"
+    "e2b": "^2.14.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3"
   }
 }

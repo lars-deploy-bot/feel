@@ -13,7 +13,6 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "type-check": "tsgo --noEmit",
-    "typecheck": "bun run type-check",
     "test": "vitest run",
     "check:imports": "node scripts/check-import-order.mjs",
     "lint": "biome lint . && bun run check:imports",
@@ -22,18 +21,18 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.34",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.80",
     "@opentelemetry/api": "^1.9.0",
-    "@sentry/node": "^10.39.0",
-    "@types/node": "^20.0.0",
+    "@sentry/node": "^10.45.0",
     "@webalive/runtime-auth": "workspace:*",
     "@webalive/sandbox": "workspace:*",
     "@webalive/shared": "workspace:*",
-    "@webalive/tools": "workspace:*",
-    "typescript": "^5.0.0"
+    "@webalive/tools": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^4.0.18"
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   },
   "keywords": [
     "worker-pool",

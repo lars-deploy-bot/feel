@@ -58,7 +58,6 @@ describe("tabStore", () => {
       tabsByWorkspace: {},
       activeTabByWorkspace: {},
       tabsExpandedByWorkspace: {},
-      nextTabNumberByWorkspace: {},
     })
   })
 
@@ -68,7 +67,6 @@ describe("tabStore", () => {
       tabsByWorkspace: {},
       activeTabByWorkspace: {},
       tabsExpandedByWorkspace: {},
-      nextTabNumberByWorkspace: {},
     })
   })
 
@@ -291,8 +289,7 @@ describe("tabStore", () => {
         },
         activeTabByWorkspace: { [workspace]: "tab-1" },
         tabsExpandedByWorkspace: {},
-        nextTabNumberByWorkspace: {},
-      })
+        })
 
       // Both should count as open
       expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(2)
@@ -316,8 +313,7 @@ describe("tabStore", () => {
         },
         activeTabByWorkspace: {},
         tabsExpandedByWorkspace: {},
-        nextTabNumberByWorkspace: {},
-      })
+        })
 
       // closedAt=0 is a valid timestamp (epoch), so it's closed
       const openCount = countOpenTabsInGroup(workspace, tabGroupId)
@@ -448,8 +444,7 @@ describe("tabStore", () => {
         },
         activeTabByWorkspace: { [workspace]: "phantom-0" },
         tabsExpandedByWorkspace: {},
-        nextTabNumberByWorkspace: {},
-      })
+        })
 
       expect(countOpenTabs(workspace)).toBe(50)
 

@@ -124,6 +124,8 @@ export type StreamEvent =
   | StreamInterruptEvent
   | StreamErrorEvent
 
+const STREAM_EVENT_TYPE_SET: ReadonlySet<string> = new Set(STREAM_EVENT_TYPES)
+
 /**
  * Type guard for stream events
  */
@@ -131,5 +133,6 @@ export function isStreamEvent(e: unknown): e is StreamEvent {
   if (typeof e !== "object" || e === null || !("type" in e)) {
     return false
   }
-  return STREAM_EVENT_TYPES.includes((e as { type: string }).type as StreamEventType)
+  const { type } = e
+  return typeof type === "string" && STREAM_EVENT_TYPE_SET.has(type)
 }

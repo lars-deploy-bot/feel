@@ -10,7 +10,7 @@
  */
 
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { retryAsync } from "@webalive/shared"
+import { isRecord, retryAsync } from "@webalive/shared"
 import { z } from "zod"
 import { errorResult, type ToolResult } from "../../lib/api-client.js"
 import { extractDomainFromWorkspace, validateWorkspacePath } from "../../lib/workspace-validator.js"
@@ -25,6 +25,12 @@ const browserActions = z.enum(["open", "screenshot", "snapshot", "click", "fill"
 
 export const browserParamsSchema = {
   action: browserActions.describe("Browser action to perform"),
+  url: z
+    .string()
+    .optional()
+    .describe(
+      "Full external URL to navigate to (e.g., 'https://google.com'). Used with 'open' action. Mutually exclusive with 'path'.",
+    ),
   path: z.string().optional().describe("URL path to navigate to (e.g., '/about'). Used with 'open' action."),
   ref: z.string().optional().describe("Element ref from snapshot (e.g., 'e12'). Used with 'click' and 'fill'."),
   value: z.string().optional().describe("Value to fill into an input. Used with 'fill' action."),
@@ -80,10 +86,10 @@ async function callBrowserService(
         cancelSignal?.removeEventListener("abort", onCancel)
 
         const data: unknown = await response.json()
-        if (typeof data !== "object" || data === null || Array.isArray(data)) {
+        if (!isRecord(data)) {
           throw new Error("Unexpected response format from browser-control service")
         }
-        return { ok: response.ok, status: response.status, data: data as Record<string, unknown> }
+        return { ok: response.ok, status: response.status, data }
       } catch (err) {
         clearTimeout(timeoutId)
         cancelSignal?.removeEventListener("abort", onCancel)
@@ -155,16 +161,13 @@ export async function browserAction(params: BrowserParams, cancelSignal?: AbortS
       }
 
       case "open": {
-        const { ok, data } = await callBrowserService(
-          "/open",
-          "POST",
-          {
-            domain,
-            sessionId: SESSION_ID,
-            path: params.path ?? "/",
-          },
-          cancelSignal,
-        )
+        const openBody: Record<string, unknown> = {
+          domain,
+          sessionId: SESSION_ID,
+          ...(params.url ? { url: params.url } : { path: params.path ?? "/" }),
+        }
+
+        const { ok, data } = await callBrowserService("/open", "POST", openBody, cancelSignal)
         if (!ok) {
           return errorResult("Failed to open page", String(data.error))
         }
@@ -227,8 +230,7 @@ export async function browserAction(params: BrowserParams, cancelSignal?: AbortS
           return errorResult("Snapshot failed", String(data.error))
         }
 
-        const stats =
-          typeof data.stats === "object" && data.stats !== null ? (data.stats as Record<string, unknown>) : {}
+        const stats = isRecord(data.stats) ? data.stats : {}
         const refCount =
           typeof stats.interactive === "number" ? stats.interactive : typeof stats.refs === "number" ? stats.refs : 0
         const header = `Page: ${data.url} | Title: ${data.title} | Interactive elements: ${refCount}`
@@ -293,10 +295,8 @@ export async function browserAction(params: BrowserParams, cancelSignal?: AbortS
         if (errors.length > 0) {
           parts.push(`--- Page Errors (${errors.length}) ---`)
           for (const err of errors) {
-            if (typeof err === "object" && err !== null) {
-              parts.push(
-                `[${String((err as Record<string, unknown>).timestamp)}] ${String((err as Record<string, unknown>).message)}`,
-              )
+            if (isRecord(err)) {
+              parts.push(`[${String(err.timestamp)}] ${String(err.message)}`)
             }
           }
         }
@@ -304,9 +304,8 @@ export async function browserAction(params: BrowserParams, cancelSignal?: AbortS
         if (messages.length > 0) {
           parts.push(`--- Console Messages (${messages.length}) ---`)
           for (const msg of messages) {
-            if (typeof msg === "object" && msg !== null) {
-              const m = msg as Record<string, unknown>
-              parts.push(`[${String(m.timestamp)}] [${String(m.type)}] ${String(m.text)}`)
+            if (isRecord(msg)) {
+              parts.push(`[${String(msg.timestamp)}] [${String(msg.type)}] ${String(msg.text)}`)
             }
           }
         }
@@ -331,10 +330,10 @@ export async function browserAction(params: BrowserParams, cancelSignal?: AbortS
 
 export const browserTool = tool(
   "browser",
-  `Control a headless browser to QA the website you're building. Opens the site on localhost and lets you inspect and interact with it.
+  `Control a headless browser to QA the website you're building, or browse external websites for research.
 
 **Actions:**
-- **open**: Navigate to a page. Params: path (e.g., "/about"). Always call this first.
+- **open**: Navigate to a page. Use path (e.g., "/about") for the workspace site, or url (e.g., "https://example.com") for external sites. Always call this first.
 - **screenshot**: Take a screenshot of the current page. Params: fullPage (default: true).
 - **snapshot**: Get the accessibility tree with element refs (e1, e2, ...). Params: interactive (only show clickable elements).
 - **click**: Click an element by ref from snapshot. Params: ref (e.g., "e3").

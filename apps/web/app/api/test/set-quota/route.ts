@@ -18,7 +18,7 @@ interface SetQuotaRequest {
 
 export async function POST(req: Request) {
   // Environment guard - return 404 to hide endpoint existence
-  const isTestEnv = env.NODE_ENV === "test" || env.STREAM_ENV === "local"
+  const isTestEnv = env.NODE_ENV === "test" || env.ALIVE_ENV === "local"
   const testSecret = req.headers.get("x-test-secret")
   const expectedSecret = env.E2E_TEST_SECRET
   const hasValidSecret = expectedSecret && testSecret === expectedSecret

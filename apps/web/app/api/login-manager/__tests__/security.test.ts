@@ -9,8 +9,8 @@ vi.mock("@/lib/env", () => ({
     get ALIVE_PASSCODE() {
       return process.env.ALIVE_PASSCODE
     },
-    get STREAM_ENV() {
-      return process.env.STREAM_ENV
+    get ALIVE_ENV() {
+      return process.env.ALIVE_ENV
     },
     get NODE_ENV() {
       return process.env.NODE_ENV
@@ -24,7 +24,7 @@ const { managerLoginRateLimiter } = await import("@/lib/auth/rate-limiter")
 describe("Manager Login Security Tests", () => {
   beforeEach(() => {
     vi.stubEnv("ALIVE_PASSCODE", "wachtwoord")
-    vi.stubEnv("STREAM_ENV", "")
+    vi.stubEnv("ALIVE_ENV", "")
     vi.stubEnv("NODE_ENV", "production")
     vi.clearAllMocks()
 

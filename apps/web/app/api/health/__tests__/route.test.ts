@@ -9,12 +9,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createMockSessionUser, MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
 
-// Mock Redis client
+// Mock Redis shared client
+const mockGetSharedClient = vi.fn()
+const mockGetCircuitBreakerStatus = vi.fn(() => ({
+  state: "closed",
+  failureCount: 0,
+  lastFailureAt: null,
+  openedAt: null,
+}))
+
 vi.mock("@webalive/redis", () => ({
-  createRedisClient: vi.fn(() => ({
-    ping: vi.fn(),
-    status: "ready",
-  })),
+  getSharedClient: (...args: unknown[]) => mockGetSharedClient(...args),
+  getCircuitBreakerStatus: () => mockGetCircuitBreakerStatus(),
+  recordSharedSuccess: vi.fn(),
+  recordSharedFailure: vi.fn(),
+  _resetSharedClient: vi.fn(),
 }))
 
 // Mock Supabase client
@@ -40,8 +49,8 @@ vi.mock("@/lib/env/server", () => ({
 
 vi.mock("@webalive/env/server", () => ({
   env: {
-    get STREAM_ENV() {
-      return process.env.STREAM_ENV
+    get ALIVE_ENV() {
+      return process.env.ALIVE_ENV
     },
   },
   getRedisUrl: vi.fn(() => "redis://localhost:6379"),
@@ -54,14 +63,11 @@ vi.mock("@/features/auth/lib/auth", () => ({
 
 // Import after mocking
 const { GET, _resetHealthCheckRedis } = await import("../route")
-const { createRedisClient } = await import("@webalive/redis")
 const { getSessionUser } = await import("@/features/auth/lib/auth")
 
-// Type helpers for mocks
-type MockRedis = ReturnType<typeof createRedisClient>
-
-function mockRedis(overrides: { ping: ReturnType<typeof vi.fn>; status: string }): MockRedis {
-  return overrides as unknown as MockRedis
+interface MockRedisShape {
+  ping: ReturnType<typeof vi.fn>
+  status: string
 }
 
 /** Create a plain request (no auth) */
@@ -79,12 +85,11 @@ function internalRequest(secret: string): Request {
 const SENSITIVE_KEYS = ["services", "system", "build"]
 
 function setupHealthyServices() {
-  vi.mocked(createRedisClient).mockReturnValue(
-    mockRedis({
-      ping: vi.fn().mockResolvedValue("PONG"),
-      status: "ready",
-    }),
-  )
+  const redisMock: MockRedisShape = {
+    ping: vi.fn().mockResolvedValue("PONG"),
+    status: "ready",
+  }
+  mockGetSharedClient.mockReturnValue(redisMock)
   mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 }
 
@@ -93,6 +98,7 @@ describe("GET /api/health", () => {
     vi.clearAllMocks()
     _resetHealthCheckRedis()
     mockFetch.mockReset()
+    mockGetSharedClient.mockReset()
     vi.stubEnv("JWT_SECRET", "test-jwt-secret")
     vi.mocked(getSessionUser).mockResolvedValue(null)
   })
@@ -119,12 +125,11 @@ describe("GET /api/health", () => {
     })
 
     it("should return 503 when unhealthy, still without sensitive fields", async () => {
-      vi.mocked(createRedisClient).mockReturnValue(
-        mockRedis({
-          ping: vi.fn().mockRejectedValue(new Error("Connection refused")),
-          status: "end",
-        }),
-      )
+      const redisMock: MockRedisShape = {
+        ping: vi.fn().mockRejectedValue(new Error("Connection refused")),
+        status: "end",
+      }
+      mockGetSharedClient.mockReturnValue(redisMock)
       mockFetch.mockRejectedValue(new Error("Database error"))
 
       const response = await GET(publicRequest())
@@ -264,7 +269,7 @@ describe("GET /api/health", () => {
       expect(data.responseTimeMs).toBeGreaterThanOrEqual(0)
     })
 
-    it("should show Redis details when connected", async () => {
+    it("should show Redis details with circuit breaker status when connected", async () => {
       setupHealthyServices()
 
       const response = await GET(internalRequest("test-jwt-secret"))
@@ -273,13 +278,19 @@ describe("GET /api/health", () => {
       expect(data.services.redis.status).toBe("connected")
       expect(data.services.redis.details).toBeDefined()
       expect(data.services.redis.details.state).toBe("ready")
+      expect(data.services.redis.details.circuitBreaker).toEqual({
+        state: "closed",
+        failureCount: 0,
+        lastFailureAt: null,
+        openedAt: null,
+      })
     })
   })
 
   describe("Unhealthy - Services Disconnected", () => {
     it("should return 503 when Redis client is unavailable outside standalone mode", async () => {
-      vi.stubEnv("STREAM_ENV", "production")
-      vi.mocked(createRedisClient).mockReturnValue(null as unknown as MockRedis)
+      vi.stubEnv("ALIVE_ENV", "production")
+      mockGetSharedClient.mockReturnValue(null)
       mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET(internalRequest("test-jwt-secret"))
@@ -292,12 +303,11 @@ describe("GET /api/health", () => {
     })
 
     it("should return 503 when Redis is disconnected", async () => {
-      vi.mocked(createRedisClient).mockReturnValue(
-        mockRedis({
-          ping: vi.fn().mockRejectedValue(new Error("Connection refused")),
-          status: "end",
-        }),
-      )
+      const redisMock: MockRedisShape = {
+        ping: vi.fn().mockRejectedValue(new Error("Connection refused")),
+        status: "end",
+      }
+      mockGetSharedClient.mockReturnValue(redisMock)
       mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET(internalRequest("test-jwt-secret"))
@@ -310,12 +320,11 @@ describe("GET /api/health", () => {
     })
 
     it("should return 503 when database is disconnected", async () => {
-      vi.mocked(createRedisClient).mockReturnValue(
-        mockRedis({
-          ping: vi.fn().mockResolvedValue("PONG"),
-          status: "ready",
-        }),
-      )
+      const redisMock: MockRedisShape = {
+        ping: vi.fn().mockResolvedValue("PONG"),
+        status: "ready",
+      }
+      mockGetSharedClient.mockReturnValue(redisMock)
       mockFetch.mockRejectedValue(new Error("Database connection failed"))
 
       const response = await GET(internalRequest("test-jwt-secret"))
@@ -328,12 +337,11 @@ describe("GET /api/health", () => {
     })
 
     it("should return 503 when both services are disconnected", async () => {
-      vi.mocked(createRedisClient).mockReturnValue(
-        mockRedis({
-          ping: vi.fn().mockRejectedValue(new Error("Redis error")),
-          status: "end",
-        }),
-      )
+      const redisMock: MockRedisShape = {
+        ping: vi.fn().mockRejectedValue(new Error("Redis error")),
+        status: "end",
+      }
+      mockGetSharedClient.mockReturnValue(redisMock)
       mockFetch.mockRejectedValue(new Error("Database error"))
 
       const response = await GET(internalRequest("test-jwt-secret"))
@@ -348,12 +356,11 @@ describe("GET /api/health", () => {
 
   describe("Degraded - Service Errors", () => {
     it("should return degraded when Redis returns unexpected response", async () => {
-      vi.mocked(createRedisClient).mockReturnValue(
-        mockRedis({
-          ping: vi.fn().mockResolvedValue("UNEXPECTED"),
-          status: "ready",
-        }),
-      )
+      const redisMock: MockRedisShape = {
+        ping: vi.fn().mockResolvedValue("UNEXPECTED"),
+        status: "ready",
+      }
+      mockGetSharedClient.mockReturnValue(redisMock)
       mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET(internalRequest("test-jwt-secret"))
@@ -366,12 +373,11 @@ describe("GET /api/health", () => {
     })
 
     it("should return degraded when database query has error", async () => {
-      vi.mocked(createRedisClient).mockReturnValue(
-        mockRedis({
-          ping: vi.fn().mockResolvedValue("PONG"),
-          status: "ready",
-        }),
-      )
+      const redisMock: MockRedisShape = {
+        ping: vi.fn().mockResolvedValue("PONG"),
+        status: "ready",
+      }
+      mockGetSharedClient.mockReturnValue(redisMock)
       mockFetch.mockResolvedValue(new Response(JSON.stringify({ message: "Query failed" }), { status: 400 }))
 
       const response = await GET(internalRequest("test-jwt-secret"))
@@ -386,8 +392,8 @@ describe("GET /api/health", () => {
 
   describe("Standalone Mode", () => {
     it("should treat missing Redis as connected in standalone mode", async () => {
-      vi.stubEnv("STREAM_ENV", "standalone")
-      vi.mocked(createRedisClient).mockReturnValue(null as unknown as MockRedis)
+      vi.stubEnv("ALIVE_ENV", "standalone")
+      mockGetSharedClient.mockReturnValue(null)
       mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET(internalRequest("test-jwt-secret"))

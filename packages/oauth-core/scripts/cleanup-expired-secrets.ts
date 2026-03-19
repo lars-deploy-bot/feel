@@ -10,7 +10,7 @@
  *   bun run cleanup-expired-secrets.ts [--dry-run] [--verbose]
  *
  * Environment:
- *   STREAM_ENV - Environment to run in (local|dev|staging|prod)
+ *   ALIVE_ENV - Environment to run in (local|dev|staging|prod)
  *   Defaults to 'dev' if not set
  */
 
@@ -57,7 +57,7 @@ Options:
 Environment Variables:
   SUPABASE_URL              Supabase project URL (required)
   SUPABASE_SERVICE_KEY      Service role key for database access (required)
-  STREAM_ENV                Environment (local|dev|staging|prod) - defaults to 'dev'
+  ALIVE_ENV                Environment (local|dev|staging|prod) - defaults to 'dev'
 
 Examples:
   # Dry run to see what would be deleted
@@ -67,14 +67,15 @@ Examples:
   bun run cleanup-expired-secrets.ts
 
   # Run in production
-  STREAM_ENV=prod bun run cleanup-expired-secrets.ts
+  ALIVE_ENV=prod bun run cleanup-expired-secrets.ts
 `)
   process.exit(0)
 }
 
 const isDryRun = values["dry-run"]
 const isVerbose = values.verbose
-const environment = process.env.STREAM_ENV || "dev"
+const environment = process.env.ALIVE_ENV
+if (!environment) throw new Error("ALIVE_ENV is required (e.g. dev, staging, production)")
 
 // Safety check - require explicit confirmation for production
 if (environment === "prod" && !isDryRun) {
@@ -87,12 +88,12 @@ if (environment === "prod" && !isDryRun) {
 
 // Validate environment variables
 const supabaseUrl = process.env.SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error("❌ Missing required environment variables:")
   if (!supabaseUrl) console.error("   - SUPABASE_URL")
-  if (!supabaseServiceKey) console.error("   - SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY")
+  if (!supabaseServiceKey) console.error("   - SUPABASE_SERVICE_ROLE_KEY")
   process.exit(1)
 }
 

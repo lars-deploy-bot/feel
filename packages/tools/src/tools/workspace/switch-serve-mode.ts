@@ -1,7 +1,7 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { COOKIE_NAMES } from "@webalive/shared"
+import { COOKIE_NAMES, isRecord } from "@webalive/shared"
 import { z } from "zod"
-import type { ToolResult } from "../../lib/api-client.js"
+import { getApiBaseUrl, type ToolResult } from "../../lib/api-client.js"
 import { validateWorkspacePath } from "../../lib/workspace-validator.js"
 
 export const switchServeModeParamsSchema = {
@@ -18,18 +18,6 @@ export const switchServeModeParamsSchema = {
 export type SwitchServeModeParams = {
   mode: "dev" | "build"
   build_first?: boolean
-}
-
-function getApiBaseUrl(): string {
-  const portEnv = process.env.PORT
-  if (!portEnv) {
-    throw new Error("Invalid PORT environment variable")
-  }
-  const port = Number.parseInt(portEnv.trim(), 10)
-  if (!Number.isFinite(port) || port < 1 || port > 65535) {
-    throw new Error("Invalid PORT environment variable")
-  }
-  return `http://localhost:${port}`
 }
 
 /**
@@ -84,22 +72,19 @@ export async function switchServeMode(params: SwitchServeModeParams): Promise<To
 
     clearTimeout(timeoutId)
 
-    const result = (await response.json()) as {
-      ok?: boolean
-      message?: string
-      output?: string
-    }
+    const raw: unknown = await response.json()
+    const result = isRecord(raw) ? raw : {}
 
     // For this tool, we want to show the formatted output on both success and failure
     if (result.ok) {
       return {
-        content: [{ type: "text", text: result.message || "✓ Mode switched successfully" }],
+        content: [{ type: "text", text: String(result.message ?? "✓ Mode switched successfully") }],
         isError: false,
       }
     }
 
     // On failure, show friendly message + technical build output
-    const technicalDetails = result.output || result.message || "Unknown error"
+    const technicalDetails = String(result.output ?? result.message ?? "Unknown error")
     return {
       content: [
         {

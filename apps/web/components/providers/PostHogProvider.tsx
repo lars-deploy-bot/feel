@@ -3,6 +3,7 @@
 import posthog from "posthog-js"
 import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react"
 import { type ReactNode, useCallback, useEffect } from "react"
+import { getRuntimeConfig } from "@/lib/hooks/useRuntimeConfig"
 import { useAuthStatus } from "@/lib/stores/authStore"
 
 /**
@@ -13,24 +14,37 @@ import { useAuthStatus } from "@/lib/stores/authStore"
  * - Session recording for debugging
  * - Feature flags support
  *
- * Requires NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST env vars.
- * If not configured, renders children without PostHog integration.
+ * Uses runtime config from /api/config so that the PostHog key and host can be
+ * changed without a rebuild. Falls back to build-time NEXT_PUBLIC_ values if
+ * the runtime config hasn't loaded yet.
  */
 
-const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
 const posthogHost = "/a"
 
 // Track initialization state
 let isInitialized = false
 
+function getPostHogKey(): string {
+  const config = getRuntimeConfig()
+  return config.posthogKey
+}
+
+function getPostHogUiHost(): string {
+  const config = getRuntimeConfig()
+  return config.posthogHost
+}
+
 function initPostHog() {
-  if (isInitialized || typeof window === "undefined" || !posthogKey || process.env.NODE_ENV !== "production") {
+  if (isInitialized || typeof window === "undefined" || process.env.NODE_ENV !== "production") {
     return
   }
 
-  posthog.init(posthogKey, {
+  const key = getPostHogKey()
+  if (!key) return
+
+  posthog.init(key, {
     api_host: posthogHost,
-    ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    ui_host: getPostHogUiHost(),
     // Use latest defaults for all features including error tracking
     defaults: "2025-05-24",
     // Enable exception autocapture - this automatically captures:
@@ -78,7 +92,7 @@ export function usePostHogErrorCapture() {
 
   return {
     captureException: (error: Error | unknown, properties?: Record<string, unknown>) => {
-      if (!posthogKey) {
+      if (!getPostHogKey()) {
         console.error("[PostHog] Error capture disabled - no API key:", error)
         return
       }
@@ -98,7 +112,7 @@ export function usePostHogErrorCapture() {
  * The SDK automatically formats the error into PostHog's $exception_list structure.
  */
 export function captureException(error: Error | unknown, properties?: Record<string, unknown>) {
-  if (!posthogKey || typeof window === "undefined") {
+  if (!getPostHogKey() || typeof window === "undefined") {
     console.error("[PostHog] Error capture disabled:", error)
     return
   }
@@ -156,8 +170,8 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
     initPostHog()
   }, [])
 
-  // If no PostHog key, just render children without the provider
-  if (!posthogKey) {
+  // If no PostHog key available from runtime config, just render children without the provider
+  if (!getPostHogKey()) {
     return <>{children}</>
   }
 

@@ -19,6 +19,7 @@
  */
 
 import { GLOBAL_MCP_PROVIDERS, getGlobalMcpToolNames, isOAuthMcpTool, OAUTH_MCP_PROVIDERS } from "../mcp-providers.js"
+import { isRecord } from "../type-guards.js"
 import {
   INTERNAL_TOOL_DESCRIPTORS,
   type InternalToolDescriptor,
@@ -313,14 +314,17 @@ export function getAccessibleStreamModes(role: StreamToolRole): { key: StreamMod
  * Resolve requested stream mode against role requirements.
  * Falls back to "default" when mode is invalid or role is insufficient.
  */
+const STREAM_MODE_KEY_SET: ReadonlySet<string> = new Set(STREAM_MODE_KEYS)
+
+function isStreamMode(value: string): value is StreamMode {
+  return STREAM_MODE_KEY_SET.has(value)
+}
+
 export function resolveStreamMode(
   requestedMode: unknown,
   input: Pick<StreamToolContextInput, "isAdmin" | "isSuperadmin"> = {},
 ): StreamMode {
-  const normalizedMode =
-    typeof requestedMode === "string" && Object.hasOwn(STREAM_MODES, requestedMode)
-      ? (requestedMode as StreamMode)
-      : "default"
+  const normalizedMode = typeof requestedMode === "string" && isStreamMode(requestedMode) ? requestedMode : "default"
 
   const role = getStreamToolRole(!!input.isAdmin, !!input.isSuperadmin)
   const modeRole = STREAM_MODES[normalizedMode].requiredRole
@@ -416,10 +420,6 @@ const FILE_TOOLS_LOWER: ReadonlySet<StreamSdkToolLowerName> = new Set([
 
 type ToolInputRecord = Record<string, unknown>
 
-function isToolInputRecord(input: unknown): input is ToolInputRecord {
-  return typeof input === "object" && input !== null
-}
-
 function getInputString(input: ToolInputRecord, key: string): string | null {
   const value = input[key]
   return typeof value === "string" && value.length > 0 ? value : null
@@ -475,7 +475,7 @@ export interface ToolDetailOptions {
  * hostname for webfetch, or null.
  */
 export function getToolDetail(toolName: string, input: unknown, options: ToolDetailOptions = {}): string | null {
-  if (!isToolInputRecord(input)) return null
+  if (!isRecord(input)) return null
 
   const lower = normalizeSdkToolLowerName(toolName)
   if (!lower) return null

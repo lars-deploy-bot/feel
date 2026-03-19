@@ -159,9 +159,9 @@ ENV_NEEDS_UPDATE=false
 if [ -f "$ENV_FILE" ]; then
     echo -e "${GREEN}✓${NC} Found existing .env.local"
 
-    # Check if STREAM_ENV is set correctly
-    if ! grep -q "^STREAM_ENV=local" "$ENV_FILE" 2>/dev/null; then
-        echo -e "${YELLOW}⚠${NC} STREAM_ENV not set to 'local' in .env.local"
+    # Check if ALIVE_ENV is set correctly
+    if ! grep -q "^ALIVE_ENV=local" "$ENV_FILE" 2>/dev/null; then
+        echo -e "${YELLOW}⚠${NC} ALIVE_ENV not set to 'local' in .env.local"
         ENV_NEEDS_UPDATE=true
     fi
 
@@ -175,7 +175,7 @@ if [ -f "$ENV_FILE" ]; then
         echo ""
         echo -e "${BLUE}→${NC} Update your ${BLUE}apps/web/.env.local${NC} with:"
         echo -e ""
-        echo -e "     ${GREEN}STREAM_ENV=local${NC}"
+        echo -e "     ${GREEN}ALIVE_ENV=local${NC}"
         echo -e "     ${GREEN}LOCAL_TEMPLATE_PATH=$TEMPLATE_DIR${NC}"
         echo ""
     else
@@ -187,7 +187,7 @@ else
     echo ""
     echo -e "${BLUE}→${NC} Create ${BLUE}apps/web/.env.local${NC} with:"
     echo -e ""
-    echo -e "     ${GREEN}STREAM_ENV=local${NC}"
+    echo -e "     ${GREEN}ALIVE_ENV=local${NC}"
     echo -e "     ${GREEN}LOCAL_TEMPLATE_PATH=$TEMPLATE_DIR${NC}"
     echo ""
 fi

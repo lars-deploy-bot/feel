@@ -19,7 +19,7 @@ export {
   type AutomationTriggerResponse,
   AutomationTriggerResponseSchema,
 } from "./automation-schemas.js"
-export { caddySitesFilteredPath, caddySitesPath, requireStreamEnv } from "./caddy-paths.js"
+export { caddySitesFilteredPath, caddySitesPath, requireAliveEnv } from "./caddy-paths.js"
 export {
   assertValidServerId,
   CONFIG_PATH,
@@ -40,8 +40,8 @@ export {
   SENTRY,
   SHELL,
   STANDALONE,
-  STREAM_ENV,
-  type StreamEnv,
+  ALIVE_ENV,
+  type AliveEnv,
   SUPERADMIN,
   TIMEOUTS,
 } from "./config.js"
@@ -152,7 +152,6 @@ export {
   getOAuthKeyForProvider,
   getProviderInfo,
   isOAuthMcpTool,
-  isValidOAuthMcpProviderKey,
   isValidOAuthProviderKey,
   // Microsoft Graph scope constants (single source of truth)
   MICROSOFT_GRAPH_SCOPES,
@@ -253,6 +252,7 @@ export type {
   TokenResponse,
 } from "./stream-tokens.js"
 export { SUPER_TEMPLATE_CATEGORIES } from "./super-template-categories.js"
+export { isRecord } from "./type-guards.js"
 export {
   DEPLOYMENT_TEMPLATES,
   type DeploymentTemplate,

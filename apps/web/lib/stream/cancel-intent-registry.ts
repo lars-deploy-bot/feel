@@ -12,7 +12,7 @@
  */
 
 import { getRedisUrl } from "@webalive/env/server"
-import { createRedisClient } from "@webalive/redis"
+import { getSharedClient, recordSharedFailure, recordSharedSuccess } from "@webalive/redis"
 
 interface CancelIntent {
   userId: string
@@ -32,20 +32,12 @@ type IntentScope = "conversation" | "request"
 // In-memory fallback (used when Redis is unavailable, e.g. standalone/tests)
 const memoryIntents = new Map<string, CancelIntent>()
 
-let redisClient: ReturnType<typeof createRedisClient> | null = null
-let redisInitialized = false
-
 function getRedis() {
-  if (!redisInitialized) {
-    redisClient = createRedisClient(getRedisUrl())
-    redisInitialized = true
-  }
-  // ioredis with maxRetriesPerRequest:null queues commands forever while connecting.
-  // Return null when not ready so withRedisFallback uses the in-memory path.
-  if (redisClient && redisClient.status !== "ready") {
-    return null
-  }
-  return redisClient
+  const client = getSharedClient(getRedisUrl())
+  if (!client) return null
+  // Only return when ready so withRedisFallback uses the in-memory path.
+  if (client.status !== "ready") return null
+  return client
 }
 
 function buildScopeKey(scope: IntentScope, id: string): string {
@@ -73,8 +65,11 @@ async function withRedisFallback<T>(
   const redis = getRedis()
   if (!redis) return fallback()
   try {
-    return await operation(redis)
+    const result = await operation(redis)
+    recordSharedSuccess()
+    return result
   } catch {
+    recordSharedFailure()
     return fallback()
   }
 }

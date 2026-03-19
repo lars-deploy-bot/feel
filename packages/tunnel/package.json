@@ -17,13 +17,13 @@
     "sync": "bun run src/sync.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.8",
+    "@supabase/supabase-js": "^2.99.3",
     "@webalive/shared": "workspace:*",
-    "cloudflare": "^4.4.0"
+    "cloudflare": "^5.2.0"
   },
   "devDependencies": {
-    "@types/node": "^22.5.2",
+    "@types/node": "^25.5.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   }
 }

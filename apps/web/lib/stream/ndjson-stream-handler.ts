@@ -20,7 +20,7 @@
 
 import * as Sentry from "@sentry/nextjs"
 import type { ClaudeModel } from "@webalive/shared"
-import { type OAuthWarning, STREAMING } from "@webalive/shared"
+import { isRecord, type OAuthWarning, STREAMING } from "@webalive/shared"
 import { sessionStore, type TabSessionKey } from "@/features/auth/lib/sessionStore"
 import type {
   BridgeCompleteMessage,
@@ -84,15 +84,7 @@ function getObjectProperty(value: unknown, key: string): unknown {
 }
 
 function toRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object") {
-    return null
-  }
-
-  const record: Record<string, unknown> = {}
-  for (const [key, entry] of Object.entries(value)) {
-    record[key] = entry
-  }
-  return record
+  return isRecord(value) ? value : null
 }
 
 function getStringProperty(value: unknown, key: string): string | undefined {

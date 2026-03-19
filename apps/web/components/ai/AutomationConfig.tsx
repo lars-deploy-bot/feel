@@ -11,7 +11,7 @@
 "use client"
 
 import { CLAUDE_MODELS, type ClaudeModel, getModelDisplayName, isValidClaudeModel } from "@webalive/shared"
-import { Check, ChevronRight, Clock, Cpu, Globe, Zap } from "lucide-react"
+import { Check, ChevronRight, Cpu, Globe, Zap } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ScheduleInput } from "@/components/automations/ScheduleInput"
 import { getInitialSiteSelection, SiteCombobox, type SiteOption } from "@/components/automations/SiteCombobox"

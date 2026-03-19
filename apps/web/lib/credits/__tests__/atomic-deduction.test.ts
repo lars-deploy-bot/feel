@@ -195,7 +195,7 @@ describe("Atomic Deduction Logic (Simulated)", () => {
  */
 describe("Input Validation", () => {
   it("rejects negative LLM token amounts", () => {
-    // This should be validated in chargeTokensFromCredits()
+    // This should be validated in chargeCreditsDirectly()
     const negativeTokens = -100
 
     // Function should return null for negative input

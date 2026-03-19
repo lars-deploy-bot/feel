@@ -30,6 +30,7 @@ import {
   STRIPE_PATTERNS,
   WEB,
 } from "./tool-names.js"
+import { isRecord } from "@webalive/shared"
 
 // ============================================================
 // TYPES
@@ -77,21 +78,16 @@ function arrayLength(data: unknown): number {
   return Array.isArray(data) ? data.length : 0
 }
 
-/** Type guard: is value a non-null object? */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
-
 // ============================================================
 // PREVIEW GENERATORS
 // ============================================================
 
 const linearIssuePreview = (data: unknown): string => {
-  const d = data as Record<string, unknown> | null
-  if (d?.identifier && d?.title) {
-    const title = String(d.title)
+  if (!isRecord(data)) return "issue"
+  if (data.identifier && data.title) {
+    const title = String(data.title)
     const truncated = title.length > 30 ? `${title.slice(0, 30)}...` : title
-    return `${d.identifier}: ${truncated}`
+    return `${data.identifier}: ${truncated}`
   }
   return "issue"
 }
@@ -104,8 +100,7 @@ const linearIssuesPreview = (data: unknown): string => {
 }
 
 const stripeCustomersPreview = (data: unknown): string => {
-  const d = data as Record<string, unknown> | null
-  const customers = d?.data || data
+  const customers = isRecord(data) ? (data.data ?? data) : data
   const count = arrayLength(customers)
   return `${count} ${plural(count, "customer")}`
 }
@@ -117,43 +112,43 @@ const stripePaymentIntentsPreview = (data: unknown): string => {
 }
 
 const readPreview = (_data: unknown, input?: unknown): string => {
-  const d = _data as Record<string, unknown> | null
-  const inp = input as Record<string, unknown> | null
+  const d = isRecord(_data) ? _data : undefined
+  const inp = isRecord(input) ? input : undefined
   const fileName = inp?.file_path ? String(inp.file_path).split("/").pop() : null
 
   if (d?.total_lines) {
-    const lines = d.lines_returned || d.total_lines
+    const lines = d.lines_returned ?? d.total_lines
     return fileName ? `${fileName} (${lines} lines)` : `${lines} lines`
   }
-  if (d?.file_size) return fileName || "image"
-  if (d?.total_pages) return fileName || "pdf"
-  if (d?.cells) return fileName || "notebook"
-  return fileName || "file"
+  if (d?.file_size) return fileName ?? "image"
+  if (d?.total_pages) return fileName ?? "pdf"
+  if (d?.cells) return fileName ?? "notebook"
+  return fileName ?? "file"
 }
 
 const editPreview = (_data: unknown, input?: unknown): string => {
-  const d = _data as Record<string, unknown> | null
-  const inp = input as Record<string, unknown> | null
+  const d = isRecord(_data) ? _data : undefined
+  const inp = isRecord(input) ? input : undefined
   const fileName = inp?.file_path ? String(inp.file_path).split("/").pop() : null
 
   if (d?.replacements !== undefined) {
     const changes = `${d.replacements} ${plural(Number(d.replacements), "change")}`
     return fileName ? `${fileName} (${changes})` : changes
   }
-  return fileName || "edited"
+  return fileName ?? "edited"
 }
 
 const grepPreview = (data: unknown): string => {
-  const d = data as Record<string, unknown> | null
-  if (d?.count !== undefined) return `found ${d.count} files`
-  if (d?.total_matches !== undefined) return `found ${d.total_matches} matches`
-  if (d?.total !== undefined) return `found ${d.total} matches`
+  if (!isRecord(data)) return "grep"
+  if (data.count !== undefined) return `found ${data.count} files`
+  if (data.total_matches !== undefined) return `found ${data.total_matches} matches`
+  if (data.total !== undefined) return `found ${data.total} matches`
   return "grep"
 }
 
 const bashPreview = (data: unknown, input?: unknown): string => {
-  const d = data as Record<string, unknown> | null
-  const inp = input as Record<string, unknown> | null
+  const d = isRecord(data) ? data : undefined
+  const inp = isRecord(input) ? input : undefined
   const status = d?.exitCode !== undefined ? (d.exitCode === 0 ? "completed" : `failed (${d.exitCode})`) : null
   // Show command snippet if available
   if (inp?.command) {
@@ -161,7 +156,7 @@ const bashPreview = (data: unknown, input?: unknown): string => {
     const short = cmd.length > 40 ? `${cmd.slice(0, 40)}...` : cmd
     return status ? `${short} — ${status}` : short
   }
-  return status || "bash"
+  return status ?? "bash"
 }
 
 // ============================================================
@@ -199,8 +194,7 @@ register(LINEAR.CREATE_ISSUE, {
   autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    return d?.identifier ? `created ${d.identifier}` : "created issue"
+    return isRecord(data) && data.identifier ? `created ${data.identifier}` : "created issue"
   },
 })
 
@@ -208,8 +202,7 @@ register(LINEAR.UPDATE_ISSUE, {
   autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    return d?.identifier ? `updated ${d.identifier}` : "updated issue"
+    return isRecord(data) && data.identifier ? `updated ${data.identifier}` : "updated issue"
   },
 })
 
@@ -302,8 +295,7 @@ register(STRIPE.GET_ACCOUNT_INFO, {
   autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    return (d?.display_name as string) || "account info"
+    return isRecord(data) && typeof data.display_name === "string" ? data.display_name : "account info"
   },
 })
 
@@ -317,9 +309,8 @@ register(STRIPE.SEARCH_RESOURCES, {
   autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    const results = d?.results as unknown[] | undefined
-    const count = results?.length ?? 0
+    const results = isRecord(data) && Array.isArray(data.results) ? data.results : []
+    const count = results.length
     return `${count} ${plural(count, "result")}`
   },
 })
@@ -329,13 +320,13 @@ register(FILE_OPS.READ, { autoExpand: false, getPreview: readPreview })
 register(FILE_OPS.WRITE, {
   autoExpand: false,
   getPreview: (_data, input) => {
-    const d = _data as Record<string, unknown> | null
-    const inp = input as Record<string, unknown> | null
+    const d = isRecord(_data) ? _data : undefined
+    const inp = isRecord(input) ? input : undefined
     const fileName = inp?.file_path ? String(inp.file_path).split("/").pop() : null
     if (d?.bytes_written) {
-      return fileName || "file written"
+      return fileName ?? "file written"
     }
-    return fileName || "file"
+    return fileName ?? "file"
   },
 })
 register(FILE_OPS.EDIT, { autoExpand: false, getPreview: editPreview })
@@ -343,8 +334,7 @@ register(FILE_OPS.GREP, { autoExpand: false, getPreview: grepPreview })
 register(FILE_OPS.GLOB, {
   autoExpand: false,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    return d?.count !== undefined ? `found ${d.count} files` : "glob"
+    return isRecord(data) && data.count !== undefined ? `found ${data.count} files` : "glob"
   },
 })
 
@@ -353,9 +343,8 @@ register(AI.ASK_CLARIFICATION, {
   autoExpand: true, // Always show the questionnaire
   transform: unwrapMcp,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    const questions = d?.questions as unknown[] | undefined
-    const count = questions?.length ?? 0
+    const questions = isRecord(data) && Array.isArray(data.questions) ? data.questions : []
+    const count = questions.length
     return `${count} ${plural(count, "question")}`
   },
 })
@@ -363,9 +352,8 @@ register(AI.ASK_CLARIFICATION, {
 register(AI.ASK_USER_QUESTION, {
   autoExpand: true, // Always show the questionnaire
   getPreview: (_data, toolInput) => {
-    const input = toolInput as Record<string, unknown> | undefined
-    const questions = input?.questions as unknown[] | undefined
-    const count = questions?.length ?? 0
+    const questions = isRecord(toolInput) && Array.isArray(toolInput.questions) ? toolInput.questions : []
+    const count = questions.length
     return `${count} ${plural(count, "question")}`
   },
 })
@@ -392,8 +380,7 @@ register(CALENDAR.COMPOSE_EVENT, {
   autoExpand: true, // Always show the event draft card
   transform: unwrapMcp,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    const summary = d?.summary as string | undefined
+    const summary = isRecord(data) && typeof data.summary === "string" ? data.summary : undefined
     return summary ? `Event: ${summary.slice(0, 30)}${summary.length > 30 ? "..." : ""}` : "event draft"
   },
 })
@@ -411,10 +398,10 @@ register(CALENDAR.PROPOSE_MEETING, {
   autoExpand: true, // Always show the meeting proposal
   transform: unwrapMcp,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    const title = d?.title as string | undefined
-    const times = d?.suggestedTimes as unknown[] | undefined
-    const count = times?.length ?? 0
+    if (!isRecord(data)) return "meeting proposal"
+    const title = typeof data.title === "string" ? data.title : undefined
+    const times = Array.isArray(data.suggestedTimes) ? data.suggestedTimes : []
+    const count = times.length
     return title ? `${title} (${count} ${plural(count, "option")})` : "meeting proposal"
   },
 })
@@ -441,8 +428,7 @@ register(CALENDAR.GET_EVENT, {
   autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    return (d?.summary as string) || "event"
+    return isRecord(data) && typeof data.summary === "string" ? data.summary : "event"
   },
 })
 
@@ -466,8 +452,7 @@ register(EMAIL.COMPOSE, {
   autoExpand: true, // Always show the email card
   transform: unwrapMcp,
   getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    const subject = d?.subject as string | undefined
+    const subject = isRecord(data) && typeof data.subject === "string" ? data.subject : undefined
     return subject ? `Draft: ${subject.slice(0, 30)}...` : "email draft"
   },
 })
@@ -494,7 +479,7 @@ register(PLAN.EXIT_PLAN_MODE, {
 register(WEB.FETCH, {
   autoExpand: false,
   getPreview: (_data, input) => {
-    const inp = input as Record<string, unknown> | null
+    const inp = isRecord(input) ? input : undefined
     if (inp?.url) {
       try {
         const hostname = new URL(String(inp.url)).hostname
@@ -509,7 +494,7 @@ register(WEB.FETCH, {
 register(WEB.SEARCH, {
   autoExpand: false,
   getPreview: (_data, input) => {
-    const inp = input as Record<string, unknown> | null
+    const inp = isRecord(input) ? input : undefined
     if (inp?.query) {
       const q = String(inp.query)
       return `Searched "${q.length > 35 ? `${q.slice(0, 35)}...` : q}"`

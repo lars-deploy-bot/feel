@@ -112,7 +112,7 @@ async function getTerminalWorkspace(body: WorkspaceRequestBody, requestId: strin
   }
 
   // Standalone mode - resolve workspace from local filesystem
-  if (env.STREAM_ENV === "standalone") {
+  if (env.ALIVE_ENV === "standalone") {
     const {
       getStandaloneWorkspacePath,
       getStandaloneWorkspaceBase,
@@ -168,7 +168,7 @@ async function getTerminalWorkspace(body: WorkspaceRequestBody, requestId: strin
   // Allow "test" or "test.alive.local" workspace in local development mode (for E2E tests)
   // Test workspaces are managed by live staging E2E bootstrap
   const testWorkspace = `test.${TEST_CONFIG.EMAIL_DOMAIN}`
-  if (env.STREAM_ENV === "local" && (customWorkspace === "test" || customWorkspace === testWorkspace)) {
+  if (env.ALIVE_ENV === "local" && (customWorkspace === "test" || customWorkspace === testWorkspace)) {
     return await resolveWorktreeIfRequested("/tmp/test-workspace", body, requestId)
   }
 

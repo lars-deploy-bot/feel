@@ -11,8 +11,8 @@ const envMock = {
     get ALIVE_PASSCODE() {
       return process.env.ALIVE_PASSCODE
     },
-    get STREAM_ENV() {
-      return process.env.STREAM_ENV
+    get ALIVE_ENV() {
+      return process.env.ALIVE_ENV
     },
     get NODE_ENV() {
       return process.env.NODE_ENV
@@ -60,7 +60,7 @@ describe("POST /api/login-manager", () => {
     // Set default test environment
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ALIVE_PASSCODE", "wachtwoord")
-    vi.stubEnv("STREAM_ENV", "")
+    vi.stubEnv("ALIVE_ENV", "")
   })
 
   afterEach(() => {
@@ -168,10 +168,10 @@ describe("POST /api/login-manager", () => {
 
   /**
    * TEST MODE AUTHENTICATION
-   * Should accept "test" passcode when STREAM_ENV=local
+   * Should accept "test" passcode when ALIVE_ENV=local
    */
   it("should authenticate with test passcode in local mode", async () => {
-    vi.stubEnv("STREAM_ENV", "local")
+    vi.stubEnv("ALIVE_ENV", "local")
 
     const req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
@@ -197,7 +197,7 @@ describe("POST /api/login-manager", () => {
    * Test passcode should be rejected when not in local mode
    */
   it("should reject test passcode in production mode", async () => {
-    vi.stubEnv("STREAM_ENV", "")
+    vi.stubEnv("ALIVE_ENV", "")
     vi.stubEnv("NODE_ENV", "production")
 
     const req = createMockNextRequest("http://localhost/api/login-manager", {
@@ -347,11 +347,11 @@ describe("POST /api/login-manager", () => {
   /**
    * SECURE FLAG TEST
    * In deployed server: secure=true, in local dev: secure=false
-   * Cookie implementation uses STREAM_ENV (not NODE_ENV)
+   * Cookie implementation uses ALIVE_ENV (not NODE_ENV)
    */
-  it("should set secure flag based on STREAM_ENV", async () => {
-    // Deployed server (STREAM_ENV !== "local"): secure should be TRUE
-    vi.stubEnv("STREAM_ENV", "production")
+  it("should set secure flag based on ALIVE_ENV", async () => {
+    // Deployed server (ALIVE_ENV !== "local"): secure should be TRUE
+    vi.stubEnv("ALIVE_ENV", "production")
     let req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -361,8 +361,8 @@ describe("POST /api/login-manager", () => {
     let setCookie = res.headers.get("set-cookie")
     expect(setCookie).toContain("Secure")
 
-    // Local development (STREAM_ENV === "local"): secure should be FALSE
-    vi.stubEnv("STREAM_ENV", "local")
+    // Local development (ALIVE_ENV === "local"): secure should be FALSE
+    vi.stubEnv("ALIVE_ENV", "local")
     req = createMockNextRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -289,7 +289,7 @@ function createSupabaseStore(): SessionStore {
 // time (before any async env validation). The env from @webalive/env requires
 // async loading which isn't available at module scope.
 export const sessionStore: SessionStore =
-  process.env.STREAM_ENV === "standalone" ? createStandaloneStore() : createSupabaseStore()
+  process.env.ALIVE_ENV === "standalone" ? createStandaloneStore() : createSupabaseStore()
 
 // Primary key builder: Tab is now the primary entity for chat sessions
 // Used for BOTH Claude SDK session persistence AND concurrency locking
@@ -314,4 +314,4 @@ export function tabKey({
 }
 
 // Re-export guards from types/guards/session for backward compatibility
-export { tryLockConversation, unlockConversation, isConversationLocked, hasExistingSession }
+export { hasExistingSession, isConversationLocked, tryLockConversation, unlockConversation }

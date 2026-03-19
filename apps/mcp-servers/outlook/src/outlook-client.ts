@@ -7,18 +7,38 @@
  * API Reference: https://learn.microsoft.com/en-us/graph/api/resources/mail-api-overview
  */
 
+import { retryAsync } from "@webalive/shared"
+
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 
-/** Retry with exponential backoff + jitter for transient failures (429, 5xx) */
-async function retryFetch(fn: () => Promise<globalThis.Response>, maxRetries = 2): Promise<globalThis.Response> {
-  for (let attempt = 0; ; attempt++) {
-    const res = await fn()
-    const isRetryable = res.status === 429 || res.status >= 500
-    if (!isRetryable || attempt >= maxRetries) return res
-    const baseDelay = 500 * 2 ** attempt
-    const jitter = Math.random() * baseDelay * 0.5
-    await new Promise(resolve => setTimeout(resolve, baseDelay + jitter))
+/** Error thrown when a fetch response has a retryable HTTP status (429, 5xx) */
+class RetryableResponseError extends Error {
+  response: globalThis.Response
+  constructor(response: globalThis.Response) {
+    super(`Graph API ${response.status}`)
+    this.response = response
   }
+}
+
+/** Retry fetch with exponential backoff + jitter for transient failures (429, 5xx) */
+async function retryFetch(fn: () => Promise<globalThis.Response>): Promise<globalThis.Response> {
+  return retryAsync(
+    async () => {
+      const res = await fn()
+      if (res.status === 429 || res.status >= 500) {
+        throw new RetryableResponseError(res)
+      }
+      return res
+    },
+    {
+      // 3 attempts = 1 initial + 2 retries (matches original maxRetries=2)
+      attempts: 3,
+      minDelayMs: 500,
+      jitter: 0.5,
+      label: "graph-api",
+      shouldRetry: (err) => err instanceof RetryableResponseError,
+    },
+  )
 }
 
 // ============================================================
@@ -118,7 +138,7 @@ export class OutlookClient {
     this.accessToken = accessToken
   }
 
-  private async graphFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  private async graphRequest(path: string, init?: RequestInit): Promise<globalThis.Response> {
     const url = path.startsWith("http") ? path : `${GRAPH_BASE}${path}`
     const res = await retryFetch(() =>
       fetch(url, {
@@ -136,10 +156,18 @@ export class OutlookClient {
       throw new Error(`Graph API ${res.status}: ${text}`)
     }
 
-    // Some endpoints (PATCH/DELETE) return 204 No Content
-    if (res.status === 204) return undefined as T
+    return res
+  }
 
-    return res.json()
+  /** Fetch JSON from Graph API and return the parsed result */
+  private async graphFetch<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await this.graphRequest(path, init)
+    return res.json() as Promise<T>
+  }
+
+  /** Send a Graph API request that returns no body (204 No Content) */
+  private async graphVoid(path: string, init?: RequestInit): Promise<void> {
+    await this.graphRequest(path, init)
   }
 
   // ----------------------------------------------------------
@@ -161,16 +189,14 @@ export class OutlookClient {
   async searchEmails(query: string, maxResults: number = 10): Promise<EmailSummary[]> {
     // Graph uses $search for KQL queries and $filter for OData
     // $search is the closest analogue to Gmail's query syntax
+    // $search and $orderby can't be combined in Graph, so we omit $orderby
     const params = new URLSearchParams({
       $top: String(Math.min(maxResults, 50)),
       $select: "id,conversationId,from,toRecipients,subject,receivedDateTime,bodyPreview,isRead,parentFolderId",
-      $orderby: "receivedDateTime desc",
     })
 
     // $search handles both KQL (from:, subject:, etc.) and plain-text queries
     params.set("$search", `"${query}"`)
-    // $search and $orderby can't be combined in Graph; remove orderby
-    params.delete("$orderby")
     const data = await this.graphFetch<{ value: GraphMessage[] }>(`/me/messages?${params}`)
     const messages = data.value
 
@@ -230,7 +256,7 @@ export class OutlookClient {
   // ----------------------------------------------------------
 
   async moveToFolder(messageId: string, folderId: string): Promise<void> {
-    await this.graphFetch<GraphMessage>(`/me/messages/${encodeURIComponent(messageId)}/move`, {
+    await this.graphVoid(`/me/messages/${encodeURIComponent(messageId)}/move`, {
       method: "POST",
       body: JSON.stringify({ destinationId: folderId }),
     })
@@ -238,21 +264,21 @@ export class OutlookClient {
 
   async archiveEmail(messageId: string): Promise<void> {
     // Well-known name "archive" works as destinationId regardless of locale
-    await this.graphFetch(`/me/messages/${encodeURIComponent(messageId)}/move`, {
+    await this.graphVoid(`/me/messages/${encodeURIComponent(messageId)}/move`, {
       method: "POST",
       body: JSON.stringify({ destinationId: "archive" }),
     })
   }
 
   async markAsRead(messageId: string): Promise<void> {
-    await this.graphFetch(`/me/messages/${encodeURIComponent(messageId)}`, {
+    await this.graphVoid(`/me/messages/${encodeURIComponent(messageId)}`, {
       method: "PATCH",
       body: JSON.stringify({ isRead: true }),
     })
   }
 
   async markAsUnread(messageId: string): Promise<void> {
-    await this.graphFetch(`/me/messages/${encodeURIComponent(messageId)}`, {
+    await this.graphVoid(`/me/messages/${encodeURIComponent(messageId)}`, {
       method: "PATCH",
       body: JSON.stringify({ isRead: false }),
     })
@@ -260,7 +286,7 @@ export class OutlookClient {
 
   async trashEmail(messageId: string): Promise<void> {
     // Well-known name "deleteditems" works as destinationId regardless of locale
-    await this.graphFetch(`/me/messages/${encodeURIComponent(messageId)}/move`, {
+    await this.graphVoid(`/me/messages/${encodeURIComponent(messageId)}/move`, {
       method: "POST",
       body: JSON.stringify({ destinationId: "deleteditems" }),
     })

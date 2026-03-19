@@ -1,5 +1,6 @@
 import {
   type ClaudeModel,
+  isRecord,
   isValidClaudeModel,
   type ManagerPasswordResetToken,
   type ManagerUser,
@@ -19,7 +20,9 @@ interface MembershipWithOrg {
 }
 
 async function fetchMembershipsGrouped(): Promise<Record<string, ManagerUserOrg[]>> {
-  const { data, error } = await iam.from("org_memberships").select(`
+  const { data, error } = await iam
+    .from("org_memberships")
+    .select(`
       user_id,
       role,
       orgs:org_id (
@@ -27,13 +30,14 @@ async function fetchMembershipsGrouped(): Promise<Record<string, ManagerUserOrg[
         name
       )
     `)
+    .overrideTypes<MembershipWithOrg[], { merge: false }>()
 
   if (error) {
     throw new InternalError(`Failed to fetch memberships: ${error.message}`)
   }
 
   const grouped: Record<string, ManagerUserOrg[]> = {}
-  for (const row of (data ?? []) as unknown as MembershipWithOrg[]) {
+  for (const row of data ?? []) {
     if (!row.orgs) continue
     if (!grouped[row.user_id]) {
       grouped[row.user_id] = []
@@ -65,13 +69,13 @@ async function fetchSessionsGrouped(): Promise<SessionsGrouped> {
     .from("sessions")
     .select("user_id, domain_id, last_activity")
     .order("last_activity", { ascending: false })
+    .overrideTypes<SessionRow[], { merge: false }>()
 
   if (error) {
-    console.error(`Failed to fetch sessions: ${error.message}`)
-    return { activity: {}, sessions: {} }
+    throw new InternalError(`Failed to fetch sessions: ${error.message}`)
   }
 
-  const rows = (data ?? []) as SessionRow[]
+  const rows = data ?? []
 
   // Collect unique domain_ids to resolve hostnames
   const domainIds = [...new Set(rows.map(r => r.domain_id).filter(Boolean))]
@@ -118,12 +122,8 @@ async function fetchSessionsGrouped(): Promise<SessionsGrouped> {
   return { activity, sessions }
 }
 
-function isJsonObject(v: unknown): v is Record<string, unknown> {
-  return v !== null && typeof v === "object" && !Array.isArray(v)
-}
-
 function extractEnabledModels(metadata: unknown): ClaudeModel[] {
-  if (!isJsonObject(metadata)) return []
+  if (!isRecord(metadata)) return []
   const raw = metadata.enabled_models
   if (!Array.isArray(raw)) return []
   return raw.filter((v): v is ClaudeModel => typeof v === "string" && isValidClaudeModel(v))
@@ -176,7 +176,7 @@ export async function getUserById(userId: string): Promise<ManagerUser> {
 
 export async function updateEnabledModels(userId: string, models: ClaudeModel[]): Promise<void> {
   const user = await usersRepo.findById(userId)
-  const base = isJsonObject(user.metadata) ? user.metadata : {}
+  const base = isRecord(user.metadata) ? user.metadata : {}
   await usersRepo.updateMetadata(userId, { ...base, enabled_models: models })
 }
 

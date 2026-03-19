@@ -73,6 +73,6 @@ export function hasProvider(name: string): boolean {
   return providers.has(name.toLowerCase())
 }
 
+export type { OAuthProvider }
 // Re-export types and implementations
 export { GitHubProvider, GoogleProvider, LinearProvider, MicrosoftProvider, StripeProvider, SupabaseProvider }
-export type { OAuthProvider }

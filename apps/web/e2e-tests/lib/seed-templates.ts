@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { DEPLOYMENT_TEMPLATES, getDeploymentTemplatePublicHostname, PATHS } from "@webalive/shared"
+import { DEPLOYMENT_TEMPLATES, getDeploymentTemplatePublicHostname, isRecord, PATHS } from "@webalive/shared"
 import type { VALID_ENVS } from "./test-env"
 
 type TestEnv = (typeof VALID_ENVS)[number]
@@ -29,10 +29,6 @@ interface RuntimeServerConfig {
     main: string
     wildcard: string
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
 }
 
 function sqlStringLiteral(value: string): string {

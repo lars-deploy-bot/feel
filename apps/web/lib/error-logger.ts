@@ -233,7 +233,7 @@ function safeJsonForLog(value: unknown): string {
 export function logStreamError(context: StreamErrorContext): void {
   const { requestId, workspace, model, error } = context
   const build = getBuildInfo()
-  const streamEnv = env.STREAM_ENV ?? env.NODE_ENV ?? "unknown"
+  const aliveEnv = env.ALIVE_ENV ?? env.NODE_ENV
 
   const errorMessage = error instanceof Error ? error.message : String(error)
   const errorStack = error instanceof Error ? error.stack : undefined
@@ -245,7 +245,7 @@ export function logStreamError(context: StreamErrorContext): void {
   // Structured log line for easy grep in journalctl
   console.error(
     `[STREAM_ERROR:${requestId}] ${errorMessage} | ` +
-      `build=${build.branch}@${build.buildTime} env=${streamEnv} workspace=${workspace} model=${model}`,
+      `build=${build.branch}@${build.buildTime} env=${aliveEnv} workspace=${workspace} model=${model}`,
   )
 
   // Claude subprocess stderr - THE ACTUAL ERROR (if available)
@@ -279,7 +279,7 @@ export function logStreamError(context: StreamErrorContext): void {
       workspace,
       model,
       build: `${build.branch}@${build.buildTime}`,
-      env: streamEnv,
+      env: aliveEnv,
       stderr,
       diagnostics,
     })
@@ -298,7 +298,7 @@ export function logStreamError(context: StreamErrorContext): void {
       workspace,
       model,
       build: `${build.branch}@${build.buildTime}`,
-      env: streamEnv,
+      env: aliveEnv,
       stderr, // Include stderr in queryable buffer too
       diagnostics,
     },

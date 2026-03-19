@@ -17,6 +17,15 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { clientSchema, runtimeEnv } from "./schema"
 
+// Guard: never allow skipping validation in production/staging
+if (process.env.SKIP_ENV_VALIDATION) {
+  const aliveEnv = process.env.ALIVE_ENV
+  if (aliveEnv === "production" || aliveEnv === "staging") {
+    throw new Error("SKIP_ENV_VALIDATION must not be set in production/staging environments")
+  }
+  console.warn("⚠️  SKIP_ENV_VALIDATION is set — environment validation disabled")
+}
+
 /**
  * Client-side validated environment variables
  *
@@ -36,6 +45,12 @@ export const env = createEnv({
     NEXT_PUBLIC_POSTHOG_HOST: runtimeEnv.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_CONTACT_EMAIL: runtimeEnv.NEXT_PUBLIC_CONTACT_EMAIL,
     NEXT_PUBLIC_SENTRY_DSN: runtimeEnv.NEXT_PUBLIC_SENTRY_DSN,
+    NEXT_PUBLIC_SENTRY_RELEASE: runtimeEnv.NEXT_PUBLIC_SENTRY_RELEASE,
+    NEXT_PUBLIC_ALIVE_ENV: runtimeEnv.NEXT_PUBLIC_ALIVE_ENV,
+    NEXT_PUBLIC_BUILD_COMMIT: runtimeEnv.NEXT_PUBLIC_BUILD_COMMIT,
+    NEXT_PUBLIC_BUILD_BRANCH: runtimeEnv.NEXT_PUBLIC_BUILD_BRANCH,
+    NEXT_PUBLIC_BUILD_TIME: runtimeEnv.NEXT_PUBLIC_BUILD_TIME,
+    NEXT_PUBLIC_SERVER_IP: runtimeEnv.NEXT_PUBLIC_SERVER_IP,
   },
 
   /**

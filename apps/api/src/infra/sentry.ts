@@ -13,7 +13,7 @@ if (SENTRY_CONFIG.DSN) {
   Sentry.init({
     dsn: SENTRY_CONFIG.DSN,
     release,
-    environment: process.env.STREAM_ENV ?? process.env.NODE_ENV ?? "unknown",
+    environment: process.env.ALIVE_ENV,
     serverName: "alive-api",
     sampleRate: 1.0,
     tracesSampleRate: 0.1,

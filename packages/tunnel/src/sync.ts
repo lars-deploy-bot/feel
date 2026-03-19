@@ -346,4 +346,4 @@ if (import.meta.main) {
 }
 
 // Exported for testing
-export { buildStaticRoutes, generateCaddyInternal, isValidHostname, MIN_EXPECTED_SITES, HOSTNAME_REGEX }
+export { buildStaticRoutes, generateCaddyInternal, HOSTNAME_REGEX, isValidHostname, MIN_EXPECTED_SITES }

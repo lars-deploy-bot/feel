@@ -26,7 +26,7 @@ if [ -z "${JWT_SECRET:-}" ]; then
   exit 1
 fi
 
-export STREAM_ENV=local
+export ALIVE_ENV=local
 export PLAYWRIGHT_TEST=true
 export TEST_MODE=true
 export SKIP_SSL_VALIDATION=true

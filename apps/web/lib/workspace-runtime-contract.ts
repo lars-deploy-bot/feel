@@ -5,26 +5,26 @@ interface WorkspaceRuntimeContractInput {
   sitesRoot: string
   sitesRootExists: boolean
   sitesRootReadOnly: boolean | null
-  streamEnv: string | undefined
+  aliveEnv: string | undefined
   uid: number | null
 }
 
-function isLocalLikeStreamEnv(streamEnv: string | undefined): boolean {
-  return streamEnv === "local" || streamEnv === "standalone"
+function isLocalLikeAliveEnv(aliveEnv: string | undefined): boolean {
+  return aliveEnv === "local" || aliveEnv === "standalone"
 }
 
 export function getWorkspaceRuntimeContractViolation({
   sitesRoot,
   sitesRootExists,
   sitesRootReadOnly,
-  streamEnv,
+  aliveEnv,
   uid,
 }: WorkspaceRuntimeContractInput): string | null {
   if (!sitesRoot || !sitesRootExists) {
     return null
   }
 
-  if (isLocalLikeStreamEnv(streamEnv)) {
+  if (isLocalLikeAliveEnv(aliveEnv)) {
     return null
   }
 
@@ -116,7 +116,7 @@ export function assertWorkspaceRuntimeContract(): void {
     sitesRoot,
     sitesRootExists,
     sitesRootReadOnly,
-    streamEnv: process.env.STREAM_ENV,
+    aliveEnv: process.env.ALIVE_ENV,
     uid,
   })
 

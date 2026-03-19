@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { isRecord } from "@webalive/shared"
 import { parse } from "smol-toml"
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -34,6 +35,17 @@ function assertString(obj: Record<string, unknown>, key: string, context: string
   return val
 }
 
+function assertRecord(val: unknown, context: string): Record<string, unknown> {
+  if (!isRecord(val)) {
+    throw new Error(`alive.toml: [${context}] section is required`)
+  }
+  return val
+}
+
+function toRecord(val: unknown): Record<string, unknown> | undefined {
+  return isRecord(val) ? val : undefined
+}
+
 function validate(raw: Record<string, unknown>): AliveToml {
   // schema
   if (typeof raw.schema !== "number" || raw.schema !== 1) {
@@ -41,38 +53,28 @@ function validate(raw: Record<string, unknown>): AliveToml {
   }
 
   // project
-  const project = raw.project as Record<string, unknown> | undefined
-  if (!project || typeof project !== "object") {
-    throw new Error("alive.toml: [project] section is required")
-  }
+  const project = assertRecord(raw.project, "project")
   const kind = assertString(project, "kind", "project")
   const root = assertString(project, "root", "project")
 
   // setup
-  const setup = raw.setup as Record<string, unknown> | undefined
-  if (!setup || typeof setup !== "object") {
-    throw new Error("alive.toml: [setup] section is required")
-  }
+  const setup = assertRecord(raw.setup, "setup")
   const setupCommand = assertString(setup, "command", "setup")
 
   // build
-  const build = raw.build as Record<string, unknown> | undefined
-  if (!build || typeof build !== "object") {
-    throw new Error("alive.toml: [build] section is required")
-  }
+  const build = assertRecord(raw.build, "build")
   const buildCommand = assertString(build, "command", "build")
-  const buildOutputs = Array.isArray(build.outputs) ? (build.outputs as string[]) : undefined
+  const buildOutputs = Array.isArray(build.outputs)
+    ? build.outputs.filter((v): v is string => typeof v === "string")
+    : undefined
 
   // run (at least one required)
-  const run = raw.run as Record<string, unknown> | undefined
-  if (!run || typeof run !== "object") {
-    throw new Error("alive.toml: [run] section is required (at least run.development or run.production)")
-  }
+  const runSection = assertRecord(raw.run, "run")
 
   const parsedRun: AliveToml["run"] = {}
   for (const env of ["development", "staging", "production"] as const) {
-    const entry = run[env] as Record<string, unknown> | undefined
-    if (entry && typeof entry === "object") {
+    const entry = toRecord(runSection[env])
+    if (entry) {
       parsedRun[env] = {
         command: assertString(entry, "command", `run.${env}`),
         cwd: typeof entry.cwd === "string" ? entry.cwd : undefined,
@@ -107,7 +109,7 @@ export function readAliveToml(siteDir: string): AliveToml | null {
   }
 
   const content = readFileSync(tomlPath, "utf-8")
-  const raw = parse(content) as Record<string, unknown>
+  const raw = parse(content)
   return validate(raw)
 }
 

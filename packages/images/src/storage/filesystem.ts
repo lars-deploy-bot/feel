@@ -20,7 +20,10 @@ export class FilesystemStorage implements ImageStorage {
 
   constructor(config: FilesystemStorageConfig) {
     this.basePath = config.basePath
-    this.signatureSecret = config.signatureSecret || "default-secret-change-in-production"
+    if (!config.signatureSecret) {
+      throw new Error("signatureSecret is required for FilesystemStorage")
+    }
+    this.signatureSecret = config.signatureSecret
   }
 
   async put(tenantId: string, contentHash: string, variant: string, data: Buffer): HResponse<string> {
@@ -66,8 +69,9 @@ export class FilesystemStorage implements ImageStorage {
       // Delete file (ignore if doesn't exist)
       try {
         await fs.unlink(fullPath)
-      } catch (error: any) {
-        if (error.code !== "ENOENT") {
+      } catch (error: unknown) {
+        // Node fs errors have a `code` property (e.g. "ENOENT")
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
           throw error
         }
       }
@@ -138,7 +142,10 @@ export class FilesystemStorage implements ImageStorage {
     const expected = crypto.createHmac("sha256", this.signatureSecret).update(`${key}:${expiry}`).digest("hex")
 
     // Constant-time comparison
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))
+    const expectedBuf = Buffer.from(expected)
+    const signatureBuf = Buffer.from(signature)
+    if (expectedBuf.length !== signatureBuf.length) return false
+    return crypto.timingSafeEqual(expectedBuf, signatureBuf)
   }
 
   /**

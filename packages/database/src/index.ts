@@ -78,14 +78,8 @@ export {
   TablesInsert,
   TablesUpdate,
 } from "./public.generated.js"
-
 // Re-export with schema-specific names
-export type { AppDatabase }
-export type { DeployDatabase }
-export type { IamDatabase }
-export type { IntegrationsDatabase }
-export type { LockboxDatabase }
-export type { PublicDatabase }
+export type { AppDatabase, DeployDatabase, IamDatabase, IntegrationsDatabase, LockboxDatabase, PublicDatabase }
 
 // Re-export the main Database type for backward compatibility
 export type Database = PublicDatabase

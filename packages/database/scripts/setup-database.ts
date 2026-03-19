@@ -63,8 +63,8 @@ Then run this script again.
     const result = await pool.query("SELECT version()")
     console.log("✓ Connected to:", result.rows[0].version.split(",")[0])
     await pool.end()
-  } catch (e: any) {
-    console.error("❌ Connection failed:", e.message)
+  } catch (e: unknown) {
+    console.error("❌ Connection failed:", e instanceof Error ? e.message : String(e))
     process.exit(1)
   }
 
@@ -80,8 +80,8 @@ Then run this script again.
       console.log("✓ Migration applied successfully!")
       console.log("\n📋 Next step: Generate TypeScript types")
       console.log("   bun run gen:types")
-    } catch (e: any) {
-      console.error("❌ Migration failed:", e.message)
+    } catch (e: unknown) {
+      console.error("❌ Migration failed:", e instanceof Error ? e.message : String(e))
       process.exit(1)
     }
   } else {

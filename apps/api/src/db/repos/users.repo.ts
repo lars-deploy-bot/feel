@@ -15,15 +15,21 @@ export async function findAll(): Promise<UserRow[]> {
     .select(USER_COLUMNS)
     .eq("is_test_env", false)
     .order("created_at", { ascending: false })
+    .overrideTypes<UserRow[], { merge: false }>()
 
   if (error) {
     throw new InternalError(`Failed to fetch users: ${error.message}`)
   }
-  return (data ?? []) as unknown as UserRow[]
+  return data ?? []
 }
 
 export async function findById(userId: string): Promise<UserRow> {
-  const { data, error } = await iam.from("users").select(USER_COLUMNS).eq("user_id", userId).single()
+  const { data, error } = await iam
+    .from("users")
+    .select(USER_COLUMNS)
+    .eq("user_id", userId)
+    .single()
+    .overrideTypes<UserRow, { merge: false }>()
 
   if (error) {
     if (error.code === "PGRST116") {
@@ -31,16 +37,21 @@ export async function findById(userId: string): Promise<UserRow> {
     }
     throw new InternalError(`Failed to fetch user: ${error.message}`)
   }
-  return data as unknown as UserRow
+  return data
 }
 
 export async function findByEmail(email: string): Promise<UserRow | null> {
-  const { data, error } = await iam.from("users").select(USER_COLUMNS).eq("email", email).maybeSingle()
+  const { data, error } = await iam
+    .from("users")
+    .select(USER_COLUMNS)
+    .eq("email", email)
+    .maybeSingle()
+    .overrideTypes<UserRow | null, { merge: false }>()
 
   if (error) {
     throw new InternalError(`Failed to find user by email: ${error.message}`)
   }
-  return data as unknown as UserRow | null
+  return data
 }
 
 export async function updateMetadata(userId: string, metadata: UserRow["metadata"]): Promise<void> {

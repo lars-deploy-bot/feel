@@ -8,6 +8,7 @@
  */
 
 import { z } from "zod"
+import { isRecord } from "./type-guards.js"
 
 // ---------------------------------------------------------------------------
 // Reusable validators
@@ -179,12 +180,12 @@ function stripCommentKeys(obj: unknown): void {
     for (const item of obj) stripCommentKeys(item)
     return
   }
-  const record = obj as Record<string, unknown>
-  for (const key of Object.keys(record)) {
+  if (!isRecord(obj)) return
+  for (const key of Object.keys(obj)) {
     if (key === "_comment") {
-      delete record[key]
+      delete obj[key]
     } else {
-      stripCommentKeys(record[key])
+      stripCommentKeys(obj[key])
     }
   }
 }
@@ -210,10 +211,9 @@ export function parseServerConfig(raw: string): ServerConfig {
  * Crashes on startup so operators fix config immediately.
  */
 function rejectRemovedKeys(obj: unknown): void {
-  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) return
-  const record = obj as Record<string, unknown>
+  if (!isRecord(obj)) return
 
-  if ("templates" in record) {
+  if ("templates" in obj) {
     throw new Error(
       'server-config.json contains removed key "templates". ' +
         "Template paths are now resolved dynamically from paths.templatesRoot + the template directory name. " +

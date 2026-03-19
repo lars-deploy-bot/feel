@@ -39,6 +39,7 @@ export {
   CLIENT_ENV_KEYS,
   clientSchema,
   domainName,
+  e2bApiKey,
   flowgladSecretKey,
   httpsUrl,
   runtimeEnv,

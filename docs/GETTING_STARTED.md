@@ -157,7 +157,7 @@ Open `http://localhost:8997`
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `STREAM_ENV` | Yes | Set to standalone | `standalone` |
+| `ALIVE_ENV` | Yes | Set to standalone | `standalone` |
 | `ANTHROPIC_API_KEY` | Yes | Claude API key | `sk-ant-...` |
 | `WORKSPACE_BASE` | No | Custom workspace directory | `~/.alive/workspaces` |
 
@@ -165,7 +165,7 @@ Open `http://localhost:8997`
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `STREAM_ENV` | Yes | Enable local dev mode | `local` |
+| `ALIVE_ENV` | Yes | Enable local dev mode | `local` |
 | `LOCAL_TEMPLATE_PATH` | Yes | Absolute path to workspace | `/Users/you/alive/.alive/template` |
 | `ANTHROPIC_API_KEY` | Yes | Claude API key | `sk-ant-...` |
 | `ALIVE_PASSCODE` | No | Alive passcode (any works if unset) | `your-password` |

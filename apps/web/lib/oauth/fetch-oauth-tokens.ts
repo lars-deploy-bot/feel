@@ -122,4 +122,4 @@ export function getConnectedProviders(tokens: ProviderTokenMap): Set<OAuthMcpPro
 }
 
 // Re-export types for convenience
-export type { ProviderTokenMap, OAuthMcpProviderKey, OAuthWarning, OAuthFetchResult }
+export type { OAuthFetchResult, OAuthMcpProviderKey, OAuthWarning, ProviderTokenMap }

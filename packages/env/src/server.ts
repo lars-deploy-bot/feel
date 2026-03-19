@@ -10,7 +10,7 @@
  * import { env, loadEnvFile } from "@webalive/env/server"
  *
  * // Optional: explicitly load .env file (call once at app entry)
- * loadEnvFile()
+ * loadEnvFile("production")
  *
  * // Use validated env vars
  * const apiKey = env.ANTH_API_SECRET
@@ -29,11 +29,11 @@ import { clientSchema, runtimeEnv, serverSchema } from "./schema"
  * Call this at your app's entry point if you need dotenv loading.
  * This is NOT called automatically on import (no side effects).
  *
- * @param nodeEnv - Environment name (defaults to NODE_ENV or "development")
+ * @param nodeEnv - Environment name. Required — callers must pass explicitly or read from their own env.
  * @returns true if file was loaded, false if not found
  */
-export function loadEnvFile(nodeEnv?: string): boolean {
-  const envName = nodeEnv || process.env.NODE_ENV || "development"
+export function loadEnvFile(nodeEnv: string): boolean {
+  const envName = nodeEnv
   const envFile = join(process.cwd(), `.env.${envName}`)
 
   if (existsSync(envFile)) {
@@ -42,6 +42,15 @@ export function loadEnvFile(nodeEnv?: string): boolean {
   }
 
   return false
+}
+
+// Guard: never allow skipping validation in production/staging
+if (process.env.SKIP_ENV_VALIDATION) {
+  const aliveEnv = process.env.ALIVE_ENV
+  if (aliveEnv === "production" || aliveEnv === "staging") {
+    throw new Error("SKIP_ENV_VALIDATION must not be set in production/staging environments")
+  }
+  console.warn("⚠️  SKIP_ENV_VALIDATION is set — environment validation disabled")
 }
 
 /**
@@ -84,18 +93,18 @@ export const env = createEnv({
  * 3. OAuth token from ~/.claude/.credentials.json (auto-refreshed)
  * 4. Mock key for local development
  *
- * In local dev mode (STREAM_ENV=local or standalone), allows a mock key for testing.
+ * In local dev mode (ALIVE_ENV=local or standalone), allows a mock key for testing.
  */
 export function getAnthropicApiKey(): string {
   const apiKey = env.ANTHROPIC_API_KEY || env.ANTH_API_SECRET
-  const isLocalDev = env.STREAM_ENV === "local" || env.STREAM_ENV === "standalone"
+  const isLocalDev = env.ALIVE_ENV === "local" || env.ALIVE_ENV === "standalone"
 
   if (apiKey) {
     return apiKey
   }
 
   if (!isLocalDev) {
-    throw new Error("ANTHROPIC_API_KEY or ANTH_API_SECRET is required (or set STREAM_ENV=local for development)")
+    throw new Error("ANTHROPIC_API_KEY or ANTH_API_SECRET is required (or set ALIVE_ENV=local for development)")
   }
 
   return "sk-ant-mock-key-for-local-development"
@@ -103,10 +112,10 @@ export function getAnthropicApiKey(): string {
 
 /**
  * Get Redis URL. REDIS_URL must be set in the environment.
- * Returns null only in standalone mode (STREAM_ENV=standalone).
+ * Returns null only in standalone mode (ALIVE_ENV=standalone).
  */
 export function getRedisUrl(): string | null {
-  if (env.STREAM_ENV === "standalone") {
+  if (env.ALIVE_ENV === "standalone") {
     return null
   }
 
@@ -137,18 +146,18 @@ export function getE2bDomain(): string {
  * Get superadmin emails with environment-aware validation
  *
  * - Production/Staging: SUPERADMIN_EMAILS is REQUIRED (throws if missing)
- * - Local dev (STREAM_ENV=local): Returns empty array (all users are effectively superadmin)
+ * - Local dev (ALIVE_ENV=local): Returns empty array (all users are effectively superadmin)
  *
  * This prevents the "no superadmin" scenario in production.
  */
 export function getSuperadminEmails(): readonly string[] {
   const emailsEnv = env.SUPERADMIN_EMAILS
-  const isLocalDev = env.STREAM_ENV === "local" || env.STREAM_ENV === "standalone"
+  const isLocalDev = env.ALIVE_ENV === "local" || env.ALIVE_ENV === "standalone"
 
   if (!emailsEnv && !isLocalDev) {
     throw new Error(
       "SUPERADMIN_EMAILS is required in production/staging. " +
-        "Set SUPERADMIN_EMAILS environment variable (comma-separated emails) or use STREAM_ENV=local for development.",
+        "Set SUPERADMIN_EMAILS environment variable (comma-separated emails) or use ALIVE_ENV=local for development.",
     )
   }
 
@@ -295,19 +304,19 @@ export function getStreamDevUrl(): string {
  * Get Flowglad secret key with environment-aware validation
  *
  * - Production/Staging: FLOWGLAD_SECRET_KEY is REQUIRED (throws if missing)
- * - Local dev (STREAM_ENV=local): Returns undefined (billing features disabled)
+ * - Local dev (ALIVE_ENV=local): Returns undefined (billing features disabled)
  *
  * This ensures billing integration works in deployed environments while
  * allowing local development without Flowglad credentials.
  */
 export function getFlowgladSecretKey(): string | undefined {
   const secretKey = env.FLOWGLAD_SECRET_KEY
-  const isLocalDev = env.STREAM_ENV === "local" || env.STREAM_ENV === "standalone"
+  const isLocalDev = env.ALIVE_ENV === "local" || env.ALIVE_ENV === "standalone"
 
   if (!secretKey && !isLocalDev) {
     throw new Error(
       "FLOWGLAD_SECRET_KEY is required in production/staging. " +
-        "Set FLOWGLAD_SECRET_KEY environment variable (sk_test_* or sk_live_*) or use STREAM_ENV=local for development.",
+        "Set FLOWGLAD_SECRET_KEY environment variable (sk_test_* or sk_live_*) or use ALIVE_ENV=local for development.",
     )
   }
 

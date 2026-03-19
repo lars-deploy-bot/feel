@@ -106,10 +106,10 @@ describe("resolveTemplatePath", () => {
 })
 
 describe("local/standalone config defaults", () => {
-  it("uses local defaults when STREAM_ENV=local and SERVER_CONFIG_PATH is unset", () => {
+  it("uses local defaults when ALIVE_ENV=local and SERVER_CONFIG_PATH is unset", () => {
     const home = `/tmp/alive-config-test-${Date.now()}`
     const result = runConfigProbe({
-      STREAM_ENV: "local",
+      ALIVE_ENV: "local",
       HOME: home,
       SERVER_CONFIG_PATH: undefined,
       CI: undefined,
@@ -131,10 +131,10 @@ describe("local/standalone config defaults", () => {
     expect(parsed.aliveRoot).not.toContain("%20")
   })
 
-  it("uses local defaults when STREAM_ENV=standalone and SERVER_CONFIG_PATH is unset", () => {
+  it("uses local defaults when ALIVE_ENV=standalone and SERVER_CONFIG_PATH is unset", () => {
     const home = `/tmp/alive-config-test-${Date.now()}`
     const result = runConfigProbe({
-      STREAM_ENV: "standalone",
+      ALIVE_ENV: "standalone",
       HOME: home,
       SERVER_CONFIG_PATH: undefined,
       CI: undefined,
@@ -154,7 +154,7 @@ describe("local/standalone config defaults", () => {
   it("fails fast in local mode when SERVER_CONFIG_PATH is explicitly set but missing", () => {
     const missingPath = `/tmp/missing-server-config-${Date.now()}.json`
     const result = runConfigProbe({
-      STREAM_ENV: "local",
+      ALIVE_ENV: "local",
       SERVER_CONFIG_PATH: missingPath,
       CI: undefined,
       VITEST: undefined,
@@ -180,7 +180,7 @@ describe("local/standalone config defaults", () => {
     try {
       const result = runConfigProbe(
         {
-          STREAM_ENV: "production",
+          ALIVE_ENV: "production",
           SERVER_CONFIG_PATH: join(configDir, "server-config.json"),
           CI: undefined,
           VITEST: undefined,
@@ -207,7 +207,7 @@ describe("E2B config validation", () => {
 
     try {
       const result = runConfigProbe({
-        STREAM_ENV: "staging",
+        ALIVE_ENV: "staging",
         SERVER_CONFIG_PATH: join(configDir, "server-config.json"),
         NEW_SITE_EXECUTION_MODE: "e2b",
         CI: undefined,
@@ -236,7 +236,7 @@ describe("E2B config validation", () => {
 
     try {
       const result = runConfigProbe({
-        STREAM_ENV: "staging",
+        ALIVE_ENV: "staging",
         SERVER_CONFIG_PATH: join(configDir, "server-config.json"),
         E2B_DOMAIN: "e2b.example.com",
         CI: undefined,
@@ -257,7 +257,7 @@ describe("E2B config validation", () => {
 
     try {
       const result = runConfigProbe({
-        STREAM_ENV: "staging",
+        ALIVE_ENV: "staging",
         SERVER_CONFIG_PATH: join(configDir, "server-config.json"),
         E2B_DOMAIN: "e2b.example.com",
         E2B_API_KEY: "shared-secret",
@@ -275,7 +275,7 @@ describe("E2B config validation", () => {
   it("provides a local E2B scratch root when local mode enables E2B execution", () => {
     const home = `/tmp/alive-config-test-${Date.now()}`
     const result = runConfigProbe({
-      STREAM_ENV: "local",
+      ALIVE_ENV: "local",
       HOME: home,
       SERVER_CONFIG_PATH: undefined,
       NEW_SITE_EXECUTION_MODE: "e2b",

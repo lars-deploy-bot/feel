@@ -112,7 +112,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CI_CONTRACT_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CI_CONTRACT_SUPABASE_ANON_KEY }}
           JWT_SECRET: ${{ secrets.CI_CONTRACT_JWT_SECRET }}
-          STREAM_ENV: local
+          ALIVE_ENV: local
           SKIP_ENV_VALIDATION: "1"
         run: bun run test:jwt-rls-smoke
 

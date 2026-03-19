@@ -241,8 +241,6 @@ interface LegacyTabStoreState extends TabStoreActions {
   tabsByWorkspace: Record<string, Tab[]>
   activeTabByWorkspace: Record<string, TabId | undefined>
   tabsExpandedByWorkspace: Record<string, boolean>
-  /** @deprecated Kept for migration compatibility only */
-  nextTabNumberByWorkspace: Record<string, number>
 }
 
 /**
@@ -283,7 +281,6 @@ export const useTabStore = {
       tabsByWorkspace: dataState.tabsByWorkspace,
       activeTabByWorkspace: viewState.activeTabByWorkspace,
       tabsExpandedByWorkspace: viewState.tabsExpandedByWorkspace,
-      nextTabNumberByWorkspace: {}, // Deprecated, always empty
       // Actions
       ...actions,
     }
@@ -312,6 +309,5 @@ export const useTabStore = {
       useTabViewStore.setState({ tabsExpandedByWorkspace: newState.tabsExpandedByWorkspace })
     }
 
-    // Ignore nextTabNumberByWorkspace - deprecated
   },
 }

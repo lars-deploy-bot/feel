@@ -49,7 +49,7 @@ Operations:
   - optionally kills in-memory/remote sandbox when requested
 
 Security:
-- same guard as other test routes: `NODE_ENV === "test" || STREAM_ENV === "local" || valid x-test-secret`
+- same guard as other test routes: `NODE_ENV === "test" || ALIVE_ENV === "local" || valid x-test-secret`
 - return `404` on unauthorized (hide endpoint existence)
 
 ## Mother Scenario (Single Test, Multi-Phase)

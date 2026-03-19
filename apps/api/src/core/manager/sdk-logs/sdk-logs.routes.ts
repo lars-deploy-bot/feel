@@ -1,3 +1,4 @@
+import { isRecord } from "@webalive/shared"
 import { Hono } from "hono"
 import type { AppBindings } from "../../../types/hono"
 
@@ -14,10 +15,10 @@ type ProxyResult = { ok: true; data: Record<string, unknown> } | { ok: false; er
 async function proxyJson(url: string): Promise<ProxyResult> {
   const resp = await fetch(url, { signal: AbortSignal.timeout(PROXY_TIMEOUT_MS) })
   const body: unknown = await resp.json()
-  if (!resp.ok || typeof body !== "object" || body === null) {
+  if (!resp.ok || !isRecord(body)) {
     return { ok: false, error: `proxy error (status ${resp.status})` }
   }
-  return { ok: true, data: body as Record<string, unknown> }
+  return { ok: true, data: body }
 }
 
 export const sdkLogsRoutes = new Hono<AppBindings>()

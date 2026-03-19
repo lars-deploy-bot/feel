@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
     // Phase 3: Regenerate Caddy routing + port map
     // Only verify hostname in production — staging/dev register in their own DB
-    const isProduction = process.env.STREAM_ENV === "production"
+    const isProduction = process.env.ALIVE_ENV === "production"
     await regeneratePortMap(isProduction ? newDomain : undefined)
 
     await configureCaddy({

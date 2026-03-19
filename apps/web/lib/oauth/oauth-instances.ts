@@ -20,7 +20,7 @@ import {
  * Get the current environment from environment variables
  */
 function getCurrentEnvironment(): string {
-  const envValue = env.STREAM_ENV || env.NODE_ENV || "production"
+  const envValue = env.ALIVE_ENV || env.NODE_ENV || "production"
 
   // Normalize environment names
   switch (envValue) {

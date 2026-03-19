@@ -9,6 +9,7 @@ import {
   type DeployDeploymentAction,
 } from "@webalive/database"
 import { deployRepo } from "../../../db/repos"
+import type { DeployBuildInsert } from "../../../db/repos/deploy.repo"
 import { ConflictError, NotFoundError } from "../../../infra/errors"
 import type {
   ManagerDeployApplication,
@@ -252,6 +253,9 @@ export interface QueueBuildParams {
   commit_message: string
 }
 
+/** Extends the generated insert type with columns added after the last gen:types run. */
+type BuildInsertWithServerIdColumn = DeployBuildInsert & { server_id: string }
+
 export async function queueBuild(params: QueueBuildParams): Promise<ManagerDeployBuild> {
   await deployRepo.findApplicationById(params.application_id)
   const runningBuild = await deployRepo.findRunningBuildByApplicationId(params.application_id)
@@ -259,16 +263,15 @@ export async function queueBuild(params: QueueBuildParams): Promise<ManagerDeplo
     throw new ConflictError("A build is already running for this application")
   }
 
-  const build = await deployRepo.createBuild({
+  const insert: BuildInsertWithServerIdColumn = {
     application_id: params.application_id,
     git_ref: params.git_ref,
-    // server_id, git_sha, commit_message required by DB but missing from generated types (needs gen:types refresh)
-    ...({
-      server_id: params.server_id,
-      git_sha: params.git_sha,
-      commit_message: params.commit_message,
-    } as Record<string, string>),
-  })
+    server_id: params.server_id,
+    git_sha: params.git_sha,
+    commit_message: params.commit_message,
+  }
+
+  const build = await deployRepo.createBuild(insert)
 
   await pokeDeployer()
   return mapBuild(build)

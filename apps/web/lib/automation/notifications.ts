@@ -6,7 +6,7 @@
  */
 
 import type { RunContext } from "@webalive/automation-engine"
-import { DOMAINS, STREAM_ENV } from "@webalive/shared"
+import { DOMAINS, ALIVE_ENV } from "@webalive/shared"
 import nodemailer from "nodemailer"
 import { isEmailDeliveryDisabled } from "@/lib/email/delivery-policy"
 import { createServiceIamClient } from "@/lib/supabase/service"
@@ -14,14 +14,14 @@ import { createServiceIamClient } from "@/lib/supabase/service"
 const FROM_ADDRESS = `noreply@${DOMAINS.MAIN}`
 
 function getAppBaseUrl(): string {
-  const streamEnv = process.env.STREAM_ENV
+  const aliveEnv = process.env.ALIVE_ENV
 
-  if (streamEnv === STREAM_ENV.STAGING) {
+  if (aliveEnv === ALIVE_ENV.STAGING) {
     if (!DOMAINS.STREAM_STAGING) throw new Error("DOMAINS.STREAM_STAGING is not configured")
     return DOMAINS.STREAM_STAGING.replace(/\/+$/, "")
   }
 
-  if (streamEnv === STREAM_ENV.DEV || streamEnv === STREAM_ENV.LOCAL || streamEnv === STREAM_ENV.STANDALONE) {
+  if (aliveEnv === ALIVE_ENV.DEV || aliveEnv === ALIVE_ENV.LOCAL || aliveEnv === ALIVE_ENV.STANDALONE) {
     if (!DOMAINS.STREAM_DEV) throw new Error("DOMAINS.STREAM_DEV is not configured")
     return DOMAINS.STREAM_DEV.replace(/\/+$/, "")
   }

@@ -1,7 +1,7 @@
 /**
  * Tests for /api/workspaces/local endpoint
  *
- * This endpoint is only available in standalone mode (STREAM_ENV=standalone)
+ * This endpoint is only available in standalone mode (ALIVE_ENV=standalone)
  * Tests cover:
  * - Authentication (session required)
  * - Environment check (standalone mode only)
@@ -20,7 +20,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 const makeGetRequest = () => new Request("http://localhost/api/workspaces/local") as unknown as NextRequest
 
 // Store original env
-const originalBridgeEnv = process.env.STREAM_ENV
+const originalBridgeEnv = process.env.ALIVE_ENV
 
 // Test workspace base directory
 const TEST_WORKSPACE_BASE = path.join(tmpdir(), "standalone-workspace-test")
@@ -33,8 +33,8 @@ vi.mock("next/headers", () => ({
 // Mock env
 vi.mock("@webalive/env/server", () => ({
   env: {
-    get STREAM_ENV() {
-      return process.env.STREAM_ENV
+    get ALIVE_ENV() {
+      return process.env.ALIVE_ENV
     },
   },
 }))
@@ -87,24 +87,24 @@ describe("GET /api/workspaces/local", () => {
       rmSync(TEST_WORKSPACE_BASE, { recursive: true })
     }
     // Restore original env
-    process.env.STREAM_ENV = originalBridgeEnv
+    process.env.ALIVE_ENV = originalBridgeEnv
   })
 
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.STREAM_ENV = "standalone"
+    process.env.ALIVE_ENV = "standalone"
     vi.mocked(verifySessionToken).mockImplementation(async token =>
       token === "valid-jwt" ? ({ userId: STANDALONE.TEST_USER.ID } as any) : null,
     )
   })
 
   afterEach(() => {
-    process.env.STREAM_ENV = originalBridgeEnv
+    process.env.ALIVE_ENV = originalBridgeEnv
   })
 
   describe("Environment Checks", () => {
     it("should return 400 if not in standalone mode", async () => {
-      process.env.STREAM_ENV = "local"
+      process.env.ALIVE_ENV = "local"
       vi.mocked(cookies).mockResolvedValue(createMockCookies("valid-jwt") as any)
 
       const response = await GET(makeGetRequest())
@@ -117,7 +117,7 @@ describe("GET /api/workspaces/local", () => {
     })
 
     it("should return 400 in production mode", async () => {
-      process.env.STREAM_ENV = "production"
+      process.env.ALIVE_ENV = "production"
       vi.mocked(cookies).mockResolvedValue(createMockCookies("valid-jwt") as any)
 
       const response = await GET(makeGetRequest())
@@ -179,19 +179,19 @@ describe("POST /api/workspaces/local", () => {
     if (existsSync(TEST_WORKSPACE_BASE)) {
       rmSync(TEST_WORKSPACE_BASE, { recursive: true })
     }
-    process.env.STREAM_ENV = originalBridgeEnv
+    process.env.ALIVE_ENV = originalBridgeEnv
   })
 
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.STREAM_ENV = "standalone"
+    process.env.ALIVE_ENV = "standalone"
     vi.mocked(verifySessionToken).mockImplementation(async token =>
       token === "valid-jwt" ? ({ userId: STANDALONE.TEST_USER.ID } as any) : null,
     )
   })
 
   afterEach(() => {
-    process.env.STREAM_ENV = originalBridgeEnv
+    process.env.ALIVE_ENV = originalBridgeEnv
   })
 
   function createMockRequest(body: Record<string, unknown>): Request {
@@ -204,7 +204,7 @@ describe("POST /api/workspaces/local", () => {
 
   describe("Environment Checks", () => {
     it("should return 400 if not in standalone mode", async () => {
-      process.env.STREAM_ENV = "local"
+      process.env.ALIVE_ENV = "local"
       vi.mocked(cookies).mockResolvedValue(createMockCookies("valid-jwt") as any)
 
       const req = createMockRequest({ name: "new-workspace" })

@@ -7,7 +7,7 @@
  * For typed API calls (automations, sites), use tools-api.ts instead.
  */
 
-import { COOKIE_NAMES } from "@webalive/shared"
+import { COOKIE_NAMES, isRecord } from "@webalive/shared"
 import { validateWorkspacePath } from "./workspace-validator.js"
 
 /**
@@ -58,7 +58,7 @@ export interface ToolResult {
 export interface ApiCallOptions {
   endpoint: string
   method?: "GET" | "POST" | "PUT" | "DELETE"
-  body?: Record<string, any>
+  body?: Record<string, unknown>
   timeout?: number
 }
 
@@ -72,7 +72,7 @@ export async function callApi(options: ApiCallOptions): Promise<ToolResult> {
   const { endpoint, method = "POST", body, timeout = 60000 } = options
 
   // Security: Auto-validate workspaceRoot if present (fail fast)
-  if (body?.workspaceRoot) {
+  if (body?.workspaceRoot && typeof body.workspaceRoot === "string") {
     try {
       validateWorkspacePath(body.workspaceRoot)
     } catch (error) {
@@ -124,22 +124,29 @@ export async function callApi(options: ApiCallOptions): Promise<ToolResult> {
       }
     }
 
-    const result = (await response.json()) as any
+    const result: unknown = await response.json()
 
-    if (result.success || result.ok) {
+    if (isRecord(result)) {
+      if (result.success || result.ok) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: String(result.message ?? result.output ?? "✓ Operation completed successfully"),
+            },
+          ],
+          isError: false,
+        }
+      }
+
       return {
-        content: [
-          {
-            type: "text",
-            text: result.message || result.output || "✓ Operation completed successfully",
-          },
-        ],
-        isError: false,
+        content: [{ type: "text", text: `✗ ${String(result.message ?? "Unknown error")}` }],
+        isError: true,
       }
     }
 
     return {
-      content: [{ type: "text", text: `✗ ${result.message || "Unknown error"}` }],
+      content: [{ type: "text", text: "✗ Unexpected response format" }],
       isError: true,
     }
   } catch (error) {

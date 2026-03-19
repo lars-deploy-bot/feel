@@ -20,7 +20,7 @@ import {
   isAliveWorkspace,
   parseServerConfig,
   requireEnv,
-  requireStreamEnv,
+  requireAliveEnv,
   type ServerConfig,
 } from "@webalive/shared"
 import { assertNoDangerousCountDrop, readExistingGeneratedCaddyDomainCount } from "../generated-safety.js"
@@ -44,10 +44,6 @@ interface DomainRow {
   port: number
 }
 
-interface TemplateRow {
-  preview_url: string | null
-}
-
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -55,6 +51,20 @@ interface TemplateRow {
 function must<T>(v: T | undefined | null, msg: string): T {
   if (v === undefined || v === null) throw new Error(msg)
   return v
+}
+
+/** Narrow an untyped Supabase row into a validated DomainRow */
+function toDomainRow(row: unknown): DomainRow {
+  if (typeof row !== "object" || row === null || !("hostname" in row) || !("port" in row)) {
+    throw new Error("Invalid domain row: missing hostname or port")
+  }
+  // After `in` checks, TS knows hostname and port exist on the object
+  const hostname = row.hostname
+  const port = row.port
+  if (typeof hostname !== "string" || typeof port !== "number") {
+    throw new Error(`Invalid domain row: hostname=${String(hostname)}, port=${String(port)}`)
+  }
+  return { hostname, port }
 }
 
 function filterReservedDomains(domains: DomainRow[], environments: EnvironmentConfig[]): DomainRow[] {
@@ -76,14 +86,28 @@ async function loadServerConfig(): Promise<ServerConfig> {
 async function loadEnvironments(aliveRoot: string, mainDomain: string): Promise<EnvironmentConfig[]> {
   const envPath = path.join(aliveRoot, "packages/shared/environments.json")
   const raw = await readFile(envPath, "utf8")
-  const envConfigRaw = JSON.parse(raw)
+  const envConfigRaw: unknown = JSON.parse(raw)
 
-  const rawEnvs: EnvironmentConfigRaw[] = Object.values(envConfigRaw.environments || {}).filter(
-    (env: unknown): env is EnvironmentConfigRaw => {
-      const e = env as Record<string, unknown>
-      return typeof e.key === "string" && typeof e.port === "number" && typeof e.subdomain === "string"
-    },
-  )
+  function extractEnvironments(cfg: unknown): unknown[] {
+    if (typeof cfg !== "object" || cfg === null || !("environments" in cfg)) return []
+    const envs = cfg.environments
+    if (typeof envs !== "object" || envs === null) return []
+    return Object.values(envs)
+  }
+
+  function isEnvironmentConfigRaw(env: unknown): env is EnvironmentConfigRaw {
+    if (typeof env !== "object" || env === null) return false
+    return (
+      "key" in env &&
+      "port" in env &&
+      "subdomain" in env &&
+      typeof env.key === "string" &&
+      typeof env.port === "number" &&
+      typeof env.subdomain === "string"
+    )
+  }
+
+  const rawEnvs = extractEnvironments(envConfigRaw).filter(isEnvironmentConfigRaw)
 
   if (rawEnvs.length === 0) {
     throw new Error(`No valid environments found in ${envPath}. Each needs: key, port, subdomain`)
@@ -98,11 +122,6 @@ async function loadEnvironments(aliveRoot: string, mainDomain: string): Promise<
     domain: `${env.subdomain}.${mainDomain}`,
     previewBase: `preview.${env.subdomain}.${mainDomain}`,
   }))
-}
-
-async function loadSnippet(aliveRoot: string, rel: string): Promise<string> {
-  const p = path.join(aliveRoot, rel)
-  return readFile(p, "utf8")
 }
 
 async function loadStaticEmbeddableHosts(aliveRoot: string): Promise<Set<string>> {
@@ -163,7 +182,9 @@ async function queryDomains(serverId: string): Promise<DomainRow[]> {
     throw new Error(`Failed to query domains: ${error.message}`)
   }
 
-  return (data || []) as DomainRow[]
+  if (!data) return []
+
+  return data.map(toDomainRow)
 }
 
 async function queryEmbeddableTemplateHosts(): Promise<Set<string>> {
@@ -175,16 +196,18 @@ async function queryEmbeddableTemplateHosts(): Promise<Set<string>> {
   }
 
   const hosts = new Set<string>()
-  for (const row of (data || []) as TemplateRow[]) {
-    if (!row.preview_url) continue
+  for (const row of data ?? []) {
+    if (typeof row !== "object" || row === null || !("preview_url" in row)) continue
+    const previewUrl = row.preview_url
+    if (typeof previewUrl !== "string") continue
 
     try {
-      const url = new URL(row.preview_url)
+      const url = new URL(previewUrl)
       if (url.hostname) {
         hosts.add(url.hostname.toLowerCase())
       }
     } catch {
-      console.warn(`  Skipping invalid template preview_url: ${row.preview_url}`)
+      console.warn(`  Skipping invalid template preview_url: ${previewUrl}`)
     }
   }
 
@@ -198,10 +221,9 @@ async function queryEmbeddableTemplateHosts(): Promise<Set<string>> {
 export function renderCaddySites(
   cfg: ServerConfig,
   environments: EnvironmentConfig[],
-  _snippets: { common: string; image: string },
   domains: DomainRow[],
   embeddableHosts: Set<string>,
-  streamEnv: string,
+  aliveEnv: string,
 ): string {
   const filteredDomains = filterReservedDomains(domains, environments)
   const previewBase = cfg.domains.previewBase
@@ -272,7 +294,7 @@ export function renderCaddySites(
   // and having it in multiple env files causes a Caddy duplicate-hostname error.
   const wildcardDomain = cfg.domains.previewBase ?? cfg.domains.main
   const wildcardBlock =
-    streamEnv === "production" && wildcardDomain
+    aliveEnv === "production" && wildcardDomain
       ? renderWildcardPreviewBlock(wildcardDomain, cfg.previewProxy?.port)
       : ""
 
@@ -349,8 +371,7 @@ export function renderCaddyShell(cfg: ServerConfig): string {
     return `${header}# No shell domains configured\n`
   }
 
-  const shellConfig = cfg.shell as { domains: string[]; listen: string; upstream: string; e2bUpstream?: string }
-  const e2bUpstream = shellConfig.e2bUpstream ?? cfg.shell.upstream
+  const e2bUpstream = cfg.shell.e2bUpstream ?? cfg.shell.upstream
 
   const blocks = cfg.shell.domains
     .map(d => {
@@ -417,11 +438,11 @@ function renderNginxSniMap(cfg: ServerConfig): string {
 // =============================================================================
 
 async function run() {
-  const streamEnv = requireStreamEnv()
+  const aliveEnv = requireAliveEnv()
   console.log("Loading server config...")
   const cfg = await loadServerConfig()
-  cfg.generated.caddySites = caddySitesPath(cfg.generated.caddySites, streamEnv)
-  console.log(`  environment: ${streamEnv}`)
+  cfg.generated.caddySites = caddySitesPath(cfg.generated.caddySites, aliveEnv)
+  console.log(`  environment: ${aliveEnv}`)
   console.log(`  serverId: ${cfg.serverId}`)
   console.log(`  aliveRoot: ${cfg.paths.aliveRoot}`)
   console.log(`  mainDomain: ${cfg.domains.main}`)
@@ -436,14 +457,8 @@ async function run() {
     console.log(`  - ${env.key}: ${env.domain} (preview: ${env.previewBase}) → localhost:${env.port}`)
   }
 
-  console.log("\nLoading snippets...")
-  const [commonHeaders, imageServing, staticEmbeddableHosts] = await Promise.all([
-    loadSnippet(cfg.paths.aliveRoot, "ops/caddy/snippets/common_headers.caddy"),
-    loadSnippet(cfg.paths.aliveRoot, "ops/caddy/snippets/image_serving.caddy"),
-    loadStaticEmbeddableHosts(cfg.paths.aliveRoot),
-  ])
-  console.log("  Loaded common_headers.caddy")
-  console.log("  Loaded image_serving.caddy")
+  console.log("\nLoading static embeddable hosts...")
+  const staticEmbeddableHosts = await loadStaticEmbeddableHosts(cfg.paths.aliveRoot)
   console.log(`  Loaded ${staticEmbeddableHosts.size} static embeddable hosts`)
 
   console.log("\nQuerying database for domains...")
@@ -474,7 +489,7 @@ async function run() {
 
   // Safety check: prevent accidental mass deletion of production routing.
   // Non-production environments start with 0 domains, so the check would always fail.
-  if (streamEnv === "production") {
+  if (aliveEnv === "production") {
     assertNoDangerousCountDrop({
       kind: "generated Caddy routing",
       filePath: cfg.generated.caddySites,
@@ -487,20 +502,13 @@ async function run() {
   await mkdir(cfg.generated.dir, { recursive: true })
 
   // Generate Caddyfile.sites
-  const sites = renderCaddySites(
-    cfg,
-    environments,
-    { common: commonHeaders, image: imageServing },
-    domains,
-    embeddableHosts,
-    streamEnv,
-  )
+  const sites = renderCaddySites(cfg, environments, domains, embeddableHosts, aliveEnv)
   await atomicWrite(cfg.generated.caddySites, sites)
   console.log(`  ${cfg.generated.caddySites}`)
 
   // Caddyfile.shell and nginx SNI map are server-wide shared artifacts.
   // Only production generates them — staging sites don't need shell routing.
-  if (streamEnv === "production") {
+  if (aliveEnv === "production") {
     const shell = renderCaddyShell(cfg)
     await atomicWrite(cfg.generated.caddyShell, shell)
     console.log(`  ${cfg.generated.caddyShell}`)

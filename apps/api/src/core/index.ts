@@ -1,5 +1,4 @@
 import { OpenAPIHono } from "@hono/zod-openapi"
-import { Hono } from "hono"
 import { authMiddleware } from "../middleware/auth"
 import type { AppBindings } from "../types/hono"
 import { authRoutes } from "./auth/auth.routes"

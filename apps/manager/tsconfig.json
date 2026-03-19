@@ -8,8 +8,6 @@
     "jsx": "react-jsx",
     "outDir": "./dist",
     "rootDir": "./src",
-    "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
     "noEmit": true,
     "paths": {
       "@/*": ["./src/*"]

@@ -27,11 +27,9 @@ const FRIENDLY_ERRORS: Record<number, string> = {
 
 function isErrorResponse(val: unknown): val is { error: { code: number; message: string } } {
   if (typeof val !== "object" || val === null || !("error" in val)) return false
-  const obj = val as Record<string, unknown>
-  const err = obj.error
+  const err = val.error
   if (typeof err !== "object" || err === null) return false
-  const errObj = err as Record<string, unknown>
-  return typeof errObj.code === "number" && typeof errObj.message === "string"
+  return "code" in err && typeof err.code === "number" && "message" in err && typeof err.message === "string"
 }
 
 function extractGoogleError(val: unknown, httpStatus: number): GoogleApiError {
@@ -159,10 +157,9 @@ export async function listSites(token: string): Promise<Array<{ siteUrl: string;
     path: "/sites",
     method: "GET",
     validate: (json): SitesResponse => {
-      if (typeof json !== "object" || json === null) return { siteEntry: [] }
-      const obj = json as Record<string, unknown>
+      if (typeof json !== "object" || json === null || !("siteEntry" in json)) return { siteEntry: [] }
       return {
-        siteEntry: Array.isArray(obj.siteEntry) ? obj.siteEntry : [],
+        siteEntry: Array.isArray(json.siteEntry) ? json.siteEntry : [],
       }
     },
   })
@@ -196,12 +193,12 @@ export async function querySearchAnalytics(
     body: requestBody,
     validate: (json): AnalyticsResponse => {
       if (typeof json !== "object" || json === null) return { rows: [] }
-      const obj = json as Record<string, unknown>
-      return {
-        rows: Array.isArray(obj.rows) ? obj.rows : [],
-        responseAggregationType:
-          typeof obj.responseAggregationType === "string" ? obj.responseAggregationType : undefined,
-      }
+      const rows: AnalyticsRow[] = "rows" in json && Array.isArray(json.rows) ? (json.rows as AnalyticsRow[]) : []
+      const responseAggregationType: string | undefined =
+        "responseAggregationType" in json && typeof json.responseAggregationType === "string"
+          ? json.responseAggregationType
+          : undefined
+      return { rows, responseAggregationType }
     },
   })
 
@@ -231,6 +228,12 @@ export async function inspectUrl(
       ...(languageCode ? { languageCode } : {}),
     },
     base: "inspection",
-    validate: (json): InspectionResult => (typeof json === "object" && json !== null ? (json as InspectionResult) : {}),
+    validate: (json): InspectionResult => {
+      if (typeof json !== "object" || json === null || !("inspectionResult" in json)) return {}
+      const ir = json.inspectionResult
+      if (typeof ir !== "object" || ir === null) return {}
+      // InspectionResult fields are all optional Record<string, unknown> -- pass through as-is
+      return json as InspectionResult
+    },
   })
 }

@@ -73,7 +73,7 @@ Use this to:
 - Get the project ref to configure the connection
 - Verify you have access to the expected projects`,
   listProjectsParamsSchema,
-  async args => {
-    return listProjects(args as ListProjectsParams)
+  async () => {
+    return listProjects({})
   },
 )

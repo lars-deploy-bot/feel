@@ -228,7 +228,7 @@ describe("Workspace Resolution", () => {
 
   describe("Worktree Resolution", () => {
     it("resolves worktree paths in local mode", async () => {
-      vi.stubEnv("STREAM_ENV", "local")
+      vi.stubEnv("ALIVE_ENV", "local")
 
       const resolveSpy = vi
         .spyOn(worktrees, "resolveWorktreePath")
@@ -249,7 +249,7 @@ describe("Workspace Resolution", () => {
     })
 
     it("rejects empty worktree slugs", async () => {
-      vi.stubEnv("STREAM_ENV", "local")
+      vi.stubEnv("ALIVE_ENV", "local")
 
       const result = await getWorkspace({
         body: { workspace: "test", worktree: "" },
@@ -267,7 +267,7 @@ describe("Workspace Resolution", () => {
     })
 
     it("maps worktree not-found errors", async () => {
-      vi.stubEnv("STREAM_ENV", "local")
+      vi.stubEnv("ALIVE_ENV", "local")
 
       const resolveSpy = vi
         .spyOn(worktrees, "resolveWorktreePath")
@@ -404,8 +404,8 @@ describe("Workspace Resolution", () => {
   })
 
   describe("Local Development Mode", () => {
-    it("allows 'test' workspace in STREAM_ENV=local", async () => {
-      vi.stubEnv("STREAM_ENV", "local")
+    it("allows 'test' workspace in ALIVE_ENV=local", async () => {
+      vi.stubEnv("ALIVE_ENV", "local")
 
       const result = await getWorkspace({
         body: { workspace: "test" },

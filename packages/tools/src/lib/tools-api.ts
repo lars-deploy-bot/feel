@@ -8,6 +8,7 @@
 import { ApiError, createClient, type Req } from "@alive-brug/alrighty"
 import { CLAUDE_MODELS, COOKIE_NAMES } from "@webalive/shared"
 import { z } from "zod"
+import { getApiBaseUrl } from "./api-client.js"
 
 // ---------------------------------------------------------------------------
 // Schemas — subset matching the API routes that MCP tools call.
@@ -123,21 +124,6 @@ type ToolsClient = ReturnType<typeof createClient<typeof toolsSchemas>>
 let _client: ToolsClient | null = null
 let _clientCacheKey: string | null = null
 
-function getApiBaseUrl(): string {
-  const portEnv = process.env.PORT
-  if (!portEnv) {
-    throw new Error("PORT environment variable is required")
-  }
-  const port = Number.parseInt(portEnv.trim(), 10)
-  if (!Number.isFinite(port) || port < 1 || port > 65535) {
-    throw new Error("Invalid PORT environment variable: must be an integer between 1 and 65535")
-  }
-  if (portEnv.trim() !== String(port)) {
-    throw new Error("Invalid PORT environment variable: must be an integer between 1 and 65535")
-  }
-  return `http://localhost:${port}`
-}
-
 function getClient(): ToolsClient {
   const basePath = `${getApiBaseUrl()}/api`
   const sessionCookie = process.env.ALIVE_SESSION_COOKIE?.trim() || undefined
@@ -196,6 +182,7 @@ type ToolsReq<E extends ToolsReqEndpoint> = Req<typeof toolsSchemas, E>
  * const data = await api().postty("automations/create", validated)
  * ```
  */
+// eslint-disable-next-line -- Generic index lookup requires assertion: Zod parse guarantees the shape matches ToolsReq<E>
 export function validateToolsRequest<E extends ToolsReqEndpoint>(endpoint: E, data: unknown): ToolsReq<E> {
   const entry = toolsSchemas[endpoint]
   if (!("req" in entry) || !entry.req) throw new Error(`Endpoint "${endpoint}" has no request schema`)

@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { STREAM_ENV } from "@webalive/shared"
+import { ALIVE_ENV } from "@webalive/shared"
 import { NextRequest, NextResponse } from "next/server"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { MOCK_SESSION_USER } from "@/lib/test-helpers/mock-session-user"
@@ -312,7 +312,7 @@ describe("POST /api/files/delete", () => {
       expect(data.error).toBe("PATH_OUTSIDE_WORKSPACE")
     })
 
-    it.skipIf(process.env.STREAM_ENV === STREAM_ENV.LOCAL)(
+    it.skipIf(process.env.ALIVE_ENV === ALIVE_ENV.LOCAL)(
       "should allow symlinks pointing inside workspace",
       async () => {
         // Create a real file

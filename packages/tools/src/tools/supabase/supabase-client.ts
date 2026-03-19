@@ -6,24 +6,34 @@
  */
 
 import { COOKIE_NAMES } from "@webalive/shared"
-import { errorResult, type ToolResult } from "../../lib/api-client.js"
+import { z } from "zod"
+import { errorResult, getApiBaseUrl, type ToolResult } from "../../lib/api-client.js"
 
 const SUPABASE_API_BASE = "https://api.supabase.com"
 
-/**
- * Get internal API base URL for localhost calls
- */
-function getApiBaseUrl(): string {
-  const portEnv = process.env.PORT
-  if (!portEnv) {
-    throw new Error("PORT environment variable not set")
-  }
-  const port = Number.parseInt(portEnv.trim(), 10)
-  if (!Number.isFinite(port) || port < 1 || port > 65535) {
-    throw new Error("Invalid PORT environment variable")
-  }
-  return `http://localhost:${port}`
-}
+/** Schema for Supabase context response */
+const supabaseContextSchema = z.object({
+  accessToken: z.string(),
+  projectRef: z.string(),
+})
+
+/** Schema for project list response */
+const projectListSchema = z.array(
+  z.object({
+    id: z.string(),
+    name: z.string(),
+    region: z.string(),
+    organization_id: z.string(),
+  }),
+)
+
+/** Schema for single project response */
+const projectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  region: z.string(),
+  status: z.string(),
+})
 
 /**
  * Supabase connection context retrieved from the API server
@@ -70,8 +80,8 @@ export async function getSupabaseContext(): Promise<SupabaseContext | ToolResult
       return errorResult("Failed to get Supabase context", `HTTP ${response.status}: ${errorText}`)
     }
 
-    const data = (await response.json()) as { accessToken: string; projectRef: string }
-    return data
+    const raw: unknown = await response.json()
+    return supabaseContextSchema.parse(raw)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return errorResult("Failed to connect to Supabase", message)
@@ -127,7 +137,7 @@ export async function executeQuery(
  */
 export async function fetchProjects(
   accessToken: string,
-): Promise<{ data?: Array<{ id: string; name: string; region: string; organization_id: string }>; error?: string }> {
+): Promise<{ data?: z.infer<typeof projectListSchema>; error?: string }> {
   try {
     const response = await fetch(`${SUPABASE_API_BASE}/v1/projects`, {
       headers: {
@@ -141,7 +151,8 @@ export async function fetchProjects(
       return { error: `Failed to list projects (${response.status}): ${errorText}` }
     }
 
-    const data = (await response.json()) as Array<{ id: string; name: string; region: string; organization_id: string }>
+    const raw: unknown = await response.json()
+    const data = projectListSchema.parse(raw)
     return { data }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -155,7 +166,7 @@ export async function fetchProjects(
 export async function fetchProject(
   accessToken: string,
   projectRef: string,
-): Promise<{ data?: { id: string; name: string; region: string; status: string }; error?: string }> {
+): Promise<{ data?: z.infer<typeof projectSchema>; error?: string }> {
   try {
     const response = await fetch(`${SUPABASE_API_BASE}/v1/projects/${projectRef}`, {
       headers: {
@@ -169,7 +180,8 @@ export async function fetchProject(
       return { error: `Failed to get project (${response.status}): ${errorText}` }
     }
 
-    const data = (await response.json()) as { id: string; name: string; region: string; status: string }
+    const raw: unknown = await response.json()
+    const data = projectSchema.parse(raw)
     return { data }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

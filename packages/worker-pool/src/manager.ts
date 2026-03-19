@@ -1033,7 +1033,8 @@ export class WorkerPoolManager extends EventEmitter {
     if (configured?.startsWith("/")) {
       return configured
     }
-    const home = process.env.HOME || "/root"
+    const home = process.env.HOME
+    if (!home) throw new Error("HOME environment variable is required")
     return path.join(home, ".claude")
   }
 

@@ -91,25 +91,7 @@ function unregisterElement(node: Element, fileName: string, lineNumber: number, 
   }
 }
 
-/**
- * Get the display name for a React element type
- */
-function getTypeName(type: unknown): string {
-  if (typeof type === "string") return type
-  if (typeof type === "function") {
-    return (
-      (type as { displayName?: string; name?: string }).displayName || (type as { name?: string }).name || "Unknown"
-    )
-  }
-  if (typeof type === "object" && type !== null) {
-    const t = type as {
-      displayName?: string
-      render?: { displayName?: string; name?: string }
-    }
-    return t.displayName || t.render?.displayName || t.render?.name || "Unknown"
-  }
-  return "Unknown"
-}
+import { getTypeName } from "./get-type-name"
 
 /**
  * Source info from React's JSX transform

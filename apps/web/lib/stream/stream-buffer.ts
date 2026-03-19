@@ -13,7 +13,7 @@
  */
 
 import { getRedisUrl } from "@webalive/env/server"
-import { createRedisClient } from "@webalive/redis"
+import { getSharedClient, recordSharedFailure, recordSharedSuccess } from "@webalive/redis"
 import { isRecord } from "@/lib/utils"
 
 // ============================================================================
@@ -62,12 +62,8 @@ const MAX_BUFFERED_MESSAGES = 1000
 const STALE_STREAM_THRESHOLD_MS = 5 * 60 * 1000
 
 // ============================================================================
-// Singleton Redis Client
+// Shared Redis Client (via @webalive/redis circuit-breaker-protected singleton)
 // ============================================================================
-
-// In standalone mode, this will be null (Redis not available)
-let redisClient: ReturnType<typeof createRedisClient> | null = null
-let redisInitialized = false
 
 function parseRedisJson(value: unknown): Record<string, unknown> | null {
   if (typeof value !== "string") {
@@ -102,17 +98,27 @@ function toNumber(value: unknown, fallback: number): number {
 }
 
 function getRedis() {
-  if (!redisInitialized) {
-    // getRedisUrl() returns null in standalone mode
-    redisClient = createRedisClient(getRedisUrl())
-    redisInitialized = true
+  // getRedisUrl() returns null in standalone mode; getSharedClient handles that
+  const client = getSharedClient(getRedisUrl())
+  if (!client) return null
+  // Only return when ready so callers skip Redis gracefully
+  if (client.status !== "ready") return null
+  return client
+}
+
+/**
+ * Execute a Redis operation with circuit breaker feedback.
+ * Records success/failure to the shared circuit breaker.
+ */
+async function withCircuitBreaker<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    const result = await operation()
+    recordSharedSuccess()
+    return result
+  } catch (err) {
+    recordSharedFailure()
+    throw err
   }
-  // ioredis with maxRetriesPerRequest:null queues commands forever while connecting.
-  // Return null when not ready so callers skip Redis gracefully.
-  if (redisClient && redisClient.status !== "ready") {
-    return null
-  }
-  return redisClient
 }
 
 /**
@@ -160,11 +166,12 @@ export async function createStreamBuffer(
   }
 
   // Store with TTL
-  await redis.setex(key, BUFFER_TTL_SECONDS, JSON.stringify(entry))
-
-  // Also create a lookup by tab key (for reconnection)
-  const lookupKey = `${BUFFER_KEY_PREFIX}tab:${tabKey}`
-  await redis.setex(lookupKey, BUFFER_TTL_SECONDS, requestId)
+  await withCircuitBreaker(async () => {
+    await redis.setex(key, BUFFER_TTL_SECONDS, JSON.stringify(entry))
+    // Also create a lookup by tab key (for reconnection)
+    const lookupKey = `${BUFFER_KEY_PREFIX}tab:${tabKey}`
+    await redis.setex(lookupKey, BUFFER_TTL_SECONDS, requestId)
+  })
 }
 
 /**
@@ -209,14 +216,16 @@ export async function appendToStreamBuffer(requestId: string, message: string, s
 
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
-  const result = await redis.eval(
-    APPEND_SCRIPT,
-    1,
-    key,
-    streamSeq.toString(),
-    MAX_BUFFERED_MESSAGES.toString(),
-    message,
-    Date.now().toString(),
+  const result = await withCircuitBreaker(() =>
+    redis.eval(
+      APPEND_SCRIPT,
+      1,
+      key,
+      streamSeq.toString(),
+      MAX_BUFFERED_MESSAGES.toString(),
+      message,
+      Date.now().toString(),
+    ),
   )
 
   if (result === -1) {
@@ -245,15 +254,17 @@ export async function completeStreamBuffer(requestId: string): Promise<void> {
 
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
-  const raw = await redis.get(key)
-  if (!raw) return
+  await withCircuitBreaker(async () => {
+    const raw = await redis.get(key)
+    if (!raw) return
 
-  const entry: StreamBufferEntry = JSON.parse(raw)
-  entry.state = "complete"
-  entry.completedAt = Date.now()
+    const entry: StreamBufferEntry = JSON.parse(raw)
+    entry.state = "complete"
+    entry.completedAt = Date.now()
 
-  // Keep buffer alive for reconnection window (refresh TTL)
-  await redis.setex(key, BUFFER_TTL_SECONDS, JSON.stringify(entry))
+    // Keep buffer alive for reconnection window (refresh TTL)
+    await redis.setex(key, BUFFER_TTL_SECONDS, JSON.stringify(entry))
+  })
 }
 
 /**
@@ -265,18 +276,20 @@ export async function errorStreamBuffer(requestId: string, error: string): Promi
 
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
-  const raw = await redis.get(key)
-  if (!raw) return
+  await withCircuitBreaker(async () => {
+    const raw = await redis.get(key)
+    if (!raw) return
 
-  const entry: StreamBufferEntry = JSON.parse(raw)
-  entry.state = "error"
-  entry.error = error
-  entry.completedAt = Date.now()
+    const entry: StreamBufferEntry = JSON.parse(raw)
+    entry.state = "error"
+    entry.error = error
+    entry.completedAt = Date.now()
 
-  const ttl = await redis.ttl(key)
-  if (ttl > 0) {
-    await redis.setex(key, ttl, JSON.stringify(entry))
-  }
+    const ttl = await redis.ttl(key)
+    if (ttl > 0) {
+      await redis.setex(key, ttl, JSON.stringify(entry))
+    }
+  })
 }
 
 /**
@@ -288,7 +301,7 @@ export async function getStreamBuffer(requestId: string): Promise<StreamBufferEn
 
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
-  const raw = await redis.get(key)
+  const raw = await withCircuitBreaker(() => redis.get(key))
   if (!raw) return null
 
   return JSON.parse(raw)
@@ -304,7 +317,7 @@ export async function findStreamBufferByTab(tabKey: string): Promise<string | nu
 
   const lookupKey = `${BUFFER_KEY_PREFIX}tab:${tabKey}`
 
-  return redis.get(lookupKey)
+  return withCircuitBreaker(() => redis.get(lookupKey))
 }
 
 /**
@@ -397,12 +410,14 @@ export async function getUnreadMessages(
 
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
-  const result = await redis.eval(
-    GET_UNREAD_SCRIPT,
-    1,
-    key,
-    userId,
-    typeof afterSeq === "number" ? afterSeq.toString() : "-1",
+  const result = await withCircuitBreaker(() =>
+    redis.eval(
+      GET_UNREAD_SCRIPT,
+      1,
+      key,
+      userId,
+      typeof afterSeq === "number" ? afterSeq.toString() : "-1",
+    ),
   )
 
   if (!result) return null
@@ -474,7 +489,7 @@ export async function ackStreamCursor(
   if (!redis) return null
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
-  const result = await redis.eval(ACK_SCRIPT, 1, key, userId, lastSeenSeq.toString())
+  const result = await withCircuitBreaker(() => redis.eval(ACK_SCRIPT, 1, key, userId, lastSeenSeq.toString()))
   if (!result) return null
 
   const parsed = parseRedisJson(result)
@@ -499,15 +514,17 @@ export async function deleteStreamBuffer(requestId: string): Promise<void> {
 
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
-  // Get tab key before deletion for lookup cleanup
-  const raw = await redis.get(key)
-  if (raw) {
-    const entry: StreamBufferEntry = JSON.parse(raw)
-    const lookupKey = `${BUFFER_KEY_PREFIX}tab:${entry.tabKey}`
-    await redis.del(lookupKey)
-  }
+  await withCircuitBreaker(async () => {
+    // Get tab key before deletion for lookup cleanup
+    const raw = await redis.get(key)
+    if (raw) {
+      const entry: StreamBufferEntry = JSON.parse(raw)
+      const lookupKey = `${BUFFER_KEY_PREFIX}tab:${entry.tabKey}`
+      await redis.del(lookupKey)
+    }
 
-  await redis.del(key)
+    await redis.del(key)
+  })
 }
 
 /**

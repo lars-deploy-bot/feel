@@ -1,3 +1,5 @@
+import { isRecord } from "./type-guards.js"
+
 export interface ToolUseMetadata {
   toolUseId: string
   toolName: string
@@ -17,10 +19,6 @@ export interface SdkMessageToolSyncResult {
   message: unknown
   toolUses: ToolUseMetadata[]
   toolResults: ToolResultMetadata[]
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 function getContentBlocks(message: unknown): unknown[] | null {

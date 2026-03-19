@@ -1,10 +1,6 @@
-import { getMcpToolFriendlyName, getToolActionLabel, getToolDetail, SDK_TOOL_LOWER } from "@webalive/shared"
+import { getMcpToolFriendlyName, getToolActionLabel, getToolDetail, isRecord, SDK_TOOL_LOWER } from "@webalive/shared"
 import { useMemo } from "react"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
 
 /**
  * Derives status text from the last assistant message when busy.

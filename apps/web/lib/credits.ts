@@ -4,7 +4,7 @@
  * ARCHITECTURE:
  * - Credits are stored in Supabase (iam.orgs.credits) - primary currency
  * - LLM tokens are from Claude API responses
- * - Conversion only happens when charging (in chargeTokensFromCredits)
+ * - Conversion only happens when charging (in chargeCreditsDirectly)
  *
  * TERMINOLOGY:
  * - CREDITS: Our primary currency (stored and displayed)

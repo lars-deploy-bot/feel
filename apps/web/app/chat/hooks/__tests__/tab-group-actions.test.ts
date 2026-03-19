@@ -16,7 +16,6 @@ function resetStore() {
     tabsByWorkspace: {},
     activeTabByWorkspace: {},
     tabsExpandedByWorkspace: {},
-    nextTabNumberByWorkspace: {},
   })
 }
 

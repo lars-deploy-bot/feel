@@ -79,7 +79,6 @@ describe("renderCaddySites", () => {
           previewBase: "preview.app.example.com",
         },
       ],
-      { common: "", image: "" },
       [
         { hostname: "alive", port: 0 },
         { hostname: "demo.example.com", port: 3333 },

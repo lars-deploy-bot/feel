@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { rm } from "node:fs/promises"
 import type { ExecutionMode } from "@webalive/database"
-import { caddySitesFilteredPath, DEFAULTS, PATHS, PORTS, requireStreamEnv } from "@webalive/shared"
+import { caddySitesFilteredPath, DEFAULTS, PATHS, PORTS, requireAliveEnv } from "@webalive/shared"
 import { checkDomainInCaddy, configureCaddy, regeneratePortMap, SiteOrchestrator } from "@webalive/site-controller"
 import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
 import { resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
@@ -118,7 +118,7 @@ function validatePort(domain: string, port: number): number {
 }
 
 function getRoutingVerificationPath(): string | null {
-  const filteredPath = caddySitesFilteredPath(PATHS.CADDYFILE_SITES, requireStreamEnv())
+  const filteredPath = caddySitesFilteredPath(PATHS.CADDYFILE_SITES, requireAliveEnv())
   if (existsSync(filteredPath)) {
     return filteredPath
   }
@@ -289,8 +289,8 @@ async function runStrictDeploymentLocked(
     })
 
     // Regenerate port-map.json from canonical (production) DB.
-    const streamEnv = requireStreamEnv()
-    await regeneratePortMap(streamEnv === "production" ? validated.domain : undefined)
+    const aliveEnv = requireAliveEnv()
+    await regeneratePortMap(aliveEnv === "production" ? validated.domain : undefined)
 
     await configureCaddy({
       domain: validated.domain,

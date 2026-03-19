@@ -22,15 +22,15 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@sentry/node": "^10.43.0",
-    "@supabase/supabase-js": "^2.49.8",
+    "@sentry/node": "^10.45.0",
+    "@supabase/supabase-js": "^2.99.3",
     "@webalive/automation": "workspace:*",
     "@webalive/database": "workspace:*",
     "@webalive/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.0.3",
-    "typescript": "^5.7.2",
-    "vitest": "^3.1.4"
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }

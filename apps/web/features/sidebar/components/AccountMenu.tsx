@@ -10,6 +10,18 @@ import { resetPostHogIdentity } from "@/lib/posthog"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 import { usePortalMenu } from "../hooks/usePortalMenu"
 
+/** Single-pass display name resolution. No fallback chains. */
+function resolveUserDisplay(
+  external: string | null | undefined,
+  user: { firstName?: string | null; name?: string | null; email?: string | null } | null,
+): string | null {
+  if (external) return external
+  if (user?.firstName) return user.firstName
+  if (user?.name) return user.name
+  if (user?.email) return user.email.split("@")[0]
+  return null
+}
+
 interface AccountMenuProps {
   onSettingsClick: () => void
   onFeedbackClick?: () => void
@@ -31,11 +43,10 @@ export function AccountMenu({
   const selectedOrgId = useSelectedOrgId()
   const [signingOut, setSigningOut] = useState(false)
 
-  // Use provided display name, or derive from user auth object
-  const userDisplay = externalUserDisplay ?? user?.firstName ?? user?.name ?? user?.email?.split("@")[0] ?? null
+  const userDisplay = resolveUserDisplay(externalUserDisplay, user)
   const avatarLetter = (userDisplay ?? "U")[0].toUpperCase()
   const selectedOrg = selectedOrgId ? organizations.find(o => o.org_id === selectedOrgId) : undefined
-  const orgName = loading ? null : (selectedOrg?.name ?? organizations[0]?.name ?? null)
+  const orgName = loading ? null : (selectedOrg?.name ?? null)
 
   async function handleSignOut() {
     setSigningOut(true)

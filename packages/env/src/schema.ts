@@ -114,7 +114,7 @@ export const serverSchema = {
   // Stream configuration
   WORKSPACE_BASE: z.string().default("/srv/webalive/sites"),
   ALIVE_PASSCODE: z.string().optional(),
-  STREAM_ENV: z.enum(["local", "dev", "staging", "production", "standalone"]).optional(),
+  ALIVE_ENV: z.enum(["local", "dev", "staging", "production", "standalone"]).optional(),
   LOCAL_TEMPLATE_PATH: z.string().optional(),
   SHELL_PASSWORD: z.string().optional(),
   HOSTED_ENV: z.string().optional(),
@@ -132,7 +132,7 @@ export const serverSchema = {
   STRIPE_CLIENT_SECRET: z.string().optional(), // Platform API secret key
   STRIPE_REDIRECT_URI: z.string().optional(), // Optional, derived from baseUrl
   // Flowglad billing/payment integration
-  // REQUIRED in production/staging, optional in local dev (STREAM_ENV=local)
+  // REQUIRED in production/staging, optional in local dev (ALIVE_ENV=local)
   // Validated at runtime by getFlowgladSecretKey() helper
   FLOWGLAD_SECRET_KEY: flowgladSecretKey.optional(),
   LINEAR_CLIENT_ID: z.string().optional(),
@@ -169,7 +169,7 @@ export const serverSchema = {
   SUPERADMIN_EMAILS: z.string().optional(),
 
   // Redis configuration
-  // REQUIRED in production/staging, optional in local dev (STREAM_ENV=local)
+  // REQUIRED in production/staging, optional in local dev (ALIVE_ENV=local)
   // Validated at runtime by getRedisUrl() helper
   REDIS_URL: z
     .string()
@@ -183,6 +183,15 @@ export const serverSchema = {
   // Optional — only required in production/staging, not in local E2E
   SENTRY_AUTH_TOKEN: z.string().min(1).optional(),
   POSTHOG_PERSONAL_API_KEY: z.string().min(1).optional(),
+
+  // PostHog server-side analytics API (used by apps/api)
+  POSTHOG_API_KEY: z.string().min(1).optional(),
+  POSTHOG_HOST: z.string().url().optional(),
+  POSTHOG_PROJECT_ID: z.coerce.number().int().positive().optional(),
+
+  // SDK Log Proxy (debugging — routes API calls through local proxy)
+  SDK_LOG_PROXY_URL: z.string().url().optional(),
+  ENABLE_SDK_LOG_PROXY: z.enum(["0", "1"]).optional(),
 
   // Signup access code (required to create new accounts in production)
   SIGNUP_ACCESS_CODE: z.string().min(1).optional(),
@@ -198,7 +207,7 @@ export const serverSchema = {
     .string()
     .optional()
     .refine(
-      val => !(val && process.env.STREAM_ENV === "production"),
+      val => !(val && process.env.ALIVE_ENV === "production"),
       "E2E_TEST_SECRET must NOT be set in production — it exposes test routes that can mutate user data",
     ),
   E2E_RUN_ID: z.string().optional(),
@@ -217,6 +226,14 @@ export const clientSchema = {
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
   NEXT_PUBLIC_CONTACT_EMAIL: z.string().email().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+
+  // Build-time metadata (injected by next.config.js from deployer env vars)
+  NEXT_PUBLIC_SENTRY_RELEASE: z.string().optional(),
+  NEXT_PUBLIC_ALIVE_ENV: z.string().optional(),
+  NEXT_PUBLIC_BUILD_COMMIT: z.string().optional(),
+  NEXT_PUBLIC_BUILD_BRANCH: z.string().optional(),
+  NEXT_PUBLIC_BUILD_TIME: z.string().optional(),
+  NEXT_PUBLIC_SERVER_IP: z.string().optional(),
 } as const
 
 /**
@@ -241,7 +258,7 @@ export const runtimeEnv = {
   STREAM_DEV_URL: process.env.STREAM_DEV_URL,
   WORKSPACE_BASE: process.env.WORKSPACE_BASE,
   ALIVE_PASSCODE: process.env.ALIVE_PASSCODE,
-  STREAM_ENV: process.env.STREAM_ENV,
+  ALIVE_ENV: process.env.ALIVE_ENV,
 
   LOCAL_TEMPLATE_PATH: process.env.LOCAL_TEMPLATE_PATH,
   SHELL_PASSWORD: process.env.SHELL_PASSWORD,
@@ -283,6 +300,11 @@ export const runtimeEnv = {
   E2E_RUN_ID: process.env.E2E_RUN_ID,
   SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
   POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
+  POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
+  POSTHOG_HOST: process.env.POSTHOG_HOST,
+  POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
+  SDK_LOG_PROXY_URL: process.env.SDK_LOG_PROXY_URL,
+  ENABLE_SDK_LOG_PROXY: process.env.ENABLE_SDK_LOG_PROXY,
 
   // Client
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -293,6 +315,12 @@ export const runtimeEnv = {
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   NEXT_PUBLIC_CONTACT_EMAIL: process.env.NEXT_PUBLIC_CONTACT_EMAIL,
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  NEXT_PUBLIC_SENTRY_RELEASE: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
+  NEXT_PUBLIC_ALIVE_ENV: process.env.NEXT_PUBLIC_ALIVE_ENV,
+  NEXT_PUBLIC_BUILD_COMMIT: process.env.NEXT_PUBLIC_BUILD_COMMIT,
+  NEXT_PUBLIC_BUILD_BRANCH: process.env.NEXT_PUBLIC_BUILD_BRANCH,
+  NEXT_PUBLIC_BUILD_TIME: process.env.NEXT_PUBLIC_BUILD_TIME,
+  NEXT_PUBLIC_SERVER_IP: process.env.NEXT_PUBLIC_SERVER_IP,
 } as const
 
 /**

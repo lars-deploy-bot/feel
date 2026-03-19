@@ -13,7 +13,6 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { llmTokensToCredits } from "@/lib/credits"
 import { createServiceAppClient, createServiceIamClient } from "@/lib/supabase/service"
 
 // Always use direct service role clients (no cookies needed for service operations)
@@ -30,7 +29,7 @@ function getAppClient() {
 
 /**
  * Update organization credits in database
- * DRY refactor: Consolidates duplicate update logic from chargeTokensFromCredits/updateOrgCredits
+ * DRY refactor: Consolidates duplicate update logic from chargeCreditsDirectly/updateOrgCredits
  *
  * @param orgId - Organization ID
  * @param newCredits - New credit balance to set
@@ -182,87 +181,6 @@ export async function hasEnoughCredits(domain: string, requiredCredits: number):
   }
 
   return current >= requiredCredits
-}
-
-/**
- * Charge credits to organization balance based on LLM tokens used
- *
- * This is the ONLY place where LLM tokens are converted to credits.
- * All other operations work with credits directly.
- *
- * ATOMIC OPERATION: Uses Supabase RPC to perform atomic deduction.
- * Prevents race conditions and negative balances.
- *
- * @param domain - Domain identifier
- * @param llmTokensUsed - Number of LLM tokens actually used by Claude API
- * @returns New credit balance, or null if operation failed (insufficient credits or error)
- */
-export async function chargeTokensFromCredits(domain: string, llmTokensUsed: number): Promise<number | null> {
-  if (llmTokensUsed < 0) {
-    console.error("[Supabase Credits] Cannot charge negative amount:", llmTokensUsed)
-    return null
-  }
-
-  // Step 1: Get org ID from domain
-  const orgId = await getOrgIdForDomain(domain)
-  if (!orgId) {
-    console.error("[Supabase Credits] Domain not found:", domain)
-    return null
-  }
-
-  // Step 2: Calculate charge amount
-  const creditsUsed = llmTokensToCredits(llmTokensUsed)
-  const chargedCredits = Math.floor(creditsUsed * WORKSPACE_CREDIT_DISCOUNT * 100) / 100
-
-  // Step 3: Atomic deduction using Supabase RPC
-  // This prevents race conditions by performing the check and update atomically in the database
-  const iam = getIamClient()
-  const { data, error } = await iam.rpc("deduct_credits", {
-    p_org_id: orgId,
-    p_amount: chargedCredits,
-  })
-
-  if (error) {
-    console.error("[Supabase Credits] Failed to deduct credits:", {
-      domain,
-      orgId,
-      chargedCredits,
-      error: error.message,
-    })
-    Sentry.captureException(error)
-    return null
-  }
-
-  // data will be null if insufficient credits (WHERE clause failed)
-  if (data === null) {
-    console.error("[Supabase Credits] Insufficient balance:", {
-      domain,
-      orgId,
-      requested: chargedCredits,
-      actualTokensUsed: llmTokensUsed,
-    })
-    return null
-  }
-
-  // Supabase RPC returns numeric values as unknown, verify it's a number
-  if (typeof data !== "number") {
-    console.error("[Supabase Credits] Unexpected return type from deduct_credits:", typeof data)
-    return null
-  }
-
-  const newBalance = data
-
-  console.log("[Supabase Credits] Charged credits:", {
-    domain,
-    orgId,
-    actualTokensUsed: llmTokensUsed,
-    creditsUsed,
-    chargedCredits,
-    discountSaved: creditsUsed - chargedCredits,
-    newBalance,
-  })
-
-  return newBalance
 }
 
 /**

@@ -340,9 +340,16 @@ function unregisterElement(node, fileName, lineNumber, columnNumber) {
 
 function getTypeName(type) {
   if (typeof type === "string") return type
-  if (typeof type === "function") return type.displayName || type.name || "Unknown"
+  if (typeof type === "function") {
+    if (type.displayName) return type.displayName
+    if (type.name) return type.name
+    return "Unknown"
+  }
   if (typeof type === "object" && type !== null) {
-    return type.displayName || type.render?.displayName || type.render?.name || "Unknown"
+    if (type.displayName) return type.displayName
+    if (type.render?.displayName) return type.render.displayName
+    if (type.render?.name) return type.render.name
+    return "Unknown"
   }
   return "Unknown"
 }

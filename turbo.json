@@ -1,5 +1,5 @@
 {
-  "$schema": "https://v2-8-2.turborepo.dev/schema.json",
+  "$schema": "https://turborepo.com/schema.json",
   "ui": "stream",
   "globalDependencies": ["tsconfig.json", "tsconfig.base.json", "biome.json"],
   "globalEnv": ["CI", "NODE_ENV", "VERCEL", "VERCEL_ENV", "VERCEL_URL"],
@@ -56,7 +56,17 @@
         "IMAGES_STORAGE_PATH",
         "FLOWGLAD_SECRET_KEY",
         "SERVER_CONFIG_PATH",
-        "E2B_API_KEY"
+        "E2B_API_KEY",
+        "ALIVE_ENV",
+        "ALIVE_BUILD_COMMIT",
+        "ALIVE_BUILD_BRANCH",
+        "ALIVE_BUILD_TIME",
+        "NEXT_PUBLIC_SENTRY_RELEASE",
+        "NEXT_PUBLIC_ALIVE_ENV",
+        "NEXT_PUBLIC_BUILD_COMMIT",
+        "NEXT_PUBLIC_BUILD_BRANCH",
+        "NEXT_PUBLIC_BUILD_TIME",
+        "NEXT_PUBLIC_SERVER_IP"
       ]
     },
     "start": {
@@ -99,7 +109,7 @@
     "@webalive/image-processor#build": {
       "outputs": []
     },
-"@webalive/worker#start": {
+    "@webalive/worker#start": {
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true,

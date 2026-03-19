@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
-import { buildSessionOrgClaims, SECURITY, STANDALONE, SUPERADMIN } from "@webalive/shared"
+import { buildSessionOrgClaims, isRecord, SECURITY, STANDALONE, SUPERADMIN } from "@webalive/shared"
 import { cookies } from "next/headers"
 import type { NextResponse } from "next/server"
 import { structuredErrorResponse } from "@/lib/api/responses"
@@ -250,10 +250,6 @@ if (typeof setInterval !== "undefined" && typeof process !== "undefined" && !pro
   )
 }
 
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 /**
  * Fetch per-user details from iam.users: enabled models + name fields.
  * Results are cached in-memory for 30 seconds to avoid a DB query on every request.
@@ -278,7 +274,7 @@ async function fetchUserDetails(
     }
 
     let models: string[] = []
-    if (isJsonObject(data.metadata) && Array.isArray(data.metadata.enabled_models)) {
+    if (isRecord(data.metadata) && Array.isArray(data.metadata.enabled_models)) {
       models = data.metadata.enabled_models.filter((m): m is string => typeof m === "string")
     }
 
@@ -322,7 +318,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     void touchLastActive(payload.sid, payload.userId)
   }
 
-  if (env.STREAM_ENV === "standalone" && payload.userId === STANDALONE.TEST_USER.ID) {
+  if (env.ALIVE_ENV === "standalone" && payload.userId === STANDALONE.TEST_USER.ID) {
     const user: SessionUser = {
       id: STANDALONE.TEST_USER.ID,
       email: STANDALONE.TEST_USER.EMAIL,
@@ -338,7 +334,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return user
   }
 
-  if (env.STREAM_ENV === "local" && payload.userId === SECURITY.LOCAL_TEST.SESSION_VALUE) {
+  if (env.ALIVE_ENV === "local" && payload.userId === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     const user = buildSessionUser(SECURITY.LOCAL_TEST.SESSION_VALUE, SECURITY.LOCAL_TEST.EMAIL, "Test User", [])
     Sentry.setUser({ id: user.id, email: user.email })
     return user
@@ -371,11 +367,11 @@ export async function hasSessionScope(scope: SessionScope): Promise<boolean> {
     return false
   }
 
-  if (env.STREAM_ENV === "standalone" && payload.userId === STANDALONE.TEST_USER.ID) {
+  if (env.ALIVE_ENV === "standalone" && payload.userId === STANDALONE.TEST_USER.ID) {
     return true
   }
 
-  if (env.STREAM_ENV === "local" && payload.userId === SECURITY.LOCAL_TEST.SESSION_VALUE) {
+  if (env.ALIVE_ENV === "local" && payload.userId === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     return true
   }
 
@@ -393,7 +389,7 @@ export async function isWorkspaceAuthenticated(workspace: string): Promise<boole
   }
 
   // Standalone mode - verify workspace exists locally
-  if (env.STREAM_ENV === "standalone" && user.id === STANDALONE.TEST_USER.ID) {
+  if (env.ALIVE_ENV === "standalone" && user.id === STANDALONE.TEST_USER.ID) {
     const { isValidStandaloneWorkspaceName, standaloneWorkspaceExists } = await import(
       "@/features/workspace/lib/standalone-workspace"
     )
@@ -404,7 +400,7 @@ export async function isWorkspaceAuthenticated(workspace: string): Promise<boole
   }
 
   // Test mode allows all workspaces
-  if (env.STREAM_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
+  if (env.ALIVE_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     return true
   }
 
@@ -445,13 +441,13 @@ export async function getAuthenticatedWorkspaces(): Promise<string[]> {
   }
 
   // Standalone mode - return all local workspaces
-  if (env.STREAM_ENV === "standalone" && payload.userId === STANDALONE.TEST_USER.ID) {
+  if (env.ALIVE_ENV === "standalone" && payload.userId === STANDALONE.TEST_USER.ID) {
     const { getStandaloneWorkspaces } = await import("@/features/workspace/lib/standalone-workspace")
     return getStandaloneWorkspaces()
   }
 
   // Test mode
-  if (env.STREAM_ENV === "local" && payload.userId === SECURITY.LOCAL_TEST.SESSION_VALUE) {
+  if (env.ALIVE_ENV === "local" && payload.userId === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     return []
   }
 
@@ -604,7 +600,7 @@ export async function verifyWorkspaceAccess(
   }
 
   // Standalone mode - verify workspace exists locally
-  if (env.STREAM_ENV === "standalone" && user.id === STANDALONE.TEST_USER.ID) {
+  if (env.ALIVE_ENV === "standalone" && user.id === STANDALONE.TEST_USER.ID) {
     const { isValidStandaloneWorkspaceName, standaloneWorkspaceExists } = await import(
       "@/features/workspace/lib/standalone-workspace"
     )
@@ -620,7 +616,7 @@ export async function verifyWorkspaceAccess(
   }
 
   // Test mode allows all workspaces (except alive which is checked above)
-  if (env.STREAM_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
+  if (env.ALIVE_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     return workspace
   }
 

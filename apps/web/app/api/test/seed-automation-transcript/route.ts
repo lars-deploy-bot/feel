@@ -30,7 +30,7 @@ type MessageInsert = AppDatabase["app"]["Tables"]["messages"]["Insert"]
 type AutomationJobUpdate = AppDatabase["app"]["Tables"]["automation_jobs"]["Update"]
 
 function isTestEndpointAuthorized(req: Request): boolean {
-  const isTestEnv = env.NODE_ENV === "test" || env.STREAM_ENV === "local"
+  const isTestEnv = env.NODE_ENV === "test" || env.ALIVE_ENV === "local"
   const testSecret = req.headers.get("x-test-secret")
   const expectedSecret = env.E2E_TEST_SECRET
   const hasValidSecret = Boolean(expectedSecret && testSecret === expectedSecret)

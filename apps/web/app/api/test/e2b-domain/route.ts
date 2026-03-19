@@ -14,7 +14,7 @@ import { resetE2bScratchUserWorkspace } from "@/lib/sandbox/e2b-workspace"
 import { createAppClient } from "@/lib/supabase/app"
 
 function hasTestAccess(req: Request): boolean {
-  const isTestEnv = env.NODE_ENV === "test" || env.STREAM_ENV === "local"
+  const isTestEnv = env.NODE_ENV === "test" || env.ALIVE_ENV === "local"
   const testSecret = req.headers.get("x-test-secret")
   const expectedSecret = env.E2E_TEST_SECRET
   const hasValidSecret = expectedSecret && testSecret === expectedSecret

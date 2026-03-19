@@ -73,7 +73,8 @@ if (isProduction) {
 
 // ============================================
 
-const PORT = process.env.API_PORT || process.env.PORT || 4000
+const PORT = process.env.PORT
+if (!PORT) throw new Error("PORT environment variable is required")
 
 console.log(`${isProduction ? "Production" : "API"} server running on http://localhost:${PORT}`)
 

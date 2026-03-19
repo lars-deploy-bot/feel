@@ -63,14 +63,14 @@ export function createDrizzleClient(config: DrizzleClientConfig = {}): DrizzleCl
     ...poolConfig,
   }
 
-  const pool = new Pool(defaultPoolConfig)
+  _pool = new Pool(defaultPoolConfig)
 
   // Handle pool errors
-  pool.on("error", (err: Error) => {
+  _pool.on("error", (err: Error) => {
     console.error("[Database] Unexpected pool error:", err)
   })
 
-  return drizzle(pool, {
+  return drizzle(_pool, {
     schema,
     logger: logging,
   })
@@ -81,6 +81,7 @@ export function createDrizzleClient(config: DrizzleClientConfig = {}): DrizzleCl
 // ============================================================================
 
 let _db: DrizzleClient | null = null
+let _pool: Pool | null = null
 
 /**
  * Get the singleton database client
@@ -97,9 +98,12 @@ export function getDb(): DrizzleClient {
  * Pre-configured singleton database client
  * Use this for most database operations
  */
-export const db = new Proxy({} as DrizzleClient, {
-  get(_, prop) {
-    return (getDb() as any)[prop]
+export const db: DrizzleClient = new Proxy({} as DrizzleClient, {
+  get(_target, prop: string | symbol) {
+    // Lazily resolve the singleton and forward property access
+    const client = getDb()
+    const value = Reflect.get(client, prop, client)
+    return typeof value === "function" ? value.bind(client) : value
   },
 })
 
@@ -126,11 +130,11 @@ export async function checkConnection(): Promise<boolean> {
  * Call this during graceful shutdown
  */
 export async function closeConnection(): Promise<void> {
-  if (_db) {
-    // Note: Drizzle doesn't expose pool.end() directly
-    // The pool will be garbage collected when the client is no longer referenced
-    _db = null
+  if (_pool) {
+    await _pool.end()
+    _pool = null
   }
+  _db = null
 }
 
 // ============================================================================

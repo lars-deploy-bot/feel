@@ -6,7 +6,7 @@ import { SUPER_TEMPLATE_CATEGORIES } from "@webalive/shared"
 import type { TemplateCategory, TemplateListItem } from "@webalive/tools"
 
 // Re-export types for component usage
-export type { TemplateListItem, TemplateCategory }
+export type { TemplateCategory, TemplateListItem }
 
 /**
  * Template alias for backwards compatibility with legacy components

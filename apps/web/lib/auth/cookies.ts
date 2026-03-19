@@ -83,7 +83,7 @@ function extractRootDomain(host: string): string | undefined {
  * Preview iframes use separate token-based auth via /api/auth/preview-token.
  */
 function baseCookieOptions(host: string): CookieOptions {
-  const isDeployed = env.STREAM_ENV !== "local"
+  const isDeployed = env.ALIVE_ENV !== "local"
   return {
     httpOnly: true,
     secure: isDeployed,

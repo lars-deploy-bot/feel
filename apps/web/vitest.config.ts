@@ -97,8 +97,8 @@ export const baseTestConfig = {
   setupFiles: ["./tests/setup.ts"],
   env: {
     ...loadEnvFile(),
-    STREAM_ENV: "local",
-    NEXT_PUBLIC_STREAM_ENV: "local",
+    ALIVE_ENV: "local",
+    NEXT_PUBLIC_ALIVE_ENV: "local",
   },
   exclude: [
     "**/node_modules/**",

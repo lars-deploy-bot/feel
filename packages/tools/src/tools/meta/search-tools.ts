@@ -18,11 +18,22 @@ import {
 // search_tools proxies to them when called with `execute`.
 // =============================================================================
 
+/**
+ * Discoverable tool handlers accept Record<string, unknown> from the search_tools
+ * dispatcher. Params are Zod-validated by the SDK before reaching handlers, so the
+ * runtime shape is guaranteed to match each handler's expected type.
+ *
+ * Each handler does its own internal validation (safeParse) as a second layer of defense.
+ */
 type ToolHandler = (params: Record<string, unknown>) => Promise<ToolResult>
 
 /**
  * Lazy-loaded handler registry for discoverable tools.
  * Handlers are imported on first use to avoid loading all tool code at startup.
+ *
+ * Params come from `searchToolsParamsSchema.params` (z.record(z.string(), z.unknown())),
+ * which is structurally `Record<string, unknown>`. Each handler validates its own params
+ * internally, so passing Record<string, unknown> is safe.
  */
 async function getDiscoverableHandler(toolName: string): Promise<ToolHandler | null> {
   switch (toolName) {
@@ -32,57 +43,58 @@ async function getDiscoverableHandler(toolName: string): Promise<ToolHandler | n
       return () => listWorkflows()
     }
     case "get_workflow": {
-      const { getWorkflow } = await import("./get-workflow.js")
-      return params => getWorkflow(params as Parameters<typeof getWorkflow>[0])
+      const { getWorkflow, getWorkflowParamsSchema } = await import("./get-workflow.js")
+      return params => getWorkflow(z.object(getWorkflowParamsSchema).parse(params))
     }
     case "debug_workspace": {
-      const { debugWorkspace } = await import("../composite/debug-workspace.js")
-      return params => debugWorkspace(params as Parameters<typeof debugWorkspace>[0])
+      const { debugWorkspace, debugWorkspaceParamsSchema } = await import("../composite/debug-workspace.js")
+      return params => debugWorkspace(z.object(debugWorkspaceParamsSchema).parse(params))
     }
     case "get_alive_super_template": {
-      const { getTemplate } = await import("../templates/get-template.js")
-      return params => getTemplate(params as Parameters<typeof getTemplate>[0], PATHS.TEMPLATES_ROOT)
+      const { getTemplate, getTemplateParamsSchema } = await import("../templates/get-template.js")
+      return params => getTemplate(z.object(getTemplateParamsSchema).parse(params), PATHS.TEMPLATES_ROOT)
     }
     case "read_server_logs": {
-      const { readServerLogs } = await import("../debug/read-server-logs.js")
-      return params => readServerLogs(params as Parameters<typeof readServerLogs>[0])
+      const { readServerLogs, readServerLogsParamsSchema } = await import("../debug/read-server-logs.js")
+      return params => readServerLogs(z.object(readServerLogsParamsSchema).parse(params))
     }
     case "ask_website_config": {
-      const { askWebsiteConfig } = await import("../ai/ask-website-config.js")
-      return params => askWebsiteConfig(params as Parameters<typeof askWebsiteConfig>[0])
+      const { askWebsiteConfig, askWebsiteConfigParamsSchema } = await import("../ai/ask-website-config.js")
+      return params => askWebsiteConfig(z.object(askWebsiteConfigParamsSchema).parse(params))
     }
     case "ask_automation_config": {
-      const { askAutomationConfig } = await import("../ai/ask-automation-config.js")
-      return params => askAutomationConfig(params as Parameters<typeof askAutomationConfig>[0])
+      const { askAutomationConfig, askAutomationConfigParamsSchema } = await import("../ai/ask-automation-config.js")
+      return params => askAutomationConfig(z.object(askAutomationConfigParamsSchema).parse(params))
     }
     case "list_automations": {
-      const { listAutomations } = await import("../automations/list-automations.js")
-      return params => listAutomations(params as Parameters<typeof listAutomations>[0])
+      const { listAutomations, listAutomationsParamsSchema } = await import("../automations/list-automations.js")
+      return params => listAutomations(z.object(listAutomationsParamsSchema).parse(params))
     }
     case "generate_persona": {
-      const { generatePersona } = await import("../personas/generate-persona.js")
-      return params => generatePersona(params as Parameters<typeof generatePersona>[0])
+      const { generatePersona, generatePersonaParamsSchema } = await import("../personas/generate-persona.js")
+      return params => generatePersona(z.object(generatePersonaParamsSchema).parse(params))
     }
     // alive-workspace server
     case "check_codebase": {
       const { checkCodebase } = await import("../workspace/check-codebase.js")
-      return params => checkCodebase(params as Parameters<typeof checkCodebase>[0])
+      // checkCodebase accepts Record<string, never> (no params)
+      return () => checkCodebase({})
     }
     case "switch_serve_mode": {
-      const { switchServeMode } = await import("../workspace/switch-serve-mode.js")
-      return params => switchServeMode(params as Parameters<typeof switchServeMode>[0])
+      const { switchServeMode, switchServeModeParamsSchema } = await import("../workspace/switch-serve-mode.js")
+      return params => switchServeMode(z.object(switchServeModeParamsSchema).parse(params))
     }
     case "copy_shared_asset": {
-      const { copySharedAsset } = await import("../workspace/copy-shared-asset.js")
-      return params => copySharedAsset(params as Parameters<typeof copySharedAsset>[0])
+      const { copySharedAsset, copySharedAssetParamsSchema } = await import("../workspace/copy-shared-asset.js")
+      return params => copySharedAsset(z.object(copySharedAssetParamsSchema).parse(params))
     }
     case "create_website": {
-      const { createWebsite } = await import("../workspace/create-website.js")
-      return params => createWebsite(params as Parameters<typeof createWebsite>[0])
+      const { createWebsite, createWebsiteParamsSchema } = await import("../workspace/create-website.js")
+      return params => createWebsite(z.object(createWebsiteParamsSchema).parse(params))
     }
     case "git_push": {
-      const { gitPush } = await import("../workspace/git-push.js")
-      return params => gitPush(params as Parameters<typeof gitPush>[0])
+      const { gitPush, gitPushParamsSchema } = await import("../workspace/git-push.js")
+      return params => gitPush(z.object(gitPushParamsSchema).parse(params))
     }
     default:
       return null

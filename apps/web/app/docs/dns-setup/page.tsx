@@ -3,8 +3,8 @@
 import { CheckCircle2, Clock, Globe, Zap } from "lucide-react"
 import { useState } from "react"
 
-// Server IP for DNS configuration - configure via NEXT_PUBLIC_SERVER_IP
-const SERVER_IP = process.env.NEXT_PUBLIC_SERVER_IP || "YOUR_SERVER_IP"
+// Server IP for DNS configuration - set via NEXT_PUBLIC_SERVER_IP at build time
+const SERVER_IP = process.env.NEXT_PUBLIC_SERVER_IP ?? "NOT_CONFIGURED"
 
 export default function DNSSetupPage() {
   const [provider, setProvider] = useState("")

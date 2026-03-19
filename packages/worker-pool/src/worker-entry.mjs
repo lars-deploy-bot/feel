@@ -58,7 +58,7 @@ import { getMissingTerminalResultError } from "../dist/query-guard.js"
 if (SENTRY.DSN) {
   Sentry.init({
     dsn: SENTRY.DSN,
-    environment: process.env.STREAM_ENV ?? process.env.NODE_ENV ?? "unknown",
+    environment: process.env.ALIVE_ENV,
     // Workers are long-lived — no need for performance tracing
     tracesSampleRate: 0,
   })
@@ -75,7 +75,7 @@ function getSandboxManager(template = E2B_DEFAULT_TEMPLATE) {
   // was spawned without them (check WORKER_SPAWN_ALLOWED_ENV_KEYS in env-isolation.ts).
   const e2bApiKey = process.env.E2B_API_KEY
   const e2bDomain = process.env.E2B_DOMAIN
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseUrl = process.env.SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   const missing = []
@@ -431,7 +431,8 @@ function dropPrivileges() {
   //   4. Verify session files exist:
   //      find /root/.claude/projects/ -name "*.jsonl" -ls
   //
-  const originalHome = process.env.HOME || "/root"
+  const originalHome = process.env.HOME
+  if (!originalHome) throw new Error("HOME environment variable is required")
   const workspaceKey = process.env.WORKER_WORKSPACE_KEY
 
   // CLAUDE_CONFIG_DIR must point to a directory with valid SDK credentials.
@@ -583,7 +584,8 @@ function dropPrivileges() {
   }
 
   // Ensure temp directory is writable by the workspace user
-  const tempDir = join(process.env.HOME || "/tmp", "tmp")
+  if (!process.env.HOME) throw new Error("HOME environment variable is required")
+  const tempDir = join(process.env.HOME, "tmp")
   try {
     if (!existsSync(tempDir)) {
       mkdirSync(tempDir, { recursive: true, mode: 0o700 })

@@ -12,6 +12,7 @@
  */
 
 import type { Json } from "@webalive/database"
+import { isRecord } from "@webalive/shared"
 import type { AppClient, MessageInsert } from "./types"
 
 /**
@@ -24,10 +25,6 @@ import type { AppClient, MessageInsert } from "./types"
  * "auth_status" (OAuth progress), "compact_boundary" (internal markers).
  */
 const TRANSCRIPT_MESSAGE_TYPES = new Set(["assistant", "user", "result"])
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v)
-}
 
 /** IPC message whose content has been validated as a persistable SDK message. */
 export interface PersistableMessage extends Record<string, unknown> {

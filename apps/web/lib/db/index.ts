@@ -22,7 +22,6 @@ export {
   forceSyncNow,
   queueSync,
   shareConversation,
-  subscribeToSharedConversations,
   unshareConversation,
 } from "./conversationSync"
 // Zustand store (new implementation)

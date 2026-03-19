@@ -54,23 +54,3 @@ export async function getCronServiceStatus(): Promise<{
   return { started: false, runningJobs: 0, nextWakeAt: null }
 }
 
-/**
- * @deprecated Scheduling now lives in apps/worker. This is a no-op.
- */
-export async function startCronService(): Promise<void> {
-  console.log("[CronService] Scheduling is handled by the automation worker (apps/worker)")
-}
-
-/**
- * @deprecated Scheduling now lives in apps/worker. This is a no-op.
- */
-export function stopCronService(): void {
-  // No-op — worker manages its own lifecycle
-}
-
-/**
- * @deprecated Use the worker's /trigger/:id endpoint instead.
- */
-export async function triggerJob(_jobId: string): Promise<{ success: boolean; error?: string }> {
-  return { success: false, error: "Use the worker HTTP API to trigger jobs" }
-}

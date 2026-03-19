@@ -7,21 +7,36 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
 import { errorResult, successResult, type ToolResult } from "../../lib/api-client.js"
+import { sanitizeIdentifier } from "./sql-sanitize.js"
 import { executeQuery, getSupabaseContext, isToolError } from "./supabase-client.js"
 
+const tableRowSchema = z.array(
+  z.object({
+    table_name: z.string(),
+    table_type: z.string(),
+    column_count: z.number(),
+  }),
+)
+
 export const listTablesParamsSchema = {
-  schema: z.string().optional().describe("Database schema to list tables from. Default: 'public'"),
+  schema: z.string().default("public").describe("Database schema to list tables from. Default: 'public'"),
 }
 
 export interface ListTablesParams {
-  schema?: string
+  schema: string
 }
 
 /**
  * List all tables in the connected Supabase project.
  */
 export async function listTables(params: ListTablesParams): Promise<ToolResult> {
-  const schema = params.schema || "public"
+  let schema: string
+  try {
+    schema = sanitizeIdentifier(params.schema)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return errorResult("Invalid schema name", message)
+  }
 
   // Get Supabase context
   const context = await getSupabaseContext()
@@ -46,11 +61,7 @@ export async function listTables(params: ListTablesParams): Promise<ToolResult> 
     return errorResult("Failed to list tables", result.error)
   }
 
-  const tables = (result.data || []) as Array<{
-    table_name: string
-    table_type: string
-    column_count: number
-  }>
+  const tables = tableRowSchema.parse(result.data ?? [])
 
   if (tables.length === 0) {
     return successResult(`No tables found in schema '${schema}'.`)
@@ -77,6 +88,6 @@ Parameters:
 Use this to explore the database structure before running queries.`,
   listTablesParamsSchema,
   async args => {
-    return listTables(args as ListTablesParams)
+    return listTables(args)
   },
 )

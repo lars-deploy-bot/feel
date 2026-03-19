@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Test mode
-    if (env.STREAM_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
+    if (env.ALIVE_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
       return createCorsSuccessResponse(origin, {
         workspaces: {
           "test-org": [

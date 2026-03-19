@@ -176,22 +176,26 @@ export function ScheduleInput({
       {isOneTime && showOneTime && (
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-black/60 dark:text-white/60 block">Date</label>
-            <input
-              type="date"
-              value={oneTimeDate || ""}
-              onChange={e => onOneTimeDateChange?.(e.target.value)}
-              className="w-full h-9 px-3 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.08] dark:focus:ring-white/[0.08] cursor-pointer transition-all"
-            />
+            <label className="text-xs font-medium text-black/60 dark:text-white/60 block">
+              Date
+              <input
+                type="date"
+                value={oneTimeDate || ""}
+                onChange={e => onOneTimeDateChange?.(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.08] dark:focus:ring-white/[0.08] cursor-pointer transition-all mt-1"
+              />
+            </label>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-black/60 dark:text-white/60 block">Time</label>
-            <input
-              type="time"
-              value={oneTimeTime || ""}
-              onChange={e => onOneTimeTimeChange?.(e.target.value)}
-              className="w-full h-9 px-3 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.08] dark:focus:ring-white/[0.08] cursor-pointer transition-all"
-            />
+            <label className="text-xs font-medium text-black/60 dark:text-white/60 block">
+              Time
+              <input
+                type="time"
+                value={oneTimeTime || ""}
+                onChange={e => onOneTimeTimeChange?.(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.08] dark:focus:ring-white/[0.08] cursor-pointer transition-all mt-1"
+              />
+            </label>
           </div>
         </div>
       )}

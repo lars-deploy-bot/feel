@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const { email, password } = parsed
 
   // Standalone mode - auto-login with any credentials (for local development)
-  if (process.env.STREAM_ENV === "standalone") {
+  if (process.env.ALIVE_ENV === "standalone") {
     // Import workspace utilities
     const { getStandaloneWorkspaces, ensureDefaultWorkspace } = await import(
       "@/features/workspace/lib/standalone-workspace"
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Test mode
-  if (env.STREAM_ENV === "local" && email === SECURITY.LOCAL_TEST.EMAIL && password === SECURITY.LOCAL_TEST.PASSWORD) {
+  if (env.ALIVE_ENV === "local" && email === SECURITY.LOCAL_TEST.EMAIL && password === SECURITY.LOCAL_TEST.PASSWORD) {
     const sessionToken = await createSessionToken({
       userId: SECURITY.LOCAL_TEST.SESSION_VALUE,
       email: SECURITY.LOCAL_TEST.EMAIL,

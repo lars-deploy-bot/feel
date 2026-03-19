@@ -422,8 +422,8 @@ describe("POST /api/login", () => {
     })
 
     it("issues JWT in local test mode instead of legacy raw session value", async () => {
-      const previousStreamEnv = process.env.STREAM_ENV
-      process.env.STREAM_ENV = "local"
+      const previousAliveEnv = process.env.ALIVE_ENV
+      process.env.ALIVE_ENV = "local"
 
       try {
         const req = createMockRequest({
@@ -443,7 +443,7 @@ describe("POST /api/login", () => {
         })
         expect(createIamClient).not.toHaveBeenCalled()
       } finally {
-        process.env.STREAM_ENV = previousStreamEnv
+        process.env.ALIVE_ENV = previousAliveEnv
       }
     })
   })
@@ -673,8 +673,8 @@ describe("POST /api/login", () => {
     })
 
     it("should NOT call rate limiter methods in standalone mode", async () => {
-      const previousStreamEnv = process.env.STREAM_ENV
-      process.env.STREAM_ENV = "standalone"
+      const previousAliveEnv = process.env.ALIVE_ENV
+      process.env.ALIVE_ENV = "standalone"
 
       try {
         const req = createMockRequest({
@@ -687,13 +687,13 @@ describe("POST /api/login", () => {
         expect(loginRateLimiter.isRateLimited).not.toHaveBeenCalled()
         expect(loginRateLimiter.recordFailedAttempt).not.toHaveBeenCalled()
       } finally {
-        process.env.STREAM_ENV = previousStreamEnv
+        process.env.ALIVE_ENV = previousAliveEnv
       }
     })
 
     it("should NOT call rate limiter methods in local test mode", async () => {
-      const previousStreamEnv = process.env.STREAM_ENV
-      process.env.STREAM_ENV = "local"
+      const previousAliveEnv = process.env.ALIVE_ENV
+      process.env.ALIVE_ENV = "local"
 
       try {
         const req = createMockRequest({
@@ -706,7 +706,7 @@ describe("POST /api/login", () => {
         expect(loginRateLimiter.isRateLimited).not.toHaveBeenCalled()
         expect(loginRateLimiter.recordFailedAttempt).not.toHaveBeenCalled()
       } finally {
-        process.env.STREAM_ENV = previousStreamEnv
+        process.env.ALIVE_ENV = previousAliveEnv
       }
     })
   })

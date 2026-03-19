@@ -106,19 +106,24 @@ export function createClient<T extends SchemaRegistry>(schemas: T, options: Clie
     // Handle HTTP errors
     // Supports: { error: { message, code } }, { error: "CODE", message: "..." }, { message: "..." }
     if (!res.ok) {
-      const err = json as Record<string, unknown>
-      const nested = err?.error as Record<string, unknown> | string | undefined
-      // Prefer top-level message (user-friendly from server) over raw error code string
-      const message =
-        (typeof err?.message === "string" && err.message ? err.message : undefined) ??
-        (typeof nested === "object" && typeof nested?.message === "string" ? nested.message : undefined) ??
-        (typeof nested === "string" ? nested : undefined) ??
-        `HTTP ${res.status}`
-      const code =
-        (typeof nested === "object" && typeof nested?.code === "string" ? nested.code : undefined) ??
-        (typeof nested === "string" ? nested : undefined) ??
-        (typeof err?.code === "string" ? err.code : undefined) ??
-        "HTTP_ERROR"
+      const err = typeof json === "object" && json !== null ? json : {}
+      const errMessage = "message" in err && typeof err.message === "string" ? err.message : undefined
+      const errCode = "code" in err && typeof err.code === "string" ? err.code : undefined
+      const errField = "error" in err ? err.error : undefined
+      const nested = typeof errField === "object" && errField !== null ? errField : undefined
+      const nestedStr = typeof errField === "string" ? errField : undefined
+      const nestedMessage =
+        nested && "message" in nested && typeof nested.message === "string" ? nested.message : undefined
+      const nestedCode = nested && "code" in nested && typeof nested.code === "string" ? nested.code : undefined
+      // Structured extraction: pick the most specific field available
+      const message = errMessage
+        ? errMessage
+        : nestedMessage
+          ? nestedMessage
+          : nestedStr
+            ? nestedStr
+            : `HTTP ${res.status}`
+      const code = nestedCode ? nestedCode : errCode ? errCode : nestedStr ? nestedStr : "HTTP_ERROR"
       throw new ApiError(message, res.status, code, json)
     }
 
@@ -212,39 +217,8 @@ export function createClient<T extends SchemaRegistry>(schemas: T, options: Clie
     return api(endpoint, "DELETE", body, init, pathOverrideResolved)
   }
 
-  function delly<E extends BodyReqEndpoint<T>>(
-    endpoint: E,
-    body: Req<T, E>,
-    init?: Omit<RequestInit, "body" | "method">,
-    pathOverride?: string,
-  ): Promise<Res<T, E>>
-  function delly<E extends BodyReqEndpoint<T>>(endpoint: E, body: Req<T, E>, pathOverride: string): Promise<Res<T, E>>
-  function delly<E extends UndefinedReqEndpoint<T>>(endpoint: E): Promise<Res<T, E>>
-  function delly<E extends UndefinedReqEndpoint<T>>(
-    endpoint: E,
-    body: undefined,
-    init?: Omit<RequestInit, "body" | "method">,
-    pathOverride?: string,
-  ): Promise<Res<T, E>>
-  function delly<E extends UndefinedReqEndpoint<T>>(
-    endpoint: E,
-    body: undefined,
-    pathOverride: string,
-  ): Promise<Res<T, E>>
-  function delly<E extends ReadEndpoint<T>>(
-    endpoint: E,
-    init?: Omit<RequestInit, "body" | "method">,
-    pathOverride?: string,
-  ): Promise<Res<T, E>>
-  function delly<E extends Endpoint<T>>(
-    endpoint: E,
-    bodyOrInit?: Req<T, E> | undefined | Omit<RequestInit, "body" | "method">,
-    initOrPath?: Omit<RequestInit, "body" | "method"> | string,
-    pathOverrideMaybe?: string,
-  ): Promise<Res<T, E>> {
-    const { body, init, pathOverrideResolved } = resolveDeleteArgs(endpoint, bodyOrInit, initOrPath, pathOverrideMaybe)
-    return api(endpoint, "DELETE", body, init, pathOverrideResolved)
-  }
+  /** Alias for deletty */
+  const delly = deletty
 
   function postty<E extends BodyReqEndpoint<T>>(
     endpoint: E,

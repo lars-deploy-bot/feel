@@ -146,7 +146,7 @@ export async function copySharedAsset(params: CopySharedAssetParams): Promise<To
   } catch (error) {
     // Provide helpful messages for common errors
     const errMsg = error instanceof Error ? error.message : String(error)
-    const code = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined
+    const code = error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined
 
     console.error(`[copy_shared_asset] EXCEPTION: ${errMsg}`)
     console.error(`[copy_shared_asset] Error code: ${code || "none"}`)

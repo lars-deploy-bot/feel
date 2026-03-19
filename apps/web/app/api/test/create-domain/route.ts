@@ -19,7 +19,7 @@ interface CreateDomainRequest {
 
 export async function POST(req: Request) {
   // Environment guard - only accessible in test/local environments or with test secret
-  const isTestEnv = env.NODE_ENV === "test" || env.STREAM_ENV === "local"
+  const isTestEnv = env.NODE_ENV === "test" || env.ALIVE_ENV === "local"
   const testSecret = req.headers.get("x-test-secret")
   const expectedSecret = env.E2E_TEST_SECRET
   const hasValidSecret = expectedSecret && testSecret === expectedSecret
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
  */
 export async function DELETE(req: Request) {
   // Same environment guard
-  const isTestEnv = env.NODE_ENV === "test" || env.STREAM_ENV === "local"
+  const isTestEnv = env.NODE_ENV === "test" || env.ALIVE_ENV === "local"
   const testSecret = req.headers.get("x-test-secret")
   const expectedSecret = env.E2E_TEST_SECRET
   const hasValidSecret = expectedSecret && testSecret === expectedSecret

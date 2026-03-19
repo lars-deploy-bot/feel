@@ -188,9 +188,9 @@ describe("unknown tool", () => {
 // ============================================================
 
 describe("error propagation", () => {
-  function mockFetch(impl: (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>) {
+  function mockFetch(impl: typeof fetch) {
     const originalFetch = globalThis.fetch
-    globalThis.fetch = Object.assign(impl, { preconnect: originalFetch.preconnect })
+    globalThis.fetch = impl
     return () => {
       globalThis.fetch = originalFetch
     }

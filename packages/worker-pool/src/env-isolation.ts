@@ -67,7 +67,7 @@ const WORKER_SPAWN_ALLOWED_ENV_KEYS = [
 
   // Workspace config — worker needs to know workspace boundaries
   "WORKSPACE_BASE",
-  "STREAM_ENV",
+  "ALIVE_ENV",
   "SERVER_CONFIG_PATH",
 
   // E2B sandbox — needed by SandboxManager, stripped from SDK subprocess env.

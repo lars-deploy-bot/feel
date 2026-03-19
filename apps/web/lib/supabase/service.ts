@@ -5,6 +5,9 @@
  * a request context and don't have access to cookies.
  *
  * These use the service role key — bypasses RLS. Use only in trusted server code.
+ *
+ * Clients are lazy singletons: created on first call, cached for the process lifetime.
+ * This avoids creating a new Supabase client on every function invocation.
  */
 
 if (typeof window !== "undefined") {
@@ -14,41 +17,58 @@ if (typeof window !== "undefined") {
   )
 }
 
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@supabase/supabase-js"
 import type { AppDatabase, IamDatabase, PublicDatabase } from "@webalive/database"
 import { getSupabaseCredentials } from "@/lib/env/server"
 
+let _serviceAppClient: SupabaseClient<AppDatabase, "app"> | undefined
+let _serviceIamClient: SupabaseClient<IamDatabase, "iam"> | undefined
+let _servicePublicClient: SupabaseClient<PublicDatabase, "public"> | undefined
+
 /**
- * Create a service-role Supabase client for the app schema.
+ * Get the service-role Supabase client for the app schema.
  * No cookies, no RLS — for background tasks only.
+ * Lazy singleton: created on first call, reused thereafter.
  */
-export function createServiceAppClient() {
-  const { url, key } = getSupabaseCredentials("service")
-  return createClient<AppDatabase, "app">(url, key, {
-    db: { schema: "app" },
-  })
+export function createServiceAppClient(): SupabaseClient<AppDatabase, "app"> {
+  if (!_serviceAppClient) {
+    const { url, key } = getSupabaseCredentials("service")
+    _serviceAppClient = createClient<AppDatabase, "app">(url, key, {
+      db: { schema: "app" },
+    })
+  }
+  return _serviceAppClient
 }
 
 /**
- * Create a service-role Supabase client for the iam schema.
+ * Get the service-role Supabase client for the iam schema.
  * No cookies, no RLS — for background tasks only.
+ * Lazy singleton: created on first call, reused thereafter.
  */
-export function createServiceIamClient() {
-  const { url, key } = getSupabaseCredentials("service")
-  return createClient<IamDatabase, "iam">(url, key, {
-    db: { schema: "iam" },
-  })
+export function createServiceIamClient(): SupabaseClient<IamDatabase, "iam"> {
+  if (!_serviceIamClient) {
+    const { url, key } = getSupabaseCredentials("service")
+    _serviceIamClient = createClient<IamDatabase, "iam">(url, key, {
+      db: { schema: "iam" },
+    })
+  }
+  return _serviceIamClient
 }
 
 /**
- * Create a service-role Supabase client for the public schema.
+ * Get the service-role Supabase client for the public schema.
  * Used by OAuth stores (state lifecycle, identity conflict detection).
  * No cookies, no RLS — for background tasks only.
+ * Lazy singleton: created on first call, reused thereafter.
  */
-export function createServicePublicClient() {
-  const { url, key } = getSupabaseCredentials("service")
-  return createClient<PublicDatabase, "public">(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    db: { schema: "public" },
-  })
+export function createServicePublicClient(): SupabaseClient<PublicDatabase, "public"> {
+  if (!_servicePublicClient) {
+    const { url, key } = getSupabaseCredentials("service")
+    _servicePublicClient = createClient<PublicDatabase, "public">(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      db: { schema: "public" },
+    })
+  }
+  return _servicePublicClient
 }

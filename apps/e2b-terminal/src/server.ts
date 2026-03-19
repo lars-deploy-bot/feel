@@ -1,14 +1,11 @@
 import type { ServerWebSocket } from "bun"
 import "./sentry" // Init Sentry before any other imports
+import { env } from "./env"
 import { bridgePty, handleClose, handleMessage } from "./pty-bridge"
 import { cleanExpiredLeases, consumeLease, createLease } from "./session-store"
 
-const PORT = Number(process.env.PORT) || 5075
-const INTERNAL_SECRET = process.env.SHELL_PASSWORD
-
-if (!INTERNAL_SECRET) {
-  throw new Error("SHELL_PASSWORD is required for E2B terminal bridge")
-}
+const PORT = env.PORT
+const INTERNAL_SECRET = env.SHELL_PASSWORD
 
 interface WsData {
   sandboxId: string

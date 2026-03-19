@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   const { passcode } = result.data
 
   // Local development mode - accept test passcode
-  if (env.STREAM_ENV === "local" && passcode === "test") {
+  if (env.ALIVE_ENV === "local" && passcode === "test") {
     console.log("[Manager Login] Test mode authentication")
 
     // Create JWT session token (same as regular users, but with manager role)

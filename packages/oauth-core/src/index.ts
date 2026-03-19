@@ -67,12 +67,12 @@ export class OAuthManager {
   private static readonly TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000 // 5 minutes
 
   constructor(config?: OAuthManagerConfig) {
-    // If no config provided, use defaults for backwards compatibility
+    // If no config provided, use defaults
     this.config = config || {
       provider: "default",
       instanceId: "default",
       namespace: OAUTH_TOKENS_NAMESPACE,
-      environment: process.env.NODE_ENV || "production",
+      environment: process.env.ALIVE_ENV ?? "production",
       defaultTtlSeconds: undefined,
     }
 

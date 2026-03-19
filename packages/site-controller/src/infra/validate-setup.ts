@@ -187,13 +187,13 @@ async function checkDatabaseConnection(): Promise<CheckResult> {
   const name = "Database Connection"
 
   const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!url || !key) {
     return {
       name,
       status: "skip",
-      message: "SUPABASE_URL or key not set",
+      message: "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set",
     }
   }
 
@@ -239,13 +239,13 @@ async function checkServerIdInDatabase(serverId: string | undefined): Promise<Ch
   }
 
   const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!url || !key) {
     return {
       name,
       status: "skip",
-      message: "Database credentials not set",
+      message: "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set",
     }
   }
 

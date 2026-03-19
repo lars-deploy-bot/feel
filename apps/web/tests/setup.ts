@@ -9,7 +9,7 @@ if (process.env.NODE_ENV !== "test") {
     // NODE_ENV may be frozen in production builds, ignore
   }
 }
-process.env.STREAM_ENV = "local"
+process.env.ALIVE_ENV = "local"
 process.env.SKIP_ENV_VALIDATION = "1" // Skip @t3-oss/env validation in tests
 
 // Mock security credentials for tests
@@ -95,10 +95,15 @@ vi.mock("next/headers", () => {
 })
 
 // Mock Redis to prevent real connection attempts in tests.
-// Without this, STREAM_ENV=local causes ioredis to connect to 127.0.0.1:6379.
+// Without this, ALIVE_ENV=local causes ioredis to connect to 127.0.0.1:6379.
 // When no local Redis is running, retries hang — especially with fake timers.
 vi.mock("@webalive/redis", () => ({
   createRedisClient: () => null,
+  getSharedClient: () => null,
+  getCircuitBreakerStatus: () => ({ state: "closed", failureCount: 0, lastFailureAt: null, openedAt: null }),
+  recordSharedSuccess: () => {},
+  recordSharedFailure: () => {},
+  _resetSharedClient: () => {},
 }))
 
 vi.mock("@anthropic-ai/claude-agent-sdk", () => ({

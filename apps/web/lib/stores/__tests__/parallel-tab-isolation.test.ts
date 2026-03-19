@@ -26,7 +26,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { tabKey } from "@/features/auth/lib/sessionStore"
 import { useTabDataStore } from "../tabDataStore"
-import { useTabActions, useTabStore } from "../tabStore"
+import { useTabStore } from "../tabStore"
 import { useTabViewStore } from "../tabViewStore"
 
 // ============================================================================
@@ -53,9 +53,7 @@ function simulateNewBrowserTab() {
 }
 
 /** Get actions for testing (stable singleton) */
-function getActions() {
-  return useTabActions()
-}
+const getActions = () => useTabStore.getState()
 
 // ============================================================================
 // Tests

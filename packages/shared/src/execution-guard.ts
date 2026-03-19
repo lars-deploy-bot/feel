@@ -2,11 +2,11 @@
  * Automation Execution Guard
  *
  * Operational safety rail:
- * - automations execute only in STREAM_ENV=production
+ * - automations execute only in ALIVE_ENV=production
  * - and only on the primary server (automationPrimary: true in server-config.json)
  */
 
-import { DEFAULTS, STREAM_ENV } from "./config.js"
+import { DEFAULTS, ALIVE_ENV } from "./config.js"
 
 export interface AutomationExecutionGate {
   allowed: boolean
@@ -14,16 +14,16 @@ export interface AutomationExecutionGate {
 }
 
 export function getAutomationExecutionGate(input?: {
-  streamEnv?: string
+  aliveEnv?: string
   isAutomationPrimary?: boolean
 }): AutomationExecutionGate {
-  const streamEnv = input?.streamEnv ?? process.env.STREAM_ENV
+  const aliveEnv = input?.aliveEnv ?? process.env.ALIVE_ENV
   const isAutomationPrimary = input?.isAutomationPrimary ?? DEFAULTS.IS_AUTOMATION_PRIMARY
 
-  if (streamEnv !== STREAM_ENV.PRODUCTION) {
+  if (aliveEnv !== ALIVE_ENV.PRODUCTION) {
     return {
       allowed: false,
-      reason: `STREAM_ENV must be production (got ${streamEnv ?? "unset"})`,
+      reason: `ALIVE_ENV must be production (got ${aliveEnv ?? "unset"})`,
     }
   }
 

@@ -30,10 +30,12 @@
 
 import {
   type CanUseTool,
+  type McpServerConfig,
   query,
   type SDKMessage,
   type PermissionMode as SDKPermissionMode,
   type SDKResultMessage,
+  type SettingSource as SDKSettingSource,
 } from "@anthropic-ai/claude-agent-sdk"
 import {
   buildStreamToolRuntimeConfig,
@@ -59,8 +61,11 @@ export { CLAUDE_MODELS, type ClaudeModel }
 
 export type PermissionMode = SDKPermissionMode
 
-/** "managed" is valid for the agent SDK but not in TS's SettingSource type */
-export type SettingsSource = "project" | "user" | "managed"
+/**
+ * SDK's SettingSource type. We re-export for convenience.
+ * Note: "managed" was previously needed but SDK now uses "user" | "project" | "local".
+ */
+export type SettingsSource = SDKSettingSource
 
 // =============================================================================
 // TYPES
@@ -104,8 +109,7 @@ export interface AskAIFullOptions {
   disallowedTools?: string[]
 
   /** MCP servers (full mode only) */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mcpServers?: Record<string, any>
+  mcpServers?: Record<string, McpServerConfig>
 
   /** Message callback */
   onMessage?: (message: SDKMessage) => void
@@ -159,8 +163,7 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
 
   if (isWorkspaceMode) {
     permissionMode = permissionMode ?? STREAM_PERMISSION_MODE
-    // Cast to SettingsSource[] - "managed" is valid for the agent SDK but not in TS types
-    settingSources = [...STREAM_SETTINGS_SOURCES] as SettingsSource[]
+    settingSources = [...STREAM_SETTINGS_SOURCES]
 
     connectedProviders = Object.keys(oauthTokens).filter(k => !!oauthTokens[k])
     const context = createStreamToolContext({
@@ -178,10 +181,12 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
     allowedTools = runtimeTools.allowedTools
     disallowedTools = runtimeTools.disallowedTools
 
-    mcpServers = getStreamMcpServers(streamInternalMcpServers, oauthTokens)
+    // eslint-disable-next-line -- Cross-package type boundary: @webalive/shared's StreamMcpServerConfig
+    // can't import SDK types (wrong dependency direction). Structurally compatible at runtime.
+    mcpServers = getStreamMcpServers(streamInternalMcpServers, oauthTokens) as Record<string, McpServerConfig>
 
-    // Cast needed: createStreamCanUseTool returns a compatible shape but @webalive/shared
-    // cannot import CanUseTool from the SDK (wrong dependency direction)
+    // eslint-disable-next-line -- Cross-package type boundary: @webalive/shared uses unknown[]
+    // for updatedPermissions (can't import PermissionUpdate from SDK). Compatible at runtime.
     canUseTool = createStreamCanUseTool(context, allowedTools) as CanUseTool
   } else {
     permissionMode = permissionMode ?? "bypassPermissions"
@@ -196,8 +201,7 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
         maxTurns,
         permissionMode,
         ...(permissionMode === "bypassPermissions" ? { allowDangerouslySkipPermissions: true } : {}),
-        // Cast needed: "managed" is valid for the agent SDK but not in TS's SettingSource type
-        settingSources: settingSources as ("project" | "user")[],
+        settingSources,
         systemPrompt,
         resume,
         allowedTools,

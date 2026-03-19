@@ -7,7 +7,29 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
 import { errorResult, successResult, type ToolResult } from "../../lib/api-client.js"
+import { sanitizeIdentifier } from "./sql-sanitize.js"
 import { executeQuery, getSupabaseContext, isToolError } from "./supabase-client.js"
+
+const columnSchema = z.array(
+  z.object({
+    column_name: z.string(),
+    data_type: z.string(),
+    is_nullable: z.string(),
+    column_default: z.string().nullable(),
+    character_maximum_length: z.number().nullable(),
+  }),
+)
+
+const pkSchema = z.array(z.object({ column_name: z.string() }))
+
+const fkSchema = z.array(
+  z.object({
+    column_name: z.string(),
+    foreign_table_schema: z.string(),
+    foreign_table_name: z.string(),
+    foreign_column_name: z.string(),
+  }),
+)
 
 export const describeTableParamsSchema = {
   table_name: z.string().min(1).describe("Name of the table to describe"),
@@ -23,10 +45,16 @@ export interface DescribeTableParams {
  * Get detailed schema information for a table.
  */
 export async function describeTable(params: DescribeTableParams): Promise<ToolResult> {
-  const { table_name, schema = "public" } = params
+  const { table_name: rawTableName, schema: rawSchema = "public" } = params
 
-  if (!table_name || typeof table_name !== "string") {
-    return errorResult("Invalid table name", "table_name is required")
+  let table_name: string
+  let schema: string
+  try {
+    table_name = sanitizeIdentifier(rawTableName)
+    schema = sanitizeIdentifier(rawSchema)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return errorResult("Invalid identifier", message)
   }
 
   // Get Supabase context
@@ -54,13 +82,7 @@ export async function describeTable(params: DescribeTableParams): Promise<ToolRe
     return errorResult("Failed to describe table", columnsResult.error)
   }
 
-  const columns = (columnsResult.data || []) as Array<{
-    column_name: string
-    data_type: string
-    is_nullable: string
-    column_default: string | null
-    character_maximum_length: number | null
-  }>
+  const columns = columnSchema.parse(columnsResult.data ?? [])
 
   if (columns.length === 0) {
     return errorResult("Table not found", `Table '${schema}.${table_name}' does not exist.`)
@@ -76,7 +98,7 @@ export async function describeTable(params: DescribeTableParams): Promise<ToolRe
   `
 
   const pkResult = await executeQuery(context.accessToken, context.projectRef, pkQuery, true)
-  const pkColumns = new Set(((pkResult.data || []) as Array<{ column_name: string }>).map(r => r.column_name))
+  const pkColumns = new Set(pkSchema.parse(pkResult.data ?? []).map(r => r.column_name))
 
   // Query foreign keys
   const fkQuery = `
@@ -98,14 +120,12 @@ export async function describeTable(params: DescribeTableParams): Promise<ToolRe
 
   const fkResult = await executeQuery(context.accessToken, context.projectRef, fkQuery, true)
   const fkMap = new Map(
-    (
-      (fkResult.data || []) as Array<{
-        column_name: string
-        foreign_table_schema: string
-        foreign_table_name: string
-        foreign_column_name: string
-      }>
-    ).map(fk => [fk.column_name, `→ ${fk.foreign_table_schema}.${fk.foreign_table_name}(${fk.foreign_column_name})`]),
+    fkSchema
+      .parse(fkResult.data ?? [])
+      .map(fk => [
+        fk.column_name,
+        `\u2192 ${fk.foreign_table_schema}.${fk.foreign_table_name}(${fk.foreign_column_name})`,
+      ]),
   )
 
   // Format output
@@ -149,6 +169,6 @@ Parameters:
 Use this to understand table structure before writing queries or making schema changes.`,
   describeTableParamsSchema,
   async args => {
-    return describeTable(args as DescribeTableParams)
+    return describeTable(args)
   },
 )

@@ -20,7 +20,7 @@
 
 import type { calendar_v3 } from "@googleapis/calendar"
 import { checkAvailability, getEvent, listCalendars, listEvents, searchEvents } from "../calendar-client.js"
-import type { DeleteEventDraft, EventDraft } from "../types.js"
+import type { DeleteEventDraft } from "../types.js"
 import {
   DeleteEventDraftSchema,
   EventDraftSchema,
@@ -435,7 +435,8 @@ export async function executeTool(
       }
 
       case "get_event": {
-        const { calendarId, eventId } = args as { calendarId: string; eventId: string }
+        const calendarId = typeof args.calendarId === "string" ? args.calendarId : ""
+        const eventId = typeof args.eventId === "string" ? args.eventId : ""
         if (!calendarId || !eventId) {
           throw new Error("calendarId and eventId are required")
         }
@@ -463,9 +464,8 @@ export async function executeTool(
       }
 
       case "compose_calendar_event": {
-        const validated = EventDraftSchema.parse(args)
-        // Return the draft as-is for UI to render
-        result = validated as EventDraft
+        // EventDraftSchema.parse returns ValidatedEventDraft which matches EventDraft structurally
+        result = EventDraftSchema.parse(args)
         break
       }
 

@@ -1,7 +1,6 @@
 import { CLAUDE_MODELS } from "@webalive/shared"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { TabSessionKey } from "@/features/auth/types/session"
-import { ErrorCodes } from "@/lib/error-codes"
 import { type CancelState, createNDJSONStream } from "../ndjson-stream-handler"
 
 const sentryCaptureExceptionMock = vi.hoisted(() => vi.fn())

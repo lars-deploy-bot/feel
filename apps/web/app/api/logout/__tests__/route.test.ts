@@ -5,7 +5,7 @@ import { createMockNextRequest, parseCookieHeader } from "@/lib/test-helpers/moc
 // Mock env modules before importing route
 // Both @/lib/env (internal) and @webalive/env/server (package) need to be mocked
 // to allow dynamic env access during tests via vi.stubEnv()
-// Uses a Proxy so any env key (JWT_SECRET, STREAM_ENV, etc.) forwards to process.env
+// Uses a Proxy so any env key (JWT_SECRET, ALIVE_ENV, etc.) forwards to process.env
 const envMock = {
   env: new Proxy(
     {},
@@ -242,12 +242,12 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
 
   /**
    * THE SECURE FLAG BUG TEST
-   * On deployed servers (STREAM_ENV !== "local"), secure should be true (HTTPS only)
-   * In local development (STREAM_ENV === "local"), secure should be false (HTTP works)
+   * On deployed servers (ALIVE_ENV !== "local"), secure should be true (HTTPS only)
+   * In local development (ALIVE_ENV === "local"), secure should be false (HTTP works)
    */
-  it("should set secure flag based on STREAM_ENV (THE SECURE FLAG BUG)", async () => {
-    // Deployed server (STREAM_ENV !== "local"): secure should be TRUE
-    vi.stubEnv("STREAM_ENV", "production")
+  it("should set secure flag based on ALIVE_ENV (THE SECURE FLAG BUG)", async () => {
+    // Deployed server (ALIVE_ENV !== "local"): secure should be TRUE
+    vi.stubEnv("ALIVE_ENV", "production")
     let req = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -256,8 +256,8 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
     let setCookie = res.headers.get("set-cookie")
     expect(setCookie).toContain("Secure")
 
-    // Local development (STREAM_ENV === "local"): secure should be FALSE
-    vi.stubEnv("STREAM_ENV", "local")
+    // Local development (ALIVE_ENV === "local"): secure should be FALSE
+    vi.stubEnv("ALIVE_ENV", "local")
     req = createMockNextRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

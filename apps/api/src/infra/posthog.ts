@@ -22,6 +22,11 @@ interface PostHogEventsResponse {
   next: string | null
 }
 
+function isPostHogEventsResponse(value: unknown): value is PostHogEventsResponse {
+  if (typeof value !== "object" || value === null) return false
+  return "results" in value && Array.isArray(value.results)
+}
+
 /**
  * Fetch events for a specific user from PostHog.
  * Returns empty array if PostHog is not configured.
@@ -57,7 +62,10 @@ export async function fetchUserEvents(
     throw new Error(`PostHog API error (${response.status}): ${text}`)
   }
 
-  const data = (await response.json()) as PostHogEventsResponse
+  const data: unknown = await response.json()
+  if (!isPostHogEventsResponse(data)) {
+    throw new Error("PostHog API returned an unexpected response shape")
+  }
   return data.results
 }
 
@@ -93,7 +101,7 @@ export async function fetchUserProfile(distinctId: string): Promise<ManagerUserP
     const screenW = p.$screen_width
     const screenH = p.$screen_height
     const screen = typeof screenW === "number" && typeof screenH === "number" ? `${screenW}x${screenH}` : null
-    const deviceKey = `${browser ?? ""}|${os ?? ""}|${screen ?? ""}`
+    const deviceKey = [browser, os, screen].map(v => v ?? "").join("|")
 
     if (deviceKey !== "||" && !deviceMap.has(deviceKey)) {
       deviceMap.set(deviceKey, {

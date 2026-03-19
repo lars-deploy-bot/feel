@@ -314,7 +314,7 @@ export type ProviderTokenMap = Partial<Record<OAuthMcpProviderKey, string>>
  * Get all provider keys
  */
 export function getOAuthMcpProviderKeys(): OAuthMcpProviderKey[] {
-  return Object.keys(OAUTH_MCP_PROVIDERS) as OAuthMcpProviderKey[]
+  return Object.keys(OAUTH_MCP_PROVIDERS).filter(isValidOAuthMcpProviderKey)
 }
 
 /**
@@ -324,12 +324,12 @@ export function getOAuthMcpProviderKeys(): OAuthMcpProviderKey[] {
  * @returns true if the provider supports PAT authentication
  */
 export function providerSupportsPat(providerKey: string): boolean {
-  if (providerKey in OAUTH_MCP_PROVIDERS) {
-    const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
+  if (isValidOAuthMcpProviderKey(providerKey)) {
+    const config = OAUTH_MCP_PROVIDERS[providerKey]
     return "supportsPat" in config && config.supportsPat === true
   }
-  if (providerKey in OAUTH_ONLY_PROVIDERS) {
-    const config = OAUTH_ONLY_PROVIDERS[providerKey as OAuthOnlyProviderKey]
+  if (isValidOAuthOnlyProviderKey(providerKey)) {
+    const config = OAUTH_ONLY_PROVIDERS[providerKey]
     return "supportsPat" in config && config.supportsPat === true
   }
   return false
@@ -342,12 +342,12 @@ export function providerSupportsPat(providerKey: string): boolean {
  * @returns true if the provider supports OAuth authentication
  */
 export function providerSupportsOAuth(providerKey: string): boolean {
-  if (providerKey in OAUTH_MCP_PROVIDERS) {
-    const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
+  if (isValidOAuthMcpProviderKey(providerKey)) {
+    const config = OAUTH_MCP_PROVIDERS[providerKey]
     return "supportsOAuth" in config && config.supportsOAuth === true
   }
-  if (providerKey in OAUTH_ONLY_PROVIDERS) {
-    const config = OAUTH_ONLY_PROVIDERS[providerKey as OAuthOnlyProviderKey]
+  if (isValidOAuthOnlyProviderKey(providerKey)) {
+    const config = OAUTH_ONLY_PROVIDERS[providerKey]
     // Explicit supportsOAuth flag if set, otherwise OAuth-only providers default to true
     return "supportsOAuth" in config ? config.supportsOAuth === true : true
   }
@@ -360,7 +360,7 @@ export function providerSupportsOAuth(providerKey: string): boolean {
  * @param key - The string to check
  * @returns true if key is a valid OAuthMcpProviderKey
  */
-export function isValidOAuthMcpProviderKey(key: string): key is OAuthMcpProviderKey {
+function isValidOAuthMcpProviderKey(key: string): key is OAuthMcpProviderKey {
   return key in OAUTH_MCP_PROVIDERS
 }
 
@@ -376,9 +376,8 @@ export function isValidOAuthMcpProviderKey(key: string): key is OAuthMcpProvider
 export function getOAuthKeyForProvider(providerKey: AllOAuthProviderKey): AllOAuthProviderKey
 export function getOAuthKeyForProvider(providerKey: string): string
 export function getOAuthKeyForProvider(providerKey: string): string {
-  if (providerKey in OAUTH_MCP_PROVIDERS) {
-    const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
-    return config.oauthKey
+  if (isValidOAuthMcpProviderKey(providerKey)) {
+    return OAUTH_MCP_PROVIDERS[providerKey].oauthKey
   }
   // For non-MCP providers (e.g., OAuth-only "google"), use the key as-is
   return providerKey
@@ -391,8 +390,8 @@ export function getOAuthKeyForProvider(providerKey: string): string {
  * @returns The provider configuration or undefined if not found
  */
 export function getOAuthMcpProviderConfig(providerKey: string): OAuthMcpProviderConfig | undefined {
-  if (providerKey in OAUTH_MCP_PROVIDERS) {
-    return OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
+  if (isValidOAuthMcpProviderKey(providerKey)) {
+    return OAUTH_MCP_PROVIDERS[providerKey]
   }
   return undefined
 }
@@ -403,14 +402,14 @@ export function getOAuthMcpProviderConfig(providerKey: string): OAuthMcpProvider
  * @returns Object with description and human-readable tool names, or null
  */
 export function getProviderInfo(providerKey: string): { description: string; tools: string[] } | null {
-  if (providerKey in OAUTH_MCP_PROVIDERS) {
-    const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
+  if (isValidOAuthMcpProviderKey(providerKey)) {
+    const config = OAUTH_MCP_PROVIDERS[providerKey]
     const prefix = `mcp__${providerKey}__`
     const tools = (config.knownTools ?? []).map(t => t.slice(prefix.length).replace(/_/g, " "))
     return { description: config.description, tools }
   }
-  if (providerKey in OAUTH_ONLY_PROVIDERS) {
-    const config = OAUTH_ONLY_PROVIDERS[providerKey as OAuthOnlyProviderKey]
+  if (isValidOAuthOnlyProviderKey(providerKey)) {
+    const config = OAUTH_ONLY_PROVIDERS[providerKey]
     return { description: config.description, tools: [] }
   }
   return null
@@ -570,10 +569,17 @@ export const OAUTH_ONLY_PROVIDERS = {
 export type OAuthOnlyProviderKey = keyof typeof OAUTH_ONLY_PROVIDERS
 
 /**
+ * Type guard for OAuth-only provider keys
+ */
+function isValidOAuthOnlyProviderKey(key: string): key is OAuthOnlyProviderKey {
+  return key in OAUTH_ONLY_PROVIDERS
+}
+
+/**
  * Get all OAuth-only provider keys
  */
 export function getOAuthOnlyProviderKeys(): OAuthOnlyProviderKey[] {
-  return Object.keys(OAUTH_ONLY_PROVIDERS) as OAuthOnlyProviderKey[]
+  return Object.keys(OAUTH_ONLY_PROVIDERS).filter(isValidOAuthOnlyProviderKey)
 }
 
 /**
@@ -642,10 +648,17 @@ export const GLOBAL_MCP_PROVIDERS = {
 export type GlobalMcpProviderKey = keyof typeof GLOBAL_MCP_PROVIDERS
 
 /**
+ * Type guard for global MCP provider keys
+ */
+function isValidGlobalMcpProviderKey(key: string): key is GlobalMcpProviderKey {
+  return key in GLOBAL_MCP_PROVIDERS
+}
+
+/**
  * Get all global provider keys
  */
 export function getGlobalMcpProviderKeys(): GlobalMcpProviderKey[] {
-  return Object.keys(GLOBAL_MCP_PROVIDERS) as GlobalMcpProviderKey[]
+  return Object.keys(GLOBAL_MCP_PROVIDERS).filter(isValidGlobalMcpProviderKey)
 }
 
 /**

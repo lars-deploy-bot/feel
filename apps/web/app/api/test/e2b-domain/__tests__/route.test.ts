@@ -183,7 +183,7 @@ describe("GET /api/test/e2b-domain", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubEnv("NODE_ENV", "test")
-    vi.stubEnv("STREAM_ENV", "local")
+    vi.stubEnv("ALIVE_ENV", "local")
     vi.stubEnv("E2E_TEST_SECRET", "test-secret")
     vi.stubEnv("E2B_DOMAIN", "e2b.test.local")
     mockAppClient({ domain: makeDomain() })
@@ -195,7 +195,7 @@ describe("GET /api/test/e2b-domain", () => {
 
   it("returns 404 when unauthorized", async () => {
     vi.stubEnv("NODE_ENV", "production")
-    vi.stubEnv("STREAM_ENV", "staging")
+    vi.stubEnv("ALIVE_ENV", "staging")
 
     const res = await GET(makeGetRequest("e2e-w0.alive.local"))
     const json = await res.json()
@@ -252,7 +252,7 @@ describe("POST /api/test/e2b-domain", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubEnv("NODE_ENV", "test")
-    vi.stubEnv("STREAM_ENV", "local")
+    vi.stubEnv("ALIVE_ENV", "local")
     vi.stubEnv("E2E_TEST_SECRET", "test-secret")
     vi.stubEnv("E2B_DOMAIN", "e2b.test.local")
     mockAppClient({ domain: makeDomain() })
@@ -269,7 +269,7 @@ describe("POST /api/test/e2b-domain", () => {
 
   it("returns 404 when unauthorized", async () => {
     vi.stubEnv("NODE_ENV", "production")
-    vi.stubEnv("STREAM_ENV", "staging")
+    vi.stubEnv("ALIVE_ENV", "staging")
 
     const res = await POST(makePostRequest({ workspace: "e2e-w0.alive.local", executionMode: "e2b" }))
     const json = await res.json()

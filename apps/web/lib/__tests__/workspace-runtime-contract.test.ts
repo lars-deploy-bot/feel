@@ -8,7 +8,7 @@ describe("getWorkspaceRuntimeContractViolation", () => {
         sitesRoot: "/configured/sites",
         sitesRootExists: true,
         sitesRootReadOnly: null,
-        streamEnv: "local",
+        aliveEnv: "local",
         uid: 1000,
       }),
     ).toBeNull()
@@ -20,7 +20,7 @@ describe("getWorkspaceRuntimeContractViolation", () => {
         sitesRoot: "/configured/sites",
         sitesRootExists: false,
         sitesRootReadOnly: null,
-        streamEnv: "production",
+        aliveEnv: "production",
         uid: 1000,
       }),
     ).toBeNull()
@@ -32,7 +32,7 @@ describe("getWorkspaceRuntimeContractViolation", () => {
         sitesRoot: "/configured/sites",
         sitesRootExists: true,
         sitesRootReadOnly: false,
-        streamEnv: "production",
+        aliveEnv: "production",
         uid: 1000,
       }),
     ).toContain("uid=1000")
@@ -44,7 +44,7 @@ describe("getWorkspaceRuntimeContractViolation", () => {
         sitesRoot: "/configured/sites",
         sitesRootExists: true,
         sitesRootReadOnly: false,
-        streamEnv: "production",
+        aliveEnv: "production",
         uid: 0,
       }),
     ).toBeNull()
@@ -56,7 +56,7 @@ describe("getWorkspaceRuntimeContractViolation", () => {
         sitesRoot: "/configured/sites",
         sitesRootExists: true,
         sitesRootReadOnly: true,
-        streamEnv: "production",
+        aliveEnv: "production",
         uid: 0,
       }),
     ).toContain("mounted read-only")

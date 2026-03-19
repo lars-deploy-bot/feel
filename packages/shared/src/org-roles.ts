@@ -1,8 +1,12 @@
 export const ORG_ROLES = ["owner", "admin", "member"] as const
 export type OrgRole = (typeof ORG_ROLES)[number]
 
+const ORG_ROLE_SET: ReadonlySet<string> = new Set(ORG_ROLES)
+
 export const ORG_ROLES_WITH_VIEWER = [...ORG_ROLES, "viewer"] as const
 export type OrgRoleWithViewer = (typeof ORG_ROLES_WITH_VIEWER)[number]
+
+const ORG_ROLE_WITH_VIEWER_SET: ReadonlySet<string> = new Set(ORG_ROLES_WITH_VIEWER)
 
 export type OrgRoleMap = Record<string, OrgRole>
 
@@ -17,11 +21,11 @@ export interface SessionOrgClaims {
 }
 
 export function isOrgRole(role: unknown): role is OrgRole {
-  return typeof role === "string" && ORG_ROLES.includes(role as OrgRole)
+  return typeof role === "string" && ORG_ROLE_SET.has(role)
 }
 
 export function isOrgRoleWithViewer(role: unknown): role is OrgRoleWithViewer {
-  return typeof role === "string" && ORG_ROLES_WITH_VIEWER.includes(role as OrgRoleWithViewer)
+  return typeof role === "string" && ORG_ROLE_WITH_VIEWER_SET.has(role)
 }
 
 export function isOrgAdminRole(role: unknown): role is Extract<OrgRole, "owner" | "admin"> {

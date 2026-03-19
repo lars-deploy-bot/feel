@@ -11,20 +11,22 @@ type EventMap = {
 }
 
 type EventName = keyof EventMap
-type EventHandler<T extends EventName> = (payload: EventMap[T]) => void
+type EventHandler<K extends EventName> = (payload: EventMap[K]) => void
 
-const handlers = new Map<EventName, Array<EventHandler<EventName>>>()
-
-function on<T extends EventName>(event: T, handler: EventHandler<T>): void {
-  const list = handlers.get(event) ?? []
-  list.push(handler as EventHandler<EventName>)
-  handlers.set(event, list)
+const handlers: { [K in EventName]: EventHandler<K>[] } = {
+  "org.created": [],
+  "org.deleted": [],
+  "org.credits_updated": [],
+  "member.added": [],
+  "member.removed": [],
 }
 
-function emit<T extends EventName>(event: T, payload: EventMap[T]): void {
-  const list = handlers.get(event)
-  if (!list) return
-  for (const handler of list) {
+function on<K extends EventName>(event: K, handler: EventHandler<K>): void {
+  handlers[event].push(handler)
+}
+
+function emit<K extends EventName>(event: K, payload: EventMap[K]): void {
+  for (const handler of handlers[event]) {
     try {
       handler(payload)
     } catch (err) {

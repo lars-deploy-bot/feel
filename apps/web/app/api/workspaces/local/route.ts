@@ -46,12 +46,12 @@ export async function GET(request: NextRequest) {
   const requestId = getRequestId(request)
 
   // Only available in standalone mode
-  if (env.STREAM_ENV !== "standalone") {
+  if (env.ALIVE_ENV !== "standalone") {
     return NextResponse.json(
       {
         ok: false,
         error: ErrorCodes.INVALID_REQUEST,
-        message: "This endpoint is only available in standalone mode (STREAM_ENV=standalone)",
+        message: "This endpoint is only available in standalone mode (ALIVE_ENV=standalone)",
         requestId,
       },
       { status: 400 },
@@ -86,12 +86,12 @@ export async function POST(req: Request) {
   const requestId = getRequestId(req)
 
   // Only available in standalone mode
-  if (env.STREAM_ENV !== "standalone") {
+  if (env.ALIVE_ENV !== "standalone") {
     return NextResponse.json(
       {
         ok: false,
         error: ErrorCodes.INVALID_REQUEST,
-        message: "This endpoint is only available in standalone mode (STREAM_ENV=standalone)",
+        message: "This endpoint is only available in standalone mode (ALIVE_ENV=standalone)",
         requestId,
       },
       { status: 400 },

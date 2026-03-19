@@ -7,6 +7,18 @@ import type {
   SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk"
 
+// Re-export guards and helpers from new location
+export {
+  extractSessionId,
+  getMessageStreamData,
+  isErrorResultMessage,
+  isSDKAssistantMessage,
+  isSDKResultMessage,
+  isSDKStatusMessage,
+  isSDKSystemMessage,
+  isSDKTaskNotification,
+  isSDKUserMessage,
+} from "@/features/chat/types/sdk"
 /**
  * Re-export SDK message types for use across the app.
  *
@@ -33,16 +45,3 @@ export type {
   SDKTaskNotificationMessage,
   SDKUserMessage,
 }
-
-// Re-export guards and helpers from new location
-export {
-  extractSessionId,
-  getMessageStreamData,
-  isErrorResultMessage,
-  isSDKAssistantMessage,
-  isSDKResultMessage,
-  isSDKStatusMessage,
-  isSDKSystemMessage,
-  isSDKTaskNotification,
-  isSDKUserMessage,
-} from "@/features/chat/types/sdk"

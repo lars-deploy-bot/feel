@@ -32,10 +32,10 @@
     "test": "bun test src/__tests__"
   },
   "dependencies": {
-    "croner": "^9.0.0"
+    "croner": "^10.0.1"
   },
   "devDependencies": {
-    "@types/node": "^22.0.3",
-    "typescript": "^5.7.2"
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3"
   }
 }

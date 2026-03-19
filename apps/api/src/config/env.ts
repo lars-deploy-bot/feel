@@ -1,12 +1,14 @@
+import { e2bApiKey, supabaseSecretKey, supabaseUrl } from "@webalive/env"
 import { z } from "zod"
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(5080),
-  NODE_ENV: z.union([z.literal("development"), z.literal("staging"), z.literal("production")]).default("development"),
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  NODE_ENV: z.enum(["development", "staging", "production"]).default("production"),
+  ALIVE_ENV: z.enum(["local", "dev", "staging", "production", "standalone"]).optional(),
+  SUPABASE_URL: supabaseUrl,
+  SUPABASE_SERVICE_ROLE_KEY: supabaseSecretKey,
   ALIVE_PASSCODE: z.string().min(1),
-  E2B_API_KEY: z.string().regex(/^e2b_/, "Must be valid E2B API key (e2b_*)"),
+  E2B_API_KEY: e2bApiKey,
   GROQ_API_SECRET: z.string().min(1),
   POSTHOG_API_KEY: z.string().min(1),
   POSTHOG_HOST: z.string().url(),

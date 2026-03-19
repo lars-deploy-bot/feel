@@ -142,7 +142,8 @@ export async function cleanupTestUser(userId: string): Promise<void> {
  * @returns Signed JWT token
  */
 export async function createTestSessionToken(testUser: TestUser): Promise<string> {
-  const JWT_SECRET = process.env.JWT_SECRET || "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
+  const JWT_SECRET = process.env.JWT_SECRET
+  if (!JWT_SECRET) throw new Error("JWT_SECRET must be set for E2E tests")
 
   const payload = {
     role: "authenticated" as const,

@@ -12,17 +12,14 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
-import { llmTokensToCredits } from "@/lib/credits"
 import { assertSupabaseManagementEnv, assertSupabaseServiceEnv } from "@/lib/test-helpers/integration-env"
 import {
   calculateLLMTokenCost,
-  chargeTokensFromCredits,
   ensureSufficientCredits,
   getOrgCredits,
   hasEnoughCredits,
   type LLMTokenUsage,
   updateOrgCredits,
-  WORKSPACE_CREDIT_DISCOUNT,
 } from "@/lib/tokens"
 import { createTestAppClient, createTestIamClient } from "./supabase-test-utils"
 
@@ -92,91 +89,6 @@ describe("Supabase Credit System Integration", () => {
     })
   })
 
-  describe("chargeTokensFromCredits()", () => {
-    test("should deduct credits from Supabase when charging", async () => {
-      const llmTokensUsed = 1000
-      const expectedCreditsUsed = llmTokensToCredits(llmTokensUsed) // 10 credits
-      const _expectedCharged = Math.floor(expectedCreditsUsed * WORKSPACE_CREDIT_DISCOUNT * 100) / 100 // 2.5 credits
-      const expectedNewBalance = Math.round((INITIAL_CREDITS - _expectedCharged) * 100) / 100 // 97.5
-
-      const newBalance = await chargeTokensFromCredits(TEST_DOMAIN, llmTokensUsed)
-
-      expect(newBalance).toBe(expectedNewBalance)
-
-      // Verify Supabase was actually updated
-      const dbBalance = await getOrgCredits(TEST_DOMAIN)
-      expect(dbBalance).toBe(expectedNewBalance)
-
-      // Reset for other tests
-      await updateOrgCredits(TEST_DOMAIN, INITIAL_CREDITS)
-    })
-
-    test("should handle multiple sequential charges correctly", async () => {
-      const llmTokensPerCharge = 500
-      const creditsPerCharge = llmTokensToCredits(llmTokensPerCharge) // 5 credits
-      const chargedPerRequest = Math.floor(creditsPerCharge * WORKSPACE_CREDIT_DISCOUNT * 100) / 100 // 1.25 credits
-
-      await chargeTokensFromCredits(TEST_DOMAIN, llmTokensPerCharge)
-      await chargeTokensFromCredits(TEST_DOMAIN, llmTokensPerCharge)
-      const finalBalance = await chargeTokensFromCredits(TEST_DOMAIN, llmTokensPerCharge)
-
-      const expectedBalance = Math.round((INITIAL_CREDITS - chargedPerRequest * 3) * 100) / 100
-      expect(finalBalance).toBe(expectedBalance)
-
-      // Verify in Supabase
-      const dbBalance = await getOrgCredits(TEST_DOMAIN)
-      expect(dbBalance).toBe(expectedBalance)
-
-      // Reset for other tests
-      await updateOrgCredits(TEST_DOMAIN, INITIAL_CREDITS)
-    })
-
-    test("should return null when charging more than available balance", async () => {
-      // Set low balance
-      await updateOrgCredits(TEST_DOMAIN, 1)
-
-      // Try to charge 10 credits worth (1000 LLM tokens = 10 credits, 25% = 2.5 credits charged)
-      const llmTokensUsed = 1000
-      const result = await chargeTokensFromCredits(TEST_DOMAIN, llmTokensUsed)
-
-      expect(result).toBeNull()
-
-      // Balance should remain unchanged
-      const balance = await getOrgCredits(TEST_DOMAIN)
-      expect(balance).toBe(1)
-
-      // Reset for other tests
-      await updateOrgCredits(TEST_DOMAIN, INITIAL_CREDITS)
-    })
-
-    test("should return null for non-existent domain", async () => {
-      const result = await chargeTokensFromCredits("non-existent.com", 100)
-      expect(result).toBeNull()
-    })
-
-    test("should return null for negative token amount", async () => {
-      const result = await chargeTokensFromCredits(TEST_DOMAIN, -100)
-      expect(result).toBeNull()
-
-      // Balance should remain unchanged
-      const balance = await getOrgCredits(TEST_DOMAIN)
-      expect(balance).toBe(INITIAL_CREDITS)
-    })
-
-    test("should apply discount correctly (25%)", async () => {
-      const llmTokensUsed = 1000 // 10 credits
-      const _expectedCreditsUsed = 10
-      const _expectedCharged = 2.5 // 25% of 10
-      const expectedBalance = 97.5 // 100 - 2.5
-
-      const newBalance = await chargeTokensFromCredits(TEST_DOMAIN, llmTokensUsed)
-      expect(newBalance).toBe(expectedBalance)
-
-      // Reset for other tests
-      await updateOrgCredits(TEST_DOMAIN, INITIAL_CREDITS)
-    })
-  })
-
   describe("hasEnoughCredits()", () => {
     test("should return true when credits are sufficient", async () => {
       const hasCredits = await hasEnoughCredits(TEST_DOMAIN, 50)
@@ -235,93 +147,6 @@ describe("Supabase Credit System Integration", () => {
       }
       // Should only count input + output, ignore cache
       expect(calculateLLMTokenCost(usage)).toBe(150)
-    })
-  })
-
-  describe("Real-world scenarios", () => {
-    test("should handle realistic Claude API response usage", async () => {
-      // Simulate typical Claude API response
-      const usage: LLMTokenUsage = {
-        input_tokens: 523,
-        output_tokens: 1247,
-      }
-
-      const totalLLMTokens = calculateLLMTokenCost(usage) // 1770 tokens
-      const credits = llmTokensToCredits(totalLLMTokens) // 17.7 credits
-      const charged = Math.floor(credits * WORKSPACE_CREDIT_DISCOUNT * 100) / 100 // 4.42 credits
-
-      const newBalance = await chargeTokensFromCredits(TEST_DOMAIN, totalLLMTokens)
-      const expectedBalance = Math.round((INITIAL_CREDITS - charged) * 100) / 100 // 95.58
-
-      expect(newBalance).toBe(expectedBalance)
-
-      // Reset for other tests
-      await updateOrgCredits(TEST_DOMAIN, INITIAL_CREDITS)
-    })
-
-    test("should handle very small token amounts", async () => {
-      const llmTokensUsed = 10 // 0.1 credits = 0.025 charged (floored to 0.02)
-      const newBalance = await chargeTokensFromCredits(TEST_DOMAIN, llmTokensUsed)
-
-      expect(newBalance).toBe(99.98) // 100 - 0.02 (floored)
-
-      // Reset for other tests
-      await updateOrgCredits(TEST_DOMAIN, INITIAL_CREDITS)
-    })
-
-    test("should prevent overdraft", async () => {
-      // Set balance to 5 credits
-      await updateOrgCredits(TEST_DOMAIN, 5)
-
-      // Try to charge 30 credits worth (12000 tokens = 120 credits, 25% = 30 credits)
-      const result = await chargeTokensFromCredits(TEST_DOMAIN, 12000)
-
-      expect(result).toBeNull()
-
-      // Balance should remain at 5
-      const balance = await getOrgCredits(TEST_DOMAIN)
-      expect(balance).toBe(5)
-
-      // Reset for other tests
-      await updateOrgCredits(TEST_DOMAIN, INITIAL_CREDITS)
-    })
-  })
-
-  describe("Supabase persistence", () => {
-    test("should persist credits across reads", async () => {
-      // Charge once
-      await chargeTokensFromCredits(TEST_DOMAIN, 1000)
-      const balance1 = await getOrgCredits(TEST_DOMAIN)
-
-      // Read again
-      const balance2 = await getOrgCredits(TEST_DOMAIN)
-
-      // Should be the same
-      expect(balance1).toBe(balance2)
-
-      // Reset for other tests
-      await updateOrgCredits(TEST_DOMAIN, INITIAL_CREDITS)
-    })
-
-    test("should update updated_at timestamp in orgs table", async () => {
-      const iam = createTestIamClient()
-
-      const { data: before } = await iam.from("orgs").select("updated_at").eq("org_id", TEST_ORG_ID).single()
-
-      // Wait to ensure timestamp difference (PostgreSQL has millisecond precision)
-      await new Promise(resolve => setTimeout(resolve, 100))
-      await chargeTokensFromCredits(TEST_DOMAIN, 500)
-
-      const { data: after } = await iam.from("orgs").select("updated_at").eq("org_id", TEST_ORG_ID).single()
-
-      if (before && after) {
-        const beforeTime = new Date(before.updated_at!).getTime()
-        const afterTime = new Date(after.updated_at!).getTime()
-        expect(afterTime).toBeGreaterThan(beforeTime)
-      }
-
-      // Reset for other tests
-      await updateOrgCredits(TEST_DOMAIN, INITIAL_CREDITS)
     })
   })
 

@@ -103,7 +103,7 @@ async function buildTenantResponse(
 
 export async function POST(req: Request) {
   // Environment guard - accessible in test/local environments OR with valid test secret
-  const isTestEnv = env.NODE_ENV === "test" || env.STREAM_ENV === "local"
+  const isTestEnv = env.NODE_ENV === "test" || env.ALIVE_ENV === "local"
 
   // Check for test secret header (for staging/production E2E tests)
   const testSecret = req.headers.get("x-test-secret")

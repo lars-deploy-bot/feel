@@ -175,8 +175,8 @@ function loadServerConfig(): Partial<ServerConfig> {
     return {}
   }
 
-  const streamEnv = process.env.STREAM_ENV
-  const isLocalDev = streamEnv === "local" || streamEnv === "standalone"
+  const aliveEnv = process.env.ALIVE_ENV
+  const isLocalDev = aliveEnv === "local" || aliveEnv === "standalone"
   const isTestEnv = process.env.CI === "true" || process.env.VITEST === "true"
 
   const fs = getBuiltinModule("node:fs")
@@ -637,7 +637,7 @@ export const SECURITY = {
 // Stream Environment
 // =============================================================================
 
-export const STREAM_ENV = {
+export const ALIVE_ENV = {
   LOCAL: "local",
   DEV: "dev",
   STAGING: "staging",
@@ -645,7 +645,7 @@ export const STREAM_ENV = {
   STANDALONE: "standalone",
 } as const
 
-export type StreamEnv = (typeof STREAM_ENV)[keyof typeof STREAM_ENV]
+export type AliveEnv = (typeof ALIVE_ENV)[keyof typeof ALIVE_ENV]
 
 // =============================================================================
 // Helper Functions

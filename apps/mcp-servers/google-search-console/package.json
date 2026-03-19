@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eenlars/alive",
+    "url": "https://github.com/lars-deploy-bot/feel",
     "directory": "apps/mcp-servers/google-search-console"
   },
   "keywords": [
@@ -40,8 +40,8 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
-    "@types/node": "^22.5.2",
+    "@types/node": "^25.5.0",
     "typescript": "^5.9.3",
-    "vitest": "4.0.17"
+    "vitest": "4.1.0"
   }
 }

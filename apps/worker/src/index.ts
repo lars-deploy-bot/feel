@@ -17,6 +17,7 @@ import { checkSchema, ensureServerRow, formatSchemaFailure, formatServerCheckFai
 import { DEFAULTS, DOMAINS, getServerId } from "@webalive/shared"
 import { Hono } from "hono"
 import { getCronServiceStatus, pokeCronService, startCronService, stopCronService, triggerJob } from "./cron-service"
+import { env } from "./env"
 import { getAutomationExecutionGate } from "./execution-guard"
 import { Sentry } from "./sentry"
 import { createWorkerAppClient } from "./supabase"
@@ -27,13 +28,12 @@ import { createWorkerAppClient } from "./supabase"
 
 /** Constant-time secret comparison to prevent timing attacks */
 function verifySecret(secret: string | undefined): boolean {
-  const expected = process.env.JWT_SECRET
-  if (!secret || !expected) return false
-  if (secret.length !== expected.length) return false
-  return timingSafeEqual(Buffer.from(secret), Buffer.from(expected))
+  if (!secret) return false
+  if (secret.length !== env.JWT_SECRET.length) return false
+  return timingSafeEqual(Buffer.from(secret), Buffer.from(env.JWT_SECRET))
 }
 
-const PORT = parseInt(process.env.WORKER_PORT ?? "5070", 10)
+const PORT = env.WORKER_PORT
 const serverId: string = getServerId() ?? ""
 const executionGate = getAutomationExecutionGate()
 
@@ -109,15 +109,8 @@ app.get("/status", c => {
 // =============================================================================
 
 async function verifyDatabase() {
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) {
-    console.error("[Worker] FATAL: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set")
-    process.exit(1)
-  }
-
   // 1. Schema: tables exist and are readable
-  const schemaResult = await checkSchema(url, key)
+  const schemaResult = await checkSchema(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
   if (!schemaResult.ok) {
     const msg = formatSchemaFailure(schemaResult)
     Sentry.captureMessage(msg, "fatal")
@@ -126,7 +119,7 @@ async function verifyDatabase() {
   }
 
   // 2. Server identity: ensure this server's row exists in app.servers (upserts if missing)
-  const serverResult = await ensureServerRow(url, key, {
+  const serverResult = await ensureServerRow(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     serverId,
     serverIp: DEFAULTS.SERVER_IP,
     hostname: DOMAINS.MAIN,

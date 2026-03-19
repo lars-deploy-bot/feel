@@ -6,15 +6,14 @@ import { z } from "zod"
 
 const configSchema = z.object({
   SUPABASE_URL: z.string().url("SUPABASE_URL must be a valid URL"),
-  SUPABASE_SERVICE_KEY: z.string().min(1, "SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY is required"),
+  SUPABASE_SERVICE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
   LOCKBOX_MASTER_KEY: z.string().length(64, "LOCKBOX_MASTER_KEY must be 64 hex characters (32 bytes)"),
 })
 
 export type Config = z.infer<typeof configSchema>
 
 const validateConfig = (): Config => {
-  // Support both SUPABASE_SERVICE_ROLE_KEY (apps/web standard) and SUPABASE_SERVICE_KEY (legacy)
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   const result = configSchema.safeParse({
     SUPABASE_URL: process.env.SUPABASE_URL,

@@ -531,8 +531,6 @@ export type FeatureFlagKey = keyof typeof FEATURE_FLAGS
 export const STORE_STORAGE_KEYS = {
   WORKSPACE: "workspace-storage",
   MESSAGE: "claude-messages-v4",
-  /** @deprecated Use TAB_DATA and TAB_VIEW instead */
-  TAB: "claude-tabs-v1",
   /** Tab data store (localStorage) - shared tab history */
   TAB_DATA: "claude-tab-data",
   /** Tab view store (sessionStorage) - per-browser-tab UI state */

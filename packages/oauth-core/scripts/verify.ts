@@ -29,7 +29,7 @@ async function verify() {
   console.log("=====================================\n")
 
   const supabaseUrl = process.env.SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   // Check environment
   if (MOCK_TENANT_ID === "CHANGE_ME" || MOCK_USER_ID === "CHANGE_ME") {
@@ -39,7 +39,7 @@ async function verify() {
   }
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error("❌ ERROR: Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SERVICE_KEY)\n")
+    console.error("❌ ERROR: Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY\n")
     process.exit(1)
   }
 

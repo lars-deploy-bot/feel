@@ -104,6 +104,6 @@ Examples:
 - "ALTER TABLE posts ADD COLUMN author_id int references users(id)"`,
   runQueryParamsSchema,
   async args => {
-    return runQuery(args as RunQueryParams)
+    return runQuery(args)
   },
 )

@@ -63,7 +63,7 @@ ensure_env_var() {
     fi
 }
 
-upsert_env_var "STREAM_ENV" "local"
+upsert_env_var "ALIVE_ENV" "local"
 upsert_env_var "LOCAL_TEMPLATE_PATH" "$TEMPLATE_PATH"
 ensure_env_var "NEXT_PUBLIC_PREVIEW_BASE" "localhost"
 

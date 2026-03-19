@@ -1,6 +1,5 @@
 import posthog from "posthog-js"
-
-const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
+import { getRuntimeConfig } from "@/lib/hooks/useRuntimeConfig"
 
 /**
  * Reset PostHog identity on logout.
@@ -8,6 +7,6 @@ const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
  * ensuring the next user gets a clean session.
  */
 export function resetPostHogIdentity() {
-  if (typeof window === "undefined" || !posthogKey) return
+  if (typeof window === "undefined" || !getRuntimeConfig().posthogKey) return
   posthog.reset(true)
 }

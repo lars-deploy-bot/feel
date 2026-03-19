@@ -5,7 +5,6 @@ import {
   getOAuthMcpProviderConfig,
   getOAuthMcpProviderKeys,
   isOAuthMcpTool,
-  isValidOAuthMcpProviderKey,
   isValidOAuthProviderKey,
   OAUTH_MCP_PROVIDERS,
   OAUTH_ONLY_PROVIDERS,
@@ -72,8 +71,8 @@ describe("OAuth key mapping for Outlook", () => {
 })
 
 describe("type guards include outlook", () => {
-  it("isValidOAuthMcpProviderKey recognizes outlook", () => {
-    expect(isValidOAuthMcpProviderKey("outlook")).toBe(true)
+  it("outlook is an MCP provider key", () => {
+    expect("outlook" in OAUTH_MCP_PROVIDERS).toBe(true)
   })
 
   it("isValidOAuthProviderKey recognizes both outlook and microsoft", () => {
@@ -136,8 +135,8 @@ describe("GitHub is OAuth-only (no MCP server)", () => {
     expect(OAUTH_ONLY_PROVIDERS.github.envPrefix).toBe("GITHUB")
   })
 
-  it("isValidOAuthMcpProviderKey rejects github", () => {
-    expect(isValidOAuthMcpProviderKey("github")).toBe(false)
+  it("github is not an MCP provider key", () => {
+    expect("github" in OAUTH_MCP_PROVIDERS).toBe(false)
   })
 
   it("isValidOAuthProviderKey still accepts github", () => {

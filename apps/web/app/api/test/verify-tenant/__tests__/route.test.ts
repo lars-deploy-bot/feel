@@ -158,7 +158,7 @@ describe("GET /api/test/verify-tenant", () => {
 
   it("returns 404 when not in test env and no valid secret", async () => {
     vi.stubEnv("NODE_ENV", "production")
-    vi.stubEnv("STREAM_ENV", "staging")
+    vi.stubEnv("ALIVE_ENV", "staging")
 
     const email = `${TEST_CONFIG.WORKER_EMAIL_PREFIX}0@${TEST_CONFIG.EMAIL_DOMAIN}`
     const res = await GET(createRequest(email))

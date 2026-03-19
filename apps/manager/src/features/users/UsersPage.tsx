@@ -30,11 +30,17 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "orgs", label: "Orgs" },
 ]
 
+function userSortName(u: User): string {
+  if (u.display_name) return u.display_name
+  if (u.email) return u.email
+  return u.user_id
+}
+
 function compareUsers(a: User, b: User, key: SortKey, asc: boolean): number {
   let cmp = 0
   switch (key) {
     case "name":
-      cmp = (a.display_name ?? a.email ?? "").localeCompare(b.display_name ?? b.email ?? "")
+      cmp = userSortName(a).localeCompare(userSortName(b))
       break
     case "status":
       cmp = a.status.localeCompare(b.status)
@@ -68,8 +74,8 @@ export function UsersPage() {
     ? users.filter(u => {
         const q = search.toLowerCase()
         return (
-          (u.email ?? "").toLowerCase().includes(q) ||
-          (u.display_name ?? "").toLowerCase().includes(q) ||
+          (u.email ? u.email.toLowerCase().includes(q) : false) ||
+          (u.display_name ? u.display_name.toLowerCase().includes(q) : false) ||
           u.user_id.toLowerCase().includes(q)
         )
       })

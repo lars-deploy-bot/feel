@@ -83,8 +83,8 @@ describe("POST /api/outlook/send", () => {
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
-  it("returns 403 when email delivery is disabled in staging (STREAM_ENV)", async () => {
-    vi.stubEnv("STREAM_ENV", "staging")
+  it("returns 403 when email delivery is disabled in staging (ALIVE_ENV)", async () => {
+    vi.stubEnv("ALIVE_ENV", "staging")
     const res = await POST(createRequest(validBody))
     expect(res.status).toBe(403)
     const data = await res.json()

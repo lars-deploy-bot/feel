@@ -1,6 +1,6 @@
 "use client"
 
-import { STREAM_ENV } from "@webalive/shared"
+import { ALIVE_ENV } from "@webalive/shared"
 import Dexie, { type Table } from "dexie"
 import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import {
@@ -22,14 +22,14 @@ import type { MessageStatus, MessageType } from "@/lib/conversations/sync-types"
 
 function getMessageDbEnv(): string {
   // "use client" file — only NEXT_PUBLIC_ vars are available at runtime
-  const rawEnv = process.env.NEXT_PUBLIC_STREAM_ENV
+  const rawEnv = process.env.NEXT_PUBLIC_ALIVE_ENV
 
   switch (rawEnv) {
-    case STREAM_ENV.LOCAL:
-    case STREAM_ENV.DEV:
-    case STREAM_ENV.STAGING:
-    case STREAM_ENV.PRODUCTION:
-    case STREAM_ENV.STANDALONE:
+    case ALIVE_ENV.LOCAL:
+    case ALIVE_ENV.DEV:
+    case ALIVE_ENV.STAGING:
+    case ALIVE_ENV.PRODUCTION:
+    case ALIVE_ENV.STANDALONE:
       return rawEnv
     default:
       throw new Error(

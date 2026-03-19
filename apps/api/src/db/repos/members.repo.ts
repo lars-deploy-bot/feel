@@ -31,12 +31,12 @@ export async function findByOrgId(orgId: string): Promise<MemberRow[]> {
     )
     .eq("org_id", orgId)
     .order("created_at", { ascending: false })
+    .overrideTypes<MemberRow[], { merge: false }>()
 
   if (error) {
     throw new InternalError(`Failed to fetch members for org ${orgId}: ${error.message}`)
   }
-  // The Supabase join returns a slightly different shape; normalize it.
-  return (data ?? []) as unknown as MemberRow[]
+  return data ?? []
 }
 
 export async function findAllGrouped(): Promise<MemberRow[]> {
@@ -56,11 +56,12 @@ export async function findAllGrouped(): Promise<MemberRow[]> {
     `,
     )
     .order("created_at", { ascending: false })
+    .overrideTypes<MemberRow[], { merge: false }>()
 
   if (error) {
     throw new InternalError(`Failed to fetch all memberships: ${error.message}`)
   }
-  return (data ?? []) as unknown as MemberRow[]
+  return data ?? []
 }
 
 export async function add(orgId: string, userId: string, role: string): Promise<void> {
@@ -84,7 +85,23 @@ export async function remove(orgId: string, userId: string): Promise<void> {
 }
 
 export async function transferOwnership(orgId: string, newOwnerId: string): Promise<void> {
-  // Set current owner(s) to "member"
+  // Find the current owner(s) so we can roll back if the promote step fails
+  const { data: currentOwners, error: lookupError } = await iam
+    .from("org_memberships")
+    .select("user_id")
+    .eq("org_id", orgId)
+    .eq("role", "owner")
+
+  if (lookupError) {
+    throw new InternalError(`Failed to look up current owner: ${lookupError.message}`)
+  }
+  if (!currentOwners || currentOwners.length === 0) {
+    throw new InternalError(`Org ${orgId} has no current owner`)
+  }
+
+  const currentOwnerIds = currentOwners.map(row => row.user_id)
+
+  // Demote current owner(s) to "member"
   const { error: demoteError } = await iam
     .from("org_memberships")
     .update({ role: "member" })
@@ -95,7 +112,7 @@ export async function transferOwnership(orgId: string, newOwnerId: string): Prom
     throw new InternalError(`Failed to demote current owner: ${demoteError.message}`)
   }
 
-  // Set new owner
+  // Promote new owner
   const { error: promoteError } = await iam
     .from("org_memberships")
     .update({ role: "owner" })
@@ -103,6 +120,14 @@ export async function transferOwnership(orgId: string, newOwnerId: string): Prom
     .eq("user_id", newOwnerId)
 
   if (promoteError) {
-    throw new InternalError(`Failed to promote new owner: ${promoteError.message}`)
+    // Rollback: re-promote the original owner(s) to prevent ownerless org
+    for (const ownerId of currentOwnerIds) {
+      await iam
+        .from("org_memberships")
+        .update({ role: "owner" })
+        .eq("org_id", orgId)
+        .eq("user_id", ownerId)
+    }
+    throw new InternalError(`Failed to promote new owner (rolled back demote): ${promoteError.message}`)
   }
 }

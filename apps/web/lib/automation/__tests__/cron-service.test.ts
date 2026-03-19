@@ -80,20 +80,6 @@ describe("CronService Worker Client", () => {
     })
   })
 
-  describe("startCronService (deprecated no-op)", () => {
-    it("does not throw", async () => {
-      const { startCronService } = await import("../cron-service")
-      await startCronService()
-    })
-  })
-
-  describe("stopCronService (deprecated no-op)", () => {
-    it("does not throw", async () => {
-      const { stopCronService } = await import("../cron-service")
-      stopCronService()
-    })
-  })
-
   describe("event types", () => {
     it("CronEvent has started|finished actions and success|failure status", () => {
       // Compile-time verification: these are the valid values

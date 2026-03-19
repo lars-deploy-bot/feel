@@ -12,6 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { AppDatabase } from "@webalive/database"
 import { AutomationTriggerResponseSchema } from "@webalive/shared"
+import { env } from "./env"
 import { Sentry } from "./sentry"
 
 type AppClient = SupabaseClient<AppDatabase, "app">
@@ -21,7 +22,7 @@ type AppClient = SupabaseClient<AppDatabase, "app">
 // ============================================
 
 /** Web app URL for internal trigger calls */
-const WEB_URL = `http://localhost:${process.env.PORT ?? "9000"}`
+const WEB_URL = `http://localhost:${env.WEB_APP_PORT}`
 
 // ============================================
 // Service State
@@ -49,16 +50,10 @@ export async function startCronService(supabase: AppClient, serverId: string): P
     return
   }
 
-  const jwtSecret = process.env.JWT_SECRET
-  if (!jwtSecret) {
-    console.error("[CronService] FATAL: JWT_SECRET not set")
-    process.exit(1)
-  }
-
   state = {
     supabase,
     serverId,
-    jwtSecret,
+    jwtSecret: env.JWT_SECRET,
     timer: null,
     triggeredJobs: new Set(),
     started: true,

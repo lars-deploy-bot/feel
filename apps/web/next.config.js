@@ -1,3 +1,13 @@
+// NOTE: Turbopack emits ~43 "Encountered unexpected file in NFT list" warnings
+// during `next build`. The root cause is @sentry/nextjs's `withSentryConfig`
+// which internally does dynamic fs reads (path.join(process.cwd(), ...)) that
+// Turbopack's Rust-based file tracer can't statically resolve, causing it to
+// trace the entire project root for every route. Our own fs.readFileSync of
+// server-config.json likely contributes too. Open upstream issue, no fix yet:
+//   https://github.com/vercel/next.js/issues/84960 (open since Oct 2025, stale since Dec 2025)
+//   https://github.com/vercel/next.js/issues/88579
+// Partial fix landed in Next.js PR #83452 but not sufficient.
+// The warnings are cosmetic — build output is correct, no files incorrectly bundled.
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -21,16 +31,17 @@ const ripgrepExcludes = RIPGREP_TARGETS.filter(target => target !== ripgrepTarge
 
 // Read build metadata at config time (baked into the bundle via env:{}).
 // Deployer-owned builds inject these explicitly so local_fs sources do not depend on `.git`.
-const buildCommit = process.env.ALIVE_BUILD_COMMIT || "unknown"
-const buildBranch = process.env.ALIVE_BUILD_BRANCH || "unknown"
-const buildTime = process.env.ALIVE_BUILD_TIME || new Date().toISOString()
+// Undefined when not set by deployer (e.g. local dev) — consumers handle undefined.
+const buildCommit = process.env.ALIVE_BUILD_COMMIT
+const buildBranch = process.env.ALIVE_BUILD_BRANCH
+const buildTime = process.env.ALIVE_BUILD_TIME
 
 // Read server-config.json for build-time values (avoids hardcoding domains).
 // next.config.js is pure JS and can't import @webalive/shared, so we read directly.
 // In production, SERVER_CONFIG_PATH is always set and the file always exists.
 // In local/test environments, explicit env vars can provide the browser-safe values.
 let sentryConfig = null
-let contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || ""
+let contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL
 let previewProxyPort = 5055
 const SENTRY_HOSTNAME_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i
 
@@ -108,13 +119,13 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   env: {
-    NEXT_PUBLIC_SENTRY_RELEASE: buildCommit,
-    NEXT_PUBLIC_STREAM_ENV: process.env.STREAM_ENV || "",
+    ...(buildCommit ? { NEXT_PUBLIC_SENTRY_RELEASE: buildCommit } : {}),
+    ...(process.env.ALIVE_ENV ? { NEXT_PUBLIC_ALIVE_ENV: process.env.ALIVE_ENV } : {}),
     ...(sentryConfig ? { NEXT_PUBLIC_SENTRY_DSN: sentryConfig.dsn } : {}),
-    NEXT_PUBLIC_CONTACT_EMAIL: contactEmail,
-    NEXT_PUBLIC_BUILD_COMMIT: buildCommit,
-    NEXT_PUBLIC_BUILD_BRANCH: buildBranch,
-    NEXT_PUBLIC_BUILD_TIME: buildTime,
+    ...(contactEmail ? { NEXT_PUBLIC_CONTACT_EMAIL: contactEmail } : {}),
+    ...(buildCommit ? { NEXT_PUBLIC_BUILD_COMMIT: buildCommit } : {}),
+    ...(buildBranch ? { NEXT_PUBLIC_BUILD_BRANCH: buildBranch } : {}),
+    ...(buildTime ? { NEXT_PUBLIC_BUILD_TIME: buildTime } : {}),
   },
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },

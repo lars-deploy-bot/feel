@@ -2,13 +2,13 @@
 /**
  * Sync generated Caddyfile.sites → filtered copy
  *
- * Environment-aware: each STREAM_ENV generates its own filtered artifact.
+ * Environment-aware: each ALIVE_ENV generates its own filtered artifact.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
-import { caddySitesFilteredPath, caddySitesPath, requireStreamEnv } from "@webalive/shared"
+import { caddySitesFilteredPath, caddySitesPath, requireAliveEnv } from "@webalive/shared"
 
-const streamEnv = requireStreamEnv()
+const aliveEnv = requireAliveEnv()
 
 const serverConfigPath = process.env.SERVER_CONFIG_PATH
 if (!serverConfigPath) {
@@ -25,8 +25,8 @@ if (!baseCaddySitesPath) {
   throw new Error(`Missing generated.caddySites in ${serverConfigPath}`)
 }
 
-const SRC = caddySitesPath(baseCaddySitesPath, streamEnv)
-const DEST = caddySitesFilteredPath(baseCaddySitesPath, streamEnv)
+const SRC = caddySitesPath(baseCaddySitesPath, aliveEnv)
+const DEST = caddySitesFilteredPath(baseCaddySitesPath, aliveEnv)
 const ENV_PATH = resolve(aliveRoot, "packages/shared/environments.json")
 
 function sanitizeLabel(domain: string): string {

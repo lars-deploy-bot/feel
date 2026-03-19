@@ -1,6 +1,7 @@
 import type { ServerWebSocket } from "bun"
 import type { CommandHandle } from "e2b"
 import { Sandbox } from "e2b"
+import { env } from "./env"
 import { Sentry } from "./sentry"
 
 interface WsData {
@@ -21,8 +22,7 @@ function isResizeMessage(raw: unknown): raw is { type: "resize"; cols: number; r
   )
 }
 
-const E2B_DOMAIN = process.env.E2B_DOMAIN
-if (!E2B_DOMAIN) throw new Error("E2B_DOMAIN environment variable is required")
+const E2B_DOMAIN = env.E2B_DOMAIN
 
 /**
  * Bridge a WebSocket connection to an E2B sandbox PTY.

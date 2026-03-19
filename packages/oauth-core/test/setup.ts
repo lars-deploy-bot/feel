@@ -3,8 +3,7 @@
 
 if (!process.env.SUPABASE_URL) process.env.SUPABASE_URL = "https://test.supabase.co"
 
-// oauth-core supports both SUPABASE_SERVICE_ROLE_KEY and SUPABASE_SERVICE_KEY.
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.SUPABASE_SERVICE_KEY) {
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key"
 }
 

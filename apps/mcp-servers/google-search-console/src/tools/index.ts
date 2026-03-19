@@ -30,6 +30,23 @@ function requireString(args: Record<string, unknown>, key: string): string {
   return val
 }
 
+function validateDimensionFilterGroups(groups: unknown[]): DimensionFilterGroup[] {
+  return groups
+    .filter((g): g is Record<string, unknown> => typeof g === "object" && g !== null)
+    .map(g => ({
+      groupType: typeof g.groupType === "string" ? g.groupType : undefined,
+      filters: Array.isArray(g.filters)
+        ? g.filters
+            .filter((f): f is Record<string, unknown> => typeof f === "object" && f !== null)
+            .map(f => ({
+              dimension: typeof f.dimension === "string" ? f.dimension : "",
+              operator: typeof f.operator === "string" ? f.operator : undefined,
+              expression: typeof f.expression === "string" ? f.expression : "",
+            }))
+        : [],
+    }))
+}
+
 // ============================================================
 // Tool definitions
 // ============================================================
@@ -193,7 +210,7 @@ export async function executeTool(
           dimensions: getStringArray(args, "dimensions"),
           type: getString(args, "type") ?? "web",
           dimensionFilterGroups: Array.isArray(args.dimensionFilterGroups)
-            ? (args.dimensionFilterGroups as DimensionFilterGroup[])
+            ? validateDimensionFilterGroups(args.dimensionFilterGroups)
             : undefined,
           aggregationType: getString(args, "aggregationType") ?? "auto",
           rowLimit: getNumber(args, "rowLimit") ?? 25,

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockEnv = {
   NODE_ENV: "production",
-  STREAM_ENV: "staging",
+  ALIVE_ENV: "staging",
   E2E_TEST_SECRET: "test-secret",
 }
 
@@ -113,7 +113,7 @@ describe("DELETE /api/test/delete-site", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockEnv.NODE_ENV = "production"
-    mockEnv.STREAM_ENV = "staging"
+    mockEnv.ALIVE_ENV = "staging"
     mockEnv.E2E_TEST_SECRET = "test-secret"
 
     mockAppMaybeSingle.mockResolvedValue({

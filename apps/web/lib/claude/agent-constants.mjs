@@ -13,7 +13,7 @@ import { getEnabledMcpToolNames, streamInternalMcpServers } from "@webalive/tool
 import { getEnabledServices } from "./alive-toml-services.mjs"
 
 // Re-export stream types
-export { STREAM_TYPES, STREAM_SYNTHETIC_MESSAGE_TYPES, STREAM_INTERRUPT_SOURCES }
+export { STREAM_INTERRUPT_SOURCES, STREAM_SYNTHETIC_MESSAGE_TYPES, STREAM_TYPES }
 
 export const PERMISSION_MODE = STREAM_PERMISSION_MODE
 /** @type {import('@anthropic-ai/claude-agent-sdk').SettingSource[]} */

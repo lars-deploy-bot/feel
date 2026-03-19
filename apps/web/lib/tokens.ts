@@ -18,7 +18,6 @@
 export {
   calculateLLMTokenCost,
   chargeCreditsDirectly,
-  chargeTokensFromCredits,
   ensureSufficientCredits,
   getAllOrganizationCredits,
   getOrgCredits,
