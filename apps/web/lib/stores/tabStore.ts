@@ -308,6 +308,5 @@ export const useTabStore = {
     if (newState.tabsExpandedByWorkspace !== undefined) {
       useTabViewStore.setState({ tabsExpandedByWorkspace: newState.tabsExpandedByWorkspace })
     }
-
   },
 }

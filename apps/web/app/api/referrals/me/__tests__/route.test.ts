@@ -29,13 +29,13 @@ vi.mock("@/lib/supabase/iam", () => ({
   createIamClient: vi.fn(),
 }))
 
-// Mock generateInviteCode and DOMAINS.STREAM_PROD (empty in test env without server-config.json)
+// Mock generateInviteCode and DOMAINS.APP_PROD (empty in test env without server-config.json)
 vi.mock("@webalive/shared", async importOriginal => {
   const actual = await importOriginal<typeof import("@webalive/shared")>()
   return {
     ...actual,
     generateInviteCode: vi.fn(() => "TEST123ABC"),
-    DOMAINS: { ...actual.DOMAINS, STREAM_PROD: "https://app.example.test" },
+    DOMAINS: { ...actual.DOMAINS, APP_PROD: "https://app.example.test" },
   }
 })
 

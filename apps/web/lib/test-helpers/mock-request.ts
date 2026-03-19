@@ -121,7 +121,7 @@ export function createMockNextRequest(
   }
   const originalGet = req.headers.get.bind(req.headers)
   req.headers.get = (name: string) => {
-    if (name === "origin") return DOMAINS.STREAM_PROD
+    if (name === "origin") return DOMAINS.APP_PROD
     if (name === "host") return urlObj.host
     if (name === "cookie" && options?.cookies) {
       return Object.entries(options.cookies)

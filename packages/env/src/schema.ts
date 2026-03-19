@@ -106,12 +106,7 @@ export const serverSchema = {
   PREVIEW_BASE: domainName.optional(),
   COOKIE_DOMAIN: domainName.optional(),
 
-  // Stream URLs (optional in env — derived from MAIN_DOMAIN when absent)
-  STREAM_PROD_URL: httpsUrl.optional(),
-  STREAM_STAGING_URL: httpsUrl.optional(),
-  STREAM_DEV_URL: httpsUrl.optional(),
-
-  // Stream configuration
+  // App configuration
   WORKSPACE_BASE: z.string().default("/srv/webalive/sites"),
   ALIVE_PASSCODE: z.string().optional(),
   ALIVE_ENV: z.enum(["local", "dev", "staging", "production", "standalone"]).optional(),
@@ -253,9 +248,6 @@ export const runtimeEnv = {
   WILDCARD_DOMAIN: process.env.WILDCARD_DOMAIN,
   PREVIEW_BASE: process.env.PREVIEW_BASE,
   COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
-  STREAM_PROD_URL: process.env.STREAM_PROD_URL,
-  STREAM_STAGING_URL: process.env.STREAM_STAGING_URL,
-  STREAM_DEV_URL: process.env.STREAM_DEV_URL,
   WORKSPACE_BASE: process.env.WORKSPACE_BASE,
   ALIVE_PASSCODE: process.env.ALIVE_PASSCODE,
   ALIVE_ENV: process.env.ALIVE_ENV,

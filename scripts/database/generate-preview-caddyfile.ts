@@ -61,7 +61,7 @@ if (environments.length === 0) {
 }
 
 // Build frame-ancestors from all environment domains (+ production URL)
-const frameAncestors = environments.map((e) => `https://${e.domain}`).join(" ") + ` ${DOMAINS.STREAM_PROD}`
+const frameAncestors = environments.map((e) => `https://${e.domain}`).join(" ") + ` ${DOMAINS.APP_PROD}`
 
 /**
  * Parse Caddyfile to extract domain→port mappings

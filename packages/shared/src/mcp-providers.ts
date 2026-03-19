@@ -360,7 +360,7 @@ export function providerSupportsOAuth(providerKey: string): boolean {
  * @param key - The string to check
  * @returns true if key is a valid OAuthMcpProviderKey
  */
-function isValidOAuthMcpProviderKey(key: string): key is OAuthMcpProviderKey {
+export function isValidOAuthMcpProviderKey(key: string): key is OAuthMcpProviderKey {
   return key in OAUTH_MCP_PROVIDERS
 }
 

@@ -53,4 +53,3 @@ export async function getCronServiceStatus(): Promise<{
   }
   return { started: false, runningJobs: 0, nextWakeAt: null }
 }
-

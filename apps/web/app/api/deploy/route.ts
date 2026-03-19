@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       let message = error.message
       switch (error.code) {
         case "DNS_VALIDATION_FAILED":
-          message = `${error.message}. Please ensure your domain points to ${DEFAULTS.SERVER_IP}. See DNS setup guide: ${DOMAINS.STREAM_PROD}/docs/dns-setup`
+          message = `${error.message}. Please ensure your domain points to ${DEFAULTS.SERVER_IP}. See DNS setup guide: ${DOMAINS.APP_PROD}/docs/dns-setup`
           break
         case "INVALID_DOMAIN":
         case "PATH_TRAVERSAL":

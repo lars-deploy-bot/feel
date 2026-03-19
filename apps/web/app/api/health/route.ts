@@ -279,7 +279,7 @@ export async function GET(req: Request) {
   const response: HealthResponse = isDeep
     ? {
         status,
-        build: { commit: buildInfo.commit, time: buildInfo.buildTime },
+        build: { commit: buildInfo.commit ?? "unknown", time: buildInfo.buildTime ?? "unknown" },
         services: { redis, database },
         system: getSystemInfo(),
         timestamp: new Date().toISOString(),

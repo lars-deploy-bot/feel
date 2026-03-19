@@ -411,13 +411,7 @@ export async function getUnreadMessages(
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
   const result = await withCircuitBreaker(() =>
-    redis.eval(
-      GET_UNREAD_SCRIPT,
-      1,
-      key,
-      userId,
-      typeof afterSeq === "number" ? afterSeq.toString() : "-1",
-    ),
+    redis.eval(GET_UNREAD_SCRIPT, 1, key, userId, typeof afterSeq === "number" ? afterSeq.toString() : "-1"),
   )
 
   if (!result) return null

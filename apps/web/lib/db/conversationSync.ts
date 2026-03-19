@@ -139,7 +139,11 @@ interface PendingData {
 
 interface SyncItem {
   conversationId: string
-  apiPayload: { conversation: Record<string, unknown>; tabs: Record<string, unknown>[]; messages: Record<string, unknown>[] }
+  apiPayload: {
+    conversation: Record<string, unknown>
+    tabs: Record<string, unknown>[]
+    messages: Record<string, unknown>[]
+  }
   pending: PendingData
 }
 
@@ -176,16 +180,28 @@ async function collectPendingData(db: MessageDb, conversation: DbConversation): 
           remoteUpdatedAt: conversation.remoteUpdatedAt ?? null,
         },
         tabs: pendingTabs.map(t => ({
-          id: t.id, conversationId: t.conversationId, name: t.name,
-          position: t.position, messageCount: t.messageCount ?? 0,
-          lastMessageAt: t.lastMessageAt ?? null, createdAt: t.createdAt,
-          closedAt: t.closedAt ?? null, draft: t.draft ?? null,
+          id: t.id,
+          conversationId: t.conversationId,
+          name: t.name,
+          position: t.position,
+          messageCount: t.messageCount ?? 0,
+          lastMessageAt: t.lastMessageAt ?? null,
+          createdAt: t.createdAt,
+          closedAt: t.closedAt ?? null,
+          draft: t.draft ?? null,
         })),
         messages: pendingMessages.map(m => ({
-          id: m.id, tabId: m.tabId, type: m.type, content: m.content,
-          version: m.version, status: m.status, seq: m.seq,
-          abortedAt: m.abortedAt ?? null, errorCode: m.errorCode ?? null,
-          createdAt: m.createdAt, updatedAt: m.updatedAt,
+          id: m.id,
+          tabId: m.tabId,
+          type: m.type,
+          content: m.content,
+          version: m.version,
+          status: m.status,
+          seq: m.seq,
+          abortedAt: m.abortedAt ?? null,
+          errorCode: m.errorCode ?? null,
+          createdAt: m.createdAt,
+          updatedAt: m.updatedAt,
         })),
       },
       pending: { messages: pendingMessages, tabs: pendingTabs },
@@ -459,9 +475,7 @@ async function fetchTabMessagesImpl(
         if (local?.pendingSync) pendingIds.add(msg.id)
       }
 
-      const toInsert = serverMessages
-        .filter(msg => !pendingIds.has(msg.id))
-        .map(msg => serverMessageToDb(msg, now))
+      const toInsert = serverMessages.filter(msg => !pendingIds.has(msg.id)).map(msg => serverMessageToDb(msg, now))
 
       if (toInsert.length > 0) await db.messages.bulkPut(toInsert)
 
@@ -548,7 +562,10 @@ async function reconcileMessageCounts(userId: string, workspace: string): Promis
   const conversations = await db.conversations.where("workspace").equals(workspace).toArray()
   if (conversations.length === 0) return
 
-  const tabs = await db.tabs.where("conversationId").anyOf(conversations.map(c => c.id)).toArray()
+  const tabs = await db.tabs
+    .where("conversationId")
+    .anyOf(conversations.map(c => c.id))
+    .toArray()
 
   const tabsToFetch: string[] = []
   for (const tab of tabs) {
@@ -616,8 +633,13 @@ export async function unarchiveConversation(conversationId: string, userId: stri
 
 export async function renameConversation(conversationId: string, userId: string, title: string): Promise<void> {
   const trimmed = title.trim()
-  return updateAndSync(conversationId, userId, {
-    title: trimmed.length > 0 ? trimmed : "Untitled",
-    autoTitleSet: true,
-  }, false)
+  return updateAndSync(
+    conversationId,
+    userId,
+    {
+      title: trimmed.length > 0 ? trimmed : "Untitled",
+      autoTitleSet: true,
+    },
+    false,
+  )
 }

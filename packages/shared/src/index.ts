@@ -21,6 +21,8 @@ export {
 } from "./automation-schemas.js"
 export { caddySitesFilteredPath, caddySitesPath, requireAliveEnv } from "./caddy-paths.js"
 export {
+  ALIVE_ENV,
+  type AliveEnv,
   assertValidServerId,
   CONFIG_PATH,
   CONTACT_EMAIL,
@@ -40,8 +42,6 @@ export {
   SENTRY,
   SHELL,
   STANDALONE,
-  ALIVE_ENV,
-  type AliveEnv,
   SUPERADMIN,
   TIMEOUTS,
 } from "./config.js"
@@ -152,6 +152,7 @@ export {
   getOAuthKeyForProvider,
   getProviderInfo,
   isOAuthMcpTool,
+  isValidOAuthMcpProviderKey,
   isValidOAuthProviderKey,
   // Microsoft Graph scope constants (single source of truth)
   MICROSOFT_GRAPH_SCOPES,
@@ -252,7 +253,6 @@ export type {
   TokenResponse,
 } from "./stream-tokens.js"
 export { SUPER_TEMPLATE_CATEGORIES } from "./super-template-categories.js"
-export { isRecord } from "./type-guards.js"
 export {
   DEPLOYMENT_TEMPLATES,
   type DeploymentTemplate,
@@ -342,6 +342,7 @@ export {
   type ToolDetailOptions,
 } from "./tools/stream-tools.js"
 export { getWorkspacePath } from "./tools/stream-tools-server.js"
+export { isRecord } from "./type-guards.js"
 export {
   DEFAULT_VOICE_LANGUAGE,
   getLanguageDisplayName,

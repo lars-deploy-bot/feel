@@ -6,7 +6,7 @@
  * - and only on the primary server (automationPrimary: true in server-config.json)
  */
 
-import { DEFAULTS, ALIVE_ENV } from "./config.js"
+import { ALIVE_ENV, DEFAULTS } from "./config.js"
 
 export interface AutomationExecutionGate {
   allowed: boolean

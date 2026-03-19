@@ -244,63 +244,6 @@ export function getCookieDomain(): string {
 }
 
 /**
- * Get validated production stream URL
- *
- * - Required in all environments (no fallback)
- * - Must be HTTPS
- * - Throws on startup if misconfigured
- *
- * @throws Error if STREAM_PROD_URL is not configured
- */
-export function getStreamProdUrl(): string {
-  const url = env.STREAM_PROD_URL
-
-  if (!url) {
-    throw new Error("STREAM_PROD_URL is required. Set the STREAM_PROD_URL environment variable.")
-  }
-
-  return url
-}
-
-/**
- * Get validated staging stream URL
- *
- * - Required in all environments (no fallback)
- * - Must be HTTPS
- * - Throws on startup if misconfigured
- *
- * @throws Error if STREAM_STAGING_URL is not configured
- */
-export function getStreamStagingUrl(): string {
-  const url = env.STREAM_STAGING_URL
-
-  if (!url) {
-    throw new Error("STREAM_STAGING_URL is required. Set the STREAM_STAGING_URL environment variable.")
-  }
-
-  return url
-}
-
-/**
- * Get validated development stream URL
- *
- * - Required in all environments (no fallback)
- * - Must be HTTPS
- * - Throws on startup if misconfigured
- *
- * @throws Error if STREAM_DEV_URL is not configured
- */
-export function getStreamDevUrl(): string {
-  const url = env.STREAM_DEV_URL
-
-  if (!url) {
-    throw new Error("STREAM_DEV_URL is required. Set the STREAM_DEV_URL environment variable.")
-  }
-
-  return url
-}
-
-/**
  * Get Flowglad secret key with environment-aware validation
  *
  * - Production/Staging: FLOWGLAD_SECRET_KEY is REQUIRED (throws if missing)

@@ -81,7 +81,7 @@ export async function GET() {
     ok: true,
     data: {
       inviteCode: String(inviteCode),
-      inviteLink: buildInviteLink(String(inviteCode), DOMAINS.STREAM_PROD),
+      inviteLink: buildInviteLink(String(inviteCode), DOMAINS.APP_PROD),
       stats: {
         totalReferrals: totalReferrals ?? 0,
         creditsEarned,

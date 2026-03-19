@@ -258,7 +258,7 @@ describe("GET /api/manager/users", () => {
       })
 
       const req = createMockRequest("http://localhost/api/manager/users", {
-        headers: { origin: DOMAINS.STREAM_DEV },
+        headers: { origin: DOMAINS.APP_DEV },
       })
 
       const response = await GET(req)

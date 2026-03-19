@@ -122,11 +122,7 @@ export async function transferOwnership(orgId: string, newOwnerId: string): Prom
   if (promoteError) {
     // Rollback: re-promote the original owner(s) to prevent ownerless org
     for (const ownerId of currentOwnerIds) {
-      await iam
-        .from("org_memberships")
-        .update({ role: "owner" })
-        .eq("org_id", orgId)
-        .eq("user_id", ownerId)
+      await iam.from("org_memberships").update({ role: "owner" }).eq("org_id", orgId).eq("user_id", ownerId)
     }
     throw new InternalError(`Failed to promote new owner (rolled back demote): ${promoteError.message}`)
   }

@@ -36,7 +36,7 @@ async function retryFetch(fn: () => Promise<globalThis.Response>): Promise<globa
       minDelayMs: 500,
       jitter: 0.5,
       label: "graph-api",
-      shouldRetry: (err) => err instanceof RetryableResponseError,
+      shouldRetry: err => err instanceof RetryableResponseError,
     },
   )
 }

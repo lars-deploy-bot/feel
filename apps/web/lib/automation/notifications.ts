@@ -6,7 +6,7 @@
  */
 
 import type { RunContext } from "@webalive/automation-engine"
-import { DOMAINS, ALIVE_ENV } from "@webalive/shared"
+import { ALIVE_ENV, DOMAINS } from "@webalive/shared"
 import nodemailer from "nodemailer"
 import { isEmailDeliveryDisabled } from "@/lib/email/delivery-policy"
 import { createServiceIamClient } from "@/lib/supabase/service"
@@ -17,17 +17,17 @@ function getAppBaseUrl(): string {
   const aliveEnv = process.env.ALIVE_ENV
 
   if (aliveEnv === ALIVE_ENV.STAGING) {
-    if (!DOMAINS.STREAM_STAGING) throw new Error("DOMAINS.STREAM_STAGING is not configured")
-    return DOMAINS.STREAM_STAGING.replace(/\/+$/, "")
+    if (!DOMAINS.APP_STAGING) throw new Error("DOMAINS.APP_STAGING is not configured")
+    return DOMAINS.APP_STAGING.replace(/\/+$/, "")
   }
 
   if (aliveEnv === ALIVE_ENV.DEV || aliveEnv === ALIVE_ENV.LOCAL || aliveEnv === ALIVE_ENV.STANDALONE) {
-    if (!DOMAINS.STREAM_DEV) throw new Error("DOMAINS.STREAM_DEV is not configured")
-    return DOMAINS.STREAM_DEV.replace(/\/+$/, "")
+    if (!DOMAINS.APP_DEV) throw new Error("DOMAINS.APP_DEV is not configured")
+    return DOMAINS.APP_DEV.replace(/\/+$/, "")
   }
 
-  if (!DOMAINS.STREAM_PROD) throw new Error("DOMAINS.STREAM_PROD is not configured")
-  return DOMAINS.STREAM_PROD.replace(/\/+$/, "")
+  if (!DOMAINS.APP_PROD) throw new Error("DOMAINS.APP_PROD is not configured")
+  return DOMAINS.APP_PROD.replace(/\/+$/, "")
 }
 
 /** Lazy-initialized SMTP transporter — localhost Mailcow relay on port 587 */

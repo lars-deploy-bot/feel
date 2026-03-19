@@ -17,6 +17,7 @@
  * ```
  */
 
+import { isRecord } from "@webalive/shared"
 import {
   AI,
   CALENDAR,
@@ -30,7 +31,6 @@ import {
   STRIPE_PATTERNS,
   WEB,
 } from "./tool-names.js"
-import { isRecord } from "@webalive/shared"
 
 // ============================================================
 // TYPES

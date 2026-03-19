@@ -19,8 +19,8 @@ import {
   caddySitesPath,
   isAliveWorkspace,
   parseServerConfig,
-  requireEnv,
   requireAliveEnv,
+  requireEnv,
   type ServerConfig,
 } from "@webalive/shared"
 import { assertNoDangerousCountDrop, readExistingGeneratedCaddyDomainCount } from "../generated-safety.js"

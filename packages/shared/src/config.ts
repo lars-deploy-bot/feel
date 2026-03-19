@@ -333,11 +333,10 @@ export const PATHS = {
 // Domain Constants
 // =============================================================================
 
-// Stream URLs - derived from MAIN_DOMAIN (pattern: {subdomain}.{MAIN_DOMAIN})
-// Can be overridden via env vars for special cases
-const STREAM_PROD_URL = configValue("STREAM_PROD_URL", MAIN_DOMAIN ? `https://app.${MAIN_DOMAIN}` : undefined)
-const STREAM_STAGING_URL = configValue("STREAM_STAGING_URL", MAIN_DOMAIN ? `https://staging.${MAIN_DOMAIN}` : undefined)
-const STREAM_DEV_URL = configValue("STREAM_DEV_URL", MAIN_DOMAIN ? `https://dev.${MAIN_DOMAIN}` : undefined)
+// App URLs — derived from MAIN_DOMAIN. No env var overrides, no fallbacks.
+const APP_PROD_URL = MAIN_DOMAIN ? `https://app.${MAIN_DOMAIN}` : ""
+const APP_STAGING_URL = MAIN_DOMAIN ? `https://staging.${MAIN_DOMAIN}` : ""
+const APP_DEV_URL = MAIN_DOMAIN ? `https://dev.${MAIN_DOMAIN}` : ""
 
 // Extract hostnames from URLs using URL API
 const extractHost = (url: string): string => {
@@ -355,23 +354,23 @@ export const DOMAINS = {
   /** Main domain suffix for CORS/origin checks */
   MAIN_SUFFIX: `.${MAIN_DOMAIN}`,
 
-  /** Production stream URL */
-  STREAM_PROD: STREAM_PROD_URL,
+  /** Production app URL (e.g. https://app.alive.best) */
+  APP_PROD: APP_PROD_URL,
 
-  /** Production stream hostname */
-  STREAM_PROD_HOST: extractHost(STREAM_PROD_URL),
+  /** Production app hostname (e.g. app.alive.best) */
+  APP_PROD_HOST: extractHost(APP_PROD_URL),
 
-  /** Development stream URL */
-  STREAM_DEV: STREAM_DEV_URL,
+  /** Development app URL (e.g. https://dev.alive.best) */
+  APP_DEV: APP_DEV_URL,
 
-  /** Development stream hostname */
-  STREAM_DEV_HOST: extractHost(STREAM_DEV_URL),
+  /** Development app hostname (e.g. dev.alive.best) */
+  APP_DEV_HOST: extractHost(APP_DEV_URL),
 
-  /** Staging stream URL */
-  STREAM_STAGING: STREAM_STAGING_URL,
+  /** Staging app URL (e.g. https://staging.alive.best) */
+  APP_STAGING: APP_STAGING_URL,
 
-  /** Staging stream hostname */
-  STREAM_STAGING_HOST: extractHost(STREAM_STAGING_URL),
+  /** Staging app hostname (e.g. staging.alive.best) */
+  APP_STAGING_HOST: extractHost(APP_STAGING_URL),
 
   /** Staging domain suffix */
   STAGING_SUFFIX: `.staging.${MAIN_DOMAIN}`,
@@ -390,7 +389,7 @@ export const DOMAINS = {
   PREVIEW_BASE,
 
   /** Authentication forward endpoint for previews (uses dev server URL) */
-  PREVIEW_AUTH: `${STREAM_DEV_URL}/api/auth/preview-guard`,
+  PREVIEW_AUTH: `${APP_DEV_URL}/api/auth/preview-guard`,
 
   /** Cookie domain for cross-subdomain sharing (leading dot allows *.DOMAIN) */
   COOKIE_DOMAIN,

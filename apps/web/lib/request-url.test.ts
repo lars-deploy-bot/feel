@@ -8,9 +8,7 @@ import { describe, expect, it } from "vitest"
 import { getRequestUrls } from "./request-url"
 
 // Domain-dependent assertions require populated server config values
-const hasServerConfig = Boolean(
-  DOMAINS.STREAM_DEV && DOMAINS.STREAM_DEV_HOST && DOMAINS.STREAM_PROD && DOMAINS.STREAM_PROD_HOST,
-)
+const hasServerConfig = Boolean(DOMAINS.APP_DEV && DOMAINS.APP_DEV_HOST && DOMAINS.APP_PROD && DOMAINS.APP_PROD_HOST)
 
 // Use constants for test URLs
 const DEV_BASE_URL = `http://localhost:${PORTS.DEV}`
@@ -29,14 +27,14 @@ describe("getRequestUrls", () => {
   // Tests using DOMAINS.STREAM_* require server config (not available in CI)
   it.skipIf(!hasServerConfig)("should return both baseUrl and fullUrl with correct domain from proxy headers", () => {
     const req = createMockRequest(`${DEV_BASE_URL}/api/auth/linear?code=abc123`, {
-      "x-forwarded-host": DOMAINS.STREAM_DEV_HOST,
+      "x-forwarded-host": DOMAINS.APP_DEV_HOST,
       "x-forwarded-proto": "https",
       host: `localhost:${PORTS.DEV}`,
     })
 
     const { baseUrl, fullUrl } = getRequestUrls(req)
-    expect(baseUrl).toBe(DOMAINS.STREAM_DEV)
-    expect(fullUrl).toBe(`${DOMAINS.STREAM_DEV}/api/auth/linear?code=abc123`)
+    expect(baseUrl).toBe(DOMAINS.APP_DEV)
+    expect(fullUrl).toBe(`${DOMAINS.APP_DEV}/api/auth/linear?code=abc123`)
   })
 
   it("should fall back to host header if x-forwarded-host is missing", () => {
@@ -62,22 +60,22 @@ describe("getRequestUrls", () => {
 
   it.skipIf(!hasServerConfig)("should preserve query parameters in fullUrl", () => {
     const req = createMockRequest(`${DEV_BASE_URL}/settings?status=error&message=test`, {
-      "x-forwarded-host": DOMAINS.STREAM_PROD_HOST,
+      "x-forwarded-host": DOMAINS.APP_PROD_HOST,
       "x-forwarded-proto": "https",
     })
 
     const { fullUrl } = getRequestUrls(req)
-    expect(fullUrl).toBe(`${DOMAINS.STREAM_PROD}/settings?status=error&message=test`)
+    expect(fullUrl).toBe(`${DOMAINS.APP_PROD}/settings?status=error&message=test`)
   })
 
   it.skipIf(!hasServerConfig)("should work without query parameters", () => {
     const req = createMockRequest(`${DEV_BASE_URL}/api/login`, {
-      "x-forwarded-host": DOMAINS.STREAM_PROD_HOST,
+      "x-forwarded-host": DOMAINS.APP_PROD_HOST,
       "x-forwarded-proto": "https",
     })
 
     const { fullUrl } = getRequestUrls(req)
-    expect(fullUrl).toBe(`${DOMAINS.STREAM_PROD}/api/login`)
+    expect(fullUrl).toBe(`${DOMAINS.APP_PROD}/api/login`)
   })
 
   it("should parse headers only once (performance test)", () => {
