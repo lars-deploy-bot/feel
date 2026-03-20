@@ -1,0 +1,31 @@
+[Unit]
+Description=Alive API (Hono on Bun)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=__ALIVE_ROOT__/apps/api
+EnvironmentFile=__ALIVE_ROOT__/apps/api/.env.staging
+Environment=SERVER_CONFIG_PATH=/var/lib/alive/server-config.json
+
+ExecStart=/usr/local/bin/bun src/index.ts
+
+Restart=always
+RestartSec=3s
+StartLimitInterval=60s
+StartLimitBurst=5
+
+KillSignal=SIGTERM
+TimeoutStopSec=15s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=alive-api
+
+MemoryMax=512M
+TasksMax=100
+
+[Install]
+WantedBy=multi-user.target

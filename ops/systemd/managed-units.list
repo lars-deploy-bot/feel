@@ -3,6 +3,7 @@ alive-runtime-status.service
 alive-runtime-status.timer
 alive-build-prune.service
 alive-build-prune.timer
+alive-api.service
 alive-deployer.service
 caddy-acme-rate-limit-alert.service
 caddy-acme-rate-limit-alert.timer
