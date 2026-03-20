@@ -13,6 +13,7 @@ import {
   useTabsExpanded,
   useTabViewStore,
 } from "@/lib/stores/tabStore"
+import { isOpen } from "@/lib/tabs/tabModel"
 
 interface UseTabsOptions {
   workspace: string | null
@@ -304,13 +305,22 @@ export function useTabsManagement({
     }
   }, [workspace, tabsExpanded, tabs.length, tabGroupId, activeTabId, addTab, onInitializeTab])
 
-  // Ensure store active tab belongs to current tabgroup
+  // Ensure store active tab belongs to current tabgroup.
+  // NOTE: We use tabs.length (primitive) instead of tabs (unstable array ref)
+  // as the dependency, and read from store state directly inside the effect
+  // to avoid infinite re-render loops from the filtered array.
   useEffect(() => {
     if (!workspace || !tabGroupId || tabs.length === 0) return
     if (!activeTabInGroup) {
-      setActiveTab(workspace, tabs[0].id)
+      // Read from store directly to get the first open tab in this group
+      const allTabs = useTabDataStore.getState().tabsByWorkspace[workspace] ?? []
+      const firstOpen = allTabs.find(t => t.tabGroupId === tabGroupId && isOpen(t))
+      if (firstOpen) {
+        setActiveTab(workspace, firstOpen.id)
+      }
     }
-  }, [workspace, tabGroupId, tabs, activeTabInGroup, setActiveTab])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace, tabGroupId, tabs.length, activeTabInGroup, setActiveTab])
 
   return {
     tabs,

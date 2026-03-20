@@ -19,6 +19,7 @@
  * The view store starts fresh per browser tab (intentional - no stale selections).
  */
 
+import { useShallow } from "zustand/react/shallow"
 import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
 import { isClosed, isOpen, type Tab } from "@/lib/tabs/tabModel"
 import type { TabGroupId, TabId } from "@/lib/types/ids"
@@ -178,32 +179,38 @@ export const useTabActions = (): TabStoreActions => {
 // Selectors (React hooks) - Backwards compatible
 // ============================================================================
 
-/** Get open tabs in a specific group */
+/** Get open tabs in a specific group (shallow-compared to prevent unnecessary re-renders) */
 export const useTabs = (workspace: string | null, tabGroupId?: string | null): Tab[] =>
-  useTabDataStore(s => {
-    if (!workspace || !tabGroupId) return []
-    const tabs = s.tabsByWorkspace[workspace] ?? []
-    return tabs.filter(t => t.tabGroupId === tabGroupId && isOpen(t))
-  })
+  useTabDataStore(
+    useShallow(s => {
+      if (!workspace || !tabGroupId) return []
+      const tabs = s.tabsByWorkspace[workspace] ?? []
+      return tabs.filter(t => t.tabGroupId === tabGroupId && isOpen(t))
+    }),
+  )
 
-/** Get closed tabs in a specific group, most recently closed first */
+/** Get closed tabs in a specific group, most recently closed first (shallow-compared) */
 export const useClosedTabs = (workspace: string | null, tabGroupId: string | null): Tab[] =>
-  useTabDataStore(s => {
-    if (!workspace || !tabGroupId) return []
-    const tabs = s.tabsByWorkspace[workspace] ?? []
-    return tabs
-      .filter(t => t.tabGroupId === tabGroupId && isClosed(t))
-      .sort((a, b) => (b.closedAt as number) - (a.closedAt as number))
-  })
+  useTabDataStore(
+    useShallow(s => {
+      if (!workspace || !tabGroupId) return []
+      const tabs = s.tabsByWorkspace[workspace] ?? []
+      return tabs
+        .filter(t => t.tabGroupId === tabGroupId && isClosed(t))
+        .sort((a, b) => (b.closedAt as number) - (a.closedAt as number))
+    }),
+  )
 
 /**
  * Get the active tab for a workspace.
  * Combines data from tabDataStore (tab details) and tabViewStore (active selection).
  * Returns null if no active tab or workspace is null.
  */
+const EMPTY_TABS: Tab[] = []
+
 export const useActiveTab = (workspace: string | null): Tab | null => {
   const activeId = useTabViewStore(s => (workspace ? s.activeTabByWorkspace[workspace] : undefined))
-  const tabs = useTabDataStore(s => (workspace ? (s.tabsByWorkspace[workspace] ?? []) : []))
+  const tabs = useTabDataStore(s => (workspace ? (s.tabsByWorkspace[workspace] ?? EMPTY_TABS) : EMPTY_TABS))
 
   if (!workspace || !activeId) return null
   const activeTab = tabs.find(t => t.id === activeId)
@@ -215,20 +222,22 @@ export const useActiveTab = (workspace: string | null): Tab | null => {
 export const useTabsExpanded = (workspace: string | null): boolean =>
   useTabViewStore(s => (workspace ? (s.tabsExpandedByWorkspace[workspace] ?? false) : false))
 
-/** Get all open tabs for a workspace */
+/** Get all open tabs for a workspace (shallow-compared) */
 export const useWorkspaceTabs = (workspace: string | null): Tab[] =>
-  useTabDataStore(s => (workspace ? (s.tabsByWorkspace[workspace] ?? []).filter(isOpen) : []))
+  useTabDataStore(useShallow(s => (workspace ? (s.tabsByWorkspace[workspace] ?? []).filter(isOpen) : [])))
 
-/** Get all open tabs for a specific tab group across all workspaces */
+/** Get all open tabs for a specific tab group across all workspaces (shallow-compared) */
 export const useTabsForTabGroup = (tabGroupId: string | null): Tab[] =>
-  useTabDataStore(s => {
-    if (!tabGroupId) return []
-    const allTabs: Tab[] = []
-    for (const tabs of Object.values(s.tabsByWorkspace)) {
-      allTabs.push(...tabs.filter(t => t.tabGroupId === tabGroupId && isOpen(t)))
-    }
-    return allTabs
-  })
+  useTabDataStore(
+    useShallow(s => {
+      if (!tabGroupId) return []
+      const allTabs: Tab[] = []
+      for (const tabs of Object.values(s.tabsByWorkspace)) {
+        allTabs.push(...tabs.filter(t => t.tabGroupId === tabGroupId && isOpen(t)))
+      }
+      return allTabs
+    }),
+  )
 
 // ============================================================================
 // Legacy Compatibility Layer

@@ -3,6 +3,7 @@
 import { WORKSPACE_STORAGE } from "@webalive/shared"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { useShallow } from "zustand/react/shallow"
 import { validateWorktreeSlug } from "@/features/workspace/lib/worktree-utils"
 import type { Organization } from "@/lib/api/types"
 import { queueSyncToServer } from "./workspacePreferencesSync"
@@ -390,10 +391,12 @@ export const useSelectedOrgId = () => useWorkspaceStoreBase(state => state.selec
 export const useIntentVersion = () => useWorkspaceStoreBase(state => state.intentVersion)
 export const useRecentWorkspaces = () => useWorkspaceStoreBase(state => state.recentWorkspaces)
 
-// Derived selector: get recent workspaces for a specific org
+// Derived selector: get recent workspaces for a specific org (shallow-compared)
 export const useRecentForOrg = (orgId: string) =>
-  useWorkspaceStoreBase(state =>
-    state.recentWorkspaces.filter(w => w.orgId === orgId).sort((a, b) => b.lastAccessed - a.lastAccessed),
+  useWorkspaceStoreBase(
+    useShallow(state =>
+      state.recentWorkspaces.filter(w => w.orgId === orgId).sort((a, b) => b.lastAccessed - a.lastAccessed),
+    ),
   )
 
 // Actions hook - stable reference (Guide §14.3)

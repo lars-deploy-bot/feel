@@ -60,7 +60,13 @@ export interface TabMessage extends UIMessage {
 export function useTabMessages(tabId: string | null): TabMessage[] | undefined {
   const userId = useDexieSession()?.userId ?? null
   const dbMessages = useMessages(tabId, userId)
-  const streamingBuffers = useDexieMessageStore(s => s.streamingBuffers)
+
+  // Scope selector to only the active stream's buffer key so updates to other
+  // tabs' buffers don't cause this component to re-render.
+  const activeStreamId = useActiveStreamId(tabId)
+  const streamingBuffer = useDexieMessageStore(s =>
+    activeStreamId ? (s.streamingBuffers[activeStreamId] ?? null) : null,
+  )
 
   return useMemo(() => {
     // undefined = Dexie query hasn't resolved yet (loading)
@@ -82,7 +88,8 @@ export function useTabMessages(tabId: string | null): TabMessage[] | undefined {
       // If this message is streaming...
       if (dbMsg.status === "streaming") {
         // Check if we have a live buffer (same tab, same Zustand instance)
-        const bufferedText = streamingBuffers[dbMsg.id]
+        // Only the active stream's buffer is subscribed, so check by ID match
+        const bufferedText = dbMsg.id === activeStreamId ? streamingBuffer : null
 
         if (typeof bufferedText === "string") {
           // Live streaming in this tab - use buffer for real-time display
@@ -121,7 +128,7 @@ export function useTabMessages(tabId: string | null): TabMessage[] | undefined {
         isStreaming: false,
       }
     })
-  }, [dbMessages, streamingBuffers])
+  }, [dbMessages, activeStreamId, streamingBuffer])
 }
 
 /**
@@ -131,8 +138,8 @@ export function useTabMessages(tabId: string | null): TabMessage[] | undefined {
  * @returns The streaming message ID, or null if no active stream
  */
 export function useActiveStreamId(tabId: string | null): string | null {
-  const activeStreamByTab = useDexieMessageStore(s => s.activeStreamByTab)
-  return tabId ? (activeStreamByTab[tabId] ?? null) : null
+  // Scope to just this tab's key — avoids re-renders when other tabs start/stop streaming
+  return useDexieMessageStore(s => (tabId ? (s.activeStreamByTab[tabId] ?? null) : null))
 }
 
 /**
@@ -154,8 +161,6 @@ export function useIsTabStreaming(tabId: string | null): boolean {
  */
 export function useStreamingText(tabId: string | null): string | null {
   const activeStreamId = useActiveStreamId(tabId)
-  const streamingBuffers = useDexieMessageStore(s => s.streamingBuffers)
-
-  if (!activeStreamId) return null
-  return streamingBuffers[activeStreamId] ?? null
+  // Scope to just this stream's buffer key — avoids re-renders from other tabs' updates
+  return useDexieMessageStore(s => (activeStreamId ? (s.streamingBuffers[activeStreamId] ?? null) : null))
 }

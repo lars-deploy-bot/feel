@@ -85,7 +85,11 @@ export function SubdomainDeployForm() {
   const { addToHistory } = useHistoryActions()
 
   // Get values and actions from the store (store accessed early for initial state)
-  const { siteIdea, templateId, setSiteIdea, setTemplateId } = onboardingState
+  const {
+    siteIdea,
+    templateId,
+    actions: { setSiteIdea, setTemplateId },
+  } = onboardingState
 
   // Extract the 'q' search parameter for site ideas
   const siteIdeasFromUrl = deployParams.q || ""

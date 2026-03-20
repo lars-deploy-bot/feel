@@ -201,6 +201,10 @@ export function useActiveSession(workspace: string | null): ActiveSession {
     [addTabToGroup, startNewTabGroup, switchTab],
   )
 
+  // NOTE: workspaceTabs is excluded from deps because useWorkspaceTabs returns
+  // a new array reference on every render (.filter() creates a new array).
+  // Including it would bust this memo on every render, making it useless.
+  // Consumers that need reactive workspaceTabs should use useWorkspaceTabs directly.
   return useMemo(
     () => ({
       tabId,
@@ -211,7 +215,8 @@ export function useActiveSession(workspace: string | null): ActiveSession {
       workspaceTabs,
       actions,
     }),
-    [tabId, tabGroupId, isReady, isStreaming, activeTab, workspaceTabs, actions],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tabId, tabGroupId, isReady, isStreaming, activeTab, actions],
   )
 }
 
