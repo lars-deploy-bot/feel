@@ -98,6 +98,14 @@ const nextConfig = {
   output: "standalone",
   poweredByHeader: false,
   devIndicators: false,
+  allowedDevOrigins: [
+    "dev.alive.best",
+    "staging.alive.best",
+    "dev.sonno.tech",
+    "staging.sonno.tech",
+    "app.alive.best",
+    "sonno.tech",
+  ],
   skipTrailingSlashRedirect: true,
   // Rewrite /_images/* to the Go preview-proxy which serves from /srv/webalive/storage.
   // Works regardless of infrastructure (tunnel, Caddy, open source clones).

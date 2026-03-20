@@ -21,6 +21,7 @@
 
 import Dexie from "dexie"
 import { create } from "zustand"
+import { useShallow } from "zustand/react/shallow"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { logError } from "@/lib/client-error-logger"
 import { useTabDataStore } from "@/lib/stores/tabDataStore"
@@ -998,36 +999,38 @@ export const useDexieLoadingTabs = () => useDexieMessageStore(s => s.loadingTabs
 export const useDexieSession = () => useDexieMessageStore(s => s.session)
 
 export const useDexieMessageActions = () =>
-  useDexieMessageStore(state => ({
-    setSession: state.setSession,
-    initializeConversation: state.initializeConversation,
-    ensureTabGroupWithTab: state.ensureTabGroupWithTab,
-    deleteConversation: state.deleteConversation,
-    archiveConversation: state.archiveConversation,
-    unarchiveConversation: state.unarchiveConversation,
-    renameConversation: state.renameConversation,
-    setConversationFavorited: state.setConversationFavorited,
-    shareConversation: state.shareConversation,
-    unshareConversation: state.unshareConversation,
-    addMessage: state.addMessage,
-    addTab: state.addTab,
-    removeTab: state.removeTab,
-    reopenTab: state.reopenTab,
-    renameTab: state.renameTab,
-    syncFromServer: state.syncFromServer,
-    loadTabMessages: state.loadTabMessages,
-    startAssistantStream: state.startAssistantStream,
-    appendToAssistantStream: state.appendToAssistantStream,
-    finalizeAssistantStream: state.finalizeAssistantStream,
-    stopAssistantStream: state.stopAssistantStream,
-    failAssistantStream: state.failAssistantStream,
-    deleteMessagesAfter: state.deleteMessagesAfter,
-    getResumeSessionAt: state.getResumeSessionAt,
-    clearResumeSessionAt: state.clearResumeSessionAt,
-    captureResumeSessionAtFromLatestAssistant: state.captureResumeSessionAtFromLatestAssistant,
-    updateToolResultContentByToolUseId: state.updateToolResultContentByToolUseId,
-    updateMessageContent: state.updateMessageContent,
-  }))
+  useDexieMessageStore(
+    useShallow(state => ({
+      setSession: state.setSession,
+      initializeConversation: state.initializeConversation,
+      ensureTabGroupWithTab: state.ensureTabGroupWithTab,
+      deleteConversation: state.deleteConversation,
+      archiveConversation: state.archiveConversation,
+      unarchiveConversation: state.unarchiveConversation,
+      renameConversation: state.renameConversation,
+      setConversationFavorited: state.setConversationFavorited,
+      shareConversation: state.shareConversation,
+      unshareConversation: state.unshareConversation,
+      addMessage: state.addMessage,
+      addTab: state.addTab,
+      removeTab: state.removeTab,
+      reopenTab: state.reopenTab,
+      renameTab: state.renameTab,
+      syncFromServer: state.syncFromServer,
+      loadTabMessages: state.loadTabMessages,
+      startAssistantStream: state.startAssistantStream,
+      appendToAssistantStream: state.appendToAssistantStream,
+      finalizeAssistantStream: state.finalizeAssistantStream,
+      stopAssistantStream: state.stopAssistantStream,
+      failAssistantStream: state.failAssistantStream,
+      deleteMessagesAfter: state.deleteMessagesAfter,
+      getResumeSessionAt: state.getResumeSessionAt,
+      clearResumeSessionAt: state.clearResumeSessionAt,
+      captureResumeSessionAtFromLatestAssistant: state.captureResumeSessionAtFromLatestAssistant,
+      updateToolResultContentByToolUseId: state.updateToolResultContentByToolUseId,
+      updateMessageContent: state.updateMessageContent,
+    })),
+  )
 
 // =============================================================================
 // Re-export Dexie Hooks
