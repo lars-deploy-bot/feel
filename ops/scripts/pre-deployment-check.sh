@@ -207,17 +207,14 @@ fi
 
 echo "[7/7] Checking build directory structure..."
 if [ -d "$BUILD_DIR" ]; then
-  CURRENT_LINK="$BUILD_DIR/current"
-  if [ -L "$CURRENT_LINK" ]; then
-    CURRENT_BUILD=$(readlink "$CURRENT_LINK")
-    echo "  ✅ Build structure OK (current: $CURRENT_BUILD)"
+  STANDALONE_DIR="$BUILD_DIR/standalone"
+  if [ -d "$STANDALONE_DIR" ]; then
+    echo "  ✅ Build structure OK (standalone at $STANDALONE_DIR)"
   else
-    echo "  ❌ Current symlink not found at $CURRENT_LINK"
-    ISSUES=$((ISSUES + 1))
+    echo "  ℹ️  No existing standalone dir at $STANDALONE_DIR (will be created on first deploy)"
   fi
 else
-  echo "  ❌ Build directory not found: $BUILD_DIR"
-  ISSUES=$((ISSUES + 1))
+  echo "  ℹ️  Build directory $BUILD_DIR will be created on first deploy"
 fi
 
 # ============================================================================
