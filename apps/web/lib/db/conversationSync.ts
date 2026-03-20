@@ -307,6 +307,20 @@ async function pushBatch(db: MessageDb, batch: SyncItem[], userId: string): Prom
       credentials: "include",
     })
 
+    if (response.status === 409) {
+      const body = await response.json()
+      const conflict: ConflictInfo = body.conflict ?? body.conflicts?.[0]
+      if (conflict) {
+        await handleConflict(db, conflict, userId)
+      }
+      return
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Unknown error" }))
+      throw new Error(error.error || `Sync failed: ${response.status}`)
+    }
+
     const result: SyncResult = await response.json()
 
     if (result.conflicts) {
