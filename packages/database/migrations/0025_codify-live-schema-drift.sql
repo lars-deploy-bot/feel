@@ -216,4 +216,4 @@ BEGIN
   END IF;
 END $$;
 
-DROP INDEX IF EXISTS app.errors_hash_key;
+ALTER TABLE app.errors DROP CONSTRAINT IF EXISTS errors_hash_key;
