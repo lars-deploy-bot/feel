@@ -1,34 +1,15 @@
-import { createSandboxSessionRegistry, SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
+import { SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
 import { assignPort } from "@webalive/site-controller"
 import type { Sandbox } from "e2b"
 import type { ResolvedDomain } from "@/lib/domain/resolve-domain-runtime"
-import { getE2bDomain } from "@/lib/env"
 import { prepareE2bScratchWorkspace } from "@/lib/sandbox/e2b-workspace"
+import { getSessionRegistry } from "@/lib/sandbox/session-registry"
 import { createAppClient } from "@/lib/supabase/app"
 
 export interface E2bSiteDeploymentResult {
   port: number
   serviceName: string
   scratchWorkspace: string
-}
-
-async function updateSandboxState(
-  domainId: string,
-  sandboxId: string,
-  status: import("@webalive/database").SandboxStatus,
-) {
-  const app = await createAppClient("service")
-  const { error } = await app
-    .from("domains")
-    .update({
-      sandbox_id: sandboxId.length > 0 ? sandboxId : null,
-      sandbox_status: status,
-    })
-    .eq("domain_id", domainId)
-
-  if (error) {
-    throw new Error(`Failed to persist sandbox state for ${domainId}: ${error.message}`)
-  }
 }
 
 async function ensureSandboxGitRepo(sandbox: Sandbox, hostname: string): Promise<void> {
@@ -85,14 +66,7 @@ export async function prepareE2bSiteDeployment(params: {
 }
 
 export async function createInitialSiteSandbox(domain: ResolvedDomain, scratchWorkspace: string): Promise<void> {
-  const registry = createSandboxSessionRegistry({
-    persistence: {
-      updateSandbox: updateSandboxState,
-    },
-    domain: getE2bDomain(),
-  })
-
-  const session = await registry.acquire(domain, scratchWorkspace)
+  const session = await getSessionRegistry().acquire(domain, scratchWorkspace)
   try {
     await ensureSandboxGitRepo(session.raw, domain.hostname)
   } catch (error) {

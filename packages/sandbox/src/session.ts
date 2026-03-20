@@ -33,7 +33,10 @@ export interface SandboxCommandHandle {
 export interface SandboxSessionCommands {
   /**
    * Run a command. cwd defaults to SANDBOX_WORKSPACE_ROOT.
-   * background=true returns immediately with a handle — use for dev servers.
+   *
+   * When `background: true`, returns immediately with a synthetic `exitCode: 0`
+   * that does NOT reflect actual command completion — the process continues
+   * running in the sandbox. Use for long-lived processes like dev servers.
    */
   run(
     cmd: string,

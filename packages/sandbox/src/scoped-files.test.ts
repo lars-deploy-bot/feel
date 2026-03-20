@@ -101,6 +101,14 @@ describe("ScopedFilesystem", () => {
 
       await expect(scoped.list("../")).rejects.toThrow(RuntimePathValidationError)
     })
+
+    it("throws on absolute paths", async () => {
+      const sandbox = mockSandbox()
+      const scoped = createScopedFilesystem(sandbox as never)
+
+      await expect(scoped.list("/etc")).rejects.toThrow(RuntimePathValidationError)
+      expect(sandbox.files.list).not.toHaveBeenCalled()
+    })
   })
 
   describe("makeDir", () => {

@@ -51,6 +51,7 @@ export function createSandboxSessionRegistry(config: SandboxSessionRegistryConfi
   })
 
   const sessions = new Map<string, SandboxSession>()
+  const pending = new Map<string, Promise<SandboxSession>>()
 
   return {
     async acquire(domain: SandboxDomain, hostWorkspacePath?: string): Promise<SandboxSession> {
@@ -59,15 +60,33 @@ export function createSandboxSessionRegistry(config: SandboxSessionRegistryConfi
         return cached
       }
 
-      const sandbox = await manager.getOrCreate(domain, hostWorkspacePath)
-      const session = createSandboxSession({ domain_id: domain.domain_id, hostname: domain.hostname }, sandbox, manager)
+      const inflight = pending.get(domain.domain_id)
+      if (inflight) {
+        return inflight
+      }
 
-      sessions.set(domain.domain_id, session)
-      return session
+      const promise = manager.getOrCreate(domain, hostWorkspacePath).then(sandbox => {
+        const session = createSandboxSession(
+          { domain_id: domain.domain_id, hostname: domain.hostname },
+          sandbox,
+          manager,
+        )
+        sessions.set(domain.domain_id, session)
+        pending.delete(domain.domain_id)
+        return session
+      })
+
+      promise.catch(() => {
+        pending.delete(domain.domain_id)
+      })
+
+      pending.set(domain.domain_id, promise)
+      return promise
     },
 
     evict(domainId: string): void {
       sessions.delete(domainId)
+      pending.delete(domainId)
       manager.evict(domainId)
     },
   }

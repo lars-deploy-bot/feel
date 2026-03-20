@@ -95,6 +95,45 @@ describe("SandboxSessionRegistry", () => {
     expect(session2).not.toBe(session1)
   })
 
+  it("concurrent acquire calls return the same session (no duplicates)", async () => {
+    let resolveCreate: (value: unknown) => void
+    const sandbox = {
+      sandboxId: "sbx_dedup",
+      files: { list: vi.fn().mockResolvedValue([]) },
+      commands: { run: vi.fn() },
+      getHost: vi.fn(),
+    }
+    mockCreate.mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveCreate = resolve
+      }),
+    )
+
+    const registry = createRegistry()
+    const promise1 = registry.acquire(domain)
+    const promise2 = registry.acquire(domain)
+
+    resolveCreate!(sandbox)
+    const [session1, session2] = await Promise.all([promise1, promise2])
+
+    expect(session1).toBe(session2)
+    expect(mockCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it("acquire propagates Sandbox.create errors", async () => {
+    mockCreate.mockRejectedValueOnce(new Error("E2B quota exceeded"))
+
+    const registry = createRegistry()
+    await expect(registry.acquire(domain)).rejects.toThrow("E2B quota exceeded")
+  })
+
+  it("acquire propagates persistence errors", async () => {
+    updateSandbox.mockRejectedValueOnce(new Error("DB write failed"))
+
+    const registry = createRegistry()
+    await expect(registry.acquire(domain)).rejects.toThrow("DB write failed")
+  })
+
   it("session.files provides path-validated access", async () => {
     const sandbox = {
       sandboxId: "sbx_scoped",
