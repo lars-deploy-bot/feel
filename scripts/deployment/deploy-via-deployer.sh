@@ -28,10 +28,16 @@ if [[ "$ENVIRONMENT" != "staging" && "$ENVIRONMENT" != "production" ]]; then
     exit 1
 fi
 
-# Load credentials
-source "$PROJECT_ROOT/apps/web/.env.production"
-export PGPASSWORD="$DATABASE_PASSWORD"
-DB_URL="${DATABASE_URL:?DATABASE_URL must be set in apps/web/.env.production}"
+# Load credentials for the target environment.
+# Each env file has the correct DATABASE_URL for its environment.
+ENV_FILE="$PROJECT_ROOT/apps/web/.env.$ENVIRONMENT"
+if [[ ! -f "$ENV_FILE" ]]; then
+    log_error "Environment file not found: $ENV_FILE"
+    exit 1
+fi
+source "$ENV_FILE"
+export PGPASSWORD="${DATABASE_PASSWORD:?DATABASE_PASSWORD must be set in $ENV_FILE}"
+DB_URL="${DATABASE_URL:?DATABASE_URL must be set in $ENV_FILE}"
 SERVER_CONFIG_PATH="${SERVER_CONFIG_PATH:-/var/lib/alive/server-config.json}"
 
 if [[ ! -f "$SERVER_CONFIG_PATH" ]]; then
@@ -47,7 +53,6 @@ fi
 
 API_URL="http://127.0.0.1:5080"
 DEPLOYER_HEALTH="http://127.0.0.1:5095"
-APPLICATION_ID="dep_app_bd57129d0218c50d"
 GIT_REF="$(git rev-parse --abbrev-ref HEAD)"
 GIT_SHA="$(git rev-parse HEAD)"
 COMMIT_MSG="$(git log -1 --format=%s)"
@@ -89,6 +94,12 @@ api_post() {
 # =============================================================================
 
 phase_start "Preflight" "$_TOTAL_PHASES"
+
+APPLICATION_ID=$(db_query "SELECT application_id FROM deploy.applications WHERE slug = 'alive' LIMIT 1;")
+if [[ -z "$APPLICATION_ID" ]]; then
+    phase_end error "No 'alive' application found in deploy.applications"
+    exit 1
+fi
 
 if ! "$PROJECT_ROOT/ops/scripts/pre-deployment-check.sh" "$ENVIRONMENT" >/tmp/alive-predeploy-"$ENVIRONMENT".log 2>&1; then
     tail -n 50 /tmp/alive-predeploy-"$ENVIRONMENT".log || true
