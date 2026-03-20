@@ -6,6 +6,7 @@
 
 import type { ChildProcess } from "node:child_process"
 import type { Socket } from "node:net"
+import type { ExecutionMode, SandboxStatus } from "@webalive/database"
 import type { RuntimeAccessDecision } from "@webalive/runtime-auth"
 import { type QueueReason, STREAM_TYPES, type StreamType } from "@webalive/shared"
 
@@ -208,6 +209,15 @@ export interface AgentConfig {
   extraTools?: string[]
 }
 
+/** Sandbox domain info passed to the worker for E2B mode. */
+export interface SandboxDomainPayload {
+  domain_id: string
+  hostname: string
+  sandbox_id: string | null
+  sandbox_status: SandboxStatus | null
+  is_test_env?: boolean
+}
+
 /** Request payload for Claude Agent SDK query */
 export interface AgentRequest {
   message: string
@@ -239,6 +249,10 @@ export interface AgentRequest {
   sessionCookie?: string
   /** Runtime permission decision derived by the web edge for this workspace/user pair. */
   runtimeAccess: RuntimeAccessDecision
+  /** Execution mode: "systemd" (local) or "e2b" (remote sandbox). */
+  executionMode?: ExecutionMode
+  /** Domain info for E2B sandbox routing. Required when executionMode is "e2b". */
+  sandboxDomain?: SandboxDomainPayload
 }
 
 /** Workspace credentials for privilege dropping */

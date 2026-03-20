@@ -684,6 +684,16 @@ export async function POST(req: NextRequest) {
                 agentConfig,
                 sessionCookie, // Required for MCP tools to authenticate API calls
                 runtimeAccess,
+                executionMode,
+                ...(executionMode === "e2b" && {
+                  sandboxDomain: {
+                    domain_id: domainRecord.domain_id,
+                    hostname: domainRecord.hostname,
+                    sandbox_id: domainRecord.sandbox_id,
+                    sandbox_status: domainRecord.sandbox_status,
+                    is_test_env: domainRecord.is_test_env ?? undefined,
+                  },
+                }),
               },
               onMessage: (msg: WorkerToParentMessage) => {
                 // Track first message timing
