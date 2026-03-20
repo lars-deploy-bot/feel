@@ -36,7 +36,6 @@ export interface Environment {
 
   // Paths
   buildPath?: string
-  workspacePath: string
 
   // Flags
   isProduction: boolean
@@ -66,7 +65,6 @@ export const environments: Record<EnvironmentKey, Environment> = {
     systemdService: "alive-production.service",
     serverScript: ".builds/production/current/standalone/apps/web/server.js",
     buildPath: ".builds/production",
-    workspacePath: PATHS.SITES_ROOT,
     isProduction: true,
     hasHotReload: false,
     deployCommand: "make wash-skip",
@@ -84,7 +82,6 @@ export const environments: Record<EnvironmentKey, Environment> = {
     systemdService: "alive-staging.service",
     serverScript: ".builds/staging/current/standalone/apps/web/server.js",
     buildPath: ".builds/staging",
-    workspacePath: PATHS.SITES_ROOT,
     isProduction: false,
     hasHotReload: false,
     deployCommand: "make staging",
@@ -101,7 +98,6 @@ export const environments: Record<EnvironmentKey, Environment> = {
     serviceType: "systemd",
     systemdService: "alive-dev.service",
     serverScript: "node_modules/.bin/next",
-    workspacePath: PATHS.SITES_ROOT,
     isProduction: false,
     hasHotReload: true,
     deployCommand: "make dev",

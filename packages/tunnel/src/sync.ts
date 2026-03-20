@@ -135,6 +135,7 @@ function generateCaddyInternal(
   infraServices: ReadonlyArray<InfrastructureService>,
   previewProxyPort: number,
   baseDomain: string,
+  paths: { imagesStorage: string; sitesRoot: string },
   onInvalidHostname?: (hostname: string) => void,
 ): string {
   const lines: string[] = [
@@ -174,16 +175,16 @@ function generateCaddyInternal(
   lines.push(`        default "localhost:${previewProxyPort}"`)
   lines.push("    }")
   lines.push("")
-  lines.push("    # Global image serving from /srv/webalive/storage")
+  lines.push(`    # Global image serving from ${paths.imagesStorage}`)
   lines.push("    handle_path /_images/* {")
-  lines.push("        root * /srv/webalive/storage")
+  lines.push(`        root * ${paths.imagesStorage}`)
   lines.push('        header Cache-Control "public, max-age=31536000, immutable"')
   lines.push("        file_server")
   lines.push("    }")
   lines.push("")
   lines.push("    # Per-site work files")
   lines.push("    handle_path /files/* {")
-  lines.push("        root * /srv/webalive/sites/{host}/user/.alive/files")
+  lines.push(`        root * ${paths.sitesRoot}/{host}/user/.alive/files`)
   lines.push('        header Cache-Control "no-cache"')
   lines.push("        file_server")
   lines.push("    }")
@@ -309,6 +310,7 @@ async function main() {
     INFRASTRUCTURE_SERVICES,
     previewProxyPort,
     serverCfg.domains.main,
+    { imagesStorage: serverCfg.paths.imagesStorage, sitesRoot: serverCfg.paths.sitesRoot },
     h => log(`WARNING: Skipping invalid hostname for Caddy config: ${h}`),
   )
   log(`Generated Caddyfile.internal: ${sites.size} site entries`)

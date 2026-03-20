@@ -299,7 +299,9 @@ const dryRun = args.includes("--dry-run")
 const limitArg = args.find(a => a.startsWith("--limit"))
 const limit = limitArg ? parseInt(args[args.indexOf(limitArg) + 1] || "0") : 0
 
-const SITES_DIR = "/srv/webalive/sites"
+import { PATHS } from "@webalive/shared"
+
+const SITES_DIR = PATHS.SITES_ROOT
 
 console.log(`\n${"=".repeat(60)}`)
 console.log(`Preview Navigation Migration Script`)

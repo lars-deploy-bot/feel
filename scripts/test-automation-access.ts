@@ -5,9 +5,10 @@
 
 import { statSync, readdirSync } from "node:fs"
 import { join } from "node:path"
+import { PATHS } from "@webalive/shared"
 
 const workspace = process.argv[2] || "zomaar.test.local"
-const basePath = `/srv/webalive/sites/${workspace}`
+const basePath = `${PATHS.SITES_ROOT}/${workspace}`
 const userPath = join(basePath, "user")
 
 console.log(`Testing automation access for: ${workspace}\n`)

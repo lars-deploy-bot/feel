@@ -79,7 +79,6 @@ import { env } from "@webalive/env/server"  // Will fail with node:fs error
 ### Optional
 
 **Bridge Configuration:**
-- `WORKSPACE_BASE` - Base directory for workspaces (default: `/srv/webalive/sites`)
 - `ALIVE_PASSCODE` - Optional passcode for alive access
 - `ALIVE_ENV` - Environment: `local` | `dev` | `staging` | `production`
 - `LOCAL_TEMPLATE_PATH` - Path to template for local development

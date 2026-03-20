@@ -1,12 +1,10 @@
 /**
  * Web application configuration
  *
- * Domain config loaded from server-config.json via @webalive/shared (single source of truth).
- * Env vars (MAIN_DOMAIN, etc.) override if set, but are NOT required — server-config.json
- * provides all values. See packages/shared/src/config.ts for the loading logic.
+ * Domain config comes from server-config.json via @webalive/shared.
+ * Re-exports for convenience — canonical source is DOMAINS/PATHS from @webalive/shared.
  */
 
-import { env } from "@webalive/env/server"
 import { DOMAINS, PATHS } from "@webalive/shared"
 
 export const MAIN_DOMAIN = DOMAINS.MAIN
@@ -14,7 +12,7 @@ export const WILDCARD_DOMAIN = DOMAINS.WILDCARD
 export const PREVIEW_BASE = DOMAINS.PREVIEW_BASE
 export const COOKIE_DOMAIN = DOMAINS.COOKIE_DOMAIN
 export const WILDCARD_PATTERN = `*.${WILDCARD_DOMAIN}`
-export const WORKSPACE_BASE = env.WORKSPACE_BASE || PATHS.SITES_ROOT
+export const WORKSPACE_BASE = PATHS.SITES_ROOT
 
 export function buildSubdomain(slug: string): string {
   return `${slug.toLowerCase()}.${WILDCARD_DOMAIN}`

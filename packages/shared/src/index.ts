@@ -258,6 +258,7 @@ export {
   type DeploymentTemplate,
   getDeploymentTemplateById,
   getDeploymentTemplatePublicHostname,
+  getTemplateHostname,
   getTemplateIdsInline,
   getTemplateListForDocs,
   // Website templates - SINGLE SOURCE OF TRUTH

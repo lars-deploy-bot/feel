@@ -13,7 +13,7 @@
  * Run: ENV_FILE=.env.staging bun run test:e2e:gate
  */
 
-import { getDeploymentTemplateById } from "@webalive/shared"
+import { DOMAINS, getDeploymentTemplateById, getTemplateHostname } from "@webalive/shared"
 import jwt from "jsonwebtoken"
 import { expect, test } from "./fixtures"
 import { isLocalTestServer } from "./lib/test-env"
@@ -48,9 +48,8 @@ if (!blankTemplate) {
   throw new Error("tmpl_blank template is required for preview proxy health tests")
 }
 
-// The blank template runs on every server. Use its stable internal hostname here;
-// the public preview base is still derived from server config via NEXT_PUBLIC_PREVIEW_BASE.
-const TEST_DOMAIN = blankTemplate.internalHostname
+// The blank template runs on every server. Derive its hostname from config.
+const TEST_DOMAIN = getTemplateHostname(blankTemplate, DOMAINS.WILDCARD)
 
 describeProxy("Preview Proxy Health", () => {
   // Must match the Go preview proxy's JWT secret (differs from Supabase JWT in staging)

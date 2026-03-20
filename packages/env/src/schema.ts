@@ -99,20 +99,11 @@ export const serverSchema = {
   SUPABASE_ACCESS_TOKEN: z.string().optional(),
   SUPABASE_PROJECT_ID: z.string().optional(),
 
-  // Domain Configuration (optional in env — derived from server-config.json when absent)
-  // Values in server-config.json are the source of truth; env vars override if set.
-  MAIN_DOMAIN: domainName.optional(),
-  WILDCARD_DOMAIN: domainName.optional(),
-  PREVIEW_BASE: domainName.optional(),
-  COOKIE_DOMAIN: domainName.optional(),
-
   // App configuration
-  WORKSPACE_BASE: z.string().default("/srv/webalive/sites"),
   ALIVE_PASSCODE: z.string().optional(),
   ALIVE_ENV: z.enum(["local", "dev", "staging", "production", "standalone"]).optional(),
   LOCAL_TEMPLATE_PATH: z.string().optional(),
   SHELL_PASSWORD: z.string().optional(),
-  HOSTED_ENV: z.string().optional(),
 
   // Claude configuration
   CLAUDE_MODEL: z.string().default("claude-sonnet-4-6"),
@@ -147,16 +138,6 @@ export const serverSchema = {
 
   // Images
   IMAGES_SIGNATURE_SECRET: z.string().optional(),
-  IMAGES_STORAGE_PATH: z.string().optional(),
-
-  // Infrastructure
-  WILDCARD_TLD: z.string().optional(), // Deprecated: use WILDCARD_DOMAIN
-
-  // Server identity
-  SERVER_IP: z
-    .string()
-    .regex(/^(?:(?:\d{1,3}\.){3}\d{1,3}|[0-9a-f:]{2,39})$/i, "Must be a valid IP address")
-    .optional(),
 
   // Admin configuration (comma-separated emails)
   ADMIN_EMAILS: z.string().optional(),
@@ -244,17 +225,11 @@ export const runtimeEnv = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   SUPABASE_ACCESS_TOKEN: process.env.SUPABASE_ACCESS_TOKEN,
   SUPABASE_PROJECT_ID: process.env.SUPABASE_PROJECT_ID,
-  MAIN_DOMAIN: process.env.MAIN_DOMAIN,
-  WILDCARD_DOMAIN: process.env.WILDCARD_DOMAIN,
-  PREVIEW_BASE: process.env.PREVIEW_BASE,
-  COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
-  WORKSPACE_BASE: process.env.WORKSPACE_BASE,
   ALIVE_PASSCODE: process.env.ALIVE_PASSCODE,
   ALIVE_ENV: process.env.ALIVE_ENV,
 
   LOCAL_TEMPLATE_PATH: process.env.LOCAL_TEMPLATE_PATH,
   SHELL_PASSWORD: process.env.SHELL_PASSWORD,
-  HOSTED_ENV: process.env.HOSTED_ENV,
   CLAUDE_MODEL: process.env.CLAUDE_MODEL,
   GROQ_API_SECRET: process.env.GROQ_API_SECRET,
   GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET,
@@ -277,9 +252,6 @@ export const runtimeEnv = {
   LOCKBOX_MASTER_KEY: process.env.LOCKBOX_MASTER_KEY,
   INTERNAL_TOOLS_SECRET: process.env.INTERNAL_TOOLS_SECRET,
   IMAGES_SIGNATURE_SECRET: process.env.IMAGES_SIGNATURE_SECRET,
-  IMAGES_STORAGE_PATH: process.env.IMAGES_STORAGE_PATH,
-  WILDCARD_TLD: process.env.WILDCARD_TLD,
-  SERVER_IP: process.env.SERVER_IP,
   ADMIN_EMAILS: process.env.ADMIN_EMAILS,
   SUPERADMIN_EMAILS: process.env.SUPERADMIN_EMAILS,
   REDIS_URL: process.env.REDIS_URL,

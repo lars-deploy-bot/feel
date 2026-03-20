@@ -32,13 +32,7 @@
         "NEXT_PUBLIC_POSTHOG_HOST",
         "NEXT_PUBLIC_CONTACT_EMAIL",
         "NEXT_PUBLIC_SENTRY_DSN",
-        "MAIN_DOMAIN",
-        "WILDCARD_DOMAIN",
-        "PREVIEW_BASE",
-        "COOKIE_DOMAIN",
-        "SERVER_IP",
         "CLAUDE_MODEL",
-        "WORKSPACE_BASE",
         "ALIVE_PASSCODE",
         "SIGNUP_ACCESS_CODE",
         "ALIVE_ENV",
@@ -50,7 +44,6 @@
         "JWT_ES256_PRIVATE_KEY",
         "INTERNAL_TOOLS_SECRET",
         "IMAGES_SIGNATURE_SECRET",
-        "IMAGES_STORAGE_PATH",
         "FLOWGLAD_SECRET_KEY",
         "SERVER_CONFIG_PATH",
         "E2B_API_KEY",
@@ -62,8 +55,7 @@
         "NEXT_PUBLIC_ALIVE_ENV",
         "NEXT_PUBLIC_BUILD_COMMIT",
         "NEXT_PUBLIC_BUILD_BRANCH",
-        "NEXT_PUBLIC_BUILD_TIME",
-        "NEXT_PUBLIC_SERVER_IP"
+        "NEXT_PUBLIC_BUILD_TIME"
       ]
     },
     "start": {

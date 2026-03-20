@@ -67,13 +67,18 @@ export class OAuthManager {
   private static readonly TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000 // 5 minutes
 
   constructor(config?: OAuthManagerConfig) {
-    // If no config provided, use defaults
-    this.config = config || {
-      provider: "default",
-      instanceId: "default",
-      namespace: OAUTH_TOKENS_NAMESPACE,
-      environment: process.env.ALIVE_ENV ?? "production",
-      defaultTtlSeconds: undefined,
+    if (config) {
+      this.config = config
+    } else {
+      const environment = process.env.ALIVE_ENV
+      if (!environment) throw new Error("ALIVE_ENV is required when OAuthManager is used without explicit config")
+      this.config = {
+        provider: "default",
+        instanceId: "default",
+        namespace: OAUTH_TOKENS_NAMESPACE,
+        environment,
+        defaultTtlSeconds: undefined,
+      }
     }
 
     // Create storage adapter with instance configuration

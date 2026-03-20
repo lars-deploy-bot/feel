@@ -34,8 +34,6 @@ export interface Template {
  * Deployment template definition with its hosted preview domain.
  */
 export interface DeploymentTemplate extends Template {
-  /** Internal template directory / service hostname kept stable across servers. */
-  internalHostname: string
   /** Public subdomain for the template on the current server. */
   subdomain: string
 }
@@ -50,7 +48,6 @@ export const DEPLOYMENT_TEMPLATES = [
     name: "Blank Canvas",
     description: "Minimal starter - build from scratch",
     icon: "blank",
-    internalHostname: "blank.alive.best",
     subdomain: "blank",
   },
   {
@@ -58,7 +55,6 @@ export const DEPLOYMENT_TEMPLATES = [
     name: "Photo Gallery",
     description: "Showcase images and portfolios",
     icon: "gallery",
-    internalHostname: "template1.alive.best",
     subdomain: "template1",
   },
   {
@@ -66,7 +62,6 @@ export const DEPLOYMENT_TEMPLATES = [
     name: "Event Page",
     description: "Perfect for launches, parties, or announcements",
     icon: "event",
-    internalHostname: "event.alive.best",
     subdomain: "event",
   },
   {
@@ -74,7 +69,6 @@ export const DEPLOYMENT_TEMPLATES = [
     name: "SaaS Landing",
     description: "Modern product landing page",
     icon: "saas",
-    internalHostname: "saas.alive.best",
     subdomain: "saas",
   },
   {
@@ -82,7 +76,6 @@ export const DEPLOYMENT_TEMPLATES = [
     name: "Business",
     description: "Professional company website",
     icon: "business",
-    internalHostname: "loodgieter.alive.best",
     subdomain: "loodgieter",
   },
 ] as const satisfies readonly DeploymentTemplate[]
@@ -129,18 +122,20 @@ export function getDeploymentTemplateById(id: string): DeploymentTemplate | unde
 }
 
 /**
- * Build the server-local public hostname for a deployment template.
+ * Build the server-local hostname for a deployment template.
+ * Used for both public URLs and filesystem directory names
+ * (e.g., "blank.alive.best" on Server 1, "blank.sonno.tech" on Server 2).
  */
-export function getDeploymentTemplatePublicHostname(
-  template: Pick<DeploymentTemplate, "subdomain">,
-  wildcardDomain: string,
-): string {
+export function getTemplateHostname(template: Pick<DeploymentTemplate, "subdomain">, wildcardDomain: string): string {
   const normalizedDomain = wildcardDomain.trim()
   if (normalizedDomain.length === 0) {
-    throw new Error("Template public hostname requires a non-empty wildcard domain")
+    throw new Error("Template hostname requires a non-empty wildcard domain")
   }
   return `${template.subdomain}.${normalizedDomain}`
 }
+
+/** @deprecated Use {@link getTemplateHostname} instead. */
+export const getDeploymentTemplatePublicHostname = getTemplateHostname
 
 /**
  * Generate template list for documentation/descriptions

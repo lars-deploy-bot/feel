@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { DEPLOYMENT_TEMPLATES, getDeploymentTemplatePublicHostname, isRecord, PATHS } from "@webalive/shared"
+import { DEPLOYMENT_TEMPLATES, getTemplateHostname, isRecord, PATHS } from "@webalive/shared"
 import type { VALID_ENVS } from "./test-env"
 
 type TestEnv = (typeof VALID_ENVS)[number]
@@ -46,7 +46,7 @@ function titleCaseHostname(hostname: string): string {
 export function buildTemplateSeedRows(): SeedTemplateRow[] {
   const serverConfig = readRuntimeServerConfig()
   return DEPLOYMENT_TEMPLATES.map(template => {
-    const sourcePath = `${PATHS.TEMPLATES_ROOT}/${template.internalHostname}`
+    const sourcePath = `${PATHS.TEMPLATES_ROOT}/${getTemplateHostname(template, serverConfig.domains.wildcard)}`
 
     if (!existsSync(sourcePath)) {
       throw new Error(`[E2E template seed] Missing runtime template directory for ${template.id}: ${sourcePath}`)
@@ -57,7 +57,7 @@ export function buildTemplateSeedRows(): SeedTemplateRow[] {
       name: template.name,
       description: template.description,
       sourcePath,
-      previewUrl: `https://${getDeploymentTemplatePublicHostname(template, serverConfig.domains.wildcard)}`,
+      previewUrl: `https://${getTemplateHostname(template, serverConfig.domains.wildcard)}`,
     }
   })
 }

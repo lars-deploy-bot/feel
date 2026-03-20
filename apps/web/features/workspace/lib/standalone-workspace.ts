@@ -4,16 +4,15 @@
  */
 
 import { existsSync, mkdirSync, readdirSync } from "node:fs"
-import { homedir } from "node:os"
 import { join } from "node:path"
-import { STANDALONE } from "@webalive/shared"
+import { PATHS } from "@webalive/shared"
 
 /**
- * Get the base directory for standalone workspaces
- * Uses WORKSPACE_BASE env var or defaults to ~/.alive/workspaces
+ * Get the base directory for standalone workspaces.
+ * Comes from server-config.json (paths.sitesRoot).
  */
 export function getStandaloneWorkspaceBase(): string {
-  return process.env.WORKSPACE_BASE || join(homedir(), STANDALONE.DEFAULT_WORKSPACE_DIR)
+  return PATHS.SITES_ROOT
 }
 
 /**

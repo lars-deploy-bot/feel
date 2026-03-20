@@ -7,6 +7,7 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: "node",
+      exclude: ["src/__tests__/e2e/**", "node_modules/**"],
     },
   }),
 )

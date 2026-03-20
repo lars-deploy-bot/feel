@@ -215,35 +215,27 @@ const serverConfig = loadServerConfig()
 // Required config helpers (STRICT)
 // =============================================================================
 
-// Config was loaded - if values exist, use them. If not, return empty (browser/CI without config).
-// Server environments with serverId get validated by the startup block below.
-function configValue(envKey: string, serverConfigValue: string | undefined): string {
-  // Env var takes precedence
-  if (!isBrowser && typeof process !== "undefined" && process.env[envKey]) {
-    return process.env[envKey]!
-  }
-  return serverConfigValue ?? ""
+// All values come from server-config.json. No env var overrides.
+// requireConfig() throws if value is missing outside browser/test.
+function requireConfig(key: string, value: string | undefined): string {
+  if (value) return value
+  if (isBrowser) return ""
+  if (process.env.CI === "true" || process.env.VITEST === "true") return ""
+  throw new Error(`FATAL: ${key} is missing from server-config.json`)
 }
 
-function pathValue(serverConfigValue: string | undefined): string {
-  return serverConfigValue ?? ""
-}
+const ALIVE_ROOT = requireConfig("paths.aliveRoot", serverConfig.paths?.aliveRoot)
+const SITES_ROOT = requireConfig("paths.sitesRoot", serverConfig.paths?.sitesRoot)
+const TEMPLATES_ROOT = requireConfig("paths.templatesRoot", serverConfig.paths?.templatesRoot)
+const IMAGES_STORAGE = requireConfig("paths.imagesStorage", serverConfig.paths?.imagesStorage)
+// e2bScratchRoot is only required when E2B mode is active — validated separately below
+const E2B_SCRATCH_ROOT = serverConfig.paths?.e2bScratchRoot ?? ""
 
-const ALIVE_ROOT = pathValue(serverConfig.paths?.aliveRoot)
-const SITES_ROOT = pathValue(serverConfig.paths?.sitesRoot)
-const TEMPLATES_ROOT = serverConfig.paths?.templatesRoot ?? "/srv/webalive/templates"
-const IMAGES_STORAGE = pathValue(serverConfig.paths?.imagesStorage)
-const E2B_SCRATCH_ROOT = pathValue(serverConfig.paths?.e2bScratchRoot)
-
-// Domain config from environment (REQUIRED - fails fast if missing)
-// NOTE: These are SERVER-ONLY. For client-side code, use apps/web/lib/config.client.ts
-const MAIN_DOMAIN = configValue("MAIN_DOMAIN", serverConfig.domains?.main)
-const WILDCARD_DOMAIN = configValue("WILDCARD_DOMAIN", serverConfig.domains?.wildcard)
-const PREVIEW_BASE = configValue("PREVIEW_BASE", serverConfig.domains?.previewBase)
-const COOKIE_DOMAIN = configValue("COOKIE_DOMAIN", serverConfig.domains?.cookieDomain)
-
-// Server IP: from env var or server config (REQUIRED)
-const SERVER_IP = configValue("SERVER_IP", serverConfig.serverIp)
+const MAIN_DOMAIN = requireConfig("domains.main", serverConfig.domains?.main)
+const WILDCARD_DOMAIN = requireConfig("domains.wildcard", serverConfig.domains?.wildcard)
+const PREVIEW_BASE = requireConfig("domains.previewBase", serverConfig.domains?.previewBase)
+const COOKIE_DOMAIN = requireConfig("domains.cookieDomain", serverConfig.domains?.cookieDomain)
+const SERVER_IP = requireConfig("serverIp", serverConfig.serverIp)
 
 // Contact email (required in server-config.json, empty only in browser/test/local-dev)
 const CONTACT_EMAIL_RAW = serverConfig.contactEmail ?? ""
@@ -283,8 +275,8 @@ assertE2bScratchRootConfigured()
 // =============================================================================
 
 export const PATHS = {
-  /** Root directory for webalive project */
-  WEBALIVE_ROOT: "/root/webalive",
+  /** Root directory for webalive project (parent of ALIVE_ROOT) */
+  WEBALIVE_ROOT: ALIVE_ROOT ? ALIVE_ROOT.replace(/\/[^/]+$/, "") : "",
 
   /** Claude Stream root directory */
   ALIVE_ROOT,
@@ -325,8 +317,8 @@ export const PATHS = {
   /** Image storage base path */
   IMAGES_STORAGE,
 
-  /** Site backup repository */
-  BACKUP_REPO: "/srv/webalive",
+  /** Site backup repository (parent of SITES_ROOT) */
+  BACKUP_REPO: SITES_ROOT ? SITES_ROOT.replace(/\/[^/]+$/, "") : "",
 } as const
 
 // =============================================================================
@@ -734,20 +726,12 @@ export function assertValidServerId(serverId: string | undefined): asserts serve
 /**
  * Resolve a template's local filesystem path from its DB source_path.
  *
- * Extracts the directory name (e.g. "blank.alive.best") from the DB path
- * and joins it with this server's TEMPLATES_ROOT. This way both servers
- * resolve to the correct local path without per-template config.
- *
- * Example: source_path "/srv/webalive/templates/blank.alive.best"
- *        → TEMPLATES_ROOT + "/blank.alive.best"
- *        → "/srv/webalive/templates/blank.alive.best"
+ * Extracts the directory name from the DB source_path and joins it with
+ * this server's TEMPLATES_ROOT. Both servers resolve to the correct local path.
  */
 export function resolveTemplatePath(dbSourcePath: string): string {
   if (!TEMPLATES_ROOT) {
-    throw new Error(
-      "TEMPLATES_ROOT is not configured. " +
-        'Set "paths.templatesRoot" in server-config.json (e.g. "/srv/webalive/templates").',
-    )
+    throw new Error('TEMPLATES_ROOT is not configured. Set "paths.templatesRoot" in server-config.json.')
   }
   const dirName = dbSourcePath.split("/").pop()
   if (!dirName || dirName === ".." || dirName === ".") {

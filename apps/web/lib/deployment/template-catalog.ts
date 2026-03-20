@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import type { AppDatabase } from "@webalive/database"
-import { DEPLOYMENT_TEMPLATES, DOMAINS, getDeploymentTemplatePublicHostname, PATHS } from "@webalive/shared"
+import { DEPLOYMENT_TEMPLATES, DOMAINS, getTemplateHostname, PATHS } from "@webalive/shared"
 import { createAppClient } from "@/lib/supabase/app"
 
 type TemplateRow = Pick<
@@ -28,7 +28,7 @@ function getSharedTemplateForRow(row: Pick<TemplateRow, "template_id" | "source_
     return undefined
   }
 
-  return DEPLOYMENT_TEMPLATES.find(template => template.internalHostname === directoryName)
+  return DEPLOYMENT_TEMPLATES.find(template => getTemplateHostname(template, DOMAINS.WILDCARD) === directoryName)
 }
 
 function withLocalPreviewUrl(row: TemplateRow): TemplateRow {
@@ -39,13 +39,13 @@ function withLocalPreviewUrl(row: TemplateRow): TemplateRow {
 
   return {
     ...row,
-    preview_url: `https://${getDeploymentTemplatePublicHostname(sharedTemplate, DOMAINS.WILDCARD)}`,
+    preview_url: `https://${getTemplateHostname(sharedTemplate, DOMAINS.WILDCARD)}`,
   }
 }
 
 function buildFilesystemTemplateCatalog(): TemplateRow[] {
   return DEPLOYMENT_TEMPLATES.flatMap(template => {
-    const sourcePath = `${PATHS.TEMPLATES_ROOT}/${template.internalHostname}`
+    const sourcePath = `${PATHS.TEMPLATES_ROOT}/${getTemplateHostname(template, DOMAINS.WILDCARD)}`
     if (!existsSync(sourcePath)) {
       return []
     }
@@ -57,7 +57,7 @@ function buildFilesystemTemplateCatalog(): TemplateRow[] {
         description: template.description,
         ai_description: null,
         source_path: sourcePath,
-        preview_url: `https://${getDeploymentTemplatePublicHostname(template, DOMAINS.WILDCARD)}`,
+        preview_url: `https://${getTemplateHostname(template, DOMAINS.WILDCARD)}`,
         image_url: null,
         is_active: true,
         deploy_count: 0,

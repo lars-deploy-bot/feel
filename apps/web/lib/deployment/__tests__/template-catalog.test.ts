@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const TEST_WILDCARD = "alive.test"
+const BLANK_DIR = `blank.${TEST_WILDCARD}`
 
 const createAppClientMock = vi.fn()
 const existsSyncMock = vi.fn()
@@ -30,13 +31,14 @@ vi.mock("@/lib/supabase/app", () => ({
   createAppClient: (...args: unknown[]) => createAppClientMock(...args),
 }))
 
-// Provide a real wildcard domain so getDeploymentTemplatePublicHostname doesn't throw
+const TEST_TEMPLATES_ROOT = "/tmp/test-templates"
+
 vi.mock("@webalive/shared", async importOriginal => {
   const actual = await importOriginal<typeof import("@webalive/shared")>()
   return {
     ...actual,
     DOMAINS: { ...actual.DOMAINS, WILDCARD: TEST_WILDCARD },
-    PATHS: { ...actual.PATHS, TEMPLATES_ROOT: "/srv/webalive/templates" },
+    PATHS: { ...actual.PATHS, TEMPLATES_ROOT: TEST_TEMPLATES_ROOT },
   }
 })
 
@@ -53,7 +55,7 @@ describe("template-catalog", () => {
           name: "Blank",
           description: "A blank template",
           ai_description: null,
-          source_path: "/srv/webalive/templates/blank.alive.best",
+          source_path: `${TEST_TEMPLATES_ROOT}/${BLANK_DIR}`,
           preview_url: "https://blank.alive.best",
           image_url: null,
           is_active: true,
@@ -100,7 +102,7 @@ describe("template-catalog", () => {
 
   it("falls back to filesystem templates when the database catalog is empty", async () => {
     listResult = { data: [], error: null }
-    existsSyncMock.mockImplementation((input: unknown) => input === "/srv/webalive/templates/blank.alive.best")
+    existsSyncMock.mockImplementation((input: unknown) => input === `${TEST_TEMPLATES_ROOT}/${BLANK_DIR}`)
 
     const templates = await listDeploymentTemplates()
 
@@ -111,11 +113,11 @@ describe("template-catalog", () => {
 
   it("finds a filesystem template by id when the database row is missing", async () => {
     singleResult = { data: null, error: null }
-    existsSyncMock.mockImplementation((input: unknown) => input === "/srv/webalive/templates/blank.alive.best")
+    existsSyncMock.mockImplementation((input: unknown) => input === `${TEST_TEMPLATES_ROOT}/${BLANK_DIR}`)
 
     const template = await findDeploymentTemplateById("tmpl_blank")
 
     expect(template?.template_id).toBe("tmpl_blank")
-    expect(template?.source_path).toBe("/srv/webalive/templates/blank.alive.best")
+    expect(template?.source_path).toBe(`${TEST_TEMPLATES_ROOT}/${BLANK_DIR}`)
   })
 })
