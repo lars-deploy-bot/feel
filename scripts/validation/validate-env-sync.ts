@@ -21,6 +21,8 @@ const ENV_FILES = [
 // Variables that intentionally differ across apps (not drift)
 const EXPECTED_DIFFER = new Set([
 	"PORT", // Each app runs on its own port
+	"ALIVE_ENV", // local vs production vs staging
+	"ALIVE_PASSCODE", // Dev passcode differs from production
 ]);
 
 function parseEnvFile(
