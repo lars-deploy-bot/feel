@@ -55,7 +55,8 @@
         "NEXT_PUBLIC_ALIVE_ENV",
         "NEXT_PUBLIC_BUILD_COMMIT",
         "NEXT_PUBLIC_BUILD_BRANCH",
-        "NEXT_PUBLIC_BUILD_TIME"
+        "NEXT_PUBLIC_BUILD_TIME",
+        "NEXT_PUBLIC_SERVER_IP"
       ]
     },
     "start": {
