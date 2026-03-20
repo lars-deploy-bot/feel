@@ -291,7 +291,6 @@ async fn tick(
     health: &Arc<RwLock<HealthState>>,
 ) -> Result<()> {
     expire_stale_tasks(client).await?;
-    reconcile_running_deployments(client, context).await?;
 
     if let Some(build) = claim_next_build(client, &context.env.server_id, &context.hostname).await?
     {
@@ -343,6 +342,12 @@ async fn tick(
             return Err(error);
         }
     }
+
+    // Reconcile after processing — catches stuck deployments where the runtime
+    // died after a previous tick's process_deployment completed. Running this
+    // before claim/process caused a race: the reconciler would kill freshly
+    // claimed deployments before they had a chance to start the runtime.
+    reconcile_running_deployments(client, context).await?;
 
     Ok(())
 }
