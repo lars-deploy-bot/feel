@@ -8,6 +8,7 @@ import {
   DEPLOY_ENVIRONMENT_STAGING,
   type DeployDeploymentAction,
 } from "@webalive/database"
+import { getServerId } from "@webalive/shared"
 import { deployRepo } from "../../../db/repos"
 import type { DeployBuildInsert } from "../../../db/repos/deploy.repo"
 import { ConflictError, NotFoundError } from "../../../infra/errors"

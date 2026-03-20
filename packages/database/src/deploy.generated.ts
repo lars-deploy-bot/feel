@@ -73,6 +73,7 @@ export type Database = {
           lease_token: string | null
           metadata: Json
           requested_by_user_id: string | null
+          server_id: string
           started_at: string | null
           status: Database["deploy"]["Enums"]["task_status"]
           updated_at: string
@@ -97,6 +98,7 @@ export type Database = {
           lease_token?: string | null
           metadata?: Json
           requested_by_user_id?: string | null
+          server_id: string
           started_at?: string | null
           status?: Database["deploy"]["Enums"]["task_status"]
           updated_at?: string
@@ -121,6 +123,7 @@ export type Database = {
           lease_token?: string | null
           metadata?: Json
           requested_by_user_id?: string | null
+          server_id?: string
           started_at?: string | null
           status?: Database["deploy"]["Enums"]["task_status"]
           updated_at?: string
