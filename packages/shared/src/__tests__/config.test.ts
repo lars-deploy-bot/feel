@@ -54,7 +54,7 @@ function runConfigProbe(envOverrides: Record<string, string | undefined>, option
 
   const script = prefix + importStyle
 
-  return spawnSync("bun", ["-e", script], { env, encoding: "utf8", timeout: 10_000 })
+  return spawnSync("bun", ["-e", script], { env, encoding: "utf8", timeout: 10_000, cwd: tmpdir() })
 }
 
 function writeServerConfig(rawConfig: Record<string, unknown>): string {

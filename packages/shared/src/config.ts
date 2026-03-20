@@ -138,6 +138,7 @@ function localDefaults(): Partial<ServerConfig> {
   const home = process.env.HOME
   if (!home) throw new Error("FATAL: $HOME is not set. Cannot resolve local workspace paths.")
   return {
+    serverIp: "127.0.0.1",
     paths: {
       aliveRoot,
       sitesRoot: `${home}/.alive/workspaces`,
