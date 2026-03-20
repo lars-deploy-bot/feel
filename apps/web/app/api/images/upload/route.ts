@@ -6,7 +6,7 @@ import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { imageStorage } from "@/lib/storage"
+import { getImageStorage } from "@/lib/storage"
 import { workspaceToTenantId } from "@/lib/tenant-utils"
 
 export async function POST(request: NextRequest) {
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     // 9. Upload via storage adapter
     console.log(`[Image Upload ${requestId}] Step 9: Uploading via storage adapter`)
     const uploadStart = Date.now()
-    const result = await uploadImage(imageStorage, tenantId, buffer, {
+    const result = await uploadImage(getImageStorage(), tenantId, buffer, {
       visibility: "public",
       variants: variants as any,
       compress,

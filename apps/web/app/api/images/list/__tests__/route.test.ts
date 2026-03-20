@@ -11,10 +11,12 @@ vi.mock("@/features/workspace/lib/workspace-utils", () => ({
   resolveWorkspace: vi.fn(),
 }))
 
+const mockImageStorage = {
+  list: vi.fn(),
+}
+
 vi.mock("@/lib/storage", () => ({
-  imageStorage: {
-    list: vi.fn(),
-  },
+  getImageStorage: vi.fn(() => mockImageStorage),
 }))
 
 vi.mock("@/lib/tenant-utils", () => ({
@@ -24,7 +26,6 @@ vi.mock("@/lib/tenant-utils", () => ({
 const { GET } = await import("../route")
 const { getSessionUser, verifyWorkspaceAccess } = await import("@/features/auth/lib/auth")
 const { resolveWorkspace } = await import("@/features/workspace/lib/workspace-utils")
-const { imageStorage } = await import("@/lib/storage")
 
 const MOCK_USER = MOCK_SESSION_USER
 
@@ -45,7 +46,7 @@ describe("GET /api/images/list", () => {
       success: true,
       workspace: "/srv/webalive/sites/demo.test.example/user",
     })
-    vi.mocked(imageStorage.list).mockResolvedValue({ data: [], error: null })
+    vi.mocked(mockImageStorage.list).mockResolvedValue({ data: [], error: null })
   })
 
   it("returns 401 when user is not authenticated", async () => {
@@ -71,7 +72,7 @@ describe("GET /api/images/list", () => {
   })
 
   it("returns 500 when storage list fails", async () => {
-    vi.mocked(imageStorage.list).mockResolvedValue({
+    vi.mocked(mockImageStorage.list).mockResolvedValue({
       data: null,
       error: { message: "boom", code: "fs:list" },
     })
@@ -85,7 +86,7 @@ describe("GET /api/images/list", () => {
   })
 
   it("groups variants by content hash and ignores malformed keys", async () => {
-    vi.mocked(imageStorage.list).mockResolvedValue({
+    vi.mocked(mockImageStorage.list).mockResolvedValue({
       data: [
         "t/demo.test.example/o/hash-1/v/orig.webp",
         "t/demo.test.example/o/hash-1/v/thumb.webp",

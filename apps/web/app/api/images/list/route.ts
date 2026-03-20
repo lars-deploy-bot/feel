@@ -5,7 +5,7 @@ import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { imageStorage } from "@/lib/storage"
+import { getImageStorage } from "@/lib/storage"
 import { workspaceToTenantId } from "@/lib/tenant-utils"
 
 interface ParsedImageKey {
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     const tenantId = workspaceToTenantId(workspaceResult.workspace)
 
     // 6. List images for this tenant
-    const listResult = await imageStorage.list(tenantId)
+    const listResult = await getImageStorage().list(tenantId)
     if (listResult.error) {
       return Response.json(
         {

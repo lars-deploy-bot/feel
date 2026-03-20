@@ -5,7 +5,7 @@ import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { imageStorage } from "@/lib/storage"
+import { getImageStorage } from "@/lib/storage"
 import { workspaceToTenantId } from "@/lib/tenant-utils"
 
 export async function DELETE(request: NextRequest) {
@@ -49,14 +49,14 @@ export async function DELETE(request: NextRequest) {
     const contentHash = key.replace(`${tenantId}/`, "")
 
     // 7. List all variants for this content hash
-    const listResult = await imageStorage.list(tenantId, contentHash)
+    const listResult = await getImageStorage().list(tenantId, contentHash)
     if (listResult.error) {
       return structuredErrorResponse(ErrorCodes.IMAGE_DELETE_FAILED, { status: 404, details: { requestId } })
     }
 
     // 8. Delete all variants
     const deletePromises = listResult.data.map(async variantKey => {
-      const deleteResult = await imageStorage.delete(variantKey)
+      const deleteResult = await getImageStorage().delete(variantKey)
       if (deleteResult.error) {
         console.error(`Failed to delete variant ${variantKey}:`, deleteResult.error)
         Sentry.captureException(new Error(`Image delete failed for variant ${variantKey}: ${deleteResult.error}`))
