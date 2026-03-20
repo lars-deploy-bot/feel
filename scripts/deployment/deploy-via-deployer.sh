@@ -352,9 +352,19 @@ else
     cd "$PROJECT_ROOT/apps/web"
 
     if ENV_FILE=".env.$ENVIRONMENT" E2E_STRICT_API_GUARD=1 bun run test:e2e:gate; then
-        phase_end ok "E2E passed"
+        log_step "Mocked E2E passed"
     else
         phase_end error "E2E tests failed"
+        exit 1
+    fi
+
+    # Live critical tests: real Claude API, real streaming, real DB persistence.
+    # These run against the already-deployed staging server — no mocks.
+    log_step "Running live critical E2E tests against $ENVIRONMENT"
+    if ENV_FILE=".env.$ENVIRONMENT" E2E_STRICT_API_GUARD=1 bun run test:e2e:critical:live; then
+        phase_end ok "E2E passed (mocked + live)"
+    else
+        phase_end error "Live critical E2E tests failed"
         exit 1
     fi
 
