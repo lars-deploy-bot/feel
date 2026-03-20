@@ -136,8 +136,8 @@ export const serverSchema = {
   LOCKBOX_MASTER_KEY: z.string().optional(),
   INTERNAL_TOOLS_SECRET: z.string().optional(),
 
-  // Images
-  IMAGES_SIGNATURE_SECRET: z.string().optional(),
+  // Images — required for image upload/list/delete URL signing
+  IMAGES_SIGNATURE_SECRET: z.string().min(1),
 
   // Admin configuration (comma-separated emails)
   ADMIN_EMAILS: z.string().optional(),
