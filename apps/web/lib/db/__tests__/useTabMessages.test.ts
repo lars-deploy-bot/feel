@@ -121,6 +121,7 @@ describe("useTabMessages", () => {
     act(() => {
       useDexieMessageStore.setState({
         streamingBuffers: { [streamId]: "live buffer text" },
+        activeStreamByTab: { [TEST_TAB_ID]: streamId },
       })
     })
 
