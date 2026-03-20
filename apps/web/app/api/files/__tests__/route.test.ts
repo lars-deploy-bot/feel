@@ -9,7 +9,7 @@ import type { SessionUser } from "@/features/auth/lib/auth"
 const mockGetSessionUser = vi.fn()
 const mockVerifyWorkspaceAccess = vi.fn()
 const mockResolveDomainRuntime = vi.fn()
-const mockListE2bDirectory = vi.fn()
+const mockSessionFilesList = vi.fn()
 
 vi.mock("@/features/auth/lib/auth", async importOriginal => {
   const actual = await importOriginal<typeof import("@/features/auth/lib/auth")>()
@@ -31,8 +31,15 @@ vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
   resolveDomainRuntime: (...args: unknown[]) => mockResolveDomainRuntime(...args),
 }))
 
-vi.mock("@/lib/sandbox/e2b-file-runtime", () => ({
-  listE2bDirectory: (...args: unknown[]) => mockListE2bDirectory(...args),
+vi.mock("@/lib/sandbox/session-registry", () => ({
+  getSessionRegistry: () => ({
+    acquire: () =>
+      Promise.resolve({
+        files: {
+          list: (...args: unknown[]) => mockSessionFilesList(...args),
+        },
+      }),
+  }),
 }))
 
 vi.mock("@/lib/api/responses", async () => {
@@ -116,7 +123,7 @@ describe("POST /api/files", () => {
     mockGetSessionUser.mockResolvedValue(MOCK_USER)
     mockVerifyWorkspaceAccess.mockResolvedValue(TEST_WORKSPACE)
     mockResolveDomainRuntime.mockResolvedValue(null)
-    mockListE2bDirectory.mockResolvedValue([])
+    mockSessionFilesList.mockResolvedValue([])
 
     vi.mocked(getWorkspace).mockResolvedValue({
       success: true,
@@ -170,7 +177,7 @@ describe("POST /api/files", () => {
       sandbox_id: "sandbox-1",
       sandbox_status: "running",
     })
-    mockListE2bDirectory.mockRejectedValue(new RuntimePathValidationError("../etc"))
+    mockSessionFilesList.mockRejectedValue(new RuntimePathValidationError("../etc"))
 
     const response = await POST(createMockRequest({ path: "../etc", workspace: "example.test.example" }))
     const data: FilesListResponse = await response.json()
