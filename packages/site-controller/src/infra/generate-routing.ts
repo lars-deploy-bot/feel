@@ -415,6 +415,59 @@ export function renderCaddyShell(cfg: ServerConfig): string {
   return `${header}\n${blocks}\n`
 }
 
+/**
+ * Render the full Caddyfile.internal for tunnel-backed *.alive.best domains.
+ *
+ * Cloudflare tunnel routes *.alive.best → :8444, where Caddy uses a map
+ * to resolve {host} → localhost:{port}. Without an explicit entry, sites
+ * fall through to the default (preview proxy on 5055), which requires auth
+ * tokens and returns 404 for direct site access.
+ *
+ * This replaces the manually-maintained /etc/caddy/Caddyfile.internal.
+ */
+function renderCaddyInternal(cfg: ServerConfig, domains: DomainRow[]): string {
+  const header = [
+    "# GENERATED FILE - DO NOT EDIT",
+    `# Generated: ${new Date().toISOString()}`,
+    `# serverId: ${cfg.serverId}`,
+    "# Cloudflare tunnel routes *.alive.best site traffic here on :8444",
+    "",
+  ].join("\n")
+
+  const mapEntries = domains.map(d => `        ${d.hostname} "localhost:${d.port}"`)
+
+  const block = [
+    ":8444 {",
+    "    map {host} {site_upstream} {",
+    ...mapEntries,
+    '        default "localhost:5055"',
+    "    }",
+    "",
+    "    # Global image serving from /srv/webalive/storage",
+    "    handle_path /_images/* {",
+    "        root * /srv/webalive/storage",
+    '        header Cache-Control "public, max-age=31536000, immutable"',
+    "        file_server",
+    "    }",
+    "",
+    "    # Per-site work files",
+    "    handle_path /files/* {",
+    "        root * /srv/webalive/sites/{host}/user/.alive/files",
+    '        header Cache-Control "no-cache"',
+    "        file_server",
+    "    }",
+    "",
+    "    # Everything else goes to the site's dev server",
+    "    reverse_proxy {site_upstream} {",
+    "        header_up X-Forwarded-Proto https",
+    "    }",
+    "}",
+    "",
+  ].join("\n")
+
+  return `${header}${block}`
+}
+
 function renderNginxSniMap(cfg: ServerConfig): string {
   const header = ["# GENERATED FILE - DO NOT EDIT", `# serverId: ${cfg.serverId}`, ""].join("\n")
 
@@ -505,6 +558,23 @@ async function run() {
   const sites = renderCaddySites(cfg, environments, domains, embeddableHosts, aliveEnv)
   await atomicWrite(cfg.generated.caddySites, sites)
   console.log(`  ${cfg.generated.caddySites}`)
+
+  // Internal Caddy config for tunnel-backed *.alive.best domains.
+  // Every environment generates this — all sites need tunnel routing.
+  // Writes to both generated dir and /etc/caddy/Caddyfile.internal.
+  const caddyInternalContent = renderCaddyInternal(cfg, domains)
+  const generatedInternalPath = path.join(cfg.generated.dir, "Caddyfile.internal")
+  await atomicWrite(generatedInternalPath, caddyInternalContent)
+  console.log(`  ${generatedInternalPath}`)
+
+  // Also write directly to /etc/caddy/Caddyfile.internal (live Caddy config)
+  const liveInternalPath = "/etc/caddy/Caddyfile.internal"
+  try {
+    await atomicWrite(liveInternalPath, caddyInternalContent)
+    console.log(`  ${liveInternalPath} (live)`)
+  } catch (err) {
+    console.warn(`  ⚠ Could not write ${liveInternalPath}: ${err instanceof Error ? err.message : err}`)
+  }
 
   // Caddyfile.shell and nginx SNI map are server-wide shared artifacts.
   // Only production generates them — staging sites don't need shell routing.

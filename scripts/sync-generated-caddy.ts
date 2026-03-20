@@ -86,7 +86,9 @@ const existingHosts = [
   ...extractHostsFromCaddyfile("/etc/caddy/Caddyfile.prod"),
   ...extractHostsFromCaddyfile("/etc/caddy/Caddyfile.staging"),
   ...extractHostsFromCaddyfile("/etc/caddy/Caddyfile"),
-  ...extractHostsFromCaddyfile(resolve(aliveRoot, "ops/caddy/Caddyfile")),
+  // NOTE: Do NOT extract from ops/caddy/Caddyfile — it contains legacy inline
+  // site blocks that are being replaced by the generated routing file.
+  // Extracting from it would block ALL generated sites from the filtered output.
 ]
 
 const blocked = new Set([...reserved, ...previewForReserved, ...existingHosts])
