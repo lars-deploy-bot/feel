@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 import { useIsStreamActive } from "@/lib/stores/streamingStore"
+import { useTabDataStore } from "@/lib/stores/tabDataStore"
 import { type Tab, useActiveTab, useTabActions, useWorkspaceTabs } from "@/lib/stores/tabStore"
+import { isOpen } from "@/lib/tabs/tabModel"
 import type { TabGroupId, TabId } from "@/lib/types/ids"
 
 /**
@@ -125,7 +127,11 @@ export function useActiveSession(workspace: string | null): ActiveSession {
   const hasHydrated = useAppHydrated()
   const initializedWorkspaceRef = useRef<string | null>(null)
 
-  // Initialize first tab when workspace changes and no active tab exists
+  // Initialize first tab when workspace changes and no active tab exists.
+  // NOTE: workspaceTabs is intentionally read from store state (not from the
+  // hook) to avoid an infinite re-render loop. The useWorkspaceTabs selector
+  // returns a new array reference on every render due to .filter(), which
+  // would cause this effect to re-fire endlessly.
   useEffect(() => {
     if (!workspace || !hasHydrated) return
 
@@ -135,7 +141,9 @@ export function useActiveSession(workspace: string | null): ActiveSession {
       return
     }
 
-    const openTabs = workspaceTabs.filter(t => !t.closedAt)
+    // Read tabs from store state directly to avoid dependency on unstable array reference
+    const allTabs = useTabDataStore.getState().tabsByWorkspace[workspace] ?? []
+    const openTabs = allTabs.filter(isOpen)
     if (openTabs.length > 0) {
       // Pick the most recently created tab (newest first)
       const sortedByNewest = [...openTabs].sort((a, b) => b.createdAt - a.createdAt)
@@ -149,7 +157,7 @@ export function useActiveSession(workspace: string | null): ActiveSession {
       initializedWorkspaceRef.current = workspace
       createTabGroupWithTab(workspace)
     }
-  }, [workspace, hasHydrated, activeTab, workspaceTabs, setActiveTab, createTabGroupWithTab])
+  }, [workspace, hasHydrated, activeTab, setActiveTab, createTabGroupWithTab])
 
   // Tab.id IS the conversation key - no separate sessionId
   const tabId = activeTab?.id ?? null
