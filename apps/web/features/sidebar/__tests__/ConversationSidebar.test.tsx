@@ -27,16 +27,21 @@ vi.mock("../hooks/useConversationData", () => ({
     archivedConversations: [],
     favorites: new Set<string>(),
     toggleFavoriteWorkspace: vi.fn(),
-    setConversationFavorited: vi.fn(),
     userDisplay: "Reviewer",
   }),
 }))
 
 vi.mock("../hooks/useConversationGroups", () => ({
   useConversationGroups: () => ({
-    favoriteGroups: [],
-    activeConversations: [
-      { id: "conv-1", workspace: "example.com", source: "chat", title: "Test", updatedAt: Date.now() },
+    workspaceGroups: [
+      {
+        workspace: "example.com",
+        isFavorite: false,
+        conversations: [
+          { id: "conv-1", workspace: "example.com", source: "chat", title: "Test", updatedAt: Date.now() },
+        ],
+        archivedConversations: [],
+      },
     ],
     expandedWorkspaces: new Set<string>(),
     toggleExpanded: vi.fn(),
@@ -56,43 +61,16 @@ vi.mock("../hooks/useArchiveActions", () => ({
   }),
 }))
 
-vi.mock("../hooks/useFavoriteDragDrop", () => ({
-  useFavoriteDragDrop: () => ({
-    dragOverZone: null,
-    handleDropFavorites: vi.fn(),
-    handleDropBelow: vi.fn(),
-    handleDragOverFavorites: vi.fn(),
-    handleDragOverBelow: vi.fn(),
-    handleDragLeave: vi.fn(),
-  }),
-}))
-
 vi.mock("../components/AccountMenu", () => ({
   AccountMenu: () => <div data-testid="account-menu">Account</div>,
-}))
-
-vi.mock("../components/ArchivedSection", () => ({
-  ArchivedSection: () => null,
 }))
 
 vi.mock("../components/CollapsedRail", () => ({
   CollapsedRail: () => <div data-testid="collapsed-rail">Rail</div>,
 }))
 
-vi.mock("../components/FavoritesList", () => ({
-  FavoritesList: () => <div data-testid="favorites-list">Favorites</div>,
-}))
-
-vi.mock("../components/ConversationList", () => ({
-  ConversationList: ({ conversations }: { conversations: Array<{ id: string }> }) => (
-    <div data-testid="conversation-list">
-      {conversations.map(c => (
-        <div key={c.id} data-testid="conversation-item">
-          {c.id}
-        </div>
-      ))}
-    </div>
-  ),
+vi.mock("../components/WorkspaceGroupsList", () => ({
+  WorkspaceGroupsList: () => <div data-testid="workspace-groups-list">Workspace Groups</div>,
 }))
 
 vi.mock("../sidebarStore", () => ({
@@ -133,18 +111,16 @@ describe("ConversationSidebar", () => {
     expect(screen.getAllByTestId("workspace-switcher")).toHaveLength(2)
   })
 
-  it("renders favorites list and conversation items in both viewports", () => {
+  it("renders workspace groups list in both viewports", () => {
     render(<ConversationSidebar {...defaultProps} />)
 
-    expect(screen.getAllByTestId("favorites-list")).toHaveLength(2)
-    expect(screen.getAllByTestId("conversation-item")).toHaveLength(2)
+    expect(screen.getAllByTestId("workspace-groups-list")).toHaveLength(2)
   })
 
   it("shows settings nav instead of conversations in settings mode", () => {
     render(<ConversationSidebar {...defaultProps} settingsMode />)
 
     expect(screen.getAllByTestId("settings-nav")).toHaveLength(2)
-    expect(screen.queryByTestId("conversation-item")).toBeNull()
-    expect(screen.queryByTestId("favorites-list")).toBeNull()
+    expect(screen.queryByTestId("workspace-groups-list")).toBeNull()
   })
 })

@@ -128,7 +128,7 @@ if [[ ! -d "$BUILD_PATH" ]]; then
 fi
 
 # Validate build has required files (server.js)
-SERVER_JS="$BUILD_PATH/standalone/apps/web/server.js"
+SERVER_JS="$BUILD_PATH/apps/web/server.js"
 if [[ ! -f "$SERVER_JS" ]]; then
     log_error "Build is invalid - missing server.js: $SERVER_JS"
     log_error "This build may be corrupted or incomplete."

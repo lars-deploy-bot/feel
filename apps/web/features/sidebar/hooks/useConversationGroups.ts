@@ -6,42 +6,61 @@ import { AUTOMATION_RUN_SOURCE } from "@/lib/db/messageDb"
 import type { WorkspaceGroup } from "../types"
 
 /**
- * Splits conversations into favorite workspace groups and ungrouped active list.
- * Manages expanded/collapsed state per workspace, auto-expands current workspace.
+ * Groups all conversations by workspace.
+ * Favorite workspaces appear first, non-favorites after.
+ * Archived conversations in non-favorite workspaces are hidden ("poof").
  */
 export function useConversationGroups(
   conversations: DbConversation[],
+  archivedConversations: DbConversation[],
   favorites: ReadonlySet<string>,
   currentWorkspace: string | null,
 ) {
-  const favoriteWorkspaces = useMemo(() => [...favorites].sort(), [favorites])
-
-  const { favoriteGroups, activeConversations } = useMemo(() => {
-    const favByWs = new Map<string, DbConversation[]>()
-    const active: DbConversation[] = []
-
-    for (const ws of favoriteWorkspaces) {
-      favByWs.set(ws, [])
-    }
-
+  const workspaceGroups = useMemo(() => {
+    // Group active conversations by workspace
+    const activeByWs = new Map<string, DbConversation[]>()
     for (const c of conversations) {
       if (c.source === AUTOMATION_RUN_SOURCE) continue
-
-      const wsBucket = favByWs.get(c.workspace)
-      if (c.favorited && wsBucket) {
-        wsBucket.push(c)
-      } else {
-        active.push(c)
-      }
+      const list = activeByWs.get(c.workspace) ?? []
+      list.push(c)
+      activeByWs.set(c.workspace, list)
     }
 
-    const groups: WorkspaceGroup[] = favoriteWorkspaces.map(ws => ({
-      workspace: ws,
-      conversations: favByWs.get(ws) ?? [],
-    }))
+    // Group archived conversations by workspace (only for favorites — non-favorite archived = "poof")
+    const archivedByWs = new Map<string, DbConversation[]>()
+    for (const c of archivedConversations) {
+      if (c.source === AUTOMATION_RUN_SOURCE) continue
+      if (!favorites.has(c.workspace)) continue
+      const list = archivedByWs.get(c.workspace) ?? []
+      list.push(c)
+      archivedByWs.set(c.workspace, list)
+    }
 
-    return { favoriteGroups: groups, activeConversations: active }
-  }, [conversations, favoriteWorkspaces])
+    // Collect all workspaces that should appear
+    const allWorkspaces = new Set<string>()
+    for (const ws of favorites) allWorkspaces.add(ws)
+    for (const ws of activeByWs.keys()) allWorkspaces.add(ws)
+    for (const ws of archivedByWs.keys()) allWorkspaces.add(ws)
+
+    // Build groups
+    const groups: WorkspaceGroup[] = []
+    for (const ws of allWorkspaces) {
+      groups.push({
+        workspace: ws,
+        isFavorite: favorites.has(ws),
+        conversations: activeByWs.get(ws) ?? [],
+        archivedConversations: archivedByWs.get(ws) ?? [],
+      })
+    }
+
+    // Sort: favorites first (alphabetically), then non-favorites (alphabetically)
+    groups.sort((a, b) => {
+      if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1
+      return a.workspace.localeCompare(b.workspace)
+    })
+
+    return groups
+  }, [conversations, archivedConversations, favorites])
 
   // Expanded/collapsed workspace state
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(() => new Set())
@@ -66,8 +85,7 @@ export function useConversationGroups(
   }, [currentWorkspace])
 
   return {
-    favoriteGroups,
-    activeConversations,
+    workspaceGroups,
     expandedWorkspaces,
     toggleExpanded,
   }

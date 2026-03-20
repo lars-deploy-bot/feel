@@ -8,14 +8,11 @@ import { SettingsNav } from "@/features/settings/SettingsNav"
 import { TOP_BAR_HEIGHT } from "@/lib/layout"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { AccountMenu } from "./components/AccountMenu"
-import { ArchivedSection } from "./components/ArchivedSection"
 import { CollapsedRail } from "./components/CollapsedRail"
-import { ConversationList } from "./components/ConversationList"
-import { FavoritesList } from "./components/FavoritesList"
+import { WorkspaceGroupsList } from "./components/WorkspaceGroupsList"
 import { useArchiveActions } from "./hooks/useArchiveActions"
 import { useConversationData } from "./hooks/useConversationData"
 import { useConversationGroups } from "./hooks/useConversationGroups"
-import { useFavoriteDragDrop } from "./hooks/useFavoriteDragDrop"
 import { useStreamingConversations } from "./hooks/useStreamingConversations"
 import { styles } from "./sidebar-styles"
 import { useSidebarActions, useSidebarOpen } from "./sidebarStore"
@@ -71,18 +68,13 @@ export function ConversationSidebar({
   const worktreeEnabled = useFeatureFlag("WORKTREES")
 
   // Data
-  const {
-    conversations,
-    archivedConversations,
-    favorites,
-    toggleFavoriteWorkspace,
-    setConversationFavorited,
-    userDisplay,
-  } = useConversationData()
+  const { conversations, archivedConversations, favorites, toggleFavoriteWorkspace, userDisplay } =
+    useConversationData()
 
   // Derived state
-  const { favoriteGroups, activeConversations, expandedWorkspaces, toggleExpanded } = useConversationGroups(
+  const { workspaceGroups, expandedWorkspaces, toggleExpanded } = useConversationGroups(
     conversations,
+    archivedConversations,
     favorites,
     workspace,
   )
@@ -91,14 +83,6 @@ export function ConversationSidebar({
   // Interactions
   const { archiveConfirmingId, handleArchiveClick, handleCancelArchive, handleArchiveAllInWorkspace } =
     useArchiveActions(conversations, onArchiveTabGroup)
-  const {
-    dragOverZone,
-    handleDropFavorites,
-    handleDropBelow,
-    handleDragOverFavorites,
-    handleDragOverBelow,
-    handleDragLeave,
-  } = useFavoriteDragDrop(conversations, favorites, toggleFavoriteWorkspace, setConversationFavorited)
 
   // Navigation
   const handleTabGroupClick = useCallback(
@@ -126,7 +110,7 @@ export function ConversationSidebar({
     return () => document.removeEventListener("keydown", handleEscape)
   }, [isOpen, closeSidebar, settingsMode, onToggleSettings])
 
-  const hasConversations = conversations.length > 0 || archivedConversations.length > 0 || favoriteGroups.length > 0
+  const hasConversations = workspaceGroups.length > 0
 
   // Shared sidebar content
   const renderContent = (isMobile: boolean) => (
@@ -164,68 +148,24 @@ export function ConversationSidebar({
                 Start typing to begin
               </div>
             ) : (
-              <>
-                <FavoritesList
-                  favoriteGroups={favoriteGroups}
-                  expandedWorkspaces={expandedWorkspaces}
-                  onToggleExpanded={toggleExpanded}
-                  activeTabGroupId={activeTabGroupId}
-                  streamingConversationIds={streamingConversationIds}
-                  archiveConfirmingId={archiveConfirmingId}
-                  onTabGroupClick={handleTabGroupClick}
-                  onArchiveClick={handleArchiveClick}
-                  onCancelArchive={handleCancelArchive}
-                  onRenameTabGroup={onRenameTabGroup}
-                  onNewConversationInWorkspace={onNewConversationInWorkspace}
-                  onRemoveFavorite={toggleFavoriteWorkspace}
-                  onArchiveAllInWorkspace={handleArchiveAllInWorkspace}
-                  onManageFavorites={onSettingsClick}
-                  dragOverZone={dragOverZone}
-                  onDrop={handleDropFavorites}
-                  onDragOver={handleDragOverFavorites}
-                  onDragLeave={handleDragLeave}
-                />
-
-                {/* Divider + new conversation button */}
-                <div className="mx-4 my-2 border-t border-black/[0.06] dark:border-white/[0.06]" />
-                <button
-                  type="button"
-                  onClick={onNewConversation}
-                  className="flex items-center gap-2.5 px-4 py-2.5 mx-2 rounded-lg text-[13px] text-black/30 dark:text-white/30 hover:text-black/50 dark:hover:text-white/50 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-all duration-100"
-                >
-                  <Plus size={14} strokeWidth={1.75} className="shrink-0" />
-                  <span>New conversation</span>
-                </button>
-
-                {/* Ungrouped conversations */}
-                <ul
-                  className={`flex flex-col gap-0.5 mt-2 min-h-[40px] rounded-lg transition-colors duration-150 list-none p-0 m-0 ${
-                    dragOverZone === "below" ? "bg-black/[0.03] dark:bg-white/[0.03]" : ""
-                  }`}
-                  onDrop={handleDropBelow}
-                  onDragOver={handleDragOverBelow}
-                  onDragLeave={handleDragLeave}
-                >
-                  <ConversationList
-                    conversations={activeConversations}
-                    activeTabGroupId={activeTabGroupId}
-                    streamingConversationIds={streamingConversationIds}
-                    archiveConfirmingId={archiveConfirmingId}
-                    onTabGroupClick={handleTabGroupClick}
-                    onArchiveClick={handleArchiveClick}
-                    onCancelArchive={handleCancelArchive}
-                    onRenameTabGroup={onRenameTabGroup}
-                  />
-                </ul>
-              </>
+              <WorkspaceGroupsList
+                workspaceGroups={workspaceGroups}
+                expandedWorkspaces={expandedWorkspaces}
+                onToggleExpanded={toggleExpanded}
+                activeTabGroupId={activeTabGroupId}
+                streamingConversationIds={streamingConversationIds}
+                archiveConfirmingId={archiveConfirmingId}
+                onTabGroupClick={handleTabGroupClick}
+                onArchiveClick={handleArchiveClick}
+                onCancelArchive={handleCancelArchive}
+                onRenameTabGroup={onRenameTabGroup}
+                onNewConversationInWorkspace={onNewConversationInWorkspace}
+                onToggleFavorite={toggleFavoriteWorkspace}
+                onArchiveAllInWorkspace={handleArchiveAllInWorkspace}
+                onUnarchiveTabGroup={onUnarchiveTabGroup}
+              />
             )}
           </div>
-
-          <ArchivedSection
-            archivedConversations={archivedConversations}
-            onUnarchiveTabGroup={onUnarchiveTabGroup}
-            onTabGroupClick={handleTabGroupClick}
-          />
         </>
       )}
 

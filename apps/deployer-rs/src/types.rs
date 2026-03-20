@@ -148,7 +148,6 @@ pub(crate) struct SystemdConfig {
     /// Template for the systemd unit name, e.g. "alive-{environment}.service"
     pub(crate) unit_template: String,
     /// Template for the release directory, e.g. ".builds/{environment}"
-    #[allow(dead_code)]
     pub(crate) release_dir_template: String,
     /// Path within the build output that becomes the runtime root (relative to repo root)
     pub(crate) release_root: String,

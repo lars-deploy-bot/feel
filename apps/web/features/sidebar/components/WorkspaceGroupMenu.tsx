@@ -6,20 +6,20 @@ import { usePortalMenu } from "../hooks/usePortalMenu"
 
 interface WorkspaceGroupMenuProps {
   workspace: string
+  isFavorite: boolean
   conversationCount: number
   onNewConversation: (workspace: string) => void
-  onRemoveFavorite: (workspace: string) => void
+  onToggleFavorite: (workspace: string) => void
   onArchiveAll: (workspace: string) => void
-  onManageFavorites: () => void
 }
 
 export function WorkspaceGroupMenu({
   workspace,
+  isFavorite,
   conversationCount,
   onNewConversation,
-  onRemoveFavorite,
+  onToggleFavorite,
   onArchiveAll,
-  onManageFavorites,
 }: WorkspaceGroupMenuProps) {
   const { open, pos, triggerRef, menuRef, toggle, close } = usePortalMenu("below")
 
@@ -64,11 +64,20 @@ export function WorkspaceGroupMenu({
               className={itemClass}
               onClick={() => {
                 close()
-                onRemoveFavorite(workspace)
+                onToggleFavorite(workspace)
               }}
             >
-              <HeartOff size={14} strokeWidth={1.5} />
-              Remove favorite
+              {isFavorite ? (
+                <>
+                  <HeartOff size={14} strokeWidth={1.5} />
+                  Remove favorite
+                </>
+              ) : (
+                <>
+                  <Heart size={14} strokeWidth={1.5} />
+                  Add to favorites
+                </>
+              )}
             </button>
 
             {conversationCount > 0 && (
@@ -84,20 +93,6 @@ export function WorkspaceGroupMenu({
                 Archive all
               </button>
             )}
-
-            <div className="border-t border-black/[0.06] dark:border-white/[0.06] my-1" />
-
-            <button
-              type="button"
-              className={itemClass}
-              onClick={() => {
-                close()
-                onManageFavorites()
-              }}
-            >
-              <Heart size={14} strokeWidth={1.5} />
-              Manage favorites
-            </button>
           </div>,
           document.body,
         )}

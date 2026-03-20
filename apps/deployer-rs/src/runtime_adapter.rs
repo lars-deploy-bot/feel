@@ -876,13 +876,63 @@ async fn activate_docker(params: &DeployParams<'_>, log_path: &Path) -> Result<(
 
 async fn activate_systemd(params: &DeployParams<'_>, log_path: &Path) -> Result<()> {
     let unit = resolve_systemd_unit_name(params.config, &params.environment.name);
+    let systemd_config = require_systemd_config(params.config)?;
+    let build_config = params.config.build.as_ref()
+        .ok_or_else(|| anyhow!("systemd runtime requires [build] section"))?;
 
-    // The repo IS the runtime. Turbo builds in-place:
-    //   packages/*/dist/   — workspace packages (workers need these)
-    //   apps/web/.next/    — Next.js build output
-    // The systemd unit runs server.js from the repo root.
-    // No copying, no symlinks, no release directories.
-    // Just restart the unit to pick up the new build.
+    // Resolve per-environment release directory from config template.
+    // e.g. ".builds/{environment}" → ".builds/staging"
+    let release_dir = systemd_config.release_dir_template
+        .replace("{environment}", &params.environment.name);
+    let release_path = params.context.repo_root.join(&release_dir);
+
+    tokio_fs::create_dir_all(&release_path).await
+        .with_context(|| format!("failed to create release dir {}", release_path.display()))?;
+
+    // Copy the primary build output (first in [build].outputs) to an isolated
+    // per-environment directory. This prevents deploying one environment from
+    // destroying another's runtime files.
+    if let Some(primary_output) = build_config.outputs.first() {
+        let source = params.context.repo_root.join(primary_output);
+        let output_name = std::path::Path::new(primary_output)
+            .file_name()
+            .ok_or_else(|| anyhow!("invalid output path: {}", primary_output))?;
+        let target = release_path.join(output_name);
+        let staging_name = format!("{}.new", output_name.to_string_lossy());
+        let staging = release_path.join(&staging_name);
+
+        // Clean up any leftover staging dir from a previous failed deploy
+        if tokio_fs::try_exists(&staging).await.unwrap_or(false) {
+            tokio_fs::remove_dir_all(&staging).await
+                .with_context(|| format!("failed to remove stale staging dir {}", staging.display()))?;
+        }
+
+        // Copy to staging dir first
+        let mut cmd = Command::new("cp");
+        cmd.arg("-r").arg(&source).arg(&staging);
+        crate::logging::run_logged_command(
+            cmd, log_path, &format!("copy {} to {}", primary_output, staging.display()),
+        ).await?;
+
+        // Atomic swap: move current out, move new in, remove old
+        let old_name = format!("{}.old", output_name.to_string_lossy());
+        let old = release_path.join(&old_name);
+        if tokio_fs::try_exists(&old).await.unwrap_or(false) {
+            tokio_fs::remove_dir_all(&old).await.ok();
+        }
+        if tokio_fs::try_exists(&target).await.unwrap_or(false) {
+            tokio_fs::rename(&target, &old).await
+                .with_context(|| format!("failed to move current {} to .old", output_name.to_string_lossy()))?;
+        }
+        tokio_fs::rename(&staging, &target).await
+            .with_context(|| format!("failed to move new {} into place", output_name.to_string_lossy()))?;
+        // Clean up old — not critical
+        if tokio_fs::try_exists(&old).await.unwrap_or(false) {
+            tokio_fs::remove_dir_all(&old).await.ok();
+        }
+
+        append_log(log_path, &format!("isolated {} at {}\n", primary_output, target.display())).await?;
+    }
 
     crate::systemd::restart_systemd_unit(&unit, log_path).await?;
     append_log(log_path, &format!("activated via {}\n", unit)).await?;

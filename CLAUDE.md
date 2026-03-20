@@ -26,12 +26,13 @@ Both servers run the same codebase. Server 1 is primary production, Server 2 is 
 
 ## Deploy Control Plane
 
-Alive now has a deploy control plane in addition to the legacy `build-and-serve.sh` path.
+The deploy control plane handles all staging and production deployments.
 
 - **Service**: `apps/deployer-rs/` runs as `alive-deployer.service` and exposes a localhost health/control surface on port `5095`
 - **Database schema**: Deploy state lives in `deploy.*` tables (`deploy.builds`, `deploy.releases`, `deploy.deployments`, `deploy.environments`)
 - **Flow**: `scripts/deployment/deploy-via-deployer.sh` inserts a pending build, waits for the Rust worker to create a release, then inserts a deployment and tails status via `/health/details`
-- **Current rollout**: both staging and production use the deployer path (`deploy-via-deployer.sh`). The legacy `build-and-serve.sh` remains as a fallback.
+- **Build isolation**: Build runs in the repo checkout, then `activate_systemd` copies the primary build output to `.builds/{environment}/standalone/` (from `alive.toml` `[systemd].release_dir_template`). Each environment gets its own copy — staging deploys cannot break production's runtime files.
+- **Systemd services**: `alive-staging.service` (port 8998) and `alive-production.service` (port 9000) run from `.builds/{env}/standalone/apps/web/server.js`. `NODE_PATH` points at repo `node_modules` for workspace package resolution.
 
 **Operational commands:**
 - `make deployer` - build and restart only `alive-deployer`
@@ -80,7 +81,9 @@ Use the `/roadmap` skill to manage issues, milestones, and the project board. Th
     - **Runtime sets**: `RUN_STATUSES`, `TRIGGER_TYPES`, `ACTION_TYPES`, `JOB_STATUSES`
     - **Zod schemas**: Derive with `z.enum(AppConstants.app.Enums.<name>)`, never hand-write the values
     - Source file: `packages/database/src/automation-enums.ts`, derived from auto-generated `AppConstants`
-24. **`canUseTool` IS BROKEN IN THE SDK — DO NOT RELY ON IT** - The Claude Agent SDK's `canUseTool` callback is **NEVER CALLED** by the CLI subprocess. Tested empirically on SDK v0.2.41: regardless of `permissionMode` (`default`, `acceptEdits`, `dontAsk`), the CLI auto-approves all tools without sending `can_use_tool` control requests back via stdio. Even a callback that returns `{ behavior: "deny" }` for everything is silently ignored — tools run anyway. **Our ONLY enforceable security layers are:** (1) `allowedTools` / `disallowedTools` arrays passed to the SDK (CLI enforces these), (2) `cwd` workspace sandboxing (CLI restricts file tools to cwd), (3) MCP tool-level `validateWorkspacePath()`. Do not put security logic in `canUseTool`; the CLI subprocess will not enforce it. If Anthropic fixes this in a future SDK version, re-verify with `scripts/verify-canUseTool-callback.mjs` before trusting it.
+24. **NO SYMLINKS IN BUILD OUTPUTS** - Never use `ln -sfn` for build artifacts that a running server depends on. Symlinks let one environment's rebuild destroy another's runtime files. Always `cp -r`. Staging and production each get their own isolated copy under `.builds/{environment}/`. The deployer-rs `activate_systemd` step copies build outputs to the per-environment release directory (from `alive.toml` `[systemd].release_dir_template`) before restarting the service.
+25. **DEPLOYER CODE IS REPO-AGNOSTIC** - The deployer-rs (`apps/deployer-rs/`) must work for any app, not just Alive. Paths come from `alive.toml` config (`[build].outputs`, `[systemd].release_dir_template`, `[systemd].unit_template`), not hardcoded. Environment names (`staging`, `production`) are fine to hardcode — all our apps use those.
+26. **`canUseTool` IS BROKEN IN THE SDK — DO NOT RELY ON IT** - The Claude Agent SDK's `canUseTool` callback is **NEVER CALLED** by the CLI subprocess. Tested empirically on SDK v0.2.41: regardless of `permissionMode` (`default`, `acceptEdits`, `dontAsk`), the CLI auto-approves all tools without sending `can_use_tool` control requests back via stdio. Even a callback that returns `{ behavior: "deny" }` for everything is silently ignored — tools run anyway. **Our ONLY enforceable security layers are:** (1) `allowedTools` / `disallowedTools` arrays passed to the SDK (CLI enforces these), (2) `cwd` workspace sandboxing (CLI restricts file tools to cwd), (3) MCP tool-level `validateWorkspacePath()`. Do not put security logic in `canUseTool`; the CLI subprocess will not enforce it. If Anthropic fixes this in a future SDK version, re-verify with `scripts/verify-canUseTool-callback.mjs` before trusting it.
 
 ## E2B Sandbox Migration (ACTIVE)
 
@@ -172,6 +175,7 @@ Alive is a **multi-tenant development platform** that enables Claude AI to assis
 | `shell-server-go` | - | Go rewrite of shell-server (WIP) |
 | `preview-proxy` | configurable | Go preview proxy for workspace preview subdomains |
 | `worker` | 5070 | Automation scheduler + executor (standalone Bun, survives web deploys) |
+| `deployer-rs` | 5095 | Rust deploy worker: builds, releases, deployments. Health API on localhost |
 | `image-processor` | 5012 | Python/FastAPI image manipulation service |
 | `mcp-servers/google-scraper` | - | MCP server for Google Maps business search |
 
@@ -535,7 +539,7 @@ make logs-dev    # View dev environment logs
 
 # Status & monitoring
 make status      # Show all environments
-make rollback    # Interactive rollback (if needed)
+make deploy-status # Check if a deployment is running
 ```
 
 ### Deploying from Chat
@@ -548,7 +552,7 @@ To deploy individual websites (not the Alive itself), use the API endpoint:
 ```bash
 # Via web UI at /deploy (recommended)
 # Or via API:
-curl -X POST https://terminal.alive.best/api/deploy-subdomain \
+curl -X POST https://app.alive.best/api/deploy-subdomain \
   -H "Content-Type: application/json" \
   -d '{"domain": "newsite.alive.best", "email": "user@example.com"}'
 ```
@@ -558,7 +562,7 @@ curl -X POST https://terminal.alive.best/api/deploy-subdomain \
 
 ## Key Dependencies
 
-Next.js 16 (App Router), React 19, Claude Agent SDK ^0.2.34, Bun 1.2.22+, TypeScript 5.x (strict), TailwindCSS 4.x. See `package.json` for exact versions.
+Next.js 16 (App Router), React 19, Claude Agent SDK ^0.2.80, Bun 1.3+, TypeScript 5.9 (strict), TailwindCSS 4.x. See `package.json` for exact versions.
 
 ## Common Issues & Solutions
 
@@ -582,7 +586,7 @@ Next.js 16 (App Router), React 19, Claude Agent SDK ^0.2.34, Bun 1.2.22+, TypeSc
 
 | Template ID | Domain | Port | Mode |
 |---|---|---|---|
-| `tmpl_blank` | `blank.alive.best` | 3594 | `bun run preview` |
+| `tmpl_blank` | `blank.alive.best` | 3594 | `bun run dev` |
 | `tmpl_gallery` | `template1.alive.best` | 3352 | `bun run dev` |
 | `tmpl_event` | `event.alive.best` | 3345 | `bun run dev` |
 | `tmpl_saas` | `saas.alive.best` | 3346 | `bun run dev` |

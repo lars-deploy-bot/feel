@@ -16,7 +16,7 @@ export interface ConversationListProps {
 
 /**
  * Renders a list of ConversationItem components with consistent props.
- * Single implementation used by both FavoritesList and the ungrouped list.
+ * Single implementation used by WorkspaceGroupsList for each workspace group.
  */
 export function ConversationList({
   conversations,

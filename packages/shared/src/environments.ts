@@ -12,7 +12,7 @@
  *   - Direct access: environments.dev.port, environments.production.processName
  */
 
-import { DOMAINS, PATHS } from "./config.js"
+import { DOMAINS } from "./config.js"
 
 export type EnvironmentKey = "production" | "staging" | "dev"
 
@@ -63,7 +63,7 @@ export const environments: Record<EnvironmentKey, Environment> = {
     processName: "alive-production",
     serviceType: "systemd",
     systemdService: "alive-production.service",
-    serverScript: ".builds/production/current/standalone/apps/web/server.js",
+    serverScript: ".builds/production/standalone/apps/web/server.js",
     buildPath: ".builds/production",
     isProduction: true,
     hasHotReload: false,
@@ -80,7 +80,7 @@ export const environments: Record<EnvironmentKey, Environment> = {
     processName: "alive-staging",
     serviceType: "systemd",
     systemdService: "alive-staging.service",
-    serverScript: ".builds/staging/current/standalone/apps/web/server.js",
+    serverScript: ".builds/staging/standalone/apps/web/server.js",
     buildPath: ".builds/staging",
     isProduction: false,
     hasHotReload: false,
