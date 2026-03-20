@@ -11,8 +11,7 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
-import { ensureE2bDirectory, writeE2bFile } from "@/lib/sandbox/e2b-file-runtime"
+import { getSessionRegistry } from "@/lib/sandbox/session-registry"
 
 /**
  * Maximum file size for uploads (10MB)
@@ -255,9 +254,10 @@ async function handleE2bUpload(
   requestId: string,
 ): Promise<NextResponse> {
   try {
+    const session = await getSessionRegistry().acquire(domain)
     const arrayBuffer = await file.arrayBuffer()
-    await ensureE2bDirectory(domain, UPLOADS_DIR)
-    await writeE2bFile(domain, `${UPLOADS_DIR}/${sanitizedName}`, arrayBuffer)
+    await session.files.makeDir(UPLOADS_DIR)
+    await session.files.write(`${UPLOADS_DIR}/${sanitizedName}`, arrayBuffer)
 
     const relativePath = `${UPLOADS_DIR}/${sanitizedName}`
     console.log(`[Upload ${requestId}] E2B uploaded: ${file.name} -> ${relativePath} (${file.size} bytes)`)
@@ -275,9 +275,6 @@ async function handleE2bUpload(
         status: 403,
         details: { requestId },
       })
-    }
-    if (err instanceof SandboxNotReadyError) {
-      return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
     }
     console.error(`[Upload ${requestId}] E2B upload error:`, err)
     Sentry.captureException(err)

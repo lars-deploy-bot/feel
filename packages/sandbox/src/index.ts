@@ -14,6 +14,8 @@ export type { E2bErrorReporter, E2bMcpConfig } from "./e2b-mcp.js"
 export { createE2bMcp } from "./e2b-mcp.js"
 export type { SandboxDomain, SandboxPersistence } from "./manager.js"
 export { SANDBOX_WORKSPACE_ROOT, SandboxManager } from "./manager.js"
+export type { SandboxSessionRegistry, SandboxSessionRegistryConfig } from "./registry.js"
+export { createSandboxSessionRegistry } from "./registry.js"
 export type {
   ConnectedSandboxRuntime,
   ConnectRunningSandboxConfig,
@@ -31,3 +33,14 @@ export {
   RuntimePathValidationError,
   resolveSandboxWorkspacePath,
 } from "./runtime-facade.js"
+// Session API — the new interface
+export type { SandboxFileEntry, ScopedFilesystem } from "./scoped-files.js"
+export { createScopedFilesystem } from "./scoped-files.js"
+export type {
+  SandboxCommandHandle,
+  SandboxCommandResult,
+  SandboxSession,
+  SandboxSessionCommands,
+  SandboxSessionDomain,
+} from "./session.js"
+export { createSandboxSession } from "./session.js"
