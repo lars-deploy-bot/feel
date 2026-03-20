@@ -23,7 +23,7 @@ export interface SandboxDomain {
   hostname: string
   sandbox_id: string | null
   sandbox_status: SandboxStatus | null
-  is_test_env?: boolean
+  is_test_env?: boolean | null
   test_run_id?: string | null
 }
 
@@ -243,7 +243,7 @@ export class SandboxManager {
       metadata: {
         domain_id: domain.domain_id,
         hostname: domain.hostname,
-        ...(domain.is_test_env !== undefined ? { is_test_env: String(domain.is_test_env) } : {}),
+        ...(domain.is_test_env != null ? { is_test_env: String(domain.is_test_env) } : {}),
         ...(domain.test_run_id ? { test_run_id: domain.test_run_id } : {}),
       },
     })

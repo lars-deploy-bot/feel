@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
-import { RuntimePathValidationError, resolveSandboxWorkspacePath, SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
+import { RuntimePathValidationError, SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -10,8 +10,7 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
-import { listE2bDirectory } from "@/lib/sandbox/e2b-file-runtime"
+import { getSessionRegistry } from "@/lib/sandbox/session-registry"
 
 interface FileInfo {
   name: string
@@ -131,16 +130,8 @@ export async function POST(request: NextRequest) {
 
 async function handleE2bList(domain: ResolvedDomain, targetPath: string, requestId: string): Promise<NextResponse> {
   try {
-    resolveSandboxWorkspacePath(targetPath, { allowWorkspaceRoot: true })
-  } catch (err) {
-    if (err instanceof RuntimePathValidationError) {
-      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, { status: 403, details: { requestId } })
-    }
-    throw err
-  }
-
-  try {
-    const entries = await listE2bDirectory(domain, targetPath)
+    const session = await getSessionRegistry().acquire(domain)
+    const entries = await session.files.list(targetPath)
 
     const files: FileInfo[] = entries
       .filter(entry => !HIDDEN_ENTRIES.has(entry.name))
@@ -165,9 +156,6 @@ async function handleE2bList(domain: ResolvedDomain, targetPath: string, request
         status: 403,
         details: { requestId },
       })
-    }
-    if (err instanceof SandboxNotReadyError) {
-      return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
     }
     console.error(`[Files ${requestId}] E2B list error:`, err)
     Sentry.captureException(err)

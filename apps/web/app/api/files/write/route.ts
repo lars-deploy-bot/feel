@@ -1,7 +1,7 @@
 import { realpath, stat } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
-import { RuntimePathValidationError, resolveSandboxWorkspacePath } from "@webalive/sandbox"
+import { RuntimePathValidationError } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -11,8 +11,7 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
-import { writeE2bTextFile } from "@/lib/sandbox/e2b-file-runtime"
+import { getSessionRegistry } from "@/lib/sandbox/session-registry"
 
 const MAX_CONTENT_SIZE = 1024 * 1024
 
@@ -154,16 +153,8 @@ async function handleE2bWrite(
   requestId: string,
 ): Promise<NextResponse> {
   try {
-    resolveSandboxWorkspacePath(targetPath, { allowWorkspaceRoot: false })
-  } catch (err) {
-    if (err instanceof RuntimePathValidationError) {
-      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, { status: 403, details: { requestId } })
-    }
-    throw err
-  }
-
-  try {
-    await writeE2bTextFile(domain, targetPath, content)
+    const session = await getSessionRegistry().acquire(domain)
+    await session.files.write(targetPath, content)
     return NextResponse.json({ ok: true, path: targetPath })
   } catch (error) {
     if (error instanceof RuntimePathValidationError) {
@@ -172,10 +163,6 @@ async function handleE2bWrite(
         details: { requestId },
       })
     }
-    if (error instanceof SandboxNotReadyError) {
-      return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
-    }
-
     console.error(`[Files/Write ${requestId}] E2B write error:`, error)
     Sentry.captureException(error)
     return structuredErrorResponse(ErrorCodes.FILE_WRITE_ERROR, {

@@ -2,7 +2,7 @@ import type { Stats } from "node:fs"
 import { lstat, readdir, readlink, realpath, rm, unlink } from "node:fs/promises"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
-import { RuntimePathValidationError, resolveSandboxWorkspacePath } from "@webalive/sandbox"
+import { RuntimePathValidationError } from "@webalive/sandbox"
 import { isPathWithinWorkspace } from "@webalive/shared/path-security"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
@@ -11,8 +11,7 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ResolvedDomain, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
-import { SandboxNotReadyError } from "@/lib/sandbox/connect-sandbox"
-import { deleteE2bPath, getE2bFileEntryKind } from "@/lib/sandbox/e2b-file-runtime"
+import { getSessionRegistry } from "@/lib/sandbox/session-registry"
 
 /**
  * Critical files within /user that cannot be deleted.
@@ -325,16 +324,9 @@ async function handleE2bDelete(
   requestId: string,
 ): Promise<NextResponse> {
   try {
-    resolveSandboxWorkspacePath(targetPath, { allowWorkspaceRoot: false })
-  } catch (err) {
-    if (err instanceof RuntimePathValidationError) {
-      return structuredErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, { status: 403, details: { requestId } })
-    }
-    throw err
-  }
+    const session = await getSessionRegistry().acquire(domain)
 
-  try {
-    const entryKind = await getE2bFileEntryKind(domain, targetPath)
+    const entryKind = await session.files.getEntryKind(targetPath)
     const isDir = entryKind === "directory"
 
     // Directory requires recursive flag (mirrors systemd path)
@@ -349,14 +341,14 @@ async function handleE2bDelete(
       })
     }
 
-    const deleted = await deleteE2bPath(domain, targetPath)
+    await session.files.remove(targetPath)
 
     console.log(`[Delete ${requestId}] E2B deleted: ${targetPath}`)
 
     return NextResponse.json({
       ok: true,
       deleted: targetPath,
-      type: deleted.kind === "directory" ? "directory" : "file",
+      type: isDir ? "directory" : "file",
     })
   } catch (err) {
     if (err instanceof RuntimePathValidationError) {
@@ -365,9 +357,6 @@ async function handleE2bDelete(
         status: 403,
         details: { requestId },
       })
-    }
-    if (err instanceof SandboxNotReadyError) {
-      return structuredErrorResponse(ErrorCodes.SANDBOX_NOT_READY, { status: 503, details: { requestId } })
     }
     console.error(`[Delete ${requestId}] E2B delete error:`, err)
     Sentry.captureException(err)

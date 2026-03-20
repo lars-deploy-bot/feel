@@ -1,5 +1,4 @@
-import type { SandboxStatus } from "@webalive/database"
-import { SANDBOX_WORKSPACE_ROOT, SandboxManager } from "@webalive/sandbox"
+import { createSandboxSessionRegistry, SANDBOX_WORKSPACE_ROOT } from "@webalive/sandbox"
 import { assignPort } from "@webalive/site-controller"
 import type { Sandbox } from "e2b"
 import type { ResolvedDomain } from "@/lib/domain/resolve-domain-runtime"
@@ -13,7 +12,11 @@ export interface E2bSiteDeploymentResult {
   scratchWorkspace: string
 }
 
-async function updateSandboxState(domainId: string, sandboxId: string, status: SandboxStatus) {
+async function updateSandboxState(
+  domainId: string,
+  sandboxId: string,
+  status: import("@webalive/database").SandboxStatus,
+) {
   const app = await createAppClient("service")
   const { error } = await app
     .from("domains")
@@ -82,29 +85,23 @@ export async function prepareE2bSiteDeployment(params: {
 }
 
 export async function createInitialSiteSandbox(domain: ResolvedDomain, scratchWorkspace: string): Promise<void> {
-  const manager = new SandboxManager({
+  const registry = createSandboxSessionRegistry({
     persistence: {
       updateSandbox: updateSandboxState,
     },
     domain: getE2bDomain(),
   })
 
-  const sandbox = await manager.getOrCreate(
-    {
-      ...domain,
-      is_test_env: domain.is_test_env ?? undefined,
-    },
-    scratchWorkspace,
-  )
+  const session = await registry.acquire(domain, scratchWorkspace)
   try {
-    await ensureSandboxGitRepo(sandbox, domain.hostname)
+    await ensureSandboxGitRepo(session.raw, domain.hostname)
   } catch (error) {
     try {
-      await sandbox.kill()
+      await session.kill()
     } catch {
       // Ignore kill errors during rollback; best effort only.
     }
-    await markSandboxDead(domain.domain_id, sandbox.sandboxId)
+    await markSandboxDead(domain.domain_id, session.sandboxId)
     throw error
   }
 }
