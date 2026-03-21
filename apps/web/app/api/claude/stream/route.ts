@@ -161,7 +161,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const jar = await cookies()
+    // Parallelize cookies() and headers() — both are async in Next.js 15+ and independent
+    const [jar, headersList] = await Promise.all([cookies(), headers()])
     logger.log("Checking session cookie...")
 
     if (!hasSessionCookie(jar.get(COOKIE_NAMES.SESSION))) {
@@ -220,7 +221,7 @@ export async function POST(req: NextRequest) {
       logger.log("Using user-selected model:", userModel)
     }
 
-    const host = (await headers()).get("host")
+    const host = headersList.get("host")
     if (!host) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
