@@ -79,7 +79,13 @@ export function WorkspaceGroupMenu({
   )
 }
 
-function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+interface MenuItemProps {
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+}
+
+function MenuItem({ icon, label, onClick }: MenuItemProps) {
   return (
     <button
       type="button"

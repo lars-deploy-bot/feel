@@ -61,7 +61,10 @@ export async function setAuthCookie(user: TestTenant, context: BrowserContext, b
   const JWT_SECRET = process.env.JWT_SECRET
   if (!JWT_SECRET) throw new Error("JWT_SECRET not set — add it to .env.e2e.local")
 
-  const resolvedBaseUrl = baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:9547"
+  const resolvedBaseUrl = baseUrl ?? process.env.NEXT_PUBLIC_APP_URL
+  if (!resolvedBaseUrl) {
+    throw new Error("Base URL is required. Pass baseUrl or set NEXT_PUBLIC_APP_URL.")
+  }
   const parsedUrl = new URL(resolvedBaseUrl)
 
   // Create JWT payload with all required fields

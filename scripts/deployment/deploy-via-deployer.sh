@@ -28,9 +28,17 @@ if [[ "$ENVIRONMENT" != "staging" && "$ENVIRONMENT" != "production" ]]; then
     exit 1
 fi
 
-# Load credentials for production — the deploy schema lives in production Supabase,
-# which is what the API (port 5080) and deployer-rs both use.
-ENV_FILE="$PROJECT_ROOT/apps/web/.env.production"
+# Load credentials for the deploy control plane database.
+# The deployer-rs service is the source of truth — its EnvironmentFile (including
+# any systemd overrides) points at the correct database for deploy.* tables.
+# On Server 1 that's .env.production (cloud Supabase), on Server 2 it's .env.staging
+# (self-hosted Supabase) via /etc/systemd/system/alive-deployer.service.d/override.conf.
+DEPLOYER_ENV_FILE=$(systemctl show alive-deployer -p EnvironmentFiles --value 2>/dev/null | sed 's/ (ignore_errors=.*//')
+if [[ -z "$DEPLOYER_ENV_FILE" || ! -f "$DEPLOYER_ENV_FILE" ]]; then
+    # Fallback: production is the default (matches alive-deployer.service template)
+    DEPLOYER_ENV_FILE="$PROJECT_ROOT/apps/web/.env.production"
+fi
+ENV_FILE="$DEPLOYER_ENV_FILE"
 if [[ ! -f "$ENV_FILE" ]]; then
     log_error "Environment file not found: $ENV_FILE"
     exit 1

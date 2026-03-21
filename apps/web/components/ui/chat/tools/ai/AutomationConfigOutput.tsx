@@ -83,6 +83,7 @@ export function AutomationConfigOutput({ data, onSubmitAnswer }: AutomationConfi
     setWorkbenchMinimized(false)
 
     startCreate(configData, (message: string) => {
+      // Note: message format is controlled by WorkbenchAgents.handleCreateCancel/handleCreateDone
       if (message.includes("canceled")) {
         setStatus("canceled")
       } else {

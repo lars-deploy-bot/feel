@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@webalive/shared", () => ({
   CLAUDE_MODELS: {
@@ -56,6 +56,10 @@ const baseData = {
 }
 
 describe("AutomationConfigOutput", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it("opens the agents panel on mount", () => {
     render(<AutomationConfigOutput data={baseData} toolName="ask_automation_config" />)
 

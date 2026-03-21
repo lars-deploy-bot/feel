@@ -62,42 +62,17 @@ export const handlers = {
 
   custom: (builder: StreamBuilder, options?: { delay?: number }) => createStreamHandler(builder, options),
 
-  error: (message: string, options?: { delay?: number }) => async (route: Route) => {
-    if (options?.delay) {
-      await new Promise(r => setTimeout(r, options.delay))
-    }
-    const errorStream = new StreamBuilder().start().error(message).toNDJSON()
-    await route.fulfill({
-      status: 200,
-      contentType: "application/x-ndjson; charset=utf-8",
-      body: errorStream,
-    })
-  },
+  error: (message: string, options?: { delay?: number }) =>
+    createStreamHandler(new StreamBuilder().start().error(message), options),
 
-  maxTurns: (options?: { delay?: number }) => async (route: Route) => {
-    if (options?.delay) {
-      await new Promise(r => setTimeout(r, options.delay))
-    }
-    const errorStream = new StreamBuilder()
-      .start()
-      .error("Conversation reached maximum turn limit (25/25 turns)", ErrorCodes.ERROR_MAX_TURNS)
-      .toNDJSON()
-    await route.fulfill({
-      status: 200,
-      contentType: "application/x-ndjson; charset=utf-8",
-      body: errorStream,
-    })
-  },
+  maxTurns: (options?: { delay?: number }) =>
+    createStreamHandler(
+      new StreamBuilder()
+        .start()
+        .error("Conversation reached maximum turn limit (25/25 turns)", ErrorCodes.ERROR_MAX_TURNS),
+      options,
+    ),
 
-  timeout: (options?: { delay?: number }) => async (route: Route) => {
-    if (options?.delay) {
-      await new Promise(r => setTimeout(r, options.delay))
-    }
-    const errorStream = new StreamBuilder().start().error("Request timeout", ErrorCodes.QUERY_FAILED).toNDJSON()
-    await route.fulfill({
-      status: 200,
-      contentType: "application/x-ndjson; charset=utf-8",
-      body: errorStream,
-    })
-  },
+  timeout: (options?: { delay?: number }) =>
+    createStreamHandler(new StreamBuilder().start().error("Request timeout", ErrorCodes.QUERY_FAILED), options),
 }

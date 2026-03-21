@@ -15,17 +15,14 @@ function StreamingDot() {
   )
 }
 
-function ActionButton({
-  onClick,
-  label,
-  active,
-  children,
-}: {
+interface ActionButtonProps {
   onClick: (e: React.MouseEvent) => void
   label: string
   active?: boolean
   children: React.ReactNode
-}) {
+}
+
+function ActionButton({ onClick, label, active, children }: ActionButtonProps) {
   return (
     <button
       type="button"
@@ -150,10 +147,10 @@ export function ConversationItem({
         {/* Right side: timestamp or actions */}
         {!isEditing && (
           <>
-            <span className="text-[11px] text-black/15 dark:text-white/15 shrink-0 tabular-nums group-hover:hidden">
+            <span className="text-[11px] text-black/15 dark:text-white/15 shrink-0 tabular-nums group-hover:hidden group-focus-within:hidden">
               {formatTimestamp(conversation.updatedAt)}
             </span>
-            <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+            <div className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 shrink-0">
               {isConfirming ? (
                 <>
                   <ActionButton

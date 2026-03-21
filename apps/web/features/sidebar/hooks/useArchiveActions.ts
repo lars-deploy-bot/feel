@@ -17,11 +17,15 @@ export function useArchiveActions(
   archiveConfirmingRef.current = archiveConfirmingId
 
   const handleArchiveClick = useCallback(
-    (e: React.MouseEvent, conversation: DbConversation) => {
+    async (e: React.MouseEvent, conversation: DbConversation) => {
       e.stopPropagation()
       if (archiveConfirmingRef.current === conversation.id) {
-        onArchiveTabGroup(conversation.id)
-        setArchiveConfirmingId(null)
+        try {
+          await onArchiveTabGroup(conversation.id)
+          setArchiveConfirmingId(null)
+        } catch {
+          // keep the confirm state so the user can retry
+        }
       } else {
         setArchiveConfirmingId(conversation.id)
       }
