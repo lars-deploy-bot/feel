@@ -34,7 +34,7 @@ function resetState() {
     currentWorkspace: null as string | null,
     selectedOrgId: null as string | null,
     recentWorkspaces: [] as import("../workspaceStore").RecentWorkspace[],
-    currentWorktreeByWorkspace: {} as Record<string, string | null>,
+    currentWorktreeByWorkspace: {} satisfies Record<string, string | null>,
     deepLinkPending: null as string | null,
     intentVersion: 0,
   }

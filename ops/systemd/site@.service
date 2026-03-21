@@ -40,8 +40,8 @@ RestrictSUIDSGID=yes
 
 # Resource Limits
 LimitNOFILE=65536
-LimitNPROC=100
-MemoryMax=768M
+LimitNPROC=512
+MemoryMax=1G
 CPUQuota=50%
 
 # Additional Security

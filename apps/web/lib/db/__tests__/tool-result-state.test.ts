@@ -64,9 +64,12 @@ describe("updateToolResultContentByToolUseId", () => {
     )
 
     const updated = await store.updateToolResultContentByToolUseId(TEST_TAB_ID, "toolu_email_1", content => {
-      const blocks = content as Array<{ type: string; text: string }>
-      const parsed = JSON.parse(blocks[0].text) as Record<string, unknown>
-      const next = [{ ...blocks[0], text: JSON.stringify({ ...parsed, status: "sent", id: "gmail-msg-1" }) }]
+      if (!Array.isArray(content)) throw new Error("Expected array content")
+      const block = content[0]
+      if (!block || typeof block !== "object" || !("text" in block) || typeof block.text !== "string")
+        throw new Error("Expected text field")
+      const parsed: Record<string, unknown> = JSON.parse(block.text)
+      const next = [{ ...block, text: JSON.stringify({ ...parsed, status: "sent", id: "gmail-msg-1" }) }]
       return next
     })
 
@@ -76,10 +79,35 @@ describe("updateToolResultContentByToolUseId", () => {
     expect(message?.pendingSync).toBe(true)
     expect(message?.content.kind).toBe("sdk_message")
 
-    const sdkData = (message?.content as { kind: "sdk_message"; data: Record<string, unknown> }).data
-    const toolResult = ((sdkData.message as { content: unknown[] }).content[0] as { content: Array<{ text: string }> })
-      .content[0]
-    const payload = JSON.parse(toolResult.text) as Record<string, unknown>
+    const messageContent = message?.content
+    expect(messageContent).toHaveProperty("kind", "sdk_message")
+    expect(messageContent).toHaveProperty("data")
+
+    const sdkData = (messageContent && "data" in messageContent ? messageContent.data : undefined) satisfies unknown
+    expect(sdkData).toBeDefined()
+    if (!sdkData || typeof sdkData !== "object") throw new Error("Expected sdk data object")
+
+    const sdkMsg = "message" in sdkData ? sdkData.message : undefined
+    expect(sdkMsg).toBeDefined()
+    if (!sdkMsg || typeof sdkMsg !== "object") throw new Error("Expected message object")
+
+    const sdkContent = "content" in sdkMsg ? sdkMsg.content : undefined
+    expect(sdkContent).toBeDefined()
+    if (!Array.isArray(sdkContent)) throw new Error("Expected content array")
+
+    const toolResultBlock = sdkContent[0]
+    expect(toolResultBlock).toHaveProperty("content")
+    if (!toolResultBlock || typeof toolResultBlock !== "object" || !("content" in toolResultBlock))
+      throw new Error("Expected tool result block")
+
+    const innerContent = toolResultBlock.content
+    if (!Array.isArray(innerContent)) throw new Error("Expected inner content array")
+
+    const textBlock = innerContent[0]
+    if (!textBlock || typeof textBlock !== "object" || !("text" in textBlock)) throw new Error("Expected text block")
+    if (typeof textBlock.text !== "string") throw new Error("Expected text string")
+
+    const payload: Record<string, unknown> = JSON.parse(textBlock.text)
 
     expect(payload.status).toBe("sent")
     expect(payload.id).toBe("gmail-msg-1")

@@ -14,7 +14,8 @@ const PKG_ROOT = path.resolve(import.meta.dirname, "..")
 const SRC_DIR = path.join(PKG_ROOT, "src")
 
 function readJson<T>(filePath: string): T {
-  return JSON.parse(readFileSync(filePath, "utf-8")) as T
+  const parsed: T = JSON.parse(readFileSync(filePath, "utf-8"))
+  return parsed
 }
 
 /** Recursively collect all .ts source files (excluding tests) */

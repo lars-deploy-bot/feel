@@ -19,7 +19,7 @@ import type { NextRequest } from "next/server"
  * const { searchParams } = new URL(fullUrl)
  * return NextResponse.redirect(new URL("/settings", baseUrl))
  */
-export function getRequestUrls(req: NextRequest): { baseUrl: string; fullUrl: string } {
+export function getRequestUrls(req: Pick<NextRequest, "url" | "headers">): { baseUrl: string; fullUrl: string } {
   const requestUrl = new URL(req.url)
 
   // Get raw headers with fallbacks to request URL values

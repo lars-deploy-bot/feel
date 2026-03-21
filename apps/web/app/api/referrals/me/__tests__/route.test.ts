@@ -51,9 +51,10 @@ function createDetailedIamMock(options: {
   rpcResult?: { data: string | null; error: { message: string } | null }
   completedCount?: number
   referrals?: Array<{ credits_awarded: number }>
-}) {
+}): Awaited<ReturnType<typeof createIamClient>> {
   const { rpcResult, completedCount = 0, referrals = [] } = options
 
+  // @ts-expect-error - partial Supabase mock for testing
   return {
     rpc: vi.fn().mockResolvedValue(rpcResult ?? { data: "TEST123ABC", error: null }),
     from: vi.fn().mockImplementation(() => ({
@@ -65,15 +66,17 @@ function createDetailedIamMock(options: {
 
         // Create a thenable chainable object (Supabase queries are both chainable and awaitable)
         const createThenable = () => {
-          const thenable = Promise.resolve(result) as Promise<typeof result> & { eq: ReturnType<typeof vi.fn> }
-          thenable.eq = vi.fn().mockImplementation(() => createThenable())
+          const thenable: Promise<typeof result> & { eq: ReturnType<typeof vi.fn> } = Object.assign(
+            Promise.resolve(result),
+            { eq: vi.fn().mockImplementation(() => createThenable()) },
+          )
           return thenable
         }
 
         return createThenable()
       }),
     })),
-  } as unknown as Awaited<ReturnType<typeof createIamClient>>
+  }
 }
 
 describe("GET /api/referrals/me", () => {

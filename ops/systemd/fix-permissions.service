@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/root/webalive/alive/scripts/fix-permissions.sh
-WorkingDirectory=/root/webalive/alive
+ExecStart=__ALIVE_ROOT__/scripts/fix-permissions.sh
+WorkingDirectory=__ALIVE_ROOT__
 StandardOutput=journal
 StandardError=journal
 

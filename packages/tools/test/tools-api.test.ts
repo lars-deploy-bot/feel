@@ -20,7 +20,7 @@ function readHeader(requestInit: RequestInit | undefined, headerName: string): s
     return match?.[1] ?? null
   }
 
-  const record = headers as Record<string, string>
+  const record: Record<string, string> = headers
   for (const [key, value] of Object.entries(record)) {
     if (key.toLowerCase() === normalized) {
       return value
@@ -31,18 +31,17 @@ function readHeader(requestInit: RequestInit | undefined, headerName: string): s
 }
 
 function jsonResponse(payload: unknown): Response {
-  return {
-    ok: true,
+  return new Response(JSON.stringify(payload), {
     status: 200,
-    json: async () => payload,
-  } as Response
+    headers: { "Content-Type": "application/json" },
+  })
 }
 
 describe("tools-api", () => {
   beforeEach(() => {
     vi.resetModules()
     mockFetch.mockReset()
-    global.fetch = mockFetch as typeof fetch
+    vi.stubGlobal("fetch", mockFetch)
     process.env.PORT = "1234"
     process.env.ALIVE_SESSION_COOKIE = "session-a"
   })
@@ -135,7 +134,7 @@ describe("tools-api", () => {
   })
 
   it("rebuilds the typed client when ALIVE_SESSION_COOKIE changes", async () => {
-    mockFetch.mockResolvedValue(jsonResponse({ ok: true, sites: [] }))
+    mockFetch.mockImplementation(() => Promise.resolve(jsonResponse({ ok: true, sites: [] })))
 
     const { api } = await import("../src/lib/tools-api.js")
 
@@ -145,8 +144,13 @@ describe("tools-api", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(2)
 
-    const firstCookie = readHeader(mockFetch.mock.calls[0]?.[1] as RequestInit, "Cookie")
-    const secondCookie = readHeader(mockFetch.mock.calls[1]?.[1] as RequestInit, "Cookie")
+    const firstInit = mockFetch.mock.calls[0]?.[1]
+    const secondInit = mockFetch.mock.calls[1]?.[1]
+    expect(firstInit).toBeDefined()
+    expect(secondInit).toBeDefined()
+
+    const firstCookie = readHeader(firstInit, "Cookie")
+    const secondCookie = readHeader(secondInit, "Cookie")
 
     expect(firstCookie).toBe(`${COOKIE_NAMES.SESSION}=session-a`)
     expect(secondCookie).toBe(`${COOKIE_NAMES.SESSION}=session-b`)
@@ -177,7 +181,7 @@ describe("tools-api", () => {
   })
 
   it("drops the Cookie header when ALIVE_SESSION_COOKIE is removed", async () => {
-    mockFetch.mockResolvedValue(jsonResponse({ ok: true, sites: [] }))
+    mockFetch.mockImplementation(() => Promise.resolve(jsonResponse({ ok: true, sites: [] })))
 
     const { api } = await import("../src/lib/tools-api.js")
 
@@ -187,8 +191,13 @@ describe("tools-api", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(2)
 
-    const firstCookie = readHeader(mockFetch.mock.calls[0]?.[1] as RequestInit, "Cookie")
-    const secondCookie = readHeader(mockFetch.mock.calls[1]?.[1] as RequestInit, "Cookie")
+    const firstInit = mockFetch.mock.calls[0]?.[1]
+    const secondInit = mockFetch.mock.calls[1]?.[1]
+    expect(firstInit).toBeDefined()
+    expect(secondInit).toBeDefined()
+
+    const firstCookie = readHeader(firstInit, "Cookie")
+    const secondCookie = readHeader(secondInit, "Cookie")
 
     expect(firstCookie).toBe(`${COOKIE_NAMES.SESSION}=session-a`)
     expect(secondCookie).toBeNull()

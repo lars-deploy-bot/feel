@@ -19,7 +19,13 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import { createIpcServer, isWorkerMessage } from "../src/ipc"
 import type { WorkerToParentMessage } from "../src/types"
-import { findMessageByType, isCompleteMessage, isErrorMessage, WORKER_MESSAGE_TYPES } from "../src/types"
+import {
+  findMessageByType,
+  isCompleteMessage,
+  isCompleteResult,
+  isErrorMessage,
+  WORKER_MESSAGE_TYPES,
+} from "../src/types"
 
 // ============================================================================
 // Test Utilities
@@ -592,7 +598,8 @@ describe("Worker Pool Lifecycle", () => {
         // Should receive complete with cancelled flag (type-safe)
         const complete = findMessageByType(ctx.messages, WORKER_MESSAGE_TYPES.COMPLETE)
         expect(complete).toBeDefined()
-        expect((complete!.result as { cancelled?: boolean }).cancelled).toBe(true)
+        if (!isCompleteResult(complete!.result)) throw new Error("Expected CompleteResult")
+        expect(complete!.result.cancelled).toBe(true)
       })
     })
 
@@ -752,8 +759,10 @@ describe("Worker Pool Lifecycle", () => {
         ctx.server = await createIpcServer({
           socketPath: ctx.socketPath,
           onMessage: msg => {
-            ctx.messages.push(msg as WorkerToParentMessage)
-            if ((msg as WorkerToParentMessage).type === WORKER_MESSAGE_TYPES.READY) ctx.workerReady = true
+            if (isWorkerMessage(msg)) {
+              ctx.messages.push(msg)
+              if (msg.type === WORKER_MESSAGE_TYPES.READY) ctx.workerReady = true
+            }
           },
           onDisconnect: () => {
             disconnected = true

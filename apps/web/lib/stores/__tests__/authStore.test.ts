@@ -29,14 +29,15 @@ describe("authStore", () => {
     // Mock window.location for redirect tests
     if (typeof globalThis !== "undefined") {
       // Create a mock that tracks href changes
-      const mockLocation = {
+      const mockLocation: Location = {
         get href() {
           return locationHref
         },
         set href(value: string) {
           locationHref = value
         },
-        ancestorOrigins: {} as DOMStringList,
+        // @ts-expect-error - minimal DOMStringList mock for testing
+        ancestorOrigins: { length: 0, contains: () => false, item: () => null },
         hash: "",
         host: "localhost",
         hostname: "localhost",
@@ -49,7 +50,7 @@ describe("authStore", () => {
         reload: vi.fn(),
         replace: vi.fn(),
         toString: () => locationHref,
-      } as unknown as Location
+      }
 
       // @ts-expect-error - mocking window for tests
       globalThis.window = {

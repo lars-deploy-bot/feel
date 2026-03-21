@@ -29,7 +29,7 @@ import { callApi } from "../src/lib/api-client.js"
 
 // Mock fetch globally
 const mockFetch = vi.fn()
-global.fetch = mockFetch as any
+vi.stubGlobal("fetch", mockFetch)
 
 describe("callApi - Internal Tools Secret Header", () => {
   beforeEach(() => {

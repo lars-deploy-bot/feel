@@ -92,7 +92,7 @@ vi.mock("../messageDb", () => ({
 
 // Mock fetch
 const mockFetch = vi.fn()
-global.fetch = mockFetch as unknown as typeof fetch
+vi.stubGlobal("fetch", mockFetch)
 
 // Import after mocking
 const {
@@ -378,9 +378,9 @@ describe("Conversation Sync Service", () => {
   describe("fetchConversations", () => {
     beforeEach(() => {
       // Mock window.location for URL construction
-      global.window = {
+      vi.stubGlobal("window", {
         location: { origin: "http://localhost:3000" },
-      } as unknown as Window & typeof globalThis
+      })
     })
 
     afterEach(() => {
@@ -512,9 +512,9 @@ describe("Conversation Sync Service", () => {
   describe("fetchTabMessages", () => {
     beforeEach(() => {
       // Mock window.location for URL construction
-      global.window = {
+      vi.stubGlobal("window", {
         location: { origin: "http://localhost:3000" },
-      } as unknown as Window & typeof globalThis
+      })
     })
 
     afterEach(() => {
@@ -571,7 +571,9 @@ describe("Conversation Sync Service", () => {
       // The pending message must NOT appear in the bulkPut args.
       const putCalls = mockMessagesBulkPut.mock.calls
       for (const [messages] of putCalls) {
-        const ids = (messages as Array<{ id: string }>).map(m => m.id)
+        expect(Array.isArray(messages)).toBe(true)
+        if (!Array.isArray(messages)) throw new Error("Expected messages to be an array")
+        const ids = messages.map((m: { id: string }) => m.id)
         expect(ids).not.toContain("msg-pending")
       }
     })
@@ -634,9 +636,9 @@ describe("Conversation Sync Service", () => {
   describe("Source and SourceMetadata Persistence", () => {
     beforeEach(() => {
       // Mock window.location for URL construction
-      global.window = {
+      vi.stubGlobal("window", {
         location: { origin: "http://localhost:3000" },
-      } as unknown as Window & typeof globalThis
+      })
     })
 
     afterEach(() => {
@@ -805,9 +807,9 @@ describe("Conversation Sync Service", () => {
 
   describe("syncFromServer", () => {
     beforeEach(() => {
-      global.window = {
+      vi.stubGlobal("window", {
         location: { origin: "http://localhost:3000" },
-      } as unknown as Window & typeof globalThis
+      })
 
       // Default: no pending messages, no orphans, no reconciliation needed
       mockMessagesWhere.mockReturnValue({
@@ -970,9 +972,9 @@ describe("Conversation Sync Service", () => {
 
   describe("fetchTabMessages 404 re-queue", () => {
     beforeEach(() => {
-      global.window = {
+      vi.stubGlobal("window", {
         location: { origin: "http://localhost:3000" },
-      } as unknown as Window & typeof globalThis
+      })
     })
 
     afterEach(() => {

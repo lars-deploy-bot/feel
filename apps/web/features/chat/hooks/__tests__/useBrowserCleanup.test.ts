@@ -40,13 +40,11 @@ describe("useBrowserCleanup", () => {
     expect(sendBeacon).toHaveBeenCalledTimes(1)
     expect(sendBeacon).toHaveBeenCalledWith("/api/claude/stream/reconnect", expect.any(Blob))
 
-    const payloadBlob = sendBeacon.mock.calls[0]?.[1] as Blob
+    const payloadBlob = sendBeacon.mock.calls[0]?.[1]
+    expect(payloadBlob).toBeInstanceOf(Blob)
+    if (!(payloadBlob instanceof Blob)) throw new Error("Expected Blob")
     const payloadText = await payloadBlob.text()
-    const payload = JSON.parse(payloadText) as {
-      ackOnly: boolean
-      lastSeenSeq: number
-      worktree?: string
-    }
+    const payload: Record<string, unknown> = JSON.parse(payloadText)
     expect(payload.ackOnly).toBe(true)
     expect(payload.lastSeenSeq).toBe(42)
     expect(payload.worktree).toBe("feature-123")
@@ -87,15 +85,11 @@ describe("useBrowserCleanup", () => {
     expect(sendBeacon).toHaveBeenNthCalledWith(1, "/api/claude/stream/reconnect", expect.any(Blob))
     expect(sendBeacon).toHaveBeenNthCalledWith(2, "/api/claude/stream/cancel", expect.any(Blob))
 
-    const cancelPayloadBlob = sendBeacon.mock.calls[1]?.[1] as Blob
+    const cancelPayloadBlob = sendBeacon.mock.calls[1]?.[1]
+    expect(cancelPayloadBlob).toBeInstanceOf(Blob)
+    if (!(cancelPayloadBlob instanceof Blob)) throw new Error("Expected Blob")
     const cancelPayloadText = await cancelPayloadBlob.text()
-    const cancelPayload = JSON.parse(cancelPayloadText) as {
-      clientStack: string
-      tabId: string
-      tabGroupId: string
-      workspace: string
-      worktree?: string
-    }
+    const cancelPayload: Record<string, unknown> = JSON.parse(cancelPayloadText)
     expect(cancelPayload.clientStack).toContain(EXPLICIT_STOP_UNLOAD_BEACON_MARKER)
     expect(cancelPayload.tabId).toBe("11111111-1111-1111-1111-111111111111")
     expect(cancelPayload.tabGroupId).toBe("22222222-2222-2222-2222-222222222222")
@@ -120,9 +114,11 @@ describe("useBrowserCleanup", () => {
     expect(sendBeacon).toHaveBeenCalledTimes(1)
     expect(sendBeacon).toHaveBeenCalledWith("/api/claude/stream/cancel", expect.any(Blob))
 
-    const cancelPayloadBlob = sendBeacon.mock.calls[0]?.[1] as Blob
+    const cancelPayloadBlob = sendBeacon.mock.calls[0]?.[1]
+    expect(cancelPayloadBlob).toBeInstanceOf(Blob)
+    if (!(cancelPayloadBlob instanceof Blob)) throw new Error("Expected Blob")
     const cancelPayloadText = await cancelPayloadBlob.text()
-    const cancelPayload = JSON.parse(cancelPayloadText) as { clientStack: string }
+    const cancelPayload: Record<string, unknown> = JSON.parse(cancelPayloadText)
     expect(cancelPayload.clientStack).toContain(EXPLICIT_STOP_UNLOAD_BEACON_MARKER)
   })
 })

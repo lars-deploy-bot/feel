@@ -276,11 +276,13 @@ Make sure to use \`sudo\` for system commands.`
     })
 
     it("should return false for null", () => {
-      expect(hasMarkdown(null as any)).toBe(false)
+      // @ts-expect-error testing runtime safety with non-string input
+      expect(hasMarkdown(null)).toBe(false)
     })
 
     it("should return false for undefined", () => {
-      expect(hasMarkdown(undefined as any)).toBe(false)
+      // @ts-expect-error testing runtime safety with non-string input
+      expect(hasMarkdown(undefined)).toBe(false)
     })
 
     it("should return false for whitespace-only", () => {
@@ -430,8 +432,10 @@ And more text after.`
     })
 
     it("should NOT detect null or undefined", () => {
-      expect(hasCodeBlock(null as any)).toBe(false)
-      expect(hasCodeBlock(undefined as any)).toBe(false)
+      // @ts-expect-error testing runtime safety with non-string input
+      expect(hasCodeBlock(null)).toBe(false)
+      // @ts-expect-error testing runtime safety with non-string input
+      expect(hasCodeBlock(undefined)).toBe(false)
     })
   })
 

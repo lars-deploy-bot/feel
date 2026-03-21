@@ -26,9 +26,9 @@ vi.mock("@/features/auth/lib/auth", async () => {
   }
 })
 
-// Mock Supabase client
+// Mock Supabase client — factory returns createIamClientMock (defined below MockIamClient interface)
 vi.mock("@/lib/supabase/iam", () => ({
-  createIamClient: vi.fn(),
+  createIamClient: createIamClientMock,
 }))
 
 // Mock email sender
@@ -38,7 +38,7 @@ vi.mock("@/lib/email/send-referral-invite", () => ({
 
 // Mock shared constants — use importOriginal to keep SUPERADMIN, SECURITY, etc.
 vi.mock("@webalive/shared", async importOriginal => {
-  const actual = (await importOriginal()) as Record<string, unknown>
+  const actual = await importOriginal<Record<string, unknown>>()
   return {
     ...actual,
     REFERRAL: {
@@ -55,10 +55,18 @@ vi.mock("@/lib/referral", () => ({
   buildInviteLink: vi.fn((code: string) => `https://test.local/invite/${code}`),
 }))
 
+// Typed mock for createIamClient — vi.hoisted ensures it's available in hoisted vi.mock factories
+interface MockIamClient {
+  from: ReturnType<typeof vi.fn>
+  _insertMock: ReturnType<typeof vi.fn>
+}
+const { createIamClientMock } = vi.hoisted(() => ({
+  createIamClientMock: vi.fn<() => Promise<MockIamClient>>(),
+}))
+
 // Import after mocking
 const { POST } = await import("../route")
 const { getSessionUser } = await import("@/features/auth/lib/auth")
-const { createIamClient } = await import("@/lib/supabase/iam")
 const { sendReferralInvite } = await import("@/lib/email/send-referral-invite")
 
 const MOCK_USER = createMockSessionUser({ email: "sender@example.com", name: "Test Sender" })
@@ -93,12 +101,12 @@ function createPromiseLike<T>(value: T) {
   return promiseLike
 }
 
-// Helper to create chainable mock for Supabase (cast to unknown to satisfy SupabaseClient type)
+// Helper to create chainable mock for Supabase
 function createMockIamClient(options: {
   emailCountToday?: number
   existingEmail?: boolean
   senderData?: { display_name: string | null; invite_code: string | null } | null
-}) {
+}): MockIamClient {
   const {
     emailCountToday = 0,
     existingEmail = false,
@@ -142,7 +150,7 @@ function createMockIamClient(options: {
       }
     }),
     _insertMock: insertMock,
-  } as unknown as Awaited<ReturnType<typeof createIamClient>> & { _insertMock: ReturnType<typeof vi.fn> }
+  }
 }
 
 describe("POST /api/referrals/send-invite", () => {
@@ -156,7 +164,7 @@ describe("POST /api/referrals/send-invite", () => {
 
   describe("Authentication", () => {
     it("returns 401 when not authenticated", async () => {
-      ;(getSessionUser as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      vi.mocked(getSessionUser).mockResolvedValue(null)
 
       const req = mockRequest({ email: "test@example.com" })
       const res = await POST(req)
@@ -170,7 +178,7 @@ describe("POST /api/referrals/send-invite", () => {
 
   describe("Input Validation", () => {
     beforeEach(() => {
-      ;(getSessionUser as ReturnType<typeof vi.fn>).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
     })
 
     it("returns 400 for malformed JSON body", async () => {
@@ -220,11 +228,11 @@ describe("POST /api/referrals/send-invite", () => {
 
   describe("Rate Limiting", () => {
     beforeEach(() => {
-      ;(getSessionUser as ReturnType<typeof vi.fn>).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
     })
 
     it("returns 429 when rate limit exceeded (10 emails/day)", async () => {
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(createMockIamClient({ emailCountToday: 10 }))
+      createIamClientMock.mockResolvedValue(createMockIamClient({ emailCountToday: 10 }))
 
       const req = mockRequest({ email: "new@example.com" })
       const res = await POST(req)
@@ -237,8 +245,8 @@ describe("POST /api/referrals/send-invite", () => {
 
     it("allows when under rate limit", async () => {
       const mockClient = createMockIamClient({ emailCountToday: 9 })
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient)
-      ;(sendReferralInvite as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true })
+      createIamClientMock.mockResolvedValue(mockClient)
+      vi.mocked(sendReferralInvite).mockResolvedValue({ success: true })
 
       const req = mockRequest({ email: "new@example.com" })
       const res = await POST(req)
@@ -249,11 +257,11 @@ describe("POST /api/referrals/send-invite", () => {
 
   describe("Duplicate Email Check", () => {
     beforeEach(() => {
-      ;(getSessionUser as ReturnType<typeof vi.fn>).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
     })
 
     it("returns 400 for duplicate email invite", async () => {
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(createMockIamClient({ existingEmail: true }))
+      createIamClientMock.mockResolvedValue(createMockIamClient({ existingEmail: true }))
 
       const req = mockRequest({ email: "already@sent.com" })
       const res = await POST(req)
@@ -267,11 +275,11 @@ describe("POST /api/referrals/send-invite", () => {
 
   describe("Sender Validation", () => {
     beforeEach(() => {
-      ;(getSessionUser as ReturnType<typeof vi.fn>).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
     })
 
     it("returns 400 when user has no invite code", async () => {
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(
+      createIamClientMock.mockResolvedValue(
         createMockIamClient({ senderData: { display_name: "Test", invite_code: null } }),
       )
 
@@ -285,7 +293,7 @@ describe("POST /api/referrals/send-invite", () => {
     })
 
     it("returns 400 when sender not found", async () => {
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(createMockIamClient({ senderData: null }))
+      createIamClientMock.mockResolvedValue(createMockIamClient({ senderData: null }))
 
       const req = mockRequest({ email: "new@example.com" })
       const res = await POST(req)
@@ -299,12 +307,12 @@ describe("POST /api/referrals/send-invite", () => {
 
   describe("Email Sending", () => {
     beforeEach(() => {
-      ;(getSessionUser as ReturnType<typeof vi.fn>).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
     })
 
     it("returns 500 when email send fails", async () => {
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(createMockIamClient({}))
-      ;(sendReferralInvite as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Loops API error"))
+      createIamClientMock.mockResolvedValue(createMockIamClient({}))
+      vi.mocked(sendReferralInvite).mockRejectedValue(new Error("Loops API error"))
 
       const req = mockRequest({ email: "new@example.com" })
       const res = await POST(req)
@@ -319,8 +327,8 @@ describe("POST /api/referrals/send-invite", () => {
       const mockClient = createMockIamClient({
         senderData: { display_name: "John Doe", invite_code: "INVITE123" },
       })
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient)
-      ;(sendReferralInvite as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true })
+      createIamClientMock.mockResolvedValue(mockClient)
+      vi.mocked(sendReferralInvite).mockResolvedValue({ success: true })
 
       const req = mockRequest({ email: "recipient@example.com" })
       await POST(req)
@@ -336,8 +344,8 @@ describe("POST /api/referrals/send-invite", () => {
       const mockClient = createMockIamClient({
         senderData: { display_name: null, invite_code: "INVITE123" },
       })
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient)
-      ;(sendReferralInvite as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true })
+      createIamClientMock.mockResolvedValue(mockClient)
+      vi.mocked(sendReferralInvite).mockResolvedValue({ success: true })
 
       const req = mockRequest({ email: "recipient@example.com" })
       await POST(req)
@@ -352,13 +360,13 @@ describe("POST /api/referrals/send-invite", () => {
 
   describe("Success Path", () => {
     beforeEach(() => {
-      ;(getSessionUser as ReturnType<typeof vi.fn>).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
     })
 
     it("successfully sends invite email and returns ok: true", async () => {
       const mockClient = createMockIamClient({})
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient)
-      ;(sendReferralInvite as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true })
+      createIamClientMock.mockResolvedValue(mockClient)
+      vi.mocked(sendReferralInvite).mockResolvedValue({ success: true })
 
       const req = mockRequest({ email: "new@example.com" })
       const res = await POST(req)
@@ -370,8 +378,8 @@ describe("POST /api/referrals/send-invite", () => {
 
     it("records sent email in database after successful send", async () => {
       const mockClient = createMockIamClient({})
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient)
-      ;(sendReferralInvite as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true })
+      createIamClientMock.mockResolvedValue(mockClient)
+      vi.mocked(sendReferralInvite).mockResolvedValue({ success: true })
 
       const req = mockRequest({ email: "NEW@EXAMPLE.COM" })
       await POST(req)
@@ -385,8 +393,8 @@ describe("POST /api/referrals/send-invite", () => {
 
     it("does not record email if send fails", async () => {
       const mockClient = createMockIamClient({})
-      ;(createIamClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient)
-      ;(sendReferralInvite as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Send failed"))
+      createIamClientMock.mockResolvedValue(mockClient)
+      vi.mocked(sendReferralInvite).mockRejectedValue(new Error("Send failed"))
 
       const req = mockRequest({ email: "new@example.com" })
       await POST(req)

@@ -78,7 +78,7 @@ describe("IPC Integration", () => {
       // Create client
       const client = await createIpcClient({
         socketPath,
-        onMessage: msg => clientMessages.push(msg as ParentToWorkerMessage),
+        onMessage: msg => clientMessages.push(msg),
         onConnect: () => {},
         onDisconnect: () => {},
       })

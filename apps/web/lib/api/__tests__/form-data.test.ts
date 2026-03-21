@@ -10,7 +10,7 @@ describe("formDataToObject", () => {
     const parsed = formDataToObject(formData)
 
     expect(parsed.file).toBeInstanceOf(File)
-    expect((parsed.file as File).name).toBe("hello.txt")
+    expect(parsed.file).toHaveProperty("name", "hello.txt")
   })
 
   it("keeps repeated keys as arrays", () => {

@@ -63,11 +63,13 @@ describe("normalizeDomain", () => {
     })
 
     it("should return empty string for null", () => {
-      expect(normalizeDomain(null as any)).toBe("")
+      // @ts-expect-error testing runtime safety with non-string input
+      expect(normalizeDomain(null)).toBe("")
     })
 
     it("should return empty string for undefined", () => {
-      expect(normalizeDomain(undefined as any)).toBe("")
+      // @ts-expect-error testing runtime safety with non-string input
+      expect(normalizeDomain(undefined)).toBe("")
     })
   })
 })

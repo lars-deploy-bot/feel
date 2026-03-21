@@ -189,12 +189,17 @@ fi
 # 3. Sync ops timers
 # =============================================================================
 
-phase_start "Syncing ops timers"
-sync_script="$SCRIPT_DIR/lib/sync-ops-timers.sh"
+phase_start "Syncing ops systemd units"
+sync_script="$PROJECT_ROOT/scripts/systemd/sync-ops-units.sh"
 if [[ -x "$sync_script" ]]; then
-    "$sync_script" 2>/dev/null || true
+    if "$sync_script" --alive-root "$PROJECT_ROOT" --enable-required-timers 2>&1; then
+        phase_end ok "Ops units synced"
+    else
+        phase_end warn "Ops unit sync failed (non-fatal)"
+    fi
+else
+    phase_end warn "Ops unit sync skipped (script missing or not executable)"
 fi
-phase_end ok "Ops timers synced"
 
 # =============================================================================
 # 4. Deploy services

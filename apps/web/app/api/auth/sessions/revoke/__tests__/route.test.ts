@@ -52,7 +52,7 @@ beforeEach(() => {
 
 describe("POST /api/auth/sessions/revoke", () => {
   it("returns 401 when not authenticated", async () => {
-    vi.mocked(requireAuthSession).mockRejectedValue(new (AuthenticationError as ErrorConstructor)())
+    vi.mocked(requireAuthSession).mockRejectedValue(new AuthenticationError())
 
     const res = await POST(createRequest({ sid: OTHER_SID }))
     expect(res.status).toBe(401)

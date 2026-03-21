@@ -79,13 +79,16 @@ ProtectKernelModules=yes
 RestrictSUIDSGID=yes
 
 LimitNOFILE=65536
-LimitNPROC=100
-MemoryMax=512M
+LimitNPROC=512
+MemoryMax=1G
 CPUQuota=50%
 
 CapabilityBoundingSet=
 AmbientCapabilities=
 UMask=0027
+
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=~@raw-io @reboot @swap @clock @module @mount @obsolete
 
 [Install]
 WantedBy=multi-user.target

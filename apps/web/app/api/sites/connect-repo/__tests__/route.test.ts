@@ -59,7 +59,8 @@ function createRequest(body: Record<string, unknown>): Request {
 }
 
 function readMetadata(metadataPath: string): Record<string, unknown> {
-  return JSON.parse(fs.readFileSync(metadataPath, "utf8")) as Record<string, unknown>
+  const parsed: Record<string, unknown> = JSON.parse(fs.readFileSync(metadataPath, "utf8"))
+  return parsed
 }
 
 describe("PATCH /api/sites/connect-repo", () => {

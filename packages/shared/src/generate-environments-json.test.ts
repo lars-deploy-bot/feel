@@ -56,7 +56,8 @@ describe("generate-environments-json", () => {
       await import("./generate-environments-json.js?test=error")
     } catch (error) {
       // Expected - process.exit was called
-      expect((error as Error).message).toBe("process.exit called")
+      expect(error).toBeInstanceOf(Error)
+      expect(error).toHaveProperty("message", "process.exit called")
     }
 
     // Verify error handling
@@ -82,7 +83,8 @@ describe("generate-environments-json", () => {
       await import("./generate-environments-json.js?test=string")
     } catch (error) {
       // Expected - process.exit was called
-      expect((error as Error).message).toBe("process.exit called")
+      expect(error).toBeInstanceOf(Error)
+      expect(error).toHaveProperty("message", "process.exit called")
     }
 
     // Verify error handling for non-Error types

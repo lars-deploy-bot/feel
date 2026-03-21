@@ -130,7 +130,8 @@ describe("triggerJob Sentry capture on HTTP failure", () => {
         from: vi.fn(() => createChainableMock()),
       }
 
-      await startCronService(mockSupabase as never, "test-server")
+      // @ts-expect-error - partial Supabase mock for testing
+      await startCronService(mockSupabase, "test-server")
 
       // Now trigger a job — fetch will fail, should capture to Sentry
       const result = await triggerJob("job-test-123")

@@ -395,7 +395,11 @@ function send(msg) {
       const cancelEcho = workerToParentMessages.find(
         m =>
           m.type === WORKER_MESSAGE_TYPES.MESSAGE &&
-          (m as { content?: { receivedCancel?: boolean } }).content?.receivedCancel === true,
+          "content" in m &&
+          m.content !== null &&
+          typeof m.content === "object" &&
+          "receivedCancel" in m.content &&
+          m.content.receivedCancel === true,
       )
       expect(cancelEcho).toBeDefined()
 
@@ -403,7 +407,8 @@ function send(msg) {
       const completeMsg = findMessageByType(workerToParentMessages, WORKER_MESSAGE_TYPES.COMPLETE)
       expect(completeMsg).toBeDefined()
       expect(isCompleteResult(completeMsg!.result)).toBe(true)
-      expect((completeMsg!.result as CompleteResult).cancelled).toBe(true)
+      if (!isCompleteResult(completeMsg!.result)) throw new Error("Expected CompleteResult")
+      expect(completeMsg!.result.cancelled).toBe(true)
     })
 
     it("should include correct requestId in cancel message", async () => {
@@ -499,8 +504,9 @@ function send(msg) { socket.write(JSON.stringify(msg) + "\\n") }
       expect(completeMsg!.requestId).toBe(expectedRequestId)
 
       // Verify the result contains the requestId that was received
-      const result = completeMsg!.result as CompleteResult & { result: { reportedRequestId: string } }
-      expect(result.result.reportedRequestId).toBe(expectedRequestId)
+      if (!isCompleteResult(completeMsg!.result)) throw new Error("Expected CompleteResult")
+      const innerResult = completeMsg!.result.result
+      expect(innerResult).toHaveProperty("reportedRequestId", expectedRequestId)
     })
   })
 
@@ -556,9 +562,9 @@ function send(msg) { socket.write(JSON.stringify(msg) + "\\n") }
       const completeMsg = findMessageByType(messages, WORKER_MESSAGE_TYPES.COMPLETE)
       expect(completeMsg).toBeDefined()
       expect(isCompleteResult(completeMsg!.result)).toBe(true)
+      if (!isCompleteResult(completeMsg!.result)) throw new Error("Expected CompleteResult")
 
-      const result = completeMsg!.result as CompleteResult
-      expect(result.cancelled).toBe(true)
+      expect(completeMsg!.result.cancelled).toBe(true)
 
       // Should have fewer than 5 messages (full completion would have 5)
       const messageEvents = filterMessagesByType(messages, WORKER_MESSAGE_TYPES.MESSAGE)
@@ -623,18 +629,18 @@ function send(msg) { socket.write(JSON.stringify(msg) + "\\n") }
       })
 
       // Verify first query was cancelled
-      const firstComplete = messages.find(m => isCompleteMessage(m) && m.requestId === requestId1) as
-        | Extract<WorkerToParentMessage, { type: "complete" }>
-        | undefined
+      const firstComplete = messages.find(m => isCompleteMessage(m) && m.requestId === requestId1)
       expect(firstComplete).toBeDefined()
-      expect((firstComplete!.result as CompleteResult).cancelled).toBe(true)
+      if (!firstComplete || !isCompleteMessage(firstComplete)) throw new Error("Expected complete message")
+      if (!isCompleteResult(firstComplete.result)) throw new Error("Expected CompleteResult")
+      expect(firstComplete.result.cancelled).toBe(true)
 
       // Verify second query completed successfully
-      const secondComplete = messages.find(m => isCompleteMessage(m) && m.requestId === requestId2) as
-        | Extract<WorkerToParentMessage, { type: "complete" }>
-        | undefined
+      const secondComplete = messages.find(m => isCompleteMessage(m) && m.requestId === requestId2)
       expect(secondComplete).toBeDefined()
-      expect((secondComplete!.result as CompleteResult).cancelled).toBe(false)
+      if (!secondComplete || !isCompleteMessage(secondComplete)) throw new Error("Expected complete message")
+      if (!isCompleteResult(secondComplete.result)) throw new Error("Expected CompleteResult")
+      expect(secondComplete.result.cancelled).toBe(false)
     })
   })
 
@@ -680,10 +686,10 @@ function send(msg) { socket.write(JSON.stringify(msg) + "\\n") }
       // Use type guard to verify structure
       expect(isCompleteResult(completeMsg!.result)).toBe(true)
 
-      const result = completeMsg!.result as CompleteResult
-      expect(typeof result.cancelled).toBe("boolean")
-      expect(typeof result.totalMessages).toBe("number")
-      expect(typeof result.type).toBe("string")
+      if (!isCompleteResult(completeMsg!.result)) throw new Error("Expected CompleteResult")
+      expect(typeof completeMsg!.result.cancelled).toBe("boolean")
+      expect(typeof completeMsg!.result.totalMessages).toBe("number")
+      expect(typeof completeMsg!.result.type).toBe("string")
     })
 
     it("should have correct type in CompleteResult", async () => {
@@ -721,10 +727,10 @@ function send(msg) { socket.write(JSON.stringify(msg) + "\\n") }
       })
 
       const completeMsg = findMessageByType(messages, WORKER_MESSAGE_TYPES.COMPLETE)
-      const result = completeMsg!.result as CompleteResult
+      if (!isCompleteResult(completeMsg!.result)) throw new Error("Expected CompleteResult")
 
       // Verify type matches expected constant
-      expect(result.type).toBe(STREAM_TYPES.COMPLETE)
+      expect(completeMsg!.result.type).toBe(STREAM_TYPES.COMPLETE)
     })
   })
 

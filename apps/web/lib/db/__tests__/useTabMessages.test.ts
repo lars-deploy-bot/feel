@@ -103,7 +103,7 @@ describe("useTabMessages", () => {
       expect(result.current).toHaveLength(3)
     })
 
-    expect((result.current as TabMessage[]).map(m => m.id)).toEqual(["msg-1", "msg-2", "msg-3"])
+    expect(result.current?.map(m => m.id)).toEqual(["msg-1", "msg-2", "msg-3"])
   })
 
   it("uses live streaming buffer when available", async () => {

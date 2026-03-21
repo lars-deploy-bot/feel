@@ -437,10 +437,10 @@ describe("ApiError", () => {
         expect.fail("Should have thrown")
       } catch (e) {
         expect(e).toBeInstanceOf(ApiError)
-        const err = e as ApiError
-        expect(err.status).toBe(401)
-        expect(err.isUnauthorized).toBe(true)
-        expect(err.message).toBe("Unauthorized")
+        if (!(e instanceof ApiError)) throw e
+        expect(e.status).toBe(401)
+        expect(e.isUnauthorized).toBe(true)
+        expect(e.message).toBe("Unauthorized")
       }
     })
 
@@ -453,9 +453,10 @@ describe("ApiError", () => {
         await getty("user")
         expect.fail("Should have thrown")
       } catch (e) {
-        const err = e as ApiError
-        expect(err.status).toBe(403)
-        expect(err.isForbidden).toBe(true)
+        expect(e).toBeInstanceOf(ApiError)
+        if (!(e instanceof ApiError)) throw e
+        expect(e.status).toBe(403)
+        expect(e.isForbidden).toBe(true)
       }
     })
 
@@ -468,9 +469,10 @@ describe("ApiError", () => {
         await getty("user")
         expect.fail("Should have thrown")
       } catch (e) {
-        const err = e as ApiError
-        expect(err.status).toBe(404)
-        expect(err.isNotFound).toBe(true)
+        expect(e).toBeInstanceOf(ApiError)
+        if (!(e instanceof ApiError)) throw e
+        expect(e.status).toBe(404)
+        expect(e.isNotFound).toBe(true)
       }
     })
 
@@ -483,9 +485,10 @@ describe("ApiError", () => {
         await getty("user")
         expect.fail("Should have thrown")
       } catch (e) {
-        const err = e as ApiError
-        expect(err.status).toBe(429)
-        expect(err.isRateLimited).toBe(true)
+        expect(e).toBeInstanceOf(ApiError)
+        if (!(e instanceof ApiError)) throw e
+        expect(e.status).toBe(429)
+        expect(e.isRateLimited).toBe(true)
       }
     })
 
@@ -498,9 +501,10 @@ describe("ApiError", () => {
         await getty("user")
         expect.fail("Should have thrown")
       } catch (e) {
-        const err = e as ApiError
-        expect(err.status).toBe(500)
-        expect(err.isServerError).toBe(true)
+        expect(e).toBeInstanceOf(ApiError)
+        if (!(e instanceof ApiError)) throw e
+        expect(e.status).toBe(500)
+        expect(e.isServerError).toBe(true)
       }
     })
 
@@ -512,9 +516,9 @@ describe("ApiError", () => {
       try {
         await getty("user")
       } catch (e) {
-        const err = e as ApiError
-        expect(err.message).toBe("Shape 1")
-        expect(err.code).toBe("ERR1")
+        if (!(e instanceof ApiError)) throw e
+        expect(e.message).toBe("Shape 1")
+        expect(e.code).toBe("ERR1")
       }
 
       // Shape 2: { message }
@@ -523,8 +527,8 @@ describe("ApiError", () => {
       try {
         await getty("user")
       } catch (e) {
-        const err = e as ApiError
-        expect(err.message).toBe("Shape 2")
+        if (!(e instanceof ApiError)) throw e
+        expect(e.message).toBe("Shape 2")
       }
 
       // Shape 3: { error: "string" }
@@ -533,8 +537,8 @@ describe("ApiError", () => {
       try {
         await getty("user")
       } catch (e) {
-        const err = e as ApiError
-        expect(err.message).toBe("Shape 3")
+        if (!(e instanceof ApiError)) throw e
+        expect(e.message).toBe("Shape 3")
       }
     })
 
@@ -554,12 +558,13 @@ describe("ApiError", () => {
         await getty("user")
         expect.fail("Should have thrown")
       } catch (e) {
-        const err = e as ApiError
+        expect(e).toBeInstanceOf(ApiError)
+        if (!(e instanceof ApiError)) throw e
         // message should be the user-friendly text, NOT the raw error code
-        expect(err.message).toBe("You are not connected to Gmail.")
+        expect(e.message).toBe("You are not connected to Gmail.")
         // code should be the error code
-        expect(err.code).toBe("INTEGRATION_NOT_CONNECTED")
-        expect(err.status).toBe(400)
+        expect(e.code).toBe("INTEGRATION_NOT_CONNECTED")
+        expect(e.status).toBe(400)
       }
     })
   })
@@ -585,9 +590,10 @@ describe("ApiError", () => {
         await getty("user")
         expect.fail("Should have thrown")
       } catch (e) {
-        const err = e as ApiError
-        expect(err.isValidationError).toBe(true)
-        expect(Array.isArray(err.details)).toBe(true)
+        expect(e).toBeInstanceOf(ApiError)
+        if (!(e instanceof ApiError)) throw e
+        expect(e.isValidationError).toBe(true)
+        expect(Array.isArray(e.details)).toBe(true)
       }
     })
 
@@ -598,10 +604,11 @@ describe("ApiError", () => {
         await postty("login", { email: "invalid", password: "test" })
         expect.fail("Should have thrown")
       } catch (e) {
-        const err = e as ApiError
-        expect(err.code).toBe("REQUEST_VALIDATION_ERROR")
-        expect(err.isValidationError).toBe(true)
-        expect(Array.isArray(err.details)).toBe(true)
+        expect(e).toBeInstanceOf(ApiError)
+        if (!(e instanceof ApiError)) throw e
+        expect(e.code).toBe("REQUEST_VALIDATION_ERROR")
+        expect(e.isValidationError).toBe(true)
+        expect(Array.isArray(e.details)).toBe(true)
       }
     })
   })

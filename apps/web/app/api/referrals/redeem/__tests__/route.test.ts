@@ -35,7 +35,7 @@ vi.mock("@/lib/credits/add-credits", () => ({
 
 // Mock shared constants — use importOriginal to keep SUPERADMIN, SECURITY, etc.
 vi.mock("@webalive/shared", async importOriginal => {
-  const actual = (await importOriginal()) as Record<string, unknown>
+  const actual = await importOriginal<Record<string, unknown>>()
   return {
     ...actual,
     REFERRAL: {
@@ -84,12 +84,13 @@ function createMockIamClient(options: {
   existingReferral?: { referral_id: string } | null
   referrer?: { user_id: string; email_verified: boolean } | null
   insertError?: { code?: string; message: string } | null
-}) {
+}): Awaited<ReturnType<typeof createIamClient>> & { _insertMock: ReturnType<typeof vi.fn> } {
   const { currentUser, existingReferral, referrer, insertError } = options
 
   // Track insert calls
   const insertMock = vi.fn().mockResolvedValue({ error: insertError ?? null })
 
+  // @ts-expect-error - partial Supabase mock for testing
   return {
     from: vi.fn().mockImplementation((table: string) => {
       if (table === "users") {
@@ -130,7 +131,7 @@ function createMockIamClient(options: {
       }
     }),
     _insertMock: insertMock,
-  } as unknown as Awaited<ReturnType<typeof createIamClient>> & { _insertMock: ReturnType<typeof vi.fn> }
+  }
 }
 
 describe("POST /api/referrals/redeem", () => {

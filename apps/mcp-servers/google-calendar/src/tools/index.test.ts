@@ -6,14 +6,18 @@ import { executeTool } from "./index.js"
 function mockCalendar(overrides?: { get?: ReturnType<typeof vi.fn> }): calendar_v3.Calendar {
   return {
     events: {
+      // @ts-expect-error - partial Calendar mock: vi.fn() satisfies runtime needs
       get: overrides?.get ?? vi.fn(),
     },
-  } as unknown as calendar_v3.Calendar
+  }
 }
 
 function parsePayload(result: { content: Array<{ type: string; text: string }> }): Record<string, unknown> {
-  const raw: unknown = JSON.parse(result.content[0]?.text ?? "{}")
-  return typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {}
+  const raw = JSON.parse(result.content[0]?.text ?? "{}")
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw
+  }
+  return {}
 }
 
 describe("google-calendar tools", () => {

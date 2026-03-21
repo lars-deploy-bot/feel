@@ -48,7 +48,7 @@ vi.mock("@webalive/shared", async () => {
   const actual = await vi.importActual<Record<string, unknown>>("@webalive/shared")
   return {
     ...actual,
-    DEFAULTS: { ...(actual.DEFAULTS as Record<string, unknown>), CLAUDE_MAX_TURNS: 8 },
+    DEFAULTS: Object.assign({}, actual.DEFAULTS, { CLAUDE_MAX_TURNS: 8 }),
     SUPERADMIN: { WORKSPACE_NAME: "alive" },
     WORKER_POOL: { ENABLED: false },
     COOKIE_NAMES: { SESSION: "session" },

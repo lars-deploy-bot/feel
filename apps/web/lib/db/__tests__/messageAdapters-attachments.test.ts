@@ -230,14 +230,14 @@ describe("Attachment Persistence", () => {
   })
 
   it("should drop transient fields like uploadProgress and error", () => {
-    const attachmentWithTransient = {
+    const attachmentWithTransient: LibraryImageAttachment = {
       kind: "library-image",
       id: "img-789",
       photobookKey: "domain.com/xyz",
       preview: "data:image/webp;base64,",
       uploadProgress: 100, // Should be dropped
       error: undefined, // Should be dropped
-    } as unknown as Attachment
+    }
 
     const userMessage: UIMessage = {
       id: "msg-4",

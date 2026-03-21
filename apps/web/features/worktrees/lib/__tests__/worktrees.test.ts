@@ -203,7 +203,8 @@ describe("worktrees service", () => {
     }
 
     expect(error).toBeInstanceOf(WorktreeError)
-    expect((error as WorktreeError).code).toBe("WORKTREE_INVALID_SLUG")
+    if (!(error instanceof WorktreeError)) throw error
+    expect(error.code).toBe("WORKTREE_INVALID_SLUG")
   })
 
   it("rejects create when worktree lock is held", async () => {
@@ -322,7 +323,7 @@ describe("worktrees service", () => {
     }
 
     const metadataPath = path.join(repo.siteRoot, ".site-metadata.json")
-    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8")) as Record<string, unknown>
+    const metadata: Record<string, unknown> = JSON.parse(fs.readFileSync(metadataPath, "utf8"))
     metadata.sourceRepo = "https://gitlab.com/example/repo.git"
     fs.writeFileSync(metadataPath, JSON.stringify(metadata), "utf8")
 
@@ -377,7 +378,7 @@ describe("worktrees service", () => {
     runGit(upstreamClone, ["push", "origin", "HEAD:dev"])
 
     const metadataPath = path.join(repo.siteRoot, ".site-metadata.json")
-    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8")) as Record<string, unknown>
+    const metadata: Record<string, unknown> = JSON.parse(fs.readFileSync(metadataPath, "utf8"))
     metadata.sourceBranch = "dev"
     fs.writeFileSync(metadataPath, JSON.stringify(metadata), "utf8")
 
@@ -399,7 +400,7 @@ describe("worktrees service", () => {
 
     const baseHead = runGit(repo.baseWorkspacePath, ["rev-parse", "HEAD"])
     const metadataPath = path.join(repo.siteRoot, ".site-metadata.json")
-    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8")) as Record<string, unknown>
+    const metadata: Record<string, unknown> = JSON.parse(fs.readFileSync(metadataPath, "utf8"))
     metadata.sourceBranch = "missing-branch"
     fs.writeFileSync(metadataPath, JSON.stringify(metadata), "utf8")
 

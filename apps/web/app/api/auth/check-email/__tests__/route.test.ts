@@ -44,8 +44,9 @@ function createMockRequest(body: Record<string, unknown> | string): NextRequest 
   })
 }
 
-// Helper to create mock IAM client (cast to unknown to satisfy SupabaseClient type)
-function createMockIam(userExists: boolean) {
+// Helper to create mock IAM client
+function createMockIam(userExists: boolean): Awaited<ReturnType<typeof createIamClient>> {
+  // @ts-expect-error - partial Supabase mock for testing
   return {
     from: vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -58,7 +59,7 @@ function createMockIam(userExists: boolean) {
         }),
       }),
     }),
-  } as unknown as Awaited<ReturnType<typeof createIamClient>>
+  }
 }
 
 describe("POST /api/auth/check-email", () => {

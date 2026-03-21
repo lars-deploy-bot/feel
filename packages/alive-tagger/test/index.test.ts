@@ -10,6 +10,39 @@ import {
 } from "../src/index"
 import type { SourceInfo } from "../src/types"
 
+/**
+ * Test wrappers for DOM-element utilities.
+ *
+ * `getElementSource` and `hasSourceInfo` accept `Element | null`, but in a
+ * Node test environment we can't construct real DOM Elements. Instead of
+ * using `as Element` assertions, these wrappers accept plain objects and
+ * call the real functions via `Reflect.apply`, which accepts `unknown` args.
+ * The functions only access symbol-keyed properties, so plain objects work
+ * correctly at runtime.
+ */
+function isSourceInfo(value: unknown): value is SourceInfo {
+  if (typeof value !== "object" || value === null) return false
+  if (!("fileName" in value) || !("lineNumber" in value)) return false
+  if (!("columnNumber" in value) || !("displayName" in value)) return false
+  // After `in` narrowing, TypeScript knows these properties exist on value
+  const { fileName, lineNumber } = value
+  return typeof fileName === "string" && typeof lineNumber === "number"
+}
+
+function testGetElementSource(obj: Record<symbol, unknown> | null): SourceInfo | undefined {
+  // Reflect.apply calls the function with the provided args.
+  // The result is `unknown`, so we narrow with a type guard.
+  const result: unknown = Reflect.apply(getElementSource, undefined, [obj])
+  if (result === undefined) return undefined
+  if (isSourceInfo(result)) return result
+  return undefined
+}
+
+function testHasSourceInfo(obj: Record<symbol, unknown> | null): boolean {
+  const result: unknown = Reflect.apply(hasSourceInfo, undefined, [obj])
+  return result === true
+}
+
 describe("index exports", () => {
   describe("aliveTagger", () => {
     it("is exported as a function", () => {
@@ -34,12 +67,12 @@ describe("index exports", () => {
 
   describe("getElementSource", () => {
     it("returns undefined for null", () => {
-      expect(getElementSource(null)).toBeUndefined()
+      expect(testGetElementSource(null)).toBeUndefined()
     })
 
     it("returns undefined for element without source", () => {
-      const mockElement = {} as Element
-      expect(getElementSource(mockElement)).toBeUndefined()
+      const mockElement: Record<symbol, unknown> = {}
+      expect(testGetElementSource(mockElement)).toBeUndefined()
     })
 
     it("returns source info when present", () => {
@@ -49,35 +82,35 @@ describe("index exports", () => {
         columnNumber: 5,
         displayName: "TestComponent",
       }
-      const mockElement = {
+      const mockElement: Record<symbol, unknown> = {
         [SOURCE_KEY]: sourceInfo,
-      } as unknown as Element
+      }
 
-      expect(getElementSource(mockElement)).toEqual(sourceInfo)
+      expect(testGetElementSource(mockElement)).toEqual(sourceInfo)
     })
   })
 
   describe("hasSourceInfo", () => {
     it("returns false for null", () => {
-      expect(hasSourceInfo(null)).toBe(false)
+      expect(testHasSourceInfo(null)).toBe(false)
     })
 
     it("returns false for element without source", () => {
-      const mockElement = {} as Element
-      expect(hasSourceInfo(mockElement)).toBe(false)
+      const mockElement: Record<symbol, unknown> = {}
+      expect(testHasSourceInfo(mockElement)).toBe(false)
     })
 
     it("returns true when source info is present", () => {
-      const mockElement = {
+      const mockElement: Record<symbol, unknown> = {
         [SOURCE_KEY]: {
           fileName: "test.tsx",
           lineNumber: 10,
           columnNumber: 5,
           displayName: "TestComponent",
         },
-      } as unknown as Element
+      }
 
-      expect(hasSourceInfo(mockElement)).toBe(true)
+      expect(testHasSourceInfo(mockElement)).toBe(true)
     })
   })
 

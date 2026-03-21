@@ -51,7 +51,7 @@ describe("messageAdapters stream envelope unwrapping (#342)", () => {
     // The content should be the inner SDK message, not the stream envelope
     expect(ui.content).toEqual(sdkMsg)
     // Verify the type guard would now work
-    expect((ui.content as Record<string, unknown>).type).toBe("assistant")
+    expect(ui.content).toHaveProperty("type", "assistant")
   })
 
   it("unwraps legacy wrapped user (tool_result) message", () => {
@@ -71,7 +71,7 @@ describe("messageAdapters stream envelope unwrapping (#342)", () => {
 
     expect(ui.type).toBe("sdk_message")
     expect(ui.content).toEqual(sdkMsg)
-    expect((ui.content as Record<string, unknown>).type).toBe("user")
+    expect(ui.content).toHaveProperty("type", "user")
   })
 
   it("passes through correctly stored SDK messages unchanged", () => {

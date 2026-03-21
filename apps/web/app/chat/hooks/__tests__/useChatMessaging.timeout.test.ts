@@ -1,9 +1,7 @@
 // @vitest-environment happy-dom
 
 import { act, renderHook } from "@testing-library/react"
-import type React from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import { useChatMessaging } from "../useChatMessaging"
 
 const mocks = vi.hoisted(() => {
@@ -41,8 +39,9 @@ const mocks = vi.hoisted(() => {
     isValidStreamEvent: vi.fn((_event: unknown) => true),
     isWarningMessage: vi.fn((event: unknown) => {
       if (!event || typeof event !== "object") return false
-      const e = event as { type?: string; data?: { messageType?: string } }
-      return e.type === "stream_message" && e.data?.messageType === "stream_warning"
+      if (!("type" in event) || event.type !== "stream_message") return false
+      if (!("data" in event) || !event.data || typeof event.data !== "object") return false
+      return "messageType" in event.data && event.data.messageType === "stream_warning"
     }),
     buildPromptWithAttachmentsEx: vi.fn((message: string, _attachments: unknown[]) => ({
       prompt: message,
@@ -245,9 +244,16 @@ function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
     addMessage,
     chatInputRef: {
       current: {
+        addAttachment: vi.fn(),
+        addPhotobookImage: vi.fn(),
+        addSuperTemplateAttachment: vi.fn(),
+        addUserPrompt: vi.fn(),
+        addSkill: vi.fn(),
+        addFileForAnalysis: vi.fn(),
+        clearLibraryImages: vi.fn(),
         focus: vi.fn(),
-      } as unknown as ChatInputHandle,
-    } as React.RefObject<ChatInputHandle | null>,
+      },
+    },
     forceScrollToBottom,
     setShowCompletionDots,
   }
@@ -256,10 +262,10 @@ function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
 }
 
 function getCallBody(call: unknown[]): Record<string, unknown> {
-  const init = (call[1] ?? {}) as RequestInit
-  const body = init.body
-  if (typeof body !== "string") return {}
-  return JSON.parse(body) as Record<string, unknown>
+  const init = call[1]
+  if (!init || typeof init !== "object") return {}
+  if (!("body" in init) || typeof init.body !== "string") return {}
+  return JSON.parse(init.body)
 }
 
 describe("useChatMessaging timeouts", () => {
@@ -329,8 +335,9 @@ describe("useChatMessaging timeouts", () => {
     })
 
     expect(options.addMessage).toHaveBeenCalledTimes(2)
-    const timeoutMessage = options.addMessage.mock.calls[1]?.[0] as { content?: { result?: string } }
-    expect(timeoutMessage.content?.result).toContain("stream did not start in 120s")
+    const timeoutMessage = options.addMessage.mock.calls[1]?.[0]
+    expect(timeoutMessage).toHaveProperty("content.result")
+    expect(timeoutMessage.content.result).toContain("stream did not start in 120s")
   })
 
   it("cancels by requestId and shows timeout message when first stream event never arrives", async () => {
@@ -387,8 +394,9 @@ describe("useChatMessaging timeouts", () => {
     })
 
     expect(options.addMessage).toHaveBeenCalledTimes(2)
-    const timeoutMessage = options.addMessage.mock.calls[1]?.[0] as { content?: { result?: string } }
-    expect(timeoutMessage.content?.result).toContain("no stream event received in 60s")
+    const timeoutMessage = options.addMessage.mock.calls[1]?.[0]
+    expect(timeoutMessage).toHaveProperty("content.result")
+    expect(timeoutMessage.content.result).toContain("no stream event received in 60s")
   })
 
   it("treats warning events as liveness and does not fire first-event timeout", async () => {

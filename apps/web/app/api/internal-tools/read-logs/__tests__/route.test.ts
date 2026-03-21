@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // Helper to create mock NextRequest
 function createMockRequest(url: string, options?: RequestInit) {
   const urlObj = new URL(url)
-  const req = new Request(url, options) as Request & { nextUrl: URL }
-  req.nextUrl = urlObj
+  const req = new Request(url, options)
+  Object.defineProperty(req, "nextUrl", { value: urlObj })
   return req
 }
 

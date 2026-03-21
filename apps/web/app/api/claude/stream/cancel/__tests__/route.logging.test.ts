@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
@@ -97,19 +98,19 @@ describe("POST /api/claude/stream/cancel logging resilience", () => {
 
     const { POST } = await import("../route")
 
-    const req1 = new Request("http://localhost/api/claude/stream/cancel", {
+    const req1 = new NextRequest("http://localhost/api/claude/stream/cancel", {
       method: "POST",
       body: JSON.stringify({ requestId: "req-1" }),
       headers: { "Content-Type": "application/json" },
     })
-    const req2 = new Request("http://localhost/api/claude/stream/cancel", {
+    const req2 = new NextRequest("http://localhost/api/claude/stream/cancel", {
       method: "POST",
       body: JSON.stringify({ requestId: "req-2" }),
       headers: { "Content-Type": "application/json" },
     })
 
-    const response1 = await POST(req1 as any)
-    const response2 = await POST(req2 as any)
+    const response1 = await POST(req1)
+    const response2 = await POST(req2)
 
     expect(response1.status).toBe(200)
     expect(response2.status).toBe(200)

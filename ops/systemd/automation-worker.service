@@ -6,8 +6,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/root/webalive/alive/apps/worker
-EnvironmentFile=/root/webalive/alive/apps/web/.env.production
+WorkingDirectory=__ALIVE_ROOT__/apps/worker
+EnvironmentFile=__ALIVE_ROOT__/apps/web/.env.production
 
 ExecStart=/usr/local/bin/bun src/index.ts
 

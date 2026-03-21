@@ -100,11 +100,12 @@ describe("Workspace Security - Path Traversal Prevention", () => {
     })
 
     it("should reject empty or invalid paths", () => {
-      const invalidPaths = ["", " ", null, undefined]
-
-      for (const invalid of invalidPaths) {
-        expect(() => ensurePathWithinWorkspace(invalid as any, workspaceRoot)).toThrow()
-      }
+      expect(() => ensurePathWithinWorkspace("", workspaceRoot)).toThrow()
+      expect(() => ensurePathWithinWorkspace(" ", workspaceRoot)).toThrow()
+      // @ts-expect-error testing runtime safety with non-string input
+      expect(() => ensurePathWithinWorkspace(null, workspaceRoot)).toThrow()
+      // @ts-expect-error testing runtime safety with non-string input
+      expect(() => ensurePathWithinWorkspace(undefined, workspaceRoot)).toThrow()
     })
   })
 

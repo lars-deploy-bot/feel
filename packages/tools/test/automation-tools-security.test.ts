@@ -5,18 +5,17 @@ const originalSessionCookie = process.env.ALIVE_SESSION_COOKIE
 const mockFetch = vi.fn()
 
 function jsonResponse(payload: unknown): Response {
-  return {
-    ok: true,
+  return new Response(JSON.stringify(payload), {
     status: 200,
-    json: async () => payload,
-  } as Response
+    headers: { "Content-Type": "application/json" },
+  })
 }
 
 describe("automation tools runtime validation", { timeout: 15_000 }, () => {
   beforeEach(() => {
     vi.resetModules()
     mockFetch.mockReset()
-    global.fetch = mockFetch as typeof fetch
+    vi.stubGlobal("fetch", mockFetch)
     process.env.PORT = "1234"
     process.env.ALIVE_SESSION_COOKIE = "session-token"
   })
@@ -40,13 +39,16 @@ describe("automation tools runtime validation", { timeout: 15_000 }, () => {
   it("rejects invalid create_automation params before calling the API", async () => {
     const { createAutomation } = await import("../src/tools/automations/create-automation.js")
 
-    const result = await createAutomation({
+    // Deliberately invalid params: "webhook" is not a valid trigger_type.
+    // Pass through JSON round-trip to bypass compile-time type checking.
+    const invalidParams: Record<string, unknown> = {
       site_id: "site_1",
       name: "Bad automation",
       trigger_type: "webhook",
       action_type: "prompt",
       action_prompt: "Do something",
-    } as never)
+    }
+    const result = await createAutomation(JSON.parse(JSON.stringify(invalidParams)))
 
     expect(result.isError).toBe(true)
     expect(result.content[0]?.text).toContain("Invalid automation configuration")
@@ -56,9 +58,10 @@ describe("automation tools runtime validation", { timeout: 15_000 }, () => {
   it("rejects invalid trigger_automation ids before URL construction", async () => {
     const { triggerAutomation } = await import("../src/tools/automations/trigger-automation.js")
 
-    const result = await triggerAutomation({
-      automation_id: "../../etc/passwd",
-    } as never)
+    // Deliberately invalid: path traversal in automation_id.
+    // Pass through JSON round-trip to bypass compile-time type checking.
+    const invalidParams: Record<string, unknown> = { automation_id: "../../etc/passwd" }
+    const result = await triggerAutomation(JSON.parse(JSON.stringify(invalidParams)))
 
     expect(result.isError).toBe(true)
     expect(result.content[0]?.text).toContain("Invalid automation ID")
@@ -79,11 +82,7 @@ describe("automation tools runtime validation", { timeout: 15_000 }, () => {
         return jsonResponse({ ok: true, automations: [], total: 0 })
       }
 
-      return {
-        ok: false,
-        status: 404,
-        json: async () => ({ ok: false }),
-      } as Response
+      return new Response(JSON.stringify({ ok: false }), { status: 404 })
     })
 
     const { listAutomations } = await import("../src/tools/automations/list-automations.js")
@@ -110,11 +109,7 @@ describe("automation tools runtime validation", { timeout: 15_000 }, () => {
         return jsonResponse({ ok: true, automations: [], total: 0 })
       }
 
-      return {
-        ok: false,
-        status: 404,
-        json: async () => ({ ok: false }),
-      } as Response
+      return new Response(JSON.stringify({ ok: false }), { status: 404 })
     })
 
     const { listAutomations } = await import("../src/tools/automations/list-automations.js")

@@ -10,7 +10,6 @@
  */
 import { COOKIE_NAMES, TEST_CONFIG } from "@webalive/shared"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
-import type { DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import type { TestUser } from "@/lib/test-helpers/auth-test-helper"
 import { cleanupTestUser, createTestUser } from "@/lib/test-helpers/auth-test-helper"
 import { assertSupabaseServiceEnv, assertSystemTestEnv } from "@/lib/test-helpers/integration-env"
@@ -60,7 +59,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(403)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
       expect(result.error).toBe("ORG_ACCESS_DENIED")
       expect(result.message).toMatch(/do not have access/i)
@@ -78,7 +77,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(403)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
       expect(result.error).toBe("ORG_ACCESS_DENIED")
     })
@@ -95,7 +94,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(400)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
       expect(result.error).toBe("VALIDATION_ERROR")
     })
@@ -110,7 +109,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(400)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
     })
 
@@ -124,7 +123,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(400)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
       expect(result.message).toMatch(/lowercase/)
     })
@@ -140,7 +139,7 @@ describe("Deployment API Security", () => {
 
       // Should either reject as reserved OR as already taken
       expect(response.status).toBeGreaterThanOrEqual(400)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
     })
 
@@ -184,7 +183,7 @@ describe("Deployment API Security", () => {
       )
 
       expect(response.status).toBe(401)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
     })
 
@@ -212,7 +211,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(400)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
       expect(result.error).toBe("VALIDATION_ERROR")
     })
@@ -227,7 +226,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(400)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.message).toMatch(/at least 3/)
     })
 
@@ -241,7 +240,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(400)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.message).toMatch(/no more than 20/)
     })
   })
@@ -256,8 +255,7 @@ describe("Deployment API Security", () => {
         }),
       })
 
-      const result = (await response.json()) as DeploySubdomainResponse
-
+      const result = await response.json()
       // Every error response must have these fields
       expect(result).toHaveProperty("ok", false)
       expect(result).toHaveProperty("message")
@@ -279,7 +277,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(401)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
       expect(result.message).toBeTruthy() // Message exists
       expect(typeof result.message).toBe("string")
@@ -296,7 +294,7 @@ describe("Deployment API Security", () => {
       })
 
       expect(response.status).toBe(403)
-      const result = (await response.json()) as DeploySubdomainResponse
+      const result = await response.json()
       expect(result.ok).toBe(false)
       expect(result.error).toBe("ORG_ACCESS_DENIED")
     })

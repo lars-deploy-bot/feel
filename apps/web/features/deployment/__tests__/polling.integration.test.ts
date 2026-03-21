@@ -13,10 +13,13 @@ describe("Domain Polling Integration", () => {
     const domain = "test-poll.test.local"
 
     // Mock fetch to simulate a successful response
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-    }) as any
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+      }),
+    )
 
     const response = await fetch(`https://${domain}`, {
       method: "GET",
@@ -32,7 +35,7 @@ describe("Domain Polling Integration", () => {
     const domain = "nonexistent-test-12345.test.local"
 
     // Mock fetch to simulate a network error
-    global.fetch = vi.fn().mockRejectedValue(new Error("Domain not found")) as any
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Domain not found")))
 
     try {
       await fetch(`https://${domain}`, {
@@ -55,13 +58,16 @@ describe("Domain Polling Integration", () => {
 
     // Mock fetch to fail the first 2 attempts, then succeed
     let callCount = 0
-    global.fetch = vi.fn().mockImplementation(() => {
-      callCount++
-      if (callCount <= 2) {
-        return Promise.reject(new Error("Not ready yet"))
-      }
-      return Promise.resolve({ ok: true, status: 200 })
-    }) as any
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => {
+        callCount++
+        if (callCount <= 2) {
+          return Promise.reject(new Error("Not ready yet"))
+        }
+        return Promise.resolve({ ok: true, status: 200 })
+      }),
+    )
 
     const pollPromise = new Promise<void>((resolve, reject) => {
       const interval = setInterval(async () => {
