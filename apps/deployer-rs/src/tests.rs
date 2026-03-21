@@ -389,7 +389,7 @@ async fn setup_test_postgres_schema(client: &tokio_postgres::Client) {
 
             CREATE TYPE deploy.environment_name AS ENUM ('staging', 'production');
             CREATE TYPE deploy.task_status AS ENUM ('pending', 'running', 'succeeded', 'failed', 'cancelled');
-            CREATE TYPE deploy.artifact_kind AS ENUM ('docker_image');
+            CREATE TYPE deploy.artifact_kind AS ENUM ('docker_image', 'build_directory');
             CREATE TYPE deploy.deployment_action AS ENUM ('deploy', 'promote', 'rollback');
 
             CREATE TABLE deploy.applications (
@@ -445,6 +445,7 @@ async fn setup_test_postgres_schema(client: &tokio_postgres::Client) {
               environment_id text PRIMARY KEY,
               application_id text NOT NULL REFERENCES deploy.applications(application_id),
               server_id text NOT NULL,
+              domain_id text,
               name deploy.environment_name NOT NULL,
               hostname text NOT NULL,
               port integer,
@@ -685,7 +686,7 @@ fn prepare_runtime_bind_mount_source_copies_files_with_readable_permissions() {
             .permissions()
             .mode()
             & 0o777,
-        0o644
+        0o640
     );
 
     let _ = fs::remove_file(source_file);

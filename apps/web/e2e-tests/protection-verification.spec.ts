@@ -54,11 +54,11 @@ test.describe("Protection System Verification", () => {
 
   // This test requires PLAYWRIGHT_TEST=true on the server (local test env only)
   // Purpose: Verify that real Claude API calls are blocked by server-side protection
-  test.skip("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page, tenant }) => {
+  test.skip("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page, workerTenant }) => {
     test.skip(!isLocalTestServer, "Requires local test server with PLAYWRIGHT_TEST=true")
 
     // Just need auth - don't need the full chat UI
-    await login(page, tenant)
+    await login(page, workerTenant)
 
     // Make a direct fetch to the API (bypass Playwright routing)
     // This tests that the SERVER blocks real API calls, regardless of UI state

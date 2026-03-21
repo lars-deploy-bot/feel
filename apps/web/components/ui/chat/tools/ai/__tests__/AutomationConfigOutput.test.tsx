@@ -1,10 +1,7 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-// Mock @webalive/shared to avoid node: builtins in happy-dom.
-// The barrel export pulls in invite-code.ts (node:crypto) and path-security.ts (node:path)
-// which crash in browser test environments.
 vi.mock("@webalive/shared", () => ({
   CLAUDE_MODELS: {
     SONNET: "claude-sonnet-4-6",
@@ -29,15 +26,27 @@ vi.mock("@webalive/shared", () => ({
   isValidClaudeModel: (id: string) => ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5"].includes(id),
 }))
 
-vi.mock("@/lib/api/api-client", () => ({
-  ApiError: class ApiError extends Error {},
-  postty: vi.fn(),
+const mockSetView = vi.fn()
+const mockSetWorkbench = vi.fn()
+const mockSetWorkbenchMinimized = vi.fn()
+const mockStartCreate = vi.fn()
+
+vi.mock("@/features/chat/lib/workbench-context", () => ({
+  useWorkbenchContext: () => ({ setView: mockSetView }),
 }))
 
-import { postty } from "@/lib/api/api-client"
-import { AutomationConfigOutput } from "../AutomationConfigOutput"
+vi.mock("@/lib/stores/debug-store", () => ({
+  useDebugActions: () => ({
+    setWorkbench: mockSetWorkbench,
+    setWorkbenchMinimized: mockSetWorkbenchMinimized,
+  }),
+}))
 
-const mockedPostty = vi.mocked(postty)
+vi.mock("@/lib/stores/agentCreateStore", () => ({
+  useAgentCreateActions: () => ({ startCreate: mockStartCreate }),
+}))
+
+import { AutomationConfigOutput, validateAutomationConfig } from "../AutomationConfigOutput"
 
 const baseData = {
   type: "automation_config" as const,
@@ -48,35 +57,36 @@ const baseData = {
 
 describe("AutomationConfigOutput", () => {
   beforeEach(() => {
-    mockedPostty.mockReset()
+    vi.clearAllMocks()
   })
 
-  it("sends a cancellation message to the chat framework", () => {
-    const onSubmitAnswer = vi.fn()
-
-    render(<AutomationConfigOutput data={baseData} toolName="ask_automation_config" onSubmitAnswer={onSubmitAnswer} />)
-
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
-
-    expect(onSubmitAnswer).toHaveBeenCalledWith("User canceled automation configuration.")
-    expect(screen.queryByText("Canceled")).not.toBeNull()
-  })
-
-  it("keeps form progress after submit errors so users can retry", async () => {
-    mockedPostty.mockRejectedValueOnce(new Error("backend down"))
-
+  it("opens the agents panel on mount", () => {
     render(<AutomationConfigOutput data={baseData} toolName="ask_automation_config" />)
 
-    fireEvent.click(screen.getByRole("button", { name: "Next" }))
-    fireEvent.click(screen.getByRole("button", { name: "Next" }))
-    fireEvent.click(screen.getByRole("button", { name: "Create" }))
+    expect(mockSetWorkbench).toHaveBeenCalledWith(true)
+    expect(mockSetWorkbenchMinimized).toHaveBeenCalledWith(false)
+    expect(mockSetView).toHaveBeenCalledWith("agents")
+    expect(mockStartCreate).toHaveBeenCalled()
+  })
 
-    await waitFor(() => {
-      const alert = screen.getByRole("alert")
-      expect(alert.textContent).toContain("backend down")
-    })
+  it("renders the agent name as a re-open link", () => {
+    render(<AutomationConfigOutput data={baseData} toolName="ask_automation_config" />)
 
-    expect(screen.queryByRole("button", { name: "Create" })).not.toBeNull()
-    expect(screen.queryByRole("button", { name: "Next" })).toBeNull()
+    expect(screen.getByText("Daily summary")).not.toBeNull()
+  })
+})
+
+describe("validateAutomationConfig", () => {
+  it("returns true for valid data", () => {
+    expect(validateAutomationConfig(baseData)).toBe(true)
+  })
+
+  it("returns false for missing sites", () => {
+    expect(validateAutomationConfig({ type: "automation_config", sites: [] })).toBe(false)
+  })
+
+  it("returns false for non-object", () => {
+    expect(validateAutomationConfig(null)).toBe(false)
+    expect(validateAutomationConfig("string")).toBe(false)
   })
 })

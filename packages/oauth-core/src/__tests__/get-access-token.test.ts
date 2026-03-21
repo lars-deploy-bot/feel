@@ -449,6 +449,74 @@ describe("OAuthManager.getAccessToken", () => {
   })
 
   // ---------------------------------------------------------------
+  // DISABLED CONNECTION
+  // ---------------------------------------------------------------
+
+  it("rejects disabled connections before attempting refresh", async () => {
+    const blob = JSON.stringify({
+      version: 2,
+      provider: "google",
+      credential_provider: "google",
+      tenant_user_id: null,
+      redirect_uri: null,
+      access_token: "old-token",
+      refresh_token: "valid-refresh",
+      expires_at: null,
+      scope: "read",
+      token_type: "Bearer",
+      saved_at: new Date().toISOString(),
+      cached_email: null,
+      provider_metadata: {},
+      disabled_at: "2026-03-21T00:00:00.000Z",
+      disabled_reason: "refresh_failed",
+    })
+    rpcMock.mockResolvedValueOnce(encryptedRow(blob))
+
+    const manager = createManager()
+    await expect(manager.getAccessToken("user-1", "google")).rejects.toThrow(
+      "Connection to 'google' is disabled (reason: refresh_failed",
+    )
+
+    // Should NOT have called provider refresh
+    const provider = mockGetProvider()
+    expect(provider.refreshToken).not.toHaveBeenCalled()
+  })
+
+  it("auto-disables connection on invalid_grant refresh failure", async () => {
+    const pastDate = new Date(Date.now() - 60_000).toISOString()
+    const blob = makeStoredConnectionBlob({ expires_at: pastDate })
+    rpcMock.mockResolvedValueOnce(encryptedRow(blob))
+    rpcMock.mockResolvedValueOnce(encryptedRow(blob))
+    // disableConnection reads then saves
+    rpcMock.mockResolvedValueOnce(encryptedRow(blob))
+    rpcMock.mockResolvedValueOnce({ data: "saved", error: null })
+
+    process.env.GOOGLE_CLIENT_ID = "test-client-id"
+    process.env.GOOGLE_CLIENT_SECRET = "test-client-secret"
+
+    mockGetProvider.mockReturnValue({
+      name: "google",
+      refreshToken: vi.fn().mockRejectedValue(new Error("invalid_grant: Token has been revoked")),
+      exchangeCode: vi.fn(),
+      getAuthUrl: vi.fn(),
+    })
+
+    const manager = createManager()
+    await expect(manager.getAccessToken("user-1", "google")).rejects.toThrow("Token refresh failed")
+
+    // Verify disableConnection was called — check the save RPC call
+    const saveCalls = rpcMock.mock.calls.filter((c: unknown[]) => c[0] === "lockbox_save")
+    expect(saveCalls.length).toBe(1)
+    const savedParams = saveCalls[0][1]
+    const savedBlob = JSON.parse(Security.decrypt(savedParams.p_ciphertext, savedParams.p_iv, savedParams.p_auth_tag))
+    expect(savedBlob.disabled_at).toBeTruthy()
+    expect(savedBlob.disabled_reason).toBe("refresh_failed")
+
+    delete process.env.GOOGLE_CLIENT_ID
+    delete process.env.GOOGLE_CLIENT_SECRET
+  })
+
+  // ---------------------------------------------------------------
   // PROVIDER REFRESH FAILURE
   // ---------------------------------------------------------------
 

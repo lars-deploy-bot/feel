@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, File, Folder } from "lucide-react"
+import { ChevronRight, File, Folder, Trash2 } from "lucide-react"
 import { memo, useCallback, useEffect, useState } from "react"
 import type { FileInfo, SearchResult } from "./lib/file-api"
 import { listFiles, searchFiles } from "./lib/file-api"
@@ -15,6 +15,7 @@ interface FileTreeProps {
   expandedFolders: Set<string>
   onToggleFolder: (path: string) => void
   onSelectFile: (path: string) => void
+  onDeleteFile?: (path: string, isDir: boolean) => void
   filter?: string
 }
 
@@ -25,6 +26,7 @@ export function FileTree({
   expandedFolders,
   onToggleFolder,
   onSelectFile,
+  onDeleteFile,
   filter,
 }: FileTreeProps) {
   const activeFilter = filter?.trim() || ""
@@ -53,6 +55,7 @@ export function FileTree({
         expandedFolders={expandedFolders}
         onToggleFolder={onToggleFolder}
         onSelectFile={onSelectFile}
+        onDeleteFile={onDeleteFile}
       />
     </div>
   )
@@ -152,6 +155,7 @@ interface TreeLevelProps {
   expandedFolders: Set<string>
   onToggleFolder: (path: string) => void
   onSelectFile: (path: string) => void
+  onDeleteFile?: (path: string, isDir: boolean) => void
 }
 
 function TreeLevel({
@@ -163,6 +167,7 @@ function TreeLevel({
   expandedFolders,
   onToggleFolder,
   onSelectFile,
+  onDeleteFile,
 }: TreeLevelProps) {
   const key = cacheKey(workspace, worktree, path)
   const [files, setFiles] = useState<FileInfo[]>(() => getCachedList(key) || [])
@@ -235,6 +240,7 @@ function TreeLevel({
           expandedFolders={expandedFolders}
           onToggleFolder={onToggleFolder}
           onSelectFile={onSelectFile}
+          onDeleteFile={onDeleteFile}
         />
       ))}
     </>
@@ -252,6 +258,7 @@ interface TreeNodeProps {
   expandedFolders: Set<string>
   onToggleFolder: (path: string) => void
   onSelectFile: (path: string) => void
+  onDeleteFile?: (path: string, isDir: boolean) => void
 }
 
 // Memoize TreeNode to prevent re-renders when other nodes change
@@ -266,6 +273,7 @@ const TreeNode = memo(function TreeNode({
   expandedFolders,
   onToggleFolder,
   onSelectFile,
+  onDeleteFile,
 }: TreeNodeProps) {
   const isFolder = item.type === "directory"
 
@@ -277,36 +285,59 @@ const TreeNode = memo(function TreeNode({
     }
   }, [isFolder, item.path, onToggleFolder, onSelectFile])
 
+  const handleDelete = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onDeleteFile?.(item.path, isFolder)
+    },
+    [item.path, isFolder, onDeleteFile],
+  )
+
   const paddingLeft = 8 + depth * 12
 
   return (
     <>
-      <button
-        type="button"
-        onClick={handleClick}
-        className={`w-full h-8 flex items-center gap-1.5 text-left transition-colors ${
+      <div
+        className={`group/node w-full h-8 flex items-center text-left transition-colors ${
           isActive
             ? "bg-black/[0.06] dark:bg-white/[0.08] text-black dark:text-white"
             : "text-zinc-600 dark:text-zinc-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-zinc-800 dark:hover:text-zinc-300"
         }`}
-        style={{ paddingLeft }}
       >
-        {isFolder ? (
-          <ChevronRight
-            size={14}
-            strokeWidth={1.5}
-            className={`shrink-0 text-black/30 dark:text-white/25 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
-          />
-        ) : (
-          <span className="w-[14px] shrink-0" />
+        <button
+          type="button"
+          onClick={handleClick}
+          className="flex-1 min-w-0 h-full flex items-center gap-1.5"
+          style={{ paddingLeft }}
+        >
+          {isFolder ? (
+            <ChevronRight
+              size={14}
+              strokeWidth={1.5}
+              className={`shrink-0 text-black/30 dark:text-white/25 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+            />
+          ) : (
+            <span className="w-[14px] shrink-0" />
+          )}
+          {isFolder ? (
+            <Folder size={14} strokeWidth={1.5} className="shrink-0 text-amber-500/80" />
+          ) : (
+            <File size={14} strokeWidth={1.5} className={`shrink-0 ${getFileColor(item.name)}`} />
+          )}
+          <span className="truncate pr-1">{item.name}</span>
+        </button>
+
+        {onDeleteFile && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="opacity-0 group-hover/node:opacity-100 focus-visible:opacity-100 shrink-0 p-1 mr-1.5 rounded text-black/20 dark:text-white/15 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
+            title={`Delete ${item.name}`}
+          >
+            <Trash2 size={13} strokeWidth={1.5} />
+          </button>
         )}
-        {isFolder ? (
-          <Folder size={14} strokeWidth={1.5} className="shrink-0 text-amber-500/80" />
-        ) : (
-          <File size={14} strokeWidth={1.5} className={`shrink-0 ${getFileColor(item.name)}`} />
-        )}
-        <span className="truncate pr-2">{item.name}</span>
-      </button>
+      </div>
 
       {isFolder && isExpanded && (
         <div className="relative">
@@ -324,6 +355,7 @@ const TreeNode = memo(function TreeNode({
             expandedFolders={expandedFolders}
             onToggleFolder={onToggleFolder}
             onSelectFile={onSelectFile}
+            onDeleteFile={onDeleteFile}
           />
         </div>
       )}

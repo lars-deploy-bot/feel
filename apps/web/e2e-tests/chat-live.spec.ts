@@ -106,6 +106,9 @@ test.describe("Chat API - Request Validation", () => {
 
   test("real two-turn context retention", async ({ page }) => {
     test.setTimeout(120000)
+    if (!process.env.GROQ_API_SECRET) {
+      test.skip(true, "GROQ_API_SECRET required for LLM-verified context retention test")
+    }
     const user = await getLiveStagingUser(test.info().workerIndex, getProjectBaseUrl(test.info()))
     await loginLiveStaging(page, user)
 

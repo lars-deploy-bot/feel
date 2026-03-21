@@ -61,11 +61,11 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
   const initialSiteSelection = getInitialSiteSelection(data.sites, data.defaultSiteId)
 
   // Basic fields
-  const [name, setName] = useState(data.defaultName || "")
-  const [prompt, setPrompt] = useState(data.defaultPrompt || "")
+  const [name, setName] = useState(data.defaultName ?? "")
+  const [prompt, setPrompt] = useState(data.defaultPrompt ?? "")
   const [siteId, setSiteId] = useState(initialSiteSelection.siteId)
   const [siteSearch, setSiteSearch] = useState(initialSiteSelection.siteSearch)
-  const [model, setModel] = useState<ClaudeModel>(data.defaultModel || CLAUDE_MODELS.HAIKU_4_5)
+  const [model, setModel] = useState<ClaudeModel>(data.defaultModel ?? CLAUDE_MODELS.HAIKU_4_5)
 
   // Schedule fields
   const [isOneTime, setIsOneTime] = useState(false)
@@ -408,13 +408,13 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">Ready to create your automation:</p>
                 <div className="space-y-2">
                   <ConfirmRow label="Task" value={name} />
-                  <ConfirmRow label="Website" value={selectedSite?.hostname || data.sites[0]?.hostname || "—"} />
+                  <ConfirmRow label="Website" value={selectedSite?.hostname ?? data.sites[0]?.hostname ?? "—"} />
                   <ConfirmRow
                     label="Schedule"
                     value={
                       isOneTime
                         ? `${scheduleDate} at ${scheduleTime}`
-                        : `${scheduleText} (${timezone.split("/")[1] || timezone})`
+                        : `${scheduleText} (${timezone.split("/")[1] ?? timezone})`
                     }
                   />
                   <ConfirmRow label="Model" value={getModelDisplayName(model)} />

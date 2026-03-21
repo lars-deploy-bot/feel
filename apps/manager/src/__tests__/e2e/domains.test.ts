@@ -12,7 +12,9 @@ test.describe("Domains API", () => {
       data: { passcode: PASSCODE },
     })
     expect(loginRes.ok()).toBe(true)
-    authCookie = loginRes.headers()["set-cookie"].split(";")[0]
+    const setCookie = loginRes.headers()["set-cookie"]
+    expect(setCookie).toBeTruthy()
+    authCookie = setCookie.split(";")[0]
   })
 
   test("GET /api/manager/domains returns domain list", async ({ request }) => {

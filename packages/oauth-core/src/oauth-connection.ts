@@ -4,8 +4,8 @@ import type { OAuthProviderMetadata, OAuthTokens } from "./types"
 const oauthProviderMetadataValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])
 const oauthProviderMetadataSchema = z.record(z.string(), oauthProviderMetadataValueSchema)
 
-const storedOAuthConnectionSchema = z.object({
-  version: z.literal(1),
+/** Shared fields between v1 and v2 */
+const sharedConnectionFields = {
   provider: z.string().min(1),
   credential_provider: z.string().min(1),
   tenant_user_id: z.string().min(1).nullable(),
@@ -18,6 +18,18 @@ const storedOAuthConnectionSchema = z.object({
   saved_at: z.string().min(1),
   cached_email: z.string().min(1).nullable(),
   provider_metadata: oauthProviderMetadataSchema,
+} as const
+
+const storedOAuthConnectionSchemaV1 = z.object({
+  version: z.literal(1),
+  ...sharedConnectionFields,
+})
+
+const storedOAuthConnectionSchemaV2 = z.object({
+  version: z.literal(2),
+  ...sharedConnectionFields,
+  disabled_at: z.string().min(1).nullable(),
+  disabled_reason: z.string().min(1).nullable(),
 })
 
 const legacyStoredOAuthConnectionSchema = z
@@ -34,7 +46,8 @@ const legacyStoredOAuthConnectionSchema = z
 
 const legacySavedAt = "1970-01-01T00:00:00.000Z"
 
-export type StoredOAuthConnection = z.infer<typeof storedOAuthConnectionSchema>
+/** Always the latest version */
+export type StoredOAuthConnection = z.infer<typeof storedOAuthConnectionSchemaV2>
 
 export interface BuildStoredOAuthConnectionOptions {
   provider: string
@@ -57,7 +70,7 @@ export function buildStoredOAuthConnection(options: BuildStoredOAuthConnectionOp
   const mergedProviderMetadata = mergeProviderMetadata(options.providerMetadata, options.tokens.provider_metadata)
 
   return {
-    version: 1,
+    version: 2,
     provider: options.provider,
     credential_provider: options.credentialProvider,
     tenant_user_id: options.tenantUserId ?? null,
@@ -70,27 +83,47 @@ export function buildStoredOAuthConnection(options: BuildStoredOAuthConnectionOp
     saved_at: new Date(options.now).toISOString(),
     cached_email: options.email ?? null,
     provider_metadata: mergedProviderMetadata,
+    disabled_at: null,
+    disabled_reason: null,
   }
+}
+
+/** Upgrade a v1 connection to v2 by adding disabled fields */
+function upgradeV1ToV2(v1: z.infer<typeof storedOAuthConnectionSchemaV1>): StoredOAuthConnection {
+  return { ...v1, version: 2, disabled_at: null, disabled_reason: null }
 }
 
 export function parseStoredOAuthConnection(
   value: unknown,
   options: ParseStoredOAuthConnectionOptions,
 ): StoredOAuthConnection {
-  const storedResult = storedOAuthConnectionSchema.safeParse(value)
-  if (storedResult.success) {
-    if (storedResult.data.provider !== options.provider) {
+  // Try v2 first (latest)
+  const v2Result = storedOAuthConnectionSchemaV2.safeParse(value)
+  if (v2Result.success) {
+    if (v2Result.data.provider !== options.provider) {
       throw new Error(
-        `Stored connection provider mismatch: expected '${options.provider}', got '${storedResult.data.provider}'`,
+        `Stored connection provider mismatch: expected '${options.provider}', got '${v2Result.data.provider}'`,
       )
     }
-    return storedResult.data
+    return v2Result.data
   }
 
+  // Try v1 and upgrade
+  const v1Result = storedOAuthConnectionSchemaV1.safeParse(value)
+  if (v1Result.success) {
+    if (v1Result.data.provider !== options.provider) {
+      throw new Error(
+        `Stored connection provider mismatch: expected '${options.provider}', got '${v1Result.data.provider}'`,
+      )
+    }
+    return upgradeV1ToV2(v1Result.data)
+  }
+
+  // Try legacy (pre-versioned) and upgrade
   const legacyResult = legacyStoredOAuthConnectionSchema.safeParse(value)
   if (legacyResult.success) {
     return {
-      version: 1,
+      version: 2,
       provider: options.provider,
       credential_provider: options.fallbackCredentialProvider,
       tenant_user_id: null,
@@ -103,10 +136,13 @@ export function parseStoredOAuthConnection(
       saved_at: legacyResult.data.saved_at ?? legacySavedAt,
       cached_email: legacyResult.data.cached_email ?? null,
       provider_metadata: {},
+      disabled_at: null,
+      disabled_reason: null,
     }
   }
 
-  const errors = storedResult.error.issues.map(issue => issue.message)
+  // Use v2 errors for the most helpful diagnostics
+  const errors = v2Result.error.issues.map(issue => issue.message)
   throw new Error(`Stored token data does not match OAuth connection schema: ${errors.join("; ")}`)
 }
 

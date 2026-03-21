@@ -39,9 +39,9 @@ export async function sendMessageAndCapture(
   return { response, assistantText }
 }
 
-/** Wait for the stream to complete (send button re-attaches after streaming ends). */
+/** Wait for the stream to complete (send button re-enables after streaming ends). */
 export async function waitForStreamComplete(page: Page): Promise<void> {
-  await expect(page.locator(TEST_SELECTORS.sendButton)).toBeAttached({ timeout: TEST_TIMEOUTS.max })
+  await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({ timeout: TEST_TIMEOUTS.max })
 }
 
 /** Wait for the message input to be visible (chat interface ready to type). */

@@ -57,9 +57,15 @@ export async function login(
  * @param user - Test user from fixture
  * @param context - Playwright browser context
  */
-export async function setAuthCookie(user: TestTenant, context: BrowserContext) {
+export async function setAuthCookie(user: TestTenant, context: BrowserContext, baseUrl?: string) {
   const JWT_SECRET = process.env.JWT_SECRET
   if (!JWT_SECRET) throw new Error("JWT_SECRET not set — add it to .env.e2e.local")
+
+  const resolvedBaseUrl = baseUrl ?? process.env.NEXT_PUBLIC_APP_URL
+  if (!resolvedBaseUrl) {
+    throw new Error("Base URL is required. Pass baseUrl or set NEXT_PUBLIC_APP_URL.")
+  }
+  const parsedUrl = new URL(resolvedBaseUrl)
 
   // Create JWT payload with all required fields
   const payload = {
@@ -77,15 +83,15 @@ export async function setAuthCookie(user: TestTenant, context: BrowserContext) {
   // Sign JWT (30 day expiration to match server)
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" })
 
-  // Set auth cookie
+  // Set auth cookie — derive domain and secure flag from base URL
   await context.addCookies([
     {
       name: COOKIE_NAMES.SESSION,
       value: token,
-      domain: "localhost",
+      domain: parsedUrl.hostname,
       path: "/",
       httpOnly: true,
-      secure: false, // Must be false for local test server (HTTP, not HTTPS)
+      secure: parsedUrl.protocol === "https:",
       sameSite: "Lax",
     },
   ])

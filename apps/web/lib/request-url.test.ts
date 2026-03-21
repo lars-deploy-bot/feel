@@ -13,15 +13,12 @@ const hasServerConfig = Boolean(DOMAINS.APP_DEV && DOMAINS.APP_DEV_HOST && DOMAI
 // Use constants for test URLs
 const DEV_BASE_URL = `http://localhost:${PORTS.DEV}`
 
-// Mock NextRequest helper
-function createMockRequest(url: string, headers: Record<string, string>): NextRequest {
-  // @ts-expect-error - partial NextRequest mock for testing
+// Mock NextRequest helper — only the subset getRequestUrls actually reads
+function createMockRequest(url: string, headers: Record<string, string>) {
   return {
     url,
-    headers: {
-      get: (name: string) => headers[name.toLowerCase()] || null,
-    },
-  }
+    headers: new Headers(headers),
+  } satisfies Pick<NextRequest, "url" | "headers">
 }
 
 describe("getRequestUrls", () => {

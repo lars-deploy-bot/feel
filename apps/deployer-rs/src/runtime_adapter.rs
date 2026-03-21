@@ -439,7 +439,17 @@ impl RuntimeLifecycle for HostRuntimeAdapter {
             RollbackState::Container(prev) => restore_rollback_container(prev, log_path).await,
             RollbackState::None => {
                 let legacy = format!("alive-{}.service", params.environment.name);
-                crate::systemd::start_and_enable_systemd_unit(&legacy, log_path).await
+                match crate::systemd::start_and_enable_systemd_unit(&legacy, log_path).await {
+                    Ok(()) => Ok(()),
+                    Err(error) => {
+                        // Legacy systemd unit may not exist (e.g., fresh Docker deployment).
+                        // Not a rollback failure — there's simply nothing to roll back to.
+                        append_log(log_path, &format!(
+                            "no legacy systemd unit to restore ({}): {:#}\n", legacy, error
+                        )).await?;
+                        Ok(())
+                    }
+                }
             }
             RollbackState::Symlink(_) => {
                 Err(anyhow!("Docker adapter received symlink rollback state — this is a deployer bug"))

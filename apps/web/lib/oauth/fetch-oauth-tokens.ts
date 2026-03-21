@@ -65,7 +65,11 @@ export async function fetchOAuthTokens(userId: string, logger?: Logger): Promise
 
         const displayName = formatProviderName(providerKey)
 
-        if (errorMessage.includes("revoked") || errorMessage.includes("invalid_grant")) {
+        if (
+          errorMessage.includes("is disabled") ||
+          errorMessage.includes("revoked") ||
+          errorMessage.includes("invalid_grant")
+        ) {
           logger?.log(`⚠️ ${providerKey} OAuth error: ${errorMessage}`)
           logger?.log(`   User needs to reconnect ${providerKey} in Settings > Integrations`)
           warning = {
