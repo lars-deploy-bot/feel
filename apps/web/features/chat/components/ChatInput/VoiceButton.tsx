@@ -9,14 +9,18 @@ const HOLD_THRESHOLD_MS = 200
 
 const LABELS: Record<VoiceState, string> = {
   idle: "Hold to speak, tap to toggle",
-  recording: "Release to send",
-  transcribing: "Transcribing...",
+  recording: "Listening… stops when you pause",
+  stopping: "Stopping…",
+  transcribing: "Transcribing…",
+  error: "Voice input error",
 }
 
 const STYLES: Record<VoiceState, string> = {
   idle: "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70",
   recording: "bg-red-500/15 text-red-500",
+  stopping: "text-black/30 dark:text-white/30 cursor-wait",
   transcribing: "text-black/30 dark:text-white/30 cursor-wait",
+  error: "text-red-500/60",
 }
 
 interface VoiceButtonProps {

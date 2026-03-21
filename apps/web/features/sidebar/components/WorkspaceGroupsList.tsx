@@ -36,7 +36,7 @@ export function WorkspaceGroupsList({
           isFavorite={isFavorite}
           isActive={ws === activeWorkspace}
           conversations={wsConversations}
-          isExpanded={ws === activeWorkspace || expandedWorkspaces.has(ws)}
+          isExpanded={expandedWorkspaces.has(ws)}
           onToggleExpanded={onToggleExpanded}
           onNewConversation={onNewConversationInWorkspace}
           onToggleFavorite={onToggleFavorite}
@@ -92,7 +92,7 @@ function WorkspaceGroupRow({
             strokeWidth={2}
             className={`shrink-0 text-black/20 dark:text-white/20 transition-transform duration-150 ease-out ${
               isExpanded && hasConversations ? "rotate-90" : ""
-            } ${hasConversations ? "" : "opacity-0"}`}
+            } ${hasConversations && !isActive ? "" : "opacity-0"}`}
           />
           <span
             className={`truncate font-medium ${isActive ? "text-black/70 dark:text-white/70" : "text-black/45 dark:text-white/45"}`}
