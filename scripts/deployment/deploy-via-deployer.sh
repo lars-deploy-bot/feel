@@ -28,9 +28,9 @@ if [[ "$ENVIRONMENT" != "staging" && "$ENVIRONMENT" != "production" ]]; then
     exit 1
 fi
 
-# Load credentials for the target environment.
-# Each env file has the correct DATABASE_URL for its environment.
-ENV_FILE="$PROJECT_ROOT/apps/web/.env.$ENVIRONMENT"
+# Load credentials for production — the deploy schema lives in production Supabase,
+# which is what the API (port 5080) and deployer-rs both use.
+ENV_FILE="$PROJECT_ROOT/apps/web/.env.production"
 if [[ ! -f "$ENV_FILE" ]]; then
     log_error "Environment file not found: $ENV_FILE"
     exit 1
