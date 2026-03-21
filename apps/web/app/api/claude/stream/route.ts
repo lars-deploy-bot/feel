@@ -257,9 +257,10 @@ export async function POST(req: NextRequest) {
     // ========================================================================
     const workspaceName = requestWorkspace ?? host
 
+    const SAFE_RESULT: { result: "safe"; debug: Record<string, unknown> } = { result: "safe", debug: {} }
     const [inputSafetyResult, workspaceAccessResult, domainRecordResult, oauthTokenResult] = await Promise.allSettled([
       // Input safety check (calls Groq API — skip for superadmins)
-      user.isSuperadmin ? Promise.resolve({ result: "safe" as const, debug: {} }) : isInputSafeWithDebug(message),
+      user.isSuperadmin ? Promise.resolve(SAFE_RESULT) : isInputSafeWithDebug(message),
 
       // Verify workspace authorization
       verifyWorkspaceAccess(user, body, `[Claude Stream ${requestId}]`),
@@ -277,9 +278,12 @@ export async function POST(req: NextRequest) {
       logger.error("Input safety check failed:", inputSafetyResult.reason)
       // Fail open: don't block if safety service is down
     } else if (inputSafetyResult.value.result === "unsafe") {
-      logger.log(
-        `Input flagged as unsafe. Model response: "${(inputSafetyResult.value.debug as Record<string, unknown>).rawContent?.toString().slice(0, 200)}"`,
-      )
+      const debugInfo = inputSafetyResult.value.debug
+      const rawContent =
+        debugInfo && typeof debugInfo === "object" && "rawContent" in debugInfo
+          ? String(debugInfo.rawContent).slice(0, 200)
+          : ""
+      logger.log(`Input flagged as unsafe. Model response: "${rawContent}"`)
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
         details: { field: "message content", requestId },
