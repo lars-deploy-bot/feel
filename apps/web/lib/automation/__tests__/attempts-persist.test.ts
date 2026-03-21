@@ -62,7 +62,7 @@ describe("tryWorkerPool onPersistMessage", () => {
     mockPoolQuery.mockImplementation(
       async (_creds: unknown, opts: { onMessage: (msg: Record<string, unknown>) => void }) => {
         for (const msg of messages) {
-          opts.onMessage(msg as Record<string, unknown>)
+          opts.onMessage(msg)
         }
         return { success: true }
       },

@@ -19,9 +19,11 @@ describe("emailDraftState", () => {
       status: "sent",
       id: "gmail-msg-123",
       threadId: "thread-456",
-    }) as Array<{ type: string; text: string }>
+    })
 
-    const parsed = JSON.parse(next[0].text) as Record<string, unknown>
+    expect(next).toBeInstanceOf(Array)
+    const items = Array.isArray(next) ? next : []
+    const parsed: Record<string, unknown> = JSON.parse(items[0].text)
     expect(parsed.status).toBe("sent")
     expect(parsed.id).toBe("gmail-msg-123")
     expect(parsed.threadId).toBe("thread-456")

@@ -16,7 +16,7 @@ vi.mock("../src/lib/workspace-validator.js", () => ({
   extractDomainFromWorkspace: vi.fn(() => "example.com"),
 }))
 
-import { type BrowserParams, browserAction } from "../src/tools/workspace/browser.js"
+import { browserAction } from "../src/tools/workspace/browser.js"
 
 const mockFetch = vi.fn()
 global.fetch = mockFetch as ReturnType<typeof vi.fn>
@@ -39,7 +39,7 @@ describe("browserAction", () => {
         json: async () => ({ error: "Unauthorized" }),
       })
 
-      const result = await browserAction({ action: "status" } as BrowserParams)
+      const result = await browserAction({ action: "status" })
       expect(result.isError).toBe(true)
       expect(result.content[0]).toEqual(
         expect.objectContaining({ type: "text", text: expect.stringContaining("Unauthorized") }),
@@ -53,7 +53,7 @@ describe("browserAction", () => {
         json: async () => ({ error: "Navigation failed" }),
       })
 
-      const result = await browserAction({ action: "open", path: "/" } as BrowserParams)
+      const result = await browserAction({ action: "open", path: "/" })
       expect(result.isError).toBe(true)
     })
 
@@ -64,7 +64,7 @@ describe("browserAction", () => {
         json: async () => ({ error: "No page loaded" }),
       })
 
-      const result = await browserAction({ action: "snapshot" } as BrowserParams)
+      const result = await browserAction({ action: "snapshot" })
       expect(result.isError).toBe(true)
     })
 
@@ -75,7 +75,7 @@ describe("browserAction", () => {
         json: async () => ({ error: "ref is required" }),
       })
 
-      const result = await browserAction({ action: "click", ref: "e1" } as BrowserParams)
+      const result = await browserAction({ action: "click", ref: "e1" })
       expect(result.isError).toBe(true)
     })
 
@@ -86,7 +86,7 @@ describe("browserAction", () => {
         json: async () => ({ error: "Console read failed" }),
       })
 
-      const result = await browserAction({ action: "console" } as BrowserParams)
+      const result = await browserAction({ action: "console" })
       expect(result.isError).toBe(true)
     })
   })
@@ -95,7 +95,7 @@ describe("browserAction", () => {
     it("detects ECONNREFUSED (Node.js style)", async () => {
       mockFetch.mockRejectedValue(new Error("connect ECONNREFUSED 127.0.0.1:5061"))
 
-      const result = await browserAction({ action: "status" } as BrowserParams)
+      const result = await browserAction({ action: "status" })
       expect(result.isError).toBe(true)
       expect(result.content[0]).toEqual(
         expect.objectContaining({
@@ -108,7 +108,7 @@ describe("browserAction", () => {
     it("detects 'Unable to connect' (Bun style)", async () => {
       mockFetch.mockRejectedValue(new Error("Unable to connect. Is the computer able to access the url?"))
 
-      const result = await browserAction({ action: "status" } as BrowserParams)
+      const result = await browserAction({ action: "status" })
       expect(result.isError).toBe(true)
       expect(result.content[0]).toEqual(
         expect.objectContaining({
@@ -121,7 +121,7 @@ describe("browserAction", () => {
     it("detects 'fetch failed' errors", async () => {
       mockFetch.mockRejectedValue(new TypeError("fetch failed"))
 
-      const result = await browserAction({ action: "status" } as BrowserParams)
+      const result = await browserAction({ action: "status" })
       expect(result.isError).toBe(true)
       expect(result.content[0]).toEqual(
         expect.objectContaining({
@@ -140,7 +140,7 @@ describe("browserAction", () => {
         json: async () => ({ ok: true, url: "http://localhost:3333/", title: "Test", status: 200 }),
       })
 
-      await browserAction({ action: "open", path: "/" } as BrowserParams)
+      await browserAction({ action: "open", path: "/" })
 
       const [, options] = mockFetch.mock.calls[0]
       const body = JSON.parse(options.body)
@@ -160,7 +160,7 @@ describe("browserAction", () => {
         }),
       })
 
-      await browserAction({ action: "snapshot" } as BrowserParams)
+      await browserAction({ action: "snapshot" })
 
       const [, options] = mockFetch.mock.calls[0]
       const body = JSON.parse(options.body)
@@ -174,7 +174,7 @@ describe("browserAction", () => {
         json: async () => ({ ok: true, action: "click", ref: "e1", url: "http://localhost:3333/" }),
       })
 
-      await browserAction({ action: "click", ref: "e1" } as BrowserParams)
+      await browserAction({ action: "click", ref: "e1" })
 
       const [, options] = mockFetch.mock.calls[0]
       const body = JSON.parse(options.body)
@@ -195,7 +195,7 @@ describe("browserAction", () => {
         }),
       })
 
-      const result = await browserAction({ action: "open", path: "/about" } as BrowserParams)
+      const result = await browserAction({ action: "open", path: "/about" })
       expect(result.isError).toBe(false)
       expect(result.content[0]).toEqual(
         expect.objectContaining({
@@ -212,7 +212,7 @@ describe("browserAction", () => {
         json: async () => ({ browserConnected: true, activeSessions: 1 }),
       })
 
-      const result = await browserAction({ action: "status" } as BrowserParams)
+      const result = await browserAction({ action: "status" })
       expect(result.isError).toBe(false)
       expect(result.content[0]).toEqual(
         expect.objectContaining({

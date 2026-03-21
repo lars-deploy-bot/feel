@@ -66,7 +66,7 @@ function mockRequestWithMalformedJson(): Request {
   })
 }
 
-// Helper to create chainable Supabase mock (cast to unknown to satisfy SupabaseClient type)
+// Helper to create chainable Supabase mock
 function createMockIamClient(options: {
   pendingReferral?: {
     referral_id: string
@@ -75,9 +75,10 @@ function createMockIamClient(options: {
     credits_awarded: number
   } | null
   updateError?: { message: string } | null
-}) {
+}): Awaited<ReturnType<typeof createIamClient>> {
   const { pendingReferral = null, updateError = null } = options
 
+  // @ts-expect-error - partial Supabase mock for testing
   return {
     from: vi.fn().mockImplementation(() => ({
       select: vi.fn().mockReturnThis(),
@@ -87,7 +88,7 @@ function createMockIamClient(options: {
         eq: vi.fn().mockResolvedValue({ error: updateError }),
       }),
     })),
-  } as unknown as Awaited<ReturnType<typeof createIamClient>>
+  }
 }
 
 describe("POST /api/referrals/complete-pending", () => {

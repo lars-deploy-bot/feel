@@ -2,11 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // In-memory storage for mocked database
 const mockSessions = new Map<string, { sdk_session_id: string }>()
-const mockFailures = {
-  domainLookupError: null as { code?: string; message: string } | null,
-  sessionSelectError: null as { code?: string; message: string } | null,
-  sessionUpsertError: null as { code?: string; message: string } | null,
-  sessionDeleteError: null as { code?: string; message: string } | null,
+interface MockDbError {
+  code?: string
+  message: string
+}
+
+const mockFailures: {
+  domainLookupError: MockDbError | null
+  sessionSelectError: MockDbError | null
+  sessionUpsertError: MockDbError | null
+  sessionDeleteError: MockDbError | null
+} = {
+  domainLookupError: null,
+  sessionSelectError: null,
+  sessionUpsertError: null,
+  sessionDeleteError: null,
 }
 
 // Helper to create session key for storage
@@ -84,7 +94,23 @@ vi.mock("@/lib/supabase/iam", () => ({
   })),
 }))
 
-import { sessionStore, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
+import {
+  sessionStore,
+  type TabSessionKey,
+  tabKey,
+  tryLockConversation,
+  unlockConversation,
+} from "@/features/auth/lib/sessionStore"
+
+/**
+ * Create a deliberately malformed TabSessionKey for testing parseKey error handling.
+ * Bypasses the brand via JSON round-trip (JSON.parse returns `any` which is assignable
+ * to the branded type without an explicit `as` assertion).
+ */
+function malformedKey(raw: string): TabSessionKey {
+  const unbranded: TabSessionKey = JSON.parse(JSON.stringify(raw))
+  return unbranded
+}
 
 // Use real workspace and user from migrated database (demo.test.local)
 const TEST_WORKSPACE = "demo.test.local"
@@ -300,18 +326,18 @@ describe("Session Store - Tab Locking", () => {
   describe("parseKey validation (via sessionStore)", () => {
     it("should reject keys with wrong segment count (old 3-segment format)", async () => {
       // Simulate a stale key from the old format: userId::workspace::tabId
-      const malformedKey = "user1::workspace1::tab1" as ReturnType<typeof tabKey>
-      await expect(sessionStore.get(malformedKey)).rejects.toThrow("expected 4 or 5 segments")
+      const key = malformedKey("user1::workspace1::tab1")
+      await expect(sessionStore.get(key)).rejects.toThrow("expected 4 or 5 segments")
     })
 
     it("should reject keys with too many segments", async () => {
-      const malformedKey = "a::b::c::d::e::f" as ReturnType<typeof tabKey>
-      await expect(sessionStore.get(malformedKey)).rejects.toThrow("expected 4 or 5 segments")
+      const key = malformedKey("a::b::c::d::e::f")
+      await expect(sessionStore.get(key)).rejects.toThrow("expected 4 or 5 segments")
     })
 
     it("should reject empty keys", async () => {
-      const malformedKey = "" as ReturnType<typeof tabKey>
-      await expect(sessionStore.get(malformedKey)).rejects.toThrow("expected 4 or 5 segments")
+      const key = malformedKey("")
+      await expect(sessionStore.get(key)).rejects.toThrow("expected 4 or 5 segments")
     })
 
     it("should accept valid 4-segment keys", async () => {

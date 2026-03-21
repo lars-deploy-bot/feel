@@ -1,9 +1,7 @@
 // @vitest-environment happy-dom
 
 import { act, renderHook } from "@testing-library/react"
-import type React from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import { useChatMessaging } from "../useChatMessaging"
 
 const mocks = vi.hoisted(() => {
@@ -41,8 +39,9 @@ const mocks = vi.hoisted(() => {
     isValidStreamEvent: vi.fn((_event: unknown) => true),
     isWarningMessage: vi.fn((event: unknown) => {
       if (!event || typeof event !== "object") return false
-      const e = event as { type?: string; data?: { messageType?: string } }
-      return e.type === "stream_message" && e.data?.messageType === "stream_warning"
+      if (!("type" in event) || event.type !== "stream_message") return false
+      if (!("data" in event) || !event.data || typeof event.data !== "object") return false
+      return "messageType" in event.data && event.data.messageType === "stream_warning"
     }),
     buildPromptWithAttachmentsEx: vi.fn((message: string, _attachments: unknown[]) => ({
       prompt: message,
@@ -240,9 +239,16 @@ function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
     addMessage,
     chatInputRef: {
       current: {
+        addAttachment: vi.fn(),
+        addPhotobookImage: vi.fn(),
+        addSuperTemplateAttachment: vi.fn(),
+        addUserPrompt: vi.fn(),
+        addSkill: vi.fn(),
+        addFileForAnalysis: vi.fn(),
+        clearLibraryImages: vi.fn(),
         focus: vi.fn(),
-      } as unknown as ChatInputHandle,
-    } as React.RefObject<ChatInputHandle | null>,
+      },
+    },
     forceScrollToBottom,
     setShowCompletionDots,
   }
@@ -251,10 +257,10 @@ function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
 }
 
 function getCallBody(call: unknown[]): Record<string, unknown> {
-  const init = (call[1] ?? {}) as RequestInit
-  const body = init.body
-  if (typeof body !== "string") return {}
-  return JSON.parse(body) as Record<string, unknown>
+  const init = call[1]
+  if (!init || typeof init !== "object") return {}
+  if (!("body" in init) || typeof init.body !== "string") return {}
+  return JSON.parse(init.body)
 }
 
 describe("useChatMessaging payload safety", () => {
@@ -324,13 +330,15 @@ describe("useChatMessaging payload safety", () => {
   })
 
   it("keeps /api/claude/stream payload Anthropic-safe with local tool_result email block metadata present", async () => {
-    mocks.useDexieMessageStore.getState.mockReturnValueOnce({
-      resumeSessionAtByTab: { "tab-1": "assistant-uuid-123" },
-      clearResumeSessionAt: vi.fn(),
-      session: null,
-      // Simulate extra properties that might exist at runtime but aren't part of the store type.
-      // The test verifies these don't leak into the API payload.
-      ...({
+    // Simulate extra properties that might exist at runtime but aren't part of the store type.
+    // The test verifies these don't leak into the API payload.
+    const storeState = Object.assign(
+      {
+        resumeSessionAtByTab: { "tab-1": "assistant-uuid-123" },
+        clearResumeSessionAt: vi.fn(),
+        session: null,
+      },
+      {
         localToolResultState: {
           tabId: "tab-1",
           tool_use_id: "toolu_email_1",
@@ -342,8 +350,9 @@ describe("useChatMessaging payload safety", () => {
             },
           ],
         },
-      } as Record<string, unknown>),
-    })
+      },
+    )
+    mocks.useDexieMessageStore.getState.mockReturnValueOnce(storeState)
 
     const warningEvent = {
       type: "stream_message",

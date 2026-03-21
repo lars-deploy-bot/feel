@@ -11,8 +11,10 @@ type MockOptions = Omit<UseStreamCancellationOptions, "addMessage" | "setShowCom
   setShowCompletionDots: Mock
 }
 
+/** Module-level mock for postty — typed as plain vi.fn() to avoid generic overload issues */
+const mockPostty = vi.fn()
 vi.mock("@/lib/api/api-client", () => ({
-  postty: vi.fn().mockResolvedValue({ ok: true, status: "cancelled" }),
+  postty: (...args: unknown[]) => mockPostty(...args),
 }))
 
 vi.mock("@/lib/api/schemas", () => ({
@@ -46,6 +48,14 @@ vi.mock("@/lib/db/dexieMessageStore", () => ({
   },
 }))
 
+/**
+ * Creates a mock fetch that satisfies `typeof fetch` (including the `preconnect` property).
+ * Uses Object.assign to merge the mock callable with the required static property.
+ */
+function createMockFetch(): typeof fetch {
+  return Object.assign(vi.fn(), { preconnect: vi.fn() })
+}
+
 describe("useStreamCancellation", () => {
   const createMockOptions = (): MockOptions => ({
     tabId: "test-conversation-123",
@@ -63,18 +73,15 @@ describe("useStreamCancellation", () => {
   const getInterruptMessages = (addMessageMock: Mock) => {
     return addMessageMock.mock.calls
       .map(call => call[0])
-      .filter(message => (message as { type?: string }).type === "interrupt") as Array<{
-      type: string
-      content: Record<string, unknown>
-    }>
+      .filter((message: Record<string, unknown>) => message.type === "interrupt")
   }
 
   /** Get the content from the last resolveInterruptMessage call (Dexie update-in-place) */
-  const getResolvedContent = () => {
+  const getResolvedContent = (): Record<string, unknown> | undefined => {
     const calls = mockUpdateMessageContent.mock.calls
     if (calls.length === 0) return undefined
     const lastCall = calls[calls.length - 1]
-    return lastCall?.[1] as Record<string, unknown> | undefined
+    return lastCall?.[1]
   }
 
   beforeEach(() => {
@@ -85,10 +92,13 @@ describe("useStreamCancellation", () => {
     mockUpdateMessageContent.mockResolvedValue(true)
     mockCaptureResumeSessionAt.mockResolvedValue(null)
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true, hasStream: false }),
-    } as Response) as unknown as typeof fetch
+    const mockFetchInstance = createMockFetch()
+    vi.mocked(mockFetchInstance).mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, hasStream: false }), { status: 200 }),
+    )
+    global.fetch = mockFetchInstance
+
+    mockPostty.mockResolvedValue({ ok: true, status: "cancelled" })
   })
 
   afterEach(() => {
@@ -97,7 +107,6 @@ describe("useStreamCancellation", () => {
   })
 
   it("sends cancel by requestId and marks stop as confirmed on cancelled response", async () => {
-    const { postty } = await import("@/lib/api/api-client")
     const options = createMockOptions()
     const { result } = renderHook(() => useStreamCancellation(options))
 
@@ -113,7 +122,10 @@ describe("useStreamCancellation", () => {
       status: InterruptStatus.STOPPING,
     })
 
-    expect(postty).toHaveBeenCalledWith("claude/stream/cancel", expect.objectContaining({ requestId: "request-123" }))
+    expect(mockPostty).toHaveBeenCalledWith(
+      "claude/stream/cancel",
+      expect.objectContaining({ requestId: "request-123" }),
+    )
     expect(mockCaptureResumeSessionAt).toHaveBeenCalledWith("test-conversation-123")
 
     await act(async () => {
@@ -136,7 +148,6 @@ describe("useStreamCancellation", () => {
   })
 
   it("falls back to tabId cancel when requestId is unavailable", async () => {
-    const { postty } = await import("@/lib/api/api-client")
     const options = createMockOptions()
     options.currentRequestIdRef.current = null
     const { result } = renderHook(() => useStreamCancellation(options))
@@ -145,7 +156,7 @@ describe("useStreamCancellation", () => {
       result.current.stopStreaming()
     })
 
-    expect(postty).toHaveBeenCalledWith(
+    expect(mockPostty).toHaveBeenCalledWith(
       "claude/stream/cancel",
       expect.objectContaining({
         tabId: "test-conversation-123",
@@ -211,7 +222,6 @@ describe("useStreamCancellation", () => {
   })
 
   it("does not include stale worktree when worktrees are disabled", async () => {
-    const { postty } = await import("@/lib/api/api-client")
     const options = createMockOptions()
     options.currentRequestIdRef.current = null
     options.worktreesEnabled = false
@@ -222,7 +232,7 @@ describe("useStreamCancellation", () => {
       result.current.stopStreaming()
     })
 
-    const payload = (postty as Mock).mock.calls[0]?.[1] as Record<string, unknown>
+    const payload = mockPostty.mock.calls[0]?.[1]
     expect(payload).toMatchObject({
       tabId: "test-conversation-123",
       tabGroupId: "test-tabgroup",
@@ -236,13 +246,16 @@ describe("useStreamCancellation", () => {
   })
 
   it("reports still-running stream when cancel cannot be confirmed", async () => {
-    const { postty } = await import("@/lib/api/api-client")
-    ;(postty as Mock).mockImplementation(() => new Promise(() => {}))
+    mockPostty.mockImplementation(() => new Promise(() => {}))
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true, hasStream: true, state: "streaming", requestId: "request-reconnect-1" }),
-    } as Response) as unknown as typeof fetch
+    const stillRunningFetch = createMockFetch()
+    vi.mocked(stillRunningFetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({ ok: true, hasStream: true, state: "streaming", requestId: "request-reconnect-1" }),
+        { status: 200 },
+      ),
+    )
+    global.fetch = stillRunningFetch
 
     const options = createMockOptions()
     const { result } = renderHook(() => useStreamCancellation(options))
@@ -274,9 +287,10 @@ describe("useStreamCancellation", () => {
   })
 
   it("reports unknown state when reconnect verification is unavailable", async () => {
-    const { postty } = await import("@/lib/api/api-client")
-    ;(postty as Mock).mockResolvedValue({ ok: true, status: "cancel_queued" })
-    global.fetch = vi.fn().mockRejectedValue(new Error("network down")) as unknown as typeof fetch
+    mockPostty.mockResolvedValue({ ok: true, status: "cancel_queued" })
+    const failingFetch = createMockFetch()
+    vi.mocked(failingFetch).mockRejectedValue(new Error("network down"))
+    global.fetch = failingFetch
 
     const options = createMockOptions()
     const { result } = renderHook(() => useStreamCancellation(options))
@@ -304,8 +318,7 @@ describe("useStreamCancellation", () => {
   })
 
   it("shows already-finished state when stop arrives after completion", async () => {
-    const { postty } = await import("@/lib/api/api-client")
-    ;(postty as Mock).mockResolvedValue({ ok: true, status: "already_complete" })
+    mockPostty.mockResolvedValue({ ok: true, status: "already_complete" })
 
     const options = createMockOptions()
     const { result } = renderHook(() => useStreamCancellation(options))
@@ -333,8 +346,7 @@ describe("useStreamCancellation", () => {
   })
 
   it("does not claim explicit stop when backend reports cancel timeout", async () => {
-    const { postty } = await import("@/lib/api/api-client")
-    ;(postty as Mock).mockResolvedValue({ ok: true, status: "cancel_timed_out" })
+    mockPostty.mockResolvedValue({ ok: true, status: "cancel_timed_out" })
 
     const options = createMockOptions()
     const { result } = renderHook(() => useStreamCancellation(options))
@@ -360,8 +372,7 @@ describe("useStreamCancellation", () => {
   })
 
   it("falls back to addMessage when interrupt update-in-place cannot be persisted", async () => {
-    const { postty } = await import("@/lib/api/api-client")
-    ;(postty as Mock).mockResolvedValue({ ok: true, status: "cancelled" })
+    mockPostty.mockResolvedValue({ ok: true, status: "cancelled" })
     const options = createMockOptions()
     mockUpdateMessageContent.mockResolvedValueOnce(false)
     const { result } = renderHook(() => useStreamCancellation(options))

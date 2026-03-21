@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getGroupSummary, getToolNames, groupToolMessages, type RenderItem } from "../group-tool-messages"
+import { getGroupSummary, getToolNames, groupToolMessages } from "../group-tool-messages"
 import type { UIMessage } from "../message-parser"
 
 /** Build a fake TOOL_RESULT UIMessage with the given tool names */
@@ -167,11 +167,13 @@ describe("groupToolMessages", () => {
     const items = groupToolMessages(messages)
     expect(items).toHaveLength(2)
     // Assistant at index 0
-    const single = items[0] as Extract<RenderItem, { type: "single" }>
-    expect(single.index).toBe(0)
+    const single = items[0]
+    expect(single).toHaveProperty("type", "single")
+    expect(single).toHaveProperty("index", 0)
     // Group starts at index 1
-    const group = items[1] as Extract<RenderItem, { type: "group" }>
-    expect(group.startIndex).toBe(1)
+    const group = items[1]
+    expect(group).toHaveProperty("type", "group")
+    expect(group).toHaveProperty("startIndex", 1)
   })
 })
 

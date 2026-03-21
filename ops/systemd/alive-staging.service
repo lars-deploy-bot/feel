@@ -1,0 +1,34 @@
+[Unit]
+Description=Alive Staging
+After=network.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+WorkingDirectory=__ALIVE_ROOT__
+
+ExecStartPre=/usr/bin/mkdir -p /var/lib/claude-sessions
+ExecStartPre=/usr/bin/chmod 755 /var/lib/claude-sessions
+
+ExecStart=/usr/local/bin/bun __ALIVE_ROOT__/.builds/staging/standalone/apps/web/server.js
+
+Environment="NODE_ENV=production"
+Environment="PORT=8998"
+Environment="NODE_PATH=__ALIVE_ROOT__/node_modules"
+EnvironmentFile=-__ALIVE_ROOT__/apps/web/.env.staging
+
+MemoryMax=2G
+MemoryHigh=1.5G
+CPUQuota=200%
+TasksMax=4096
+LimitNOFILE=4096
+
+TimeoutStopSec=10s
+TimeoutStartSec=60s
+
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

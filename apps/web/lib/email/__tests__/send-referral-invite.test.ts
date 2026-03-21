@@ -47,10 +47,11 @@ describe("sendReferralInvite", () => {
       process.env.LOOPS_API_KEY = "test_api_key_123"
 
       const mockResponse = { success: true, id: "msg_123" }
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as Response)
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(
+          new Response(JSON.stringify(mockResponse), { status: 200, headers: { "Content-Type": "application/json" } }),
+        )
 
       const result = await sendReferralInvite({
         to: "recipient@example.com",
@@ -59,21 +60,18 @@ describe("sendReferralInvite", () => {
       })
 
       expect(fetchSpy).toHaveBeenCalledTimes(1)
-      expect(fetchSpy).toHaveBeenCalledWith(
-        "https://app.loops.so/api/v1/transactional",
-        expect.objectContaining({
-          method: "POST",
-          headers: {
-            Authorization: "Bearer test_api_key_123",
-            "Content-Type": "application/json",
-          },
-        }),
-      )
+
+      // Reconstruct the fetch call as a Request to verify URL, headers, and body without type assertions
+      const [url, init] = fetchSpy.mock.calls[0]
+      const sentRequest = new Request(url, init)
+      expect(sentRequest.url).toBe("https://app.loops.so/api/v1/transactional")
+      expect(sentRequest.method).toBe("POST")
+      expect(sentRequest.headers.get("Authorization")).toBe("Bearer test_api_key_123")
+      expect(sentRequest.headers.get("Content-Type")).toBe("application/json")
 
       // Verify body content
-      const callArgs = fetchSpy.mock.calls[0]
-      const body = JSON.parse(callArgs[1]?.body as string)
-      expect(body).toEqual({
+      const sentBody = await sentRequest.json()
+      expect(sentBody).toEqual({
         transactionalId: expect.any(String),
         email: "recipient@example.com",
         dataVariables: {
@@ -89,10 +87,9 @@ describe("sendReferralInvite", () => {
       process.env.LOOPS_API_KEY = "test_key"
 
       const mockResponse = { success: true, id: "email_abc123" }
-      vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as Response)
+      vi.spyOn(global, "fetch").mockResolvedValue(
+        new Response(JSON.stringify(mockResponse), { status: 200, headers: { "Content-Type": "application/json" } }),
+      )
 
       const result = await sendReferralInvite({
         to: "test@test.com",
@@ -108,11 +105,7 @@ describe("sendReferralInvite", () => {
     it("should throw on non-ok response with status and message", async () => {
       process.env.LOOPS_API_KEY = "test_key"
 
-      vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: false,
-        status: 400,
-        text: () => Promise.resolve("Invalid email format"),
-      } as Response)
+      vi.spyOn(global, "fetch").mockResolvedValue(new Response("Invalid email format", { status: 400 }))
 
       await expect(
         sendReferralInvite({
@@ -126,11 +119,7 @@ describe("sendReferralInvite", () => {
     it("should throw on 401 unauthorized", async () => {
       process.env.LOOPS_API_KEY = "invalid_key"
 
-      vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: false,
-        status: 401,
-        text: () => Promise.resolve("Invalid API key"),
-      } as Response)
+      vi.spyOn(global, "fetch").mockResolvedValue(new Response("Invalid API key", { status: 401 }))
 
       await expect(
         sendReferralInvite({
@@ -144,11 +133,7 @@ describe("sendReferralInvite", () => {
     it("should throw on 500 server error", async () => {
       process.env.LOOPS_API_KEY = "test_key"
 
-      vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: false,
-        status: 500,
-        text: () => Promise.resolve("Internal server error"),
-      } as Response)
+      vi.spyOn(global, "fetch").mockResolvedValue(new Response("Internal server error", { status: 500 }))
 
       await expect(
         sendReferralInvite({
@@ -178,10 +163,12 @@ describe("sendReferralInvite", () => {
     it("should use correct Loops API endpoint", async () => {
       process.env.LOOPS_API_KEY = "test_key"
 
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      } as Response)
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
 
       await sendReferralInvite({
         to: "test@example.com",
@@ -189,16 +176,19 @@ describe("sendReferralInvite", () => {
         inviteLink: "https://example.com/invite/123",
       })
 
-      expect(fetchSpy).toHaveBeenCalledWith("https://app.loops.so/api/v1/transactional", expect.any(Object))
+      const [url] = fetchSpy.mock.calls[0]
+      expect(url).toBe("https://app.loops.so/api/v1/transactional")
     })
 
     it("should include Authorization header with Bearer token", async () => {
       process.env.LOOPS_API_KEY = "my_secret_key"
 
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      } as Response)
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
 
       await sendReferralInvite({
         to: "test@example.com",
@@ -206,18 +196,20 @@ describe("sendReferralInvite", () => {
         inviteLink: "https://example.com/invite/123",
       })
 
-      const callArgs = fetchSpy.mock.calls[0]
-      const headers = callArgs[1]?.headers as Record<string, string>
-      expect(headers.Authorization).toBe("Bearer my_secret_key")
+      const [url, init] = fetchSpy.mock.calls[0]
+      const sentRequest = new Request(url, init)
+      expect(sentRequest.headers.get("Authorization")).toBe("Bearer my_secret_key")
     })
 
     it("should set Content-Type to application/json", async () => {
       process.env.LOOPS_API_KEY = "test_key"
 
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      } as Response)
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
 
       await sendReferralInvite({
         to: "test@example.com",
@@ -225,9 +217,9 @@ describe("sendReferralInvite", () => {
         inviteLink: "https://example.com/invite/123",
       })
 
-      const callArgs = fetchSpy.mock.calls[0]
-      const headers = callArgs[1]?.headers as Record<string, string>
-      expect(headers["Content-Type"]).toBe("application/json")
+      const [url, init] = fetchSpy.mock.calls[0]
+      const sentRequest = new Request(url, init)
+      expect(sentRequest.headers.get("Content-Type")).toBe("application/json")
     })
   })
 
@@ -235,10 +227,12 @@ describe("sendReferralInvite", () => {
     it("should handle special characters in senderName", async () => {
       process.env.LOOPS_API_KEY = "test_key"
 
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      } as Response)
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
 
       await sendReferralInvite({
         to: "test@example.com",
@@ -246,18 +240,21 @@ describe("sendReferralInvite", () => {
         inviteLink: "https://example.com/invite/123",
       })
 
-      const callArgs = fetchSpy.mock.calls[0]
-      const body = JSON.parse(callArgs[1]?.body as string)
-      expect(body.dataVariables.senderName).toBe("José García-López")
+      const [url, init] = fetchSpy.mock.calls[0]
+      const sentRequest = new Request(url, init)
+      const sentBody = await sentRequest.json()
+      expect(sentBody.dataVariables.senderName).toBe("José García-López")
     })
 
     it("should handle empty senderName", async () => {
       process.env.LOOPS_API_KEY = "test_key"
 
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      } as Response)
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
 
       await sendReferralInvite({
         to: "test@example.com",
@@ -265,9 +262,10 @@ describe("sendReferralInvite", () => {
         inviteLink: "https://example.com/invite/123",
       })
 
-      const callArgs = fetchSpy.mock.calls[0]
-      const body = JSON.parse(callArgs[1]?.body as string)
-      expect(body.dataVariables.senderName).toBe("")
+      const [url, init] = fetchSpy.mock.calls[0]
+      const sentRequest = new Request(url, init)
+      const sentBody = await sentRequest.json()
+      expect(sentBody.dataVariables.senderName).toBe("")
     })
 
     it("should handle long invite links", async () => {
@@ -275,10 +273,12 @@ describe("sendReferralInvite", () => {
 
       const longLink = `https://test.local/invite/${"A".repeat(1000)}`
 
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      } as Response)
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
 
       await sendReferralInvite({
         to: "test@example.com",
@@ -286,9 +286,10 @@ describe("sendReferralInvite", () => {
         inviteLink: longLink,
       })
 
-      const callArgs = fetchSpy.mock.calls[0]
-      const body = JSON.parse(callArgs[1]?.body as string)
-      expect(body.dataVariables.inviteLink).toBe(longLink)
+      const [url, init] = fetchSpy.mock.calls[0]
+      const sentRequest = new Request(url, init)
+      const sentBody = await sentRequest.json()
+      expect(sentBody.dataVariables.inviteLink).toBe(longLink)
     })
   })
 })

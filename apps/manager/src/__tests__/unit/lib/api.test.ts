@@ -64,9 +64,9 @@ describe("api.get", () => {
       expect.unreachable("should have thrown")
     } catch (e) {
       expect(e).toBeInstanceOf(ApiError)
-      const err = e as InstanceType<typeof ApiError>
-      expect(err.message).toBe("Not found")
-      expect(err.status).toBe(404)
+      if (!(e instanceof ApiError)) throw e
+      expect(e.message).toBe("Not found")
+      expect(e.status).toBe(404)
     }
   })
 
@@ -77,10 +77,11 @@ describe("api.get", () => {
       await api.get("/orgs")
       expect.unreachable("should have thrown")
     } catch (e) {
-      const err = e as InstanceType<typeof ApiError>
-      expect(err.message).toBe("Too many orgs")
-      expect(err.status).toBe(422)
-      expect(err.code).toBe("ORG_LIMIT")
+      expect(e).toBeInstanceOf(ApiError)
+      if (!(e instanceof ApiError)) throw e
+      expect(e.message).toBe("Too many orgs")
+      expect(e.status).toBe(422)
+      expect(e.code).toBe("ORG_LIMIT")
     }
   })
 
@@ -91,9 +92,10 @@ describe("api.get", () => {
       await api.get("/broken")
       expect.unreachable("should have thrown")
     } catch (e) {
-      const err = e as InstanceType<typeof ApiError>
-      expect(err.message).toBe("Internal Server Error")
-      expect(err.status).toBe(500)
+      expect(e).toBeInstanceOf(ApiError)
+      if (!(e instanceof ApiError)) throw e
+      expect(e.message).toBe("Internal Server Error")
+      expect(e.status).toBe(500)
     }
   })
 })

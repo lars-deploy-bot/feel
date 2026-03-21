@@ -27,13 +27,16 @@ function createMockRequest(
   url: string,
   options: { method?: string; body?: object; headers?: Record<string, string> } = {},
 ): NextRequest {
+  const headers: Record<string, string> = { ...(options.headers || {}) }
+  if (options.body) {
+    headers["Content-Type"] = "application/json"
+  }
   const init: NextRequestInit = {
     method: options.method || "GET",
-    headers: options.headers || {},
+    headers,
   }
   if (options.body) {
     init.body = JSON.stringify(options.body)
-    ;(init.headers as Record<string, string>)["Content-Type"] = "application/json"
   }
   return new NextRequest(url, init)
 }
@@ -71,9 +74,9 @@ function setupSupabaseMock(options: {
     }),
   })
 
-  ;(createAppClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+  vi.mocked(createAppClient).mockResolvedValue({
     from: mockFrom,
-  })
+  } as never)
 
   return mockFrom
 }
@@ -86,7 +89,7 @@ describe("/api/manager/templates", () => {
   describe("GET - List templates", () => {
     it("should return 401 when not authenticated", async () => {
       const mockResponse = new Response(JSON.stringify({ ok: false, error: "UNAUTHORIZED" }), { status: 401 })
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(mockResponse)
+      vi.mocked(requireManagerAuth).mockResolvedValue(mockResponse)
 
       const req = createMockRequest("http://localhost/api/manager/templates")
       const response = await GET(req)
@@ -97,7 +100,7 @@ describe("/api/manager/templates", () => {
     })
 
     it("should return templates when authenticated", async () => {
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      vi.mocked(requireManagerAuth).mockResolvedValue(null)
 
       const mockTemplates = [
         { template_id: "tmpl_test", name: "Test", source_path: "/srv/webalive/templates/test.test.local" },
@@ -117,7 +120,7 @@ describe("/api/manager/templates", () => {
     })
 
     it("should return 500 on database error", async () => {
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      vi.mocked(requireManagerAuth).mockResolvedValue(null)
 
       setupSupabaseMock({
         selectResult: { data: null, error: { message: "Database error" } },
@@ -135,7 +138,7 @@ describe("/api/manager/templates", () => {
   describe("POST - Create template", () => {
     it("should return 401 when not authenticated", async () => {
       const mockResponse = new Response(JSON.stringify({ ok: false, error: "UNAUTHORIZED" }), { status: 401 })
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(mockResponse)
+      vi.mocked(requireManagerAuth).mockResolvedValue(mockResponse)
 
       const req = createMockRequest("http://localhost/api/manager/templates", {
         method: "POST",
@@ -147,7 +150,7 @@ describe("/api/manager/templates", () => {
     })
 
     it("should return 400 when name is missing", async () => {
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      vi.mocked(requireManagerAuth).mockResolvedValue(null)
 
       const req = createMockRequest("http://localhost/api/manager/templates", {
         method: "POST",
@@ -161,7 +164,7 @@ describe("/api/manager/templates", () => {
     })
 
     it("should create template successfully", async () => {
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      vi.mocked(requireManagerAuth).mockResolvedValue(null)
 
       const newTemplate = {
         template_id: "tmpl_new",
@@ -187,7 +190,7 @@ describe("/api/manager/templates", () => {
 
   describe("PUT - Update template", () => {
     it("should return 400 when template_id is missing", async () => {
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      vi.mocked(requireManagerAuth).mockResolvedValue(null)
 
       const req = createMockRequest("http://localhost/api/manager/templates", {
         method: "PUT",
@@ -201,7 +204,7 @@ describe("/api/manager/templates", () => {
     })
 
     it("should update template successfully", async () => {
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      vi.mocked(requireManagerAuth).mockResolvedValue(null)
 
       const updatedTemplate = { template_id: "tmpl_test", name: "Updated" }
       setupSupabaseMock({
@@ -223,7 +226,7 @@ describe("/api/manager/templates", () => {
 
   describe("DELETE - Delete template", () => {
     it("should return 400 when template_id is missing", async () => {
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      vi.mocked(requireManagerAuth).mockResolvedValue(null)
 
       const req = createMockRequest("http://localhost/api/manager/templates", { method: "DELETE" })
       const response = await DELETE(req)
@@ -234,7 +237,7 @@ describe("/api/manager/templates", () => {
     })
 
     it("should delete template successfully", async () => {
-      ;(requireManagerAuth as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      vi.mocked(requireManagerAuth).mockResolvedValue(null)
 
       setupSupabaseMock({
         deleteResult: { error: null },

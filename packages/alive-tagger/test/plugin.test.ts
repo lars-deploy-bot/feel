@@ -1,6 +1,54 @@
-import type { ResolvedConfig } from "vite"
+import type { Plugin } from "vite"
 import { describe, expect, it, vi } from "vitest"
 import { aliveTagger } from "../src/plugin"
+
+/**
+ * Test helpers for calling Vite plugin hooks without type assertions.
+ *
+ * Vite's Plugin hooks have complex `this` context types (PluginContext,
+ * MinimalPluginContext) and elaborate parameter/return types. Our plugin
+ * doesn't use `this` in any hook, so we call them via function extraction
+ * and runtime type narrowing.
+ */
+
+/** Extracts a hook function from a plugin, throwing if missing. */
+function extractHook(plugin: Plugin, name: keyof Plugin): (...args: never) => unknown {
+  const hook = plugin[name]
+  if (typeof hook !== "function") {
+    throw new Error(`Expected plugin.${name} to be a function, got ${typeof hook}`)
+  }
+  return hook
+}
+
+/** Call configResolved with a minimal config object. */
+function applyConfigResolved(plugin: Plugin, mode: string): void {
+  const fn = extractHook(plugin, "configResolved")
+  fn({ mode })
+}
+
+/** Call resolveId and return string result or null. */
+function applyResolveId(plugin: Plugin, id: string, importer?: string): string | null {
+  const fn = extractHook(plugin, "resolveId")
+  const result: unknown = fn(id, importer)
+  if (typeof result === "string") return result
+  return null
+}
+
+/** Call load and return string result or null. */
+function applyLoad(plugin: Plugin, id: string): string | null {
+  const fn = extractHook(plugin, "load")
+  const result: unknown = fn(id)
+  if (typeof result === "string") return result
+  return null
+}
+
+/** Call transformIndexHtml and return the transformed HTML. */
+function applyTransformIndexHtml(plugin: Plugin, html: string): string {
+  const fn = extractHook(plugin, "transformIndexHtml")
+  const result: unknown = fn(html)
+  if (typeof result === "string") return result
+  return html
+}
 
 describe("aliveTagger plugin", () => {
   describe("plugin creation", () => {
@@ -26,39 +74,26 @@ describe("aliveTagger plugin", () => {
   describe("options", () => {
     it("defaults to enabled", () => {
       const plugin = aliveTagger()
-      // Configure for development mode
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
       // Should intercept jsx-dev-runtime
-      const result = (plugin.resolveId as (id: string, importer?: string) => string | null)(
-        "react/jsx-dev-runtime",
-        "src/App.tsx",
-      )
+      const result = applyResolveId(plugin, "react/jsx-dev-runtime", "src/App.tsx")
       expect(result).toBe("\0alive-jsx/jsx-dev-runtime")
     })
 
     it("respects enabled: false option", () => {
       const plugin = aliveTagger({ enabled: false })
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
       // Should NOT intercept when disabled
-      const result = (plugin.resolveId as (id: string, importer?: string) => string | null)(
-        "react/jsx-dev-runtime",
-        "src/App.tsx",
-      )
+      const result = applyResolveId(plugin, "react/jsx-dev-runtime", "src/App.tsx")
       expect(result).toBeNull()
     })
 
     it("respects debug option", () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
       const plugin = aliveTagger({ debug: true })
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
       // Debug logging should happen - first arg is the prefix
       expect(consoleSpy).toHaveBeenCalled()
@@ -71,51 +106,34 @@ describe("aliveTagger plugin", () => {
   describe("resolveId", () => {
     it("returns null in production mode", () => {
       const plugin = aliveTagger()
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "production",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "production")
 
-      const result = (plugin.resolveId as (id: string, importer?: string) => string | null)(
-        "react/jsx-dev-runtime",
-        "src/App.tsx",
-      )
+      const result = applyResolveId(plugin, "react/jsx-dev-runtime", "src/App.tsx")
       expect(result).toBeNull()
     })
 
     it("returns null for non jsx-dev-runtime imports", () => {
       const plugin = aliveTagger()
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
-      const result = (plugin.resolveId as (id: string, importer?: string) => string | null)("react", "src/App.tsx")
+      const result = applyResolveId(plugin, "react", "src/App.tsx")
       expect(result).toBeNull()
     })
 
     it("intercepts react/jsx-dev-runtime in development", () => {
       const plugin = aliveTagger()
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
-      const result = (plugin.resolveId as (id: string, importer?: string) => string | null)(
-        "react/jsx-dev-runtime",
-        "src/App.tsx",
-      )
+      const result = applyResolveId(plugin, "react/jsx-dev-runtime", "src/App.tsx")
       expect(result).toBe("\0alive-jsx/jsx-dev-runtime")
     })
 
     it("does not intercept its own virtual module", () => {
       const plugin = aliveTagger()
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
       // Importing from within our virtual module should not trigger interception
-      const result = (plugin.resolveId as (id: string, importer?: string) => string | null)(
-        "react/jsx-dev-runtime",
-        "\0alive-jsx/something",
-      )
+      const result = applyResolveId(plugin, "react/jsx-dev-runtime", "\0alive-jsx/something")
       expect(result).toBeNull()
     })
   })
@@ -123,13 +141,13 @@ describe("aliveTagger plugin", () => {
   describe("load", () => {
     it("returns null for unknown ids", () => {
       const plugin = aliveTagger()
-      const result = (plugin.load as (id: string) => string | null)("unknown-module")
+      const result = applyLoad(plugin, "unknown-module")
       expect(result).toBeNull()
     })
 
     it("returns JSX runtime code for virtual module", () => {
       const plugin = aliveTagger()
-      const result = (plugin.load as (id: string) => string | null)("\0alive-jsx/jsx-dev-runtime")
+      const result = applyLoad(plugin, "\0alive-jsx/jsx-dev-runtime")
       expect(result).toContain("jsxDEV")
       expect(result).toContain("Fragment")
       expect(result).toContain("SOURCE_KEY")
@@ -138,7 +156,7 @@ describe("aliveTagger plugin", () => {
 
     it("includes WeakRef cleanup interval", () => {
       const plugin = aliveTagger()
-      const result = (plugin.load as (id: string) => string | null)("\0alive-jsx/jsx-dev-runtime")
+      const result = applyLoad(plugin, "\0alive-jsx/jsx-dev-runtime")
       expect(result).toContain("setInterval")
       expect(result).toContain("30000")
       expect(result).toContain("deref()")
@@ -148,34 +166,28 @@ describe("aliveTagger plugin", () => {
   describe("transformIndexHtml", () => {
     it("returns unchanged html in production", () => {
       const plugin = aliveTagger()
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "production",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "production")
 
       const html = "<html><body><div id='root'></div></body></html>"
-      const result = (plugin.transformIndexHtml as (html: string) => string)(html)
+      const result = applyTransformIndexHtml(plugin, html)
       expect(result).toBe(html)
     })
 
     it("returns unchanged html when disabled", () => {
       const plugin = aliveTagger({ enabled: false })
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
       const html = "<html><body><div id='root'></div></body></html>"
-      const result = (plugin.transformIndexHtml as (html: string) => string)(html)
+      const result = applyTransformIndexHtml(plugin, html)
       expect(result).toBe(html)
     })
 
     it("injects client script in development", () => {
       const plugin = aliveTagger()
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
       const html = "<html><body><div id='root'></div></body></html>"
-      const result = (plugin.transformIndexHtml as (html: string) => string)(html)
+      const result = applyTransformIndexHtml(plugin, html)
 
       // Should inject script before </body>
       expect(result).toContain('<script type="module">')
@@ -186,12 +198,10 @@ describe("aliveTagger plugin", () => {
 
     it("injects client script with all UI elements", () => {
       const plugin = aliveTagger()
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
       const html = "<html><body></body></html>"
-      const result = (plugin.transformIndexHtml as (html: string) => string)(html)
+      const result = applyTransformIndexHtml(plugin, html)
 
       // Check for UI element IDs
       expect(result).toContain("alive-tagger-overlay")
@@ -203,12 +213,10 @@ describe("aliveTagger plugin", () => {
 
     it("injects script with correct event handlers", () => {
       const plugin = aliveTagger()
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
       const html = "<html><body></body></html>"
-      const result = (plugin.transformIndexHtml as (html: string) => string)(html)
+      const result = applyTransformIndexHtml(plugin, html)
 
       // Check for event handlers
       expect(result).toContain("keydown")
@@ -220,12 +228,10 @@ describe("aliveTagger plugin", () => {
 
     it("injects postMessage for parent communication", () => {
       const plugin = aliveTagger()
-      ;(plugin.configResolved as (config: ResolvedConfig) => void)({
-        mode: "development",
-      } as ResolvedConfig)
+      applyConfigResolved(plugin, "development")
 
       const html = "<html><body></body></html>"
-      const result = (plugin.transformIndexHtml as (html: string) => string)(html)
+      const result = applyTransformIndexHtml(plugin, html)
 
       expect(result).toContain("window.parent.postMessage")
       expect(result).toContain("alive-element-selected")

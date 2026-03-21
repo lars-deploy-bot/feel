@@ -1,12 +1,13 @@
 import { existsSync, rmSync } from "node:fs"
+import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
 // Helper to create mock NextRequest
-function createMockRequest(url: string, options?: RequestInit) {
-  const urlObj = new URL(url)
-  const req = new Request(url, options) as any
-  req.nextUrl = urlObj
-  return req
+function createMockRequest(
+  url: string,
+  options?: { method?: string; headers?: Record<string, string>; body?: string },
+) {
+  return new NextRequest(url, options)
 }
 
 /**

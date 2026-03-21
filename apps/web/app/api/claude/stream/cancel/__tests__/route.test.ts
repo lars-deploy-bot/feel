@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // Mock Redis-related modules so cancel-intent-registry uses in-memory fallback
@@ -36,6 +37,14 @@ interface CancelRequestBody {
   requestId?: string
   tabId?: string
   tabGroupId?: string
+}
+
+function createCancelRequest(body: Record<string, unknown>): NextRequest {
+  return new NextRequest("http://localhost/api/claude/stream/cancel", {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  })
 }
 
 const getStreamBufferMock = vi.fn()
@@ -115,13 +124,9 @@ describe("POST /api/claude/stream/cancel", () => {
     })
 
     // Call cancel endpoint
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ requestId }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({ requestId })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(200)
@@ -140,16 +145,12 @@ describe("POST /api/claude/stream/cancel", () => {
       cancelled = true
     })
 
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({
-        requestId,
-        clientStack: `${PAGE_UNLOAD_BEACON_MARKER} beforeunload event fired`,
-      }),
-      headers: { "Content-Type": "application/json" },
+    const req = createCancelRequest({
+      requestId,
+      clientStack: `${PAGE_UNLOAD_BEACON_MARKER} beforeunload event fired`,
     })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(200)
@@ -159,13 +160,9 @@ describe("POST /api/claude/stream/cancel", () => {
   })
 
   it("should return already_complete for non-existent stream", async () => {
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ requestId: "non-existent" }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({ requestId: "non-existent" })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(200)
@@ -182,13 +179,9 @@ describe("POST /api/claude/stream/cancel", () => {
 
       registerCancellation(requestId, userId, conversationKey, () => new Promise<void>(() => {}))
 
-      const req = new Request("http://localhost/api/claude/stream/cancel", {
-        method: "POST",
-        body: JSON.stringify({ requestId }),
-        headers: { "Content-Type": "application/json" },
-      })
+      const req = createCancelRequest({ requestId })
 
-      const responsePromise = POST(req as any)
+      const responsePromise = POST(req)
       await vi.advanceTimersByTimeAsync(60_000)
       const response = await responsePromise
       const data = await response.json()
@@ -202,13 +195,9 @@ describe("POST /api/claude/stream/cancel", () => {
   })
 
   it("should return 400 for missing both requestId and tabId", async () => {
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({}),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({})
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(400)
@@ -217,15 +206,11 @@ describe("POST /api/claude/stream/cancel", () => {
   })
 
   it("should still validate malformed unload-beacon payloads", async () => {
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({
-        clientStack: `${PAGE_UNLOAD_BEACON_MARKER} beforeunload event fired`,
-      }),
-      headers: { "Content-Type": "application/json" },
+    const req = createCancelRequest({
+      clientStack: `${PAGE_UNLOAD_BEACON_MARKER} beforeunload event fired`,
     })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(400)
@@ -234,13 +219,13 @@ describe("POST /api/claude/stream/cancel", () => {
   })
 
   it("should return 400 for malformed JSON body", async () => {
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
+    const req = new NextRequest("http://localhost/api/claude/stream/cancel", {
       method: "POST",
       body: "{invalid-json",
       headers: { "Content-Type": "application/json" },
     })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(400)
@@ -249,13 +234,13 @@ describe("POST /api/claude/stream/cancel", () => {
   })
 
   it("should return 400 when JSON body is not an object", async () => {
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
+    const req = new NextRequest("http://localhost/api/claude/stream/cancel", {
       method: "POST",
       body: JSON.stringify(["not", "an", "object"]),
       headers: { "Content-Type": "application/json" },
     })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(400)
@@ -275,13 +260,9 @@ describe("POST /api/claude/stream/cancel", () => {
     })
 
     // Try to cancel as test-user-123
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ requestId }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({ requestId })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(403)
@@ -301,13 +282,9 @@ describe("POST /api/claude/stream/cancel", () => {
     })
 
     // First call - should cancel
-    const req1 = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ requestId }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req1 = createCancelRequest({ requestId })
 
-    const response1 = await POST(req1 as any)
+    const response1 = await POST(req1)
     const data1 = await response1.json()
 
     expect(response1.status).toBe(200)
@@ -315,13 +292,9 @@ describe("POST /api/claude/stream/cancel", () => {
     expect(cancelCount).toBe(1)
 
     // Second call - should return already_complete
-    const req2 = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ requestId }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req2 = createCancelRequest({ requestId })
 
-    const response2 = await POST(req2 as any)
+    const response2 = await POST(req2)
     const data2 = await response2.json()
 
     expect(response2.status).toBe(200)
@@ -345,13 +318,9 @@ describe("POST /api/claude/stream/cancel", () => {
     })
 
     // Call cancel endpoint with tabId (super-early Stop)
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ tabId, tabGroupId, workspace }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({ tabId, tabGroupId, workspace })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(200)
@@ -374,18 +343,14 @@ describe("POST /api/claude/stream/cancel", () => {
       cancelled = true
     })
 
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({
-        tabId,
-        tabGroupId,
-        workspace,
-        clientStack: `${PAGE_UNLOAD_BEACON_MARKER} beforeunload event fired`,
-      }),
-      headers: { "Content-Type": "application/json" },
+    const req = createCancelRequest({
+      tabId,
+      tabGroupId,
+      workspace,
+      clientStack: `${PAGE_UNLOAD_BEACON_MARKER} beforeunload event fired`,
     })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(200)
@@ -398,17 +363,13 @@ describe("POST /api/claude/stream/cancel", () => {
     const tabId = "non-existent"
     const tabGroupId = "11111111-1111-1111-1111-111111111111"
     const workspace = "test"
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({
-        tabId,
-        tabGroupId,
-        workspace,
-      }),
-      headers: { "Content-Type": "application/json" },
+    const req = createCancelRequest({
+      tabId,
+      tabGroupId,
+      workspace,
     })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
     const queuedKey = tabKey({
       userId: "test-user-123",
@@ -442,13 +403,9 @@ describe("POST /api/claude/stream/cancel", () => {
       lastReadSeq: 0,
     })
 
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ requestId }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({ requestId })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(200)
@@ -474,13 +431,9 @@ describe("POST /api/claude/stream/cancel", () => {
 
     // Try to cancel as test-user-123 using tabId
     // Security: tabKey is built using caller's userId, so will never match
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ tabId, tabGroupId, workspace }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({ tabId, tabGroupId, workspace })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     // Should return "cancel_queued" for caller's own tabKey (still isolated by tabKey)
@@ -494,13 +447,9 @@ describe("POST /api/claude/stream/cancel", () => {
   })
 
   it("should return 400 when tabId is provided without tabGroupId", async () => {
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ tabId: "some-tab", workspace: "test-workspace" }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({ tabId: "some-tab", workspace: "test-workspace" })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(400)
@@ -509,13 +458,9 @@ describe("POST /api/claude/stream/cancel", () => {
   })
 
   it("should return 400 when tabGroupId is not a string", async () => {
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ tabId: "some-tab", tabGroupId: 123, workspace: "test-workspace" }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({ tabId: "some-tab", tabGroupId: 123, workspace: "test-workspace" })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(400)
@@ -524,19 +469,15 @@ describe("POST /api/claude/stream/cancel", () => {
   })
 
   it("should return 401 when tabId cancellation workspace access is denied", async () => {
-    const workspaceAccessSpy = vi.spyOn(auth, "verifyWorkspaceAccess").mockResolvedValueOnce(null as unknown as string)
+    const workspaceAccessSpy = vi.spyOn(auth, "verifyWorkspaceAccess").mockResolvedValueOnce("")
 
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({
-        tabId: "tab-unauthorized",
-        tabGroupId: "11111111-1111-1111-1111-111111111111",
-        workspace: "forbidden-workspace",
-      }),
-      headers: { "Content-Type": "application/json" },
+    const req = createCancelRequest({
+      tabId: "tab-unauthorized",
+      tabGroupId: "11111111-1111-1111-1111-111111111111",
+      workspace: "forbidden-workspace",
     })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(401)
@@ -566,13 +507,9 @@ describe("POST /api/claude/stream/cancel", () => {
     })
 
     // Call cancel endpoint with BOTH requestId and tabId
-    const req = new Request("http://localhost/api/claude/stream/cancel", {
-      method: "POST",
-      body: JSON.stringify({ requestId: requestId1, tabId, tabGroupId, workspace }),
-      headers: { "Content-Type": "application/json" },
-    })
+    const req = createCancelRequest({ requestId: requestId1, tabId, tabGroupId, workspace })
 
-    const response = await POST(req as any)
+    const response = await POST(req)
     const data = await response.json()
 
     expect(response.status).toBe(200)
@@ -590,18 +527,14 @@ describe("POST /api/claude/stream/cancel", () => {
   // Worktree validation tests (prevent session key corruption)
   describe("worktree validation", () => {
     it("should reject worktree containing :: (session key delimiter)", async () => {
-      const req = new Request("http://localhost/api/claude/stream/cancel", {
-        method: "POST",
-        body: JSON.stringify({
-          tabId: "some-tab",
-          tabGroupId: "11111111-1111-1111-1111-111111111111",
-          workspace: "test-workspace",
-          worktree: "foo::bar", // Malicious: contains session key delimiter
-        }),
-        headers: { "Content-Type": "application/json" },
+      const req = createCancelRequest({
+        tabId: "some-tab",
+        tabGroupId: "11111111-1111-1111-1111-111111111111",
+        workspace: "test-workspace",
+        worktree: "foo::bar", // Malicious: contains session key delimiter
       })
 
-      const response = await POST(req as any)
+      const response = await POST(req)
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -610,18 +543,14 @@ describe("POST /api/claude/stream/cancel", () => {
     })
 
     it("should reject reserved worktree slugs", async () => {
-      const req = new Request("http://localhost/api/claude/stream/cancel", {
-        method: "POST",
-        body: JSON.stringify({
-          tabId: "some-tab",
-          tabGroupId: "11111111-1111-1111-1111-111111111111",
-          workspace: "test-workspace",
-          worktree: "user", // Reserved slug
-        }),
-        headers: { "Content-Type": "application/json" },
+      const req = createCancelRequest({
+        tabId: "some-tab",
+        tabGroupId: "11111111-1111-1111-1111-111111111111",
+        workspace: "test-workspace",
+        worktree: "user", // Reserved slug
       })
 
-      const response = await POST(req as any)
+      const response = await POST(req)
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -630,18 +559,14 @@ describe("POST /api/claude/stream/cancel", () => {
     })
 
     it("should reject worktree with spaces", async () => {
-      const req = new Request("http://localhost/api/claude/stream/cancel", {
-        method: "POST",
-        body: JSON.stringify({
-          tabId: "some-tab",
-          tabGroupId: "11111111-1111-1111-1111-111111111111",
-          workspace: "test-workspace",
-          worktree: "foo bar",
-        }),
-        headers: { "Content-Type": "application/json" },
+      const req = createCancelRequest({
+        tabId: "some-tab",
+        tabGroupId: "11111111-1111-1111-1111-111111111111",
+        workspace: "test-workspace",
+        worktree: "foo bar",
       })
 
-      const response = await POST(req as any)
+      const response = await POST(req)
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -663,18 +588,14 @@ describe("POST /api/claude/stream/cancel", () => {
         cancelled = true
       })
 
-      const req = new Request("http://localhost/api/claude/stream/cancel", {
-        method: "POST",
-        body: JSON.stringify({
-          tabId,
-          tabGroupId,
-          workspace,
-          worktree: "Feature-1", // Uppercase should be normalized
-        }),
-        headers: { "Content-Type": "application/json" },
+      const req = createCancelRequest({
+        tabId,
+        tabGroupId,
+        workspace,
+        worktree: "Feature-1", // Uppercase should be normalized
       })
 
-      const response = await POST(req as any)
+      const response = await POST(req)
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -698,18 +619,14 @@ describe("POST /api/claude/stream/cancel", () => {
         cancelled = true
       })
 
-      const req = new Request("http://localhost/api/claude/stream/cancel", {
-        method: "POST",
-        body: JSON.stringify({
-          tabId,
-          tabGroupId,
-          workspace,
-          // No worktree - should work
-        }),
-        headers: { "Content-Type": "application/json" },
+      const req = createCancelRequest({
+        tabId,
+        tabGroupId,
+        workspace,
+        // No worktree - should work
       })
 
-      const response = await POST(req as any)
+      const response = await POST(req)
       const data = await response.json()
 
       expect(response.status).toBe(200)

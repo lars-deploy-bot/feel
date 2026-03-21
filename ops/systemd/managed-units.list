@@ -1,9 +1,18 @@
 # Repo-managed ops systemd units installed onto the host.
+alive-staging.service
+alive-production.service
+alive-dev.service
 alive-runtime-status.service
 alive-runtime-status.timer
 alive-build-prune.service
 alive-build-prune.timer
 alive-api.service
 alive-deployer.service
+automation-worker.service
+shell-server-go.service
+website-backup.service
+website-backup.timer
+fix-permissions.service
+fix-permissions.timer
 caddy-acme-rate-limit-alert.service
 caddy-acme-rate-limit-alert.timer

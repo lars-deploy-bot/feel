@@ -174,7 +174,7 @@ describe("POST /api/deploy", () => {
       setSessionCookie: expect.any(Function),
     })
 
-    const payload = (await response.json()) as Record<string, unknown>
+    const payload: Record<string, unknown> = await response.json()
     expect(payload.ok).toBe(true)
     expect(payload.domain).toBe("example.com")
     expect(payload.executionMode).toBe("systemd")
@@ -201,7 +201,7 @@ describe("POST /api/deploy", () => {
     expect(response.status).toBe(200)
     expect(scheduleSiteSslValidationMock).toHaveBeenCalledWith("example.com", "e2b")
 
-    const payload = (await response.json()) as Record<string, unknown>
+    const payload: Record<string, unknown> = await response.json()
     expect(payload.executionMode).toBe("e2b")
     expect(payload.message).toBe("Site example.com deployed successfully!")
   })

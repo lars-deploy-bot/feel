@@ -23,7 +23,9 @@ const TEST_ORG_ROLES = {
 const TEST_SCOPES = [SESSION_SCOPES.WORKSPACE_ACCESS, SESSION_SCOPES.WORKSPACE_LIST, SESSION_SCOPES.ORG_READ] as const
 
 function decodeToken(token: string): SessionPayloadV3 {
-  return (ES256_ENABLED ? decodeJwt(token) : verify(token, JWT_SECRET)) as SessionPayloadV3
+  const decoded = ES256_ENABLED ? decodeJwt(token) : verify(token, JWT_SECRET)
+  // @ts-expect-error - test helper: JWT payload shape matches SessionPayloadV3 after signing
+  return decoded
 }
 
 function buildTokenInput(userId: string) {

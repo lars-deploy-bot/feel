@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import type { TabSessionKey } from "@/features/auth/types/session"
+import { tabKey } from "@/features/auth/lib/sessionStore"
 import { setupAbortHandler } from "../abort-handler"
+
+const TEST_TAB_GROUP_ID = "00000000-0000-0000-0000-000000000000"
+function testTabKey(tabId: string) {
+  return tabKey({ userId: "test-user", workspace: "test-workspace", tabGroupId: TEST_TAB_GROUP_ID, tabId })
+}
 
 /**
  * Abort Handler Tests
@@ -29,7 +34,7 @@ describe("Abort Handler", () => {
         setupAbortHandler({
           signal: null,
           stream: mockStream,
-          conversationKey: "test-conv" as TabSessionKey,
+          conversationKey: testTabKey("test-conv"),
           requestId: "test-req",
         })
       }).not.toThrow()
@@ -47,7 +52,7 @@ describe("Abort Handler", () => {
         setupAbortHandler({
           signal: controller.signal,
           stream: mockStream,
-          conversationKey: "test-conv" as TabSessionKey,
+          conversationKey: testTabKey("test-conv"),
           requestId: "test-req-2",
         })
       }).not.toThrow()
@@ -65,7 +70,7 @@ describe("Abort Handler", () => {
         setupAbortHandler({
           signal: controller.signal,
           stream: mockStream,
-          conversationKey: "user1::workspace::tg::conv-123" as TabSessionKey,
+          conversationKey: testTabKey("conv-123"),
           requestId: "req-abc-123",
         })
       }).not.toThrow()
@@ -86,7 +91,7 @@ describe("Abort Handler", () => {
       setupAbortHandler({
         signal: controller.signal,
         stream: mockStream,
-        conversationKey: "test-conv" as TabSessionKey,
+        conversationKey: testTabKey("test-conv"),
         requestId: "test-req-abort-1",
       })
 
@@ -115,7 +120,7 @@ describe("Abort Handler", () => {
       setupAbortHandler({
         signal: controller.signal,
         stream: mockStream,
-        conversationKey: "test-conv" as TabSessionKey,
+        conversationKey: testTabKey("test-conv"),
         requestId,
       })
 
@@ -141,7 +146,7 @@ describe("Abort Handler", () => {
       setupAbortHandler({
         signal: controller.signal,
         stream: mockStream,
-        conversationKey: "test-conv" as TabSessionKey,
+        conversationKey: testTabKey("test-conv"),
         requestId: "test-req-multi",
       })
 
@@ -176,7 +181,7 @@ describe("Abort Handler", () => {
       setupAbortHandler({
         signal: controller.signal,
         stream: mockStream,
-        conversationKey: "test-conv" as TabSessionKey,
+        conversationKey: testTabKey("test-conv"),
         requestId: "test-req-cancel",
       })
 
@@ -201,7 +206,7 @@ describe("Abort Handler", () => {
       setupAbortHandler({
         signal: controller.signal,
         stream: mockStream,
-        conversationKey: "test-conv" as TabSessionKey,
+        conversationKey: testTabKey("test-conv"),
         requestId: "test-req-error",
       })
 
@@ -231,7 +236,7 @@ describe("Abort Handler", () => {
         setupAbortHandler({
           signal: controller.signal,
           stream: mockStream,
-          conversationKey: "test-conv" as TabSessionKey,
+          conversationKey: testTabKey("test-conv"),
           requestId: "test-req-resilience",
         })
       }).not.toThrow()
@@ -262,7 +267,7 @@ describe("Abort Handler", () => {
         setupAbortHandler({
           signal: testController.signal,
           stream: testStream,
-          conversationKey: "test-conv" as TabSessionKey,
+          conversationKey: testTabKey("test-conv"),
           requestId: "test-req",
         })
 
@@ -291,7 +296,7 @@ describe("Abort Handler", () => {
         setupAbortHandler({
           signal: controller.signal, // From req.signal in route handler
           stream: mockStream,
-          conversationKey: "user1::default::tg::conv-abc" as TabSessionKey,
+          conversationKey: testTabKey("conv-abc"),
           requestId: "req-123",
         })
       }).not.toThrow()
@@ -311,7 +316,7 @@ describe("Abort Handler", () => {
       setupAbortHandler({
         signal: controller.signal,
         stream: mockStream,
-        conversationKey: "test-conv" as TabSessionKey,
+        conversationKey: testTabKey("test-conv"),
         requestId: "test-req-rapid",
       })
 
@@ -328,11 +333,7 @@ describe("Abort Handler", () => {
 
   describe("Conversation Key Handling", () => {
     it("should accept various conversation key formats", () => {
-      const keys = [
-        "simple-key" as TabSessionKey,
-        "user1::workspace::tg::conv-123" as TabSessionKey,
-        "complex::key::with::parts" as TabSessionKey,
-      ]
+      const keys = [testTabKey("simple-key"), testTabKey("conv-123"), testTabKey("complex-parts")]
 
       for (const key of keys) {
         const controller = new AbortController()
@@ -370,7 +371,7 @@ describe("Abort Handler", () => {
           setupAbortHandler({
             signal: controller.signal,
             stream: mockStream,
-            conversationKey: "test-conv" as TabSessionKey,
+            conversationKey: testTabKey("test-conv"),
             requestId: id,
           })
         }).not.toThrow()

@@ -50,11 +50,16 @@ function signJwt(user: Pick<TestTenant, "userId" | "email" | "orgId" | "orgName"
 /**
  * Make an authenticated fetch to the app, attaching the JWT as a cookie.
  */
-async function authedFetch(baseUrl: string, path: string, token: string, init?: RequestInit): Promise<Response> {
+async function authedFetch(
+  baseUrl: string,
+  path: string,
+  token: string,
+  init?: Omit<RequestInit, "headers"> & { headers?: Record<string, string> },
+): Promise<Response> {
   return fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
-      ...((init?.headers as Record<string, string>) || {}),
+      ...(init?.headers ?? {}),
       Cookie: `${COOKIE_NAMES.SESSION}=${token}`,
     },
   })

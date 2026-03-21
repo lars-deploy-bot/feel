@@ -47,7 +47,7 @@ vi.mock("@/lib/api/server", () => ({
   isHandleBodyError: (...args: unknown[]) => isHandleBodyErrorMock(...args),
   alrighty: vi.fn((_endpoint: string, payload: Record<string, unknown>) => {
     const response = new Response(JSON.stringify(payload), { status: 200 })
-    ;(response as Response & { cookies: { set: typeof vi.fn } }).cookies = { set: vi.fn() }
+    Object.defineProperty(response, "cookies", { value: { set: vi.fn() } })
     return response
   }),
 }))

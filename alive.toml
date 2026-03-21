@@ -32,10 +32,11 @@ rm -rf apps/web/.next/standalone/apps/web/public && \
 cp -r apps/web/public apps/web/.next/standalone/apps/web/public && \
 rm -rf apps/web/.next/standalone/node_modules/@webalive
 """
+# Only standalone is listed — static + public are copied INTO standalone
+# by the build command above. The deployer copies outputs[0] to the
+# per-environment release dir; extra entries would be ignored.
 outputs = [
   "apps/web/.next/standalone",
-  "apps/web/.next/static",
-  "apps/web/public",
 ]
 
 [systemd]

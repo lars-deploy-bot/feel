@@ -149,7 +149,7 @@ vi.mock("@webalive/shared", async () => {
   const actual = await vi.importActual<Record<string, unknown>>("@webalive/shared")
   return {
     ...actual,
-    DEFAULTS: { ...(actual.DEFAULTS as Record<string, unknown>), DEFAULT_MODEL: "model-default" },
+    DEFAULTS: Object.assign({}, actual.DEFAULTS, { DEFAULT_MODEL: "model-default" }),
     WORKER_POOL: { ENABLED: false },
     isRetiredModel: vi.fn(() => false),
     isValidClaudeModel: vi.fn(() => true),

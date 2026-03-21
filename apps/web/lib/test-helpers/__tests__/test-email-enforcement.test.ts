@@ -71,15 +71,20 @@ describe("Test Email Domain Enforcement", () => {
     })
 
     it("should throw with helpful error message", () => {
+      let error: unknown = null
       try {
         validateTestEmail("user@example.com")
         expect(true).toBe(false) // Should not reach here
-      } catch (error) {
-        expect((error as Error).message).toContain("SECURITY ERROR")
-        expect((error as Error).message).toContain("user@example.com")
-        expect((error as Error).message).toContain("@alive-vitest.internal")
-        expect((error as Error).message).toContain("@alive-playwright.internal")
+      } catch (err) {
+        error = err
       }
+
+      expect(error).toBeInstanceOf(Error)
+      if (!(error instanceof Error)) throw error
+      expect(error.message).toContain("SECURITY ERROR")
+      expect(error.message).toContain("user@example.com")
+      expect(error.message).toContain("@alive-vitest.internal")
+      expect(error.message).toContain("@alive-playwright.internal")
     })
   })
 

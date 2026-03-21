@@ -150,7 +150,7 @@ const test = base.extend<
           localStorage.setItem(key, value)
         }
       }
-      ;(window as any).PLAYWRIGHT_TEST = true
+      Object.assign(window, { PLAYWRIGHT_TEST: true })
     }, storageEntries)
 
     await page.route("**/api/auth/all-workspaces**", async route => {

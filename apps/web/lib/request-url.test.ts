@@ -15,12 +15,13 @@ const DEV_BASE_URL = `http://localhost:${PORTS.DEV}`
 
 // Mock NextRequest helper
 function createMockRequest(url: string, headers: Record<string, string>): NextRequest {
+  // @ts-expect-error - partial NextRequest mock for testing
   return {
     url,
     headers: {
       get: (name: string) => headers[name.toLowerCase()] || null,
     },
-  } as unknown as NextRequest
+  }
 }
 
 describe("getRequestUrls", () => {

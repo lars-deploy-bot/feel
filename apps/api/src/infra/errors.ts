@@ -9,13 +9,13 @@ export const ErrorCodes = {
   CONFLICT: "CONFLICT",
 } as const
 
-export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]
+export type ApiErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]
 
 export class AppError extends Error {
-  readonly code: ErrorCode
+  readonly code: ApiErrorCode
   readonly status: ContentfulStatusCode
 
-  constructor(message: string, code: ErrorCode, status: ContentfulStatusCode) {
+  constructor(message: string, code: ApiErrorCode, status: ContentfulStatusCode) {
     super(message)
     this.name = "AppError"
     this.code = code

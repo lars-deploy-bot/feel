@@ -4,6 +4,7 @@ import { renderCaddyShell, renderCaddySites } from "../src/infra/generate-routin
 type RenderShellInput = Parameters<typeof renderCaddyShell>[0]
 
 function makeConfig(overrides?: Partial<RenderShellInput["shell"]>): RenderShellInput {
+  // @ts-expect-error - partial ServerConfig for testing (only fields used by renderCaddyShell/Sites)
   return {
     serverId: "srv_test_server_123456",
     serverIp: "127.0.0.1",
@@ -50,7 +51,7 @@ function makeConfig(overrides?: Partial<RenderShellInput["shell"]>): RenderShell
       caddyShell: "/var/lib/alive/generated/Caddyfile.shell",
       nginxMap: "/var/lib/alive/generated/nginx.sni.map",
     },
-  } as RenderShellInput
+  }
 }
 
 describe("renderCaddyShell", () => {

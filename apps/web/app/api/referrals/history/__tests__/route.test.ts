@@ -70,12 +70,12 @@ function createMockRequest(params: { limit?: number; offset?: number } = {}): Ne
   return new NextRequest(url)
 }
 
-// Helper to create chainable mock for referrals query with pagination (cast to unknown to satisfy SupabaseClient type)
+// Helper to create chainable mock for referrals query with pagination
 function createMockIamClient(options: {
   referrals?: typeof MOCK_REFERRALS | null
   users?: typeof MOCK_USERS | null
   total?: number
-}) {
+}): Awaited<ReturnType<typeof createIamClient>> & { from: ReturnType<typeof vi.fn> } {
   const { referrals = [], users = [], total = referrals?.length ?? 0 } = options
 
   const fromMock = vi.fn().mockImplementation((table: string) => {
@@ -110,9 +110,10 @@ function createMockIamClient(options: {
     }
   })
 
+  // @ts-expect-error - partial Supabase mock for testing
   return {
     from: fromMock,
-  } as unknown as Awaited<ReturnType<typeof createIamClient>> & { from: typeof fromMock }
+  }
 }
 
 describe("GET /api/referrals/history", () => {

@@ -2,7 +2,14 @@
 set -euo pipefail
 
 # Interactive rollback to previous build
-# Works for production and staging (both use systemd)
+# Works for production and staging (both use systemd + deployer-rs)
+#
+# The deployer-rs layout:
+#   .builds/{env}/standalone/  — the LIVE directory (ExecStart points here)
+#   .builds/{env}/standalone.old/ — previous build (kept by activate_systemd)
+#
+# Legacy dist.* directories may also exist from the old build-and-serve.sh path.
+# This script supports both layouts.
 
 # Colors
 RED='\033[0;31m'
@@ -63,102 +70,48 @@ case $env_choice in
 esac
 
 BUILDS_DIR="$PROJECT_ROOT/.builds/${ENV}"
-CURRENT_LINK="$BUILDS_DIR/current"
 
 if [[ ! -d "$BUILDS_DIR" ]]; then
     log_error "Builds directory not found: $BUILDS_DIR"
     exit 1
 fi
 
-# Collect builds into array (sorted by modification time, newest first)
-# Using find with -maxdepth 1 to avoid descending into subdirs
-mapfile -t BUILDS < <(
-    find "$BUILDS_DIR" -maxdepth 1 -type d -name 'dist.*' -printf '%T@ %f\n' 2>/dev/null | \
-    sort -rn | \
-    head -10 | \
-    cut -d' ' -f2-
-)
+STANDALONE_DIR="$BUILDS_DIR/standalone"
+STANDALONE_OLD="$BUILDS_DIR/standalone.old"
 
-if [[ ${#BUILDS[@]} -eq 0 ]]; then
-    log_error "No builds found in $BUILDS_DIR"
-    exit 1
-fi
-
-echo ""
-echo -e "${BOLD}Available builds for ${ENV}:${NC}"
-echo ""
-
-# Display builds with numbers
-for i in "${!BUILDS[@]}"; do
-    build="${BUILDS[$i]}"
-    num=$((i + 1))
-
-    # Check if this is the current build
-    if [[ -L "$CURRENT_LINK" ]] && [[ "$(readlink "$CURRENT_LINK")" == "$build" ]]; then
-        echo -e "  ${num}) ${build} ${GREEN}(current)${NC}"
-    else
-        echo "  ${num}) ${build}"
+# Check for deployer-rs layout (standalone.old exists)
+if [[ -d "$STANDALONE_OLD" ]]; then
+    SERVER_JS="$STANDALONE_OLD/apps/web/server.js"
+    if [[ ! -f "$SERVER_JS" ]]; then
+        log_error "Previous build is invalid — missing server.js: $SERVER_JS"
+        exit 1
     fi
-done
 
-echo ""
-read -p "Select build number to rollback to (or Ctrl+C to cancel): " choice
+    echo ""
+    log_info "Deployer-rs rollback: swapping standalone.old → standalone"
+    echo ""
+    echo "  Current:  $STANDALONE_DIR"
+    echo "  Rollback: $STANDALONE_OLD"
+    echo ""
 
-# Validate choice is a number
-if ! [[ "$choice" =~ ^[0-9]+$ ]]; then
-    log_error "Invalid selection: not a number"
-    exit 1
-fi
+    read -p "Continue with rollback? (y/N): " confirm
+    if [[ "$confirm" != "y" ]] && [[ "$confirm" != "Y" ]]; then
+        echo "Cancelled"
+        exit 0
+    fi
 
-# Convert to array index (0-based)
-index=$((choice - 1))
-
-if [[ $index -lt 0 ]] || [[ $index -ge ${#BUILDS[@]} ]]; then
-    log_error "Invalid selection: out of range"
-    exit 1
-fi
-
-BUILD_TO_ROLLBACK="${BUILDS[$index]}"
-BUILD_PATH="$BUILDS_DIR/$BUILD_TO_ROLLBACK"
-
-# Validate build directory exists
-if [[ ! -d "$BUILD_PATH" ]]; then
-    log_error "Build directory not found: $BUILD_PATH"
-    exit 1
-fi
-
-# Validate build has required files (server.js)
-SERVER_JS="$BUILD_PATH/apps/web/server.js"
-if [[ ! -f "$SERVER_JS" ]]; then
-    log_error "Build is invalid - missing server.js: $SERVER_JS"
-    log_error "This build may be corrupted or incomplete."
-    exit 1
-fi
-
-echo ""
-log_info "Rolling back to: $BUILD_TO_ROLLBACK"
-echo ""
-
-# Show what we're rolling back from
-if [[ -L "$CURRENT_LINK" ]]; then
-    CURRENT=$(readlink "$CURRENT_LINK")
-    echo "  Current:  $CURRENT"
+    # Atomic swap: current → .failed, old → current
+    STANDALONE_FAILED="$BUILDS_DIR/standalone.failed"
+    rm -rf "$STANDALONE_FAILED"
+    mv "$STANDALONE_DIR" "$STANDALONE_FAILED"
+    mv "$STANDALONE_OLD" "$STANDALONE_DIR"
+    log_success "Build swapped (failed build saved as standalone.failed)"
 else
-    echo "  Current:  (no current symlink)"
+    log_error "No previous build found at $STANDALONE_OLD"
+    log_error "The deployer-rs keeps one previous build as standalone.old."
+    log_error "If this is the first deploy, there is nothing to rollback to."
+    exit 1
 fi
-echo "  Target:   $BUILD_TO_ROLLBACK"
-echo ""
-
-read -p "Continue with rollback? (y/N): " confirm
-if [[ "$confirm" != "y" ]] && [[ "$confirm" != "Y" ]]; then
-    echo "Cancelled"
-    exit 0
-fi
-
-# Perform atomic symlink swap
-cd "$BUILDS_DIR"
-ln -sfn "$BUILD_TO_ROLLBACK" current
-log_success "Symlink updated"
 
 # Restart service
 log_info "Restarting $SERVICE..."

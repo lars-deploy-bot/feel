@@ -11,7 +11,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { TabSessionKey } from "@/features/auth/types/session"
+import { tabKey } from "@/features/auth/lib/sessionStore"
 
 // Mock session module
 vi.mock("@/features/auth/types/session", () => ({
@@ -45,10 +45,28 @@ describe("GET /api/debug/locks", () => {
 
     // Mock worker pool when WORKER_POOL.ENABLED is true
     if (WORKER_POOL.ENABLED) {
-      vi.mocked(getWorkerPool).mockReturnValue({
-        getStats: () => ({ activeWorkers: 0, totalQueries: 0, cacheHits: 0, evictions: 0 }),
-        getWorkerInfo: () => [],
-      } as unknown as ReturnType<typeof getWorkerPool>)
+      vi.mocked(getWorkerPool).mockImplementation(
+        () =>
+          ({
+            getStats: () => ({
+              totalWorkers: 0,
+              activeWorkers: 0,
+              idleWorkers: 0,
+              maxWorkers: 0,
+              dynamicMaxWorkers: 0,
+              queuedRequests: 0,
+              retiredAfterCancel: 0,
+              groupTerminations: 0,
+              groupKillEscalations: 0,
+              queueRejectedUser: 0,
+              queueRejectedWorkspace: 0,
+              queueRejectedGlobal: 0,
+              loadShedEvents: 0,
+              orphansReaped: 0,
+            }),
+            getWorkerInfo: () => [],
+          }) as never,
+      )
     }
   })
 
@@ -97,7 +115,7 @@ describe("GET /api/debug/locks", () => {
 
     it("should return expected JSON structure", async () => {
       vi.mocked(getLockedConversations).mockReturnValue([
-        { key: "user1::workspace1::tg1::conv1" as TabSessionKey, ageMs: 1000 },
+        { key: tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "tg1", tabId: "conv1" }), ageMs: 1000 },
       ])
       vi.mocked(getRegistryState).mockReturnValue([
         { requestId: "req1", userId: "user1", conversationKey: "conv1", ageMs: 1000 },
@@ -131,9 +149,9 @@ describe("GET /api/debug/locks", () => {
 
     it("should return correct lock count and keys", async () => {
       const mockLocks = [
-        { key: "user1::workspace1::tg1::conv1" as TabSessionKey, ageMs: 1000 },
-        { key: "user2::workspace2::tg2::conv2" as TabSessionKey, ageMs: 2000 },
-        { key: "user3::workspace3::tg3::conv3" as TabSessionKey, ageMs: 3000 },
+        { key: tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "tg1", tabId: "conv1" }), ageMs: 1000 },
+        { key: tabKey({ userId: "user2", workspace: "workspace2", tabGroupId: "tg2", tabId: "conv2" }), ageMs: 2000 },
+        { key: tabKey({ userId: "user3", workspace: "workspace3", tabGroupId: "tg3", tabId: "conv3" }), ageMs: 3000 },
       ]
       vi.mocked(getLockedConversations).mockReturnValue(mockLocks)
 

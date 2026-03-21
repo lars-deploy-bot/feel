@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server"
+import { NextRequest } from "next/server"
 import { describe, expect, it, vi } from "vitest"
 import { REQUEST_ID_HEADER } from "@/lib/request-id"
 import { middleware } from "../middleware"
@@ -8,14 +8,10 @@ interface ResponseWithInjected extends Response {
 }
 
 /**
- * Build a minimal NextRequest-like object for testing middleware.
- * Adds nextUrl with pathname since middleware accesses request.nextUrl.pathname.
+ * Build a NextRequest for testing middleware.
  */
 function buildRequest(url: string, headers?: Record<string, string>): NextRequest {
-  const req = new Request(url, { headers })
-  const parsed = new URL(url)
-  Object.defineProperty(req, "nextUrl", { value: parsed, writable: false })
-  return req as unknown as NextRequest
+  return new NextRequest(url, { headers })
 }
 
 // Capture what NextResponse.next() receives so we can inspect request header injection.
@@ -30,7 +26,7 @@ vi.mock("next/server", async () => {
     static next(init?: { request?: { headers?: Headers } }) {
       const res = new MockNextResponse(null, { status: 200 })
       res.__injectedRequestHeaders = init?.request?.headers
-      return res as unknown as ReturnType<typeof actual.NextResponse.next>
+      return res
     }
   }
 
@@ -81,9 +77,11 @@ describe("request-id middleware", () => {
     const res = middleware(req)
 
     // The mock stashes injected request headers on __injectedRequestHeaders
-    const injected = (res as unknown as ResponseWithInjected).__injectedRequestHeaders
-    expect(injected).toBeDefined()
-    expect(injected!.get(REQUEST_ID_HEADER)).toBe("forward-me")
+    expect(res).toHaveProperty("__injectedRequestHeaders")
+    const resWithHeaders: ResponseWithInjected = res
+    const injected = resWithHeaders.__injectedRequestHeaders
+    if (!injected) throw new Error("Expected injected request headers")
+    expect(injected.get(REQUEST_ID_HEADER)).toBe("forward-me")
   })
 
   it("response and injected request IDs match", () => {
@@ -91,8 +89,10 @@ describe("request-id middleware", () => {
     const res = middleware(req)
 
     const responseId = res.headers.get(REQUEST_ID_HEADER)
-    const injected = (res as unknown as ResponseWithInjected).__injectedRequestHeaders
-    expect(injected!.get(REQUEST_ID_HEADER)).toBe(responseId)
+    const resWithHeaders: ResponseWithInjected = res
+    const injected = resWithHeaders.__injectedRequestHeaders
+    if (!injected) throw new Error("Expected injected request headers")
+    expect(injected.get(REQUEST_ID_HEADER)).toBe(responseId)
   })
 })
 
