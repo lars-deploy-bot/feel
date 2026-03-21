@@ -5,9 +5,9 @@
  */
 
 import { deleteFile, uploadFile, writeFile } from "./file-api"
-import { invalidateContent, invalidateList } from "./file-cache"
+import { invalidateContent, invalidateList, optimisticRemoveFromList } from "./file-cache"
 import { notifyFileChange } from "./file-events"
-import { getParentPath } from "./file-path"
+import { getFileName, getParentPath } from "./file-path"
 
 interface FSEvent {
   op: "modify" | "create" | "remove" | "rename"
@@ -28,16 +28,28 @@ export async function saveFile(
   notifyFileChange()
 }
 
-/** Delete a file or directory, invalidate caches, and notify subscribers. Throws on failure. */
+/** Delete a file or directory. Optimistically removes from tree, then confirms via API. */
 export async function removeFile(
   workspace: string,
   path: string,
   options?: { worktree?: string | null; recursive?: boolean },
 ): Promise<void> {
-  await deleteFile(workspace, path, options)
+  const parentPath = getParentPath(path)
+  const fileName = getFileName(path)
+
+  // Optimistic: remove from cached listing immediately so the tree updates instantly
+  optimisticRemoveFromList(workspace, options?.worktree, parentPath, fileName)
   invalidateContent(workspace, options?.worktree, path)
-  invalidateList(workspace, options?.worktree, getParentPath(path))
   notifyFileChange()
+
+  try {
+    await deleteFile(workspace, path, options)
+  } catch (err) {
+    // Delete failed — invalidate the parent listing so the tree re-fetches the real state
+    invalidateList(workspace, options?.worktree, parentPath)
+    notifyFileChange()
+    throw err
+  }
 }
 
 /** Upload a file, invalidate caches, and notify subscribers. Throws on failure. */
