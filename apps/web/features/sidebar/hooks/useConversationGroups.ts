@@ -8,11 +8,10 @@ import type { WorkspaceGroup } from "../types"
 /**
  * Groups all conversations by workspace.
  * Favorite workspaces appear first, non-favorites after.
- * Archived conversations in non-favorite workspaces are hidden ("poof").
+ * Archived conversations are shown in the Info panel, not here.
  */
 export function useConversationGroups(
   conversations: DbConversation[],
-  archivedConversations: DbConversation[],
   favorites: ReadonlySet<string>,
   currentWorkspace: string | null,
 ) {
@@ -26,21 +25,10 @@ export function useConversationGroups(
       activeByWs.set(c.workspace, list)
     }
 
-    // Group archived conversations by workspace (only for favorites — non-favorite archived = "poof")
-    const archivedByWs = new Map<string, DbConversation[]>()
-    for (const c of archivedConversations) {
-      if (c.source === AUTOMATION_RUN_SOURCE) continue
-      if (!favorites.has(c.workspace)) continue
-      const list = archivedByWs.get(c.workspace) ?? []
-      list.push(c)
-      archivedByWs.set(c.workspace, list)
-    }
-
     // Collect all workspaces that should appear
     const allWorkspaces = new Set<string>()
     for (const ws of favorites) allWorkspaces.add(ws)
     for (const ws of activeByWs.keys()) allWorkspaces.add(ws)
-    for (const ws of archivedByWs.keys()) allWorkspaces.add(ws)
 
     // Build groups
     const groups: WorkspaceGroup[] = []
@@ -49,7 +37,7 @@ export function useConversationGroups(
         workspace: ws,
         isFavorite: favorites.has(ws),
         conversations: activeByWs.get(ws) ?? [],
-        archivedConversations: archivedByWs.get(ws) ?? [],
+        archivedConversations: [],
       })
     }
 
@@ -60,7 +48,7 @@ export function useConversationGroups(
     })
 
     return groups
-  }, [conversations, archivedConversations, favorites])
+  }, [conversations, favorites])
 
   // Expanded/collapsed workspace state
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(() => new Set())

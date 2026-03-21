@@ -47,7 +47,6 @@ import {
   trackConversationCreated,
   trackConversationRenamed,
   trackConversationSwitched,
-  trackConversationUnarchived,
   trackGithubImportCompleted,
   trackWorkspaceSelected,
 } from "@/lib/analytics/events"
@@ -58,6 +57,7 @@ import { useSessionHeartbeat } from "@/lib/hooks/useSessionHeartbeat"
 import { useAllWorkspacesQuery, type WorkspaceInfo } from "@/lib/hooks/useSettingsQueries"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { CHAT_PANEL, RESIZE_HANDLE_ID, WORKBENCH_PANEL } from "@/lib/layout"
+import { NAVIGATE_TO_CONVERSATION_EVENT, parseNavigateEvent } from "@/lib/navigation/conversation-navigation"
 import { stripOAuthCallbackParams } from "@/lib/oauth/popup-constants"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useDebugVisible, useWorkbench, useWorkbenchFullscreen } from "@/lib/stores/debug-store"
@@ -103,7 +103,6 @@ function ChatPageContent() {
     ensureTabGroupWithTab,
     addMessage,
     archiveConversation,
-    unarchiveConversation,
     renameConversation,
     setSession: setDexieSession,
     reopenTab: dexieReopenTab,
@@ -380,6 +379,32 @@ function ChatPageContent() {
       void setTabParam(sessionTabId, { shallow: true })
     }
   }, [mounted, sessionTabId, tabParam, setTabParam])
+
+  // Navigate to a conversation from elsewhere (e.g. agent runs panel).
+  // Closes settings, switches workspace if needed, and activates the target tab.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const nav = parseNavigateEvent(e)
+      if (!nav) return
+
+      // Close settings overlay
+      modals.closeSettings()
+
+      // Switch workspace if different
+      if (nav.workspace !== workspace) {
+        const orgId = resolveOrgForWorkspace(nav.workspace, queryClient)
+        if (orgId) setSelectedOrg(orgId)
+        setWorkspace(nav.workspace)
+      }
+
+      // Reset tab restore state so the URL ?tab= param triggers tab activation
+      initialTabRestored.current = false
+      void setTabParam(nav.tabId, { shallow: true })
+    }
+
+    window.addEventListener(NAVIGATE_TO_CONVERSATION_EVENT, handler)
+    return () => window.removeEventListener(NAVIGATE_TO_CONVERSATION_EVENT, handler)
+  }, [modals.closeSettings, workspace, queryClient, setSelectedOrg, setWorkspace, setTabParam])
 
   // Superadmin workspace (alive) shows terminal & code views only
   const isSuperadminWorkspace = workspace === SUPERADMIN_WORKSPACE_NAME
@@ -917,15 +942,6 @@ function ChatPageContent() {
     [renameConversation],
   )
 
-  const handleUnarchiveTabGroup = useCallback(
-    async (tabGroupIdToUnarchive: string) => {
-      if (!tabGroupIdToUnarchive) return
-      trackConversationUnarchived()
-      await unarchiveConversation(tabGroupIdToUnarchive)
-    },
-    [unarchiveConversation],
-  )
-
   const settingsInitialTab = modals.settings?.initialTab
   const isSettingsOpen = !!modals.settings
 
@@ -954,7 +970,6 @@ function ChatPageContent() {
         activeTabGroupId={sessionTabGroupId}
         onTabGroupSelect={handleTabGroupSelect}
         onArchiveTabGroup={handleArchiveTabGroup}
-        onUnarchiveTabGroup={handleUnarchiveTabGroup}
         onRenameTabGroup={handleRenameTabGroup}
         onNewConversation={handleNewTabGroup}
         onNewConversationInWorkspace={handleNewTabGroupInWorkspace}

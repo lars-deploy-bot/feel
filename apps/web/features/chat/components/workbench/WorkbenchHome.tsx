@@ -1,18 +1,24 @@
 "use client"
 
-import { ExternalLink, Loader2 } from "lucide-react"
-import { useCallback, useState } from "react"
+import { ArchiveRestore, ExternalLink, Loader2 } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
 import type { WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
+import { formatTimestamp } from "@/features/sidebar/utils"
+import { trackConversationUnarchived } from "@/lib/analytics/events"
+import { useDexieArchivedConversations, useDexieMessageActions, useDexieSession } from "@/lib/db/dexieMessageStore"
+import type { DbConversation } from "@/lib/db/messageDb"
+import { AUTOMATION_RUN_SOURCE } from "@/lib/db/messageDb"
 import { getSiteUrl } from "@/lib/preview-utils"
 import { usePublish } from "./hooks/usePublish"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type InfoTab = "project" | "deploy"
+type InfoTab = "project" | "deploy" | "archived"
 
 const TABS: { id: InfoTab; label: string; description: string }[] = [
   { id: "project", label: "Project", description: "Your site and its current state" },
   { id: "deploy", label: "Deploy", description: "Push changes to your live site" },
+  { id: "archived", label: "Archived", description: "Past conversations" },
 ]
 
 type DeployStep = "url" | "access" | "info" | "review"
@@ -419,6 +425,93 @@ function ProjectPanel({ workspace }: { workspace: string }) {
   )
 }
 
+// ── Archived Panel ──────────────────────────────────────────────────────────
+
+function ArchivedPanel({ workspace }: { workspace: string }) {
+  const session = useDexieSession()
+  const allArchived = useDexieArchivedConversations(workspace, session)
+  const { unarchiveConversation } = useDexieMessageActions()
+
+  // Filter out automation runs, sort by archivedAt descending
+  const conversations = useMemo(() => {
+    return allArchived
+      .filter(c => c.source !== AUTOMATION_RUN_SOURCE)
+      .sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0))
+  }, [allArchived])
+
+  const handleRestore = useCallback(
+    async (id: string) => {
+      trackConversationUnarchived()
+      await unarchiveConversation(id)
+    },
+    [unarchiveConversation],
+  )
+
+  return (
+    <div>
+      <SectionHeader
+        title="Archived"
+        description={
+          conversations.length === 0
+            ? "No archived conversations."
+            : `${conversations.length} archived conversation${conversations.length === 1 ? "" : "s"}.`
+        }
+      />
+
+      {conversations.length === 0 ? (
+        <p className="text-[13px] text-zinc-400 dark:text-zinc-600">
+          Archive conversations from the sidebar to see them here.
+        </p>
+      ) : (
+        <div className="divide-y divide-zinc-100 dark:divide-white/[0.04]">
+          {conversations.map(conversation => (
+            <ArchivedConversationRow key={conversation.id} conversation={conversation} onRestore={handleRestore} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ArchivedConversationRow({
+  conversation,
+  onRestore,
+}: {
+  conversation: DbConversation
+  onRestore: (id: string) => void
+}) {
+  const lastActive = conversation.lastMessageAt ?? conversation.updatedAt
+  const messages = conversation.messageCount
+
+  return (
+    <div className="group flex items-center gap-3 py-3">
+      <div className="flex-1 min-w-0">
+        <span className="block text-[13px] text-zinc-700 dark:text-zinc-300 truncate">{conversation.title}</span>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[11px] text-zinc-400 dark:text-zinc-600">{formatTimestamp(lastActive)}</span>
+          {messages != null && messages > 0 && (
+            <>
+              <span className="text-[11px] text-zinc-300 dark:text-zinc-700">&middot;</span>
+              <span className="text-[11px] text-zinc-400 dark:text-zinc-600 tabular-nums">
+                {messages} msg{messages === 1 ? "" : "s"}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onRestore(conversation.id)}
+        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[12px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all duration-100 shrink-0"
+        aria-label="Restore conversation"
+      >
+        <ArchiveRestore size={13} strokeWidth={1.5} />
+        <span>Restore</span>
+      </button>
+    </div>
+  )
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export function WorkbenchHome({ workspace }: WorkbenchViewProps) {
@@ -459,6 +552,7 @@ export function WorkbenchHome({ workspace }: WorkbenchViewProps) {
         <div className="max-w-md">
           {activeTab === "project" && workspace && <ProjectPanel workspace={workspace} />}
           {activeTab === "deploy" && workspace && <DeployPanel workspace={workspace} />}
+          {activeTab === "archived" && workspace && <ArchivedPanel workspace={workspace} />}
         </div>
       </div>
     </div>

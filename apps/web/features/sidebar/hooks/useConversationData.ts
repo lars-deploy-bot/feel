@@ -5,7 +5,7 @@ import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { trackSidebarClosed, trackSidebarOpened } from "@/lib/analytics/events"
 import { logError } from "@/lib/client-error-logger"
 import { fetchConversations } from "@/lib/db/conversationSync"
-import { useDexieAllArchivedConversations, useDexieAllConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
+import { useDexieAllConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useSidebarOpen } from "../sidebarStore"
 import { useFavoriteWorkspaces } from "./useFavoriteWorkspaces"
@@ -34,7 +34,6 @@ export function useConversationData() {
   const { organizations } = useOrganizations()
   const orgIds = useMemo(() => new Set(organizations.map(o => o.org_id)), [organizations])
   const conversations = useDexieAllConversations(session, orgIds)
-  const archivedConversations = useDexieAllArchivedConversations(session)
   const { favorites, toggle: toggleFavoriteWorkspace } = useFavoriteWorkspaces()
 
   // Pull conversations from server (cross-workspace) on session init.
@@ -64,7 +63,6 @@ export function useConversationData() {
 
   return {
     conversations,
-    archivedConversations,
     favorites,
     toggleFavoriteWorkspace,
     userDisplay,

@@ -87,7 +87,6 @@ const defaultProps = {
   activeTabGroupId: "conv-1",
   onTabGroupSelect: vi.fn(),
   onArchiveTabGroup: vi.fn(),
-  onUnarchiveTabGroup: vi.fn(),
   onRenameTabGroup: vi.fn(),
   onNewConversation: vi.fn(),
   onNewConversationInWorkspace: vi.fn(),

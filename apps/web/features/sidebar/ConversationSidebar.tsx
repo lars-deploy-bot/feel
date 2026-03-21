@@ -24,7 +24,6 @@ interface ConversationSidebarProps {
   activeTabGroupId: string | null
   onTabGroupSelect: (tabGroupId: string) => void
   onArchiveTabGroup: (tabGroupId: string) => void
-  onUnarchiveTabGroup: (tabGroupId: string) => void
   onRenameTabGroup: (tabGroupId: string, title: string) => void
   onNewConversation: () => void
   onNewConversationInWorkspace: (workspace: string) => void
@@ -47,7 +46,6 @@ export function ConversationSidebar({
   activeTabGroupId,
   onTabGroupSelect,
   onArchiveTabGroup,
-  onUnarchiveTabGroup,
   onRenameTabGroup,
   onNewConversation,
   onNewConversationInWorkspace,
@@ -68,13 +66,11 @@ export function ConversationSidebar({
   const worktreeEnabled = useFeatureFlag("WORKTREES")
 
   // Data
-  const { conversations, archivedConversations, favorites, toggleFavoriteWorkspace, userDisplay } =
-    useConversationData()
+  const { conversations, favorites, toggleFavoriteWorkspace, userDisplay } = useConversationData()
 
   // Derived state
   const { workspaceGroups, expandedWorkspaces, toggleExpanded } = useConversationGroups(
     conversations,
-    archivedConversations,
     favorites,
     workspace,
   )
@@ -142,9 +138,9 @@ export function ConversationSidebar({
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto py-1 flex flex-col">
+          <div className="flex-1 overflow-y-auto py-2 flex flex-col">
             {!hasConversations ? (
-              <div className="px-4 py-8 text-center text-[13px] text-black/25 dark:text-white/25">
+              <div className="px-4 py-10 text-center text-[13px] text-black/20 dark:text-white/20">
                 Start typing to begin
               </div>
             ) : (
@@ -162,7 +158,6 @@ export function ConversationSidebar({
                 onNewConversationInWorkspace={onNewConversationInWorkspace}
                 onToggleFavorite={toggleFavoriteWorkspace}
                 onArchiveAllInWorkspace={handleArchiveAllInWorkspace}
-                onUnarchiveTabGroup={onUnarchiveTabGroup}
               />
             )}
           </div>

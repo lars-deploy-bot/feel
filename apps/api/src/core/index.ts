@@ -2,6 +2,7 @@ import { OpenAPIHono } from "@hono/zod-openapi"
 import { authMiddleware } from "../middleware/auth"
 import type { AppBindings } from "../types/hono"
 import { authRoutes } from "./auth/auth.routes"
+import { faviconRoutes } from "./favicon/favicon.routes"
 import { healthRoutes } from "./health/health.routes"
 import { automationsRoutes } from "./manager/automations/automations.routes"
 import { deploysRoutes } from "./manager/deploys/deploys.routes"
@@ -29,8 +30,9 @@ export function buildRoutes(): OpenAPIHono<AppBindings> {
   // All /api routes
   const apiGroup = new OpenAPIHono<AppBindings>()
 
-  // Public auth routes
+  // Public routes
   apiGroup.route("/auth", authRoutes)
+  apiGroup.route("/favicon", faviconRoutes)
 
   // Protected manager routes
   const manager = new OpenAPIHono<AppBindings>()

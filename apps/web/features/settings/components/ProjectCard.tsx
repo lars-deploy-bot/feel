@@ -1,51 +1,11 @@
 "use client"
 
 import { ExternalLink, Star, Trash2 } from "lucide-react"
-import { memo, useEffect, useState } from "react"
+import { memo, useState } from "react"
+import { useFavicon } from "@/lib/hooks/useFavicon"
 import { getSiteUrl } from "@/lib/preview-utils"
 import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
 import { DeleteProjectModal } from "./DeleteProjectModal"
-
-// ---------------------------------------------------------------------------
-// Favicon loader with localStorage cache
-// ---------------------------------------------------------------------------
-
-const FAVICON_CACHE_PREFIX = "alive:favicon:"
-const FAVICON_CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
-
-function useFavicon(hostname: string): string | null {
-  const [src, setSrc] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null
-    const cached = localStorage.getItem(`${FAVICON_CACHE_PREFIX}${hostname}`)
-    if (!cached) return null
-    try {
-      const { url, ts } = JSON.parse(cached)
-      if (Date.now() - ts < FAVICON_CACHE_TTL) return url
-      localStorage.removeItem(`${FAVICON_CACHE_PREFIX}${hostname}`)
-    } catch {
-      /* corrupted cache */
-    }
-    return null
-  })
-
-  useEffect(() => {
-    if (src) return // already have it
-    const siteUrl = getSiteUrl(hostname)
-    if (!siteUrl) return
-
-    const img = new Image()
-    const faviconUrl = `${siteUrl}/favicon.ico`
-    img.onload = () => {
-      setSrc(faviconUrl)
-      localStorage.setItem(`${FAVICON_CACHE_PREFIX}${hostname}`, JSON.stringify({ url: faviconUrl, ts: Date.now() }))
-    }
-    // silently fail — we'll show the initial letter
-    img.onerror = () => {}
-    img.src = faviconUrl
-  }, [hostname, src])
-
-  return src
-}
 
 // ---------------------------------------------------------------------------
 // Display helpers
