@@ -132,16 +132,18 @@ export async function isInputSafe(input: string): Promise<"safe" | "unsafe"> {
   return result.result
 }
 
-export async function isInputSafeWithDebug(input: string): Promise<{
+export interface InputSafetyResult {
   result: "safe" | "unsafe"
   debug: {
-    fullResponse: any
+    fullResponse: unknown
     rawContent: string | null
-    error: any
+    error: unknown
     model: string
     prompt: string
   }
-}> {
+}
+
+export async function isInputSafeWithDebug(input: string): Promise<InputSafetyResult> {
   try {
     const groq = await getGroqClient()
 

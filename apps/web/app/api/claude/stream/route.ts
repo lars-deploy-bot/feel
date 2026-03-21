@@ -28,7 +28,7 @@ import {
   unlockConversation,
 } from "@/features/auth/lib/sessionStore"
 import { hasSessionCookie } from "@/features/auth/types/guards"
-import { isInputSafeWithDebug } from "@/features/chat/lib/formatMessage"
+import { type InputSafetyResult, isInputSafeWithDebug } from "@/features/chat/lib/formatMessage"
 import {
   BridgeInterruptSource,
   createDoneMessage,
@@ -257,7 +257,10 @@ export async function POST(req: NextRequest) {
     // ========================================================================
     const workspaceName = requestWorkspace ?? host
 
-    const SAFE_RESULT: { result: "safe"; debug: Record<string, unknown> } = { result: "safe", debug: {} }
+    const SAFE_RESULT: InputSafetyResult = {
+      result: "safe",
+      debug: { fullResponse: null, rawContent: null, error: null, model: "skipped", prompt: "" },
+    }
     const [inputSafetyResult, workspaceAccessResult, domainRecordResult, oauthTokenResult] = await Promise.allSettled([
       // Input safety check (calls Groq API — skip for superadmins)
       user.isSuperadmin ? Promise.resolve(SAFE_RESULT) : isInputSafeWithDebug(message),
@@ -278,11 +281,7 @@ export async function POST(req: NextRequest) {
       logger.error("Input safety check failed:", inputSafetyResult.reason)
       // Fail open: don't block if safety service is down
     } else if (inputSafetyResult.value.result === "unsafe") {
-      const debugInfo = inputSafetyResult.value.debug
-      const rawContent =
-        debugInfo && typeof debugInfo === "object" && "rawContent" in debugInfo
-          ? String(debugInfo.rawContent).slice(0, 200)
-          : ""
+      const rawContent = inputSafetyResult.value.debug.rawContent?.slice(0, 200) ?? ""
       logger.log(`Input flagged as unsafe. Model response: "${rawContent}"`)
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
