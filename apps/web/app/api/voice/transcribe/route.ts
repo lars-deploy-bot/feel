@@ -1,14 +1,14 @@
 import { isValidVoiceLanguage } from "@webalive/shared"
-import { NextResponse } from "next/server"
 import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import type { TranscribeResult } from "@/lib/api/types"
+import { alrighty } from "@/lib/api/server"
 import { ApiClientError, apiClient } from "@/lib/api-client"
 import { ErrorCodes } from "@/lib/error-codes"
 
 /**
  * Thin proxy: authenticate user session, then forward to apps/api voice service.
  * All validation, retry, and Groq communication lives in apps/api.
+ * Response is validated via alrighty ("voice/transcribe" schema).
  */
 export async function POST(request: Request) {
   try {
@@ -40,8 +40,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await apiClient.postRaw<TranscribeResult>("/voice/transcribe", upstream)
-    return NextResponse.json(result)
+    const result = await apiClient.postRaw<{ text: string; duration: number | null; language: string | null }>(
+      "/voice/transcribe",
+      upstream,
+    )
+    return alrighty("voice/transcribe", result)
   } catch (err) {
     const message = err instanceof Error ? err.message : "Transcription failed"
     const status = err instanceof ApiClientError ? err.status : 502

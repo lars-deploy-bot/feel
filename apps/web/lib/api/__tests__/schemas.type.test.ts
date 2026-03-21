@@ -81,6 +81,7 @@ describe("API Schema Type System", () => {
         | "conversations/list"
         | "conversations/messages"
         | "images/list"
+        | "voice/transcribe"
       >()
     })
 

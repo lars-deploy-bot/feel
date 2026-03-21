@@ -1697,6 +1697,20 @@ export const apiSchemas = {
       count: z.number(),
     }),
   },
+
+  /**
+   * POST /api/voice/transcribe (multipart/form-data)
+   * Transcribe audio via Groq Whisper. Request is FormData (not JSON).
+   * Only the response is schema-validated via alrighty.
+   */
+  "voice/transcribe": {
+    res: z.object({
+      ok: z.literal(true),
+      text: z.string().min(1),
+      duration: z.number().nullable(),
+      language: z.string().nullable(),
+    }),
+  },
 } as const
 
 // ============================================================================
