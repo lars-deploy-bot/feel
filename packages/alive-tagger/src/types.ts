@@ -22,9 +22,17 @@ export interface SourceInfo {
 export const SOURCE_KEY = Symbol.for("__aliveSource__")
 
 /**
- * Message type for element selection postMessage
+ * PostMessage types for parent↔iframe communication
  */
 export const ELEMENT_SELECTED_MESSAGE_TYPE = "alive-element-selected" as const
+/** Parent → iframe: activate selector mode */
+export const TAGGER_ACTIVATE = "alive-tagger-activate" as const
+/** Parent → iframe: deactivate selector mode */
+export const TAGGER_DEACTIVATE = "alive-tagger-deactivate" as const
+/** Iframe → parent: selector was activated (e.g. Cmd/Ctrl held) */
+export const TAGGER_ACTIVATED = "alive-tagger-activated" as const
+/** Iframe → parent: selector was deactivated (e.g. Cmd/Ctrl released, Escape) */
+export const TAGGER_DEACTIVATED = "alive-tagger-deactivated" as const
 
 /**
  * Context sent when an element is selected

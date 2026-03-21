@@ -31,11 +31,15 @@ export {
   type ElementSelectedMessage,
   SOURCE_KEY,
   type SourceInfo,
+  TAGGER_ACTIVATE,
+  TAGGER_ACTIVATED,
+  TAGGER_DEACTIVATE,
+  TAGGER_DEACTIVATED,
 } from "./types"
 
 // Utility functions for working with source info
 
-import { SOURCE_KEY, type SourceInfo } from "./types"
+import { ELEMENT_SELECTED_MESSAGE_TYPE, SOURCE_KEY, type SourceInfo } from "./types"
 
 /**
  * Get source info from a DOM element
@@ -67,7 +71,7 @@ export function isElementSelectedMessage(data: unknown): data is import("./types
     typeof data === "object" &&
     data !== null &&
     "type" in data &&
-    (data as { type: unknown }).type === "alive-element-selected" &&
+    (data as { type: unknown }).type === ELEMENT_SELECTED_MESSAGE_TYPE &&
     "context" in data
   )
 }

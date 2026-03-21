@@ -1,5 +1,12 @@
 "use client"
 
+import {
+  ELEMENT_SELECTED_MESSAGE_TYPE,
+  TAGGER_ACTIVATE,
+  TAGGER_ACTIVATED,
+  TAGGER_DEACTIVATE,
+  TAGGER_DEACTIVATED,
+} from "@alive-game/alive-tagger"
 import { PREVIEW_MESSAGES } from "@webalive/shared"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useWorkbenchContext } from "@/features/chat/lib/workbench-context"
@@ -126,7 +133,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
   // Sync selector state after iframe loads
   useEffect(() => {
     if (!isLoading && selectorActive && iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({ type: "alive-tagger-activate" }, previewOrigin)
+      iframeRef.current.contentWindow.postMessage({ type: TAGGER_ACTIVATE }, previewOrigin)
     }
   }, [isLoading, selectorActive, previewOrigin])
 
@@ -134,7 +141,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: selectorActive ? "alive-tagger-activate" : "alive-tagger-deactivate" },
+        { type: selectorActive ? TAGGER_ACTIVATE : TAGGER_DEACTIVATE },
         previewOrigin,
       )
     }
@@ -197,7 +204,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
       }
 
       // Element selected via alive-tagger (Cmd+Click or button-activated click)
-      if (event.data?.type === "alive-element-selected" && event.data.context) {
+      if (event.data?.type === ELEMENT_SELECTED_MESSAGE_TYPE && event.data.context) {
         const ctx = event.data.context
         setSelectedElement({
           displayName: ctx.displayName,
@@ -209,13 +216,13 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
       }
 
       // Selector activated inside iframe (Cmd/Ctrl held) — sync parent button state
-      if (event.data?.type === "alive-tagger-activated") {
+      if (event.data?.type === TAGGER_ACTIVATED) {
         activateSelector()
         return
       }
 
       // Selector deactivated inside iframe (Cmd/Ctrl released, Escape, blur) — sync parent
-      if (event.data?.type === "alive-tagger-deactivated") {
+      if (event.data?.type === TAGGER_DEACTIVATED) {
         deactivateSelector()
         return
       }

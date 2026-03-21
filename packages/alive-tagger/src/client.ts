@@ -16,6 +16,10 @@ import {
   type ElementSelectedMessage,
   SOURCE_KEY,
   type SourceInfo,
+  TAGGER_ACTIVATE,
+  TAGGER_ACTIVATED,
+  TAGGER_DEACTIVATE,
+  TAGGER_DEACTIVATED,
 } from "./types"
 
 /** Maximum length for HTML snippet */
@@ -429,7 +433,7 @@ export function initAliveTagger(): () => void {
     document.body.classList.add("alive-tagger-active")
     // Notify parent so its button state stays in sync
     if (source === "modifier" && cachedParentOrigin) {
-      window.parent.postMessage({ type: "alive-tagger-activated" }, cachedParentOrigin)
+      window.parent.postMessage({ type: TAGGER_ACTIVATED }, cachedParentOrigin)
     }
   }
 
@@ -442,7 +446,7 @@ export function initAliveTagger(): () => void {
     ui.hide()
     hoveredElement = null
     if (notifyParent && cachedParentOrigin) {
-      window.parent.postMessage({ type: "alive-tagger-deactivated" }, cachedParentOrigin)
+      window.parent.postMessage({ type: TAGGER_DEACTIVATED }, cachedParentOrigin)
     }
   }
 
@@ -539,14 +543,14 @@ export function initAliveTagger(): () => void {
   function handleMessage(e: MessageEvent): void {
     if (!cachedParentOrigin || e.origin !== cachedParentOrigin) return
 
-    if (e.data?.type === "alive-tagger-activate") {
+    if (e.data?.type === TAGGER_ACTIVATE) {
       // Ignore if already active (e.g. modifier key held — don't overwrite activatedByModifierKey)
       if (!isActive) {
         isActive = true
         activatedByModifierKey = false
         document.body.classList.add("alive-tagger-active")
       }
-    } else if (e.data?.type === "alive-tagger-deactivate") {
+    } else if (e.data?.type === TAGGER_DEACTIVATE) {
       // Parent told us to deactivate — don't notify back (would loop)
       deactivate(false)
     }
