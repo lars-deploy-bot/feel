@@ -10,7 +10,7 @@ interface WorkspaceGroupMenuProps {
   conversationCount: number
   onNewConversation: (workspace: string) => void
   onToggleFavorite: (workspace: string) => void
-  onArchiveAll: (workspace: string) => void
+  onArchiveAll: (workspace: string) => Promise<void>
 }
 
 export function WorkspaceGroupMenu({
@@ -68,7 +68,10 @@ export function WorkspaceGroupMenu({
                 label="Archive all"
                 onClick={() => {
                   close()
-                  onArchiveAll(workspace)
+                  onArchiveAll(workspace).catch(() => {
+                    // Menu already closed — nothing to surface here.
+                    // Individual archive failures are handled by useArchiveActions.
+                  })
                 }}
               />
             )}

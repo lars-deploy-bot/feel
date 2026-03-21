@@ -14,7 +14,7 @@ interface WorkspaceGroupsListProps extends Omit<ConversationListProps, "conversa
   onToggleExpanded: (ws: string) => void
   onNewConversationInWorkspace: (workspace: string) => void
   onToggleFavorite: (workspace: string) => void
-  onArchiveAllInWorkspace: (workspace: string) => void
+  onArchiveAllInWorkspace: (workspace: string) => Promise<void>
 }
 
 export function WorkspaceGroupsList({
@@ -87,7 +87,7 @@ function WorkspaceGroupRow({
   onToggleExpanded: (ws: string) => void
   onNewConversation: (ws: string) => void
   onToggleFavorite: (ws: string) => void
-  onArchiveAll: (ws: string) => void
+  onArchiveAll: (ws: string) => Promise<void>
   listProps: Omit<ConversationListProps, "conversations">
 }) {
   const totalCount = conversations.length
@@ -115,7 +115,7 @@ function WorkspaceGroupRow({
         </button>
 
         {/* Hover-reveal actions */}
-        <div className="flex items-center gap-px opacity-0 group-hover/ws:opacity-100 transition-opacity duration-100">
+        <div className="flex items-center gap-px opacity-0 pointer-events-none group-hover/ws:opacity-100 group-hover/ws:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-100">
           <WorkspaceGroupMenu
             workspace={workspace}
             isFavorite={isFavorite}
