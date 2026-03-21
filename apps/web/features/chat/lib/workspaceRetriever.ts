@@ -187,7 +187,7 @@ async function getTerminalWorkspace(
 
   // Use pre-fetched domain record if available, otherwise query (fallback for non-stream callers)
   let domainRuntime: DomainRuntime | null = prefetchedDomainRuntime ?? null
-  if (!prefetchedDomainRuntime) {
+  if (prefetchedDomainRuntime === undefined) {
     try {
       domainRuntime = await resolveDomainRuntime(normalizedDomain)
     } catch (error) {

@@ -83,6 +83,7 @@ interface FullDomainCacheEntry {
 
 const fullDomainCache = new Map<string, FullDomainCacheEntry>()
 const FULL_DOMAIN_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const FULL_DOMAIN_CACHE_MAX_SIZE = 500
 
 /**
  * Invalidate the full domain record cache for a specific hostname.
@@ -98,6 +99,19 @@ export function invalidateFullDomainCache(hostname: string): void {
  *
  * @returns FullDomainRecord or null if domain not found
  */
+/** Evict expired entries when cache exceeds max size. */
+function pruneFullDomainCache(now: number): void {
+  if (fullDomainCache.size <= FULL_DOMAIN_CACHE_MAX_SIZE) return
+  for (const [key, entry] of fullDomainCache) {
+    if (entry.expiresAt <= now) fullDomainCache.delete(key)
+  }
+  // If still over limit after expiry sweep, drop oldest entries
+  while (fullDomainCache.size > FULL_DOMAIN_CACHE_MAX_SIZE) {
+    const firstKey = fullDomainCache.keys().next().value
+    if (firstKey !== undefined) fullDomainCache.delete(firstKey)
+  }
+}
+
 export async function fetchFullDomainRecord(hostname: string): Promise<FullDomainRecord | null> {
   const now = Date.now()
   const cached = fullDomainCache.get(hostname)
@@ -115,12 +129,14 @@ export async function fetchFullDomainRecord(hostname: string): Promise<FullDomai
   if (error) {
     if (error.code === "PGRST116") {
       // Cache negative result too (domain not found)
+      pruneFullDomainCache(now)
       fullDomainCache.set(hostname, { record: null, expiresAt: now + FULL_DOMAIN_CACHE_TTL_MS })
       return null
     }
     throw new Error(`Failed to fetch full domain record for ${hostname}: ${error.message}`)
   }
 
+  pruneFullDomainCache(now)
   fullDomainCache.set(hostname, { record: data, expiresAt: now + FULL_DOMAIN_CACHE_TTL_MS })
   return data
 }

@@ -485,6 +485,7 @@ export async function POST(req: NextRequest) {
     // Fire-and-forget: stream buffer creation (non-fatal, don't block)
     createStreamBuffer(requestId, sessionKey, user.id, tabId).catch(bufferError => {
       logger.log("Stream buffer creation failed (non-fatal):", bufferError)
+      Sentry.captureException(bufferError, { level: "warning", tags: { component: "stream-buffer" } })
     })
 
     timing("after_session_lookup")

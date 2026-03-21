@@ -37,6 +37,7 @@ interface NegativeCacheEntry {
 
 const oauthNegativeCache = new Map<string, NegativeCacheEntry>()
 const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const NEGATIVE_CACHE_MAX_SIZE = 200
 
 function getNegativeCacheKey(userId: string, providerKey: string): string {
   return `${userId}:${providerKey}`
@@ -56,6 +57,18 @@ export function clearOAuthNegativeCache(userId: string, providerKey?: string): v
         oauthNegativeCache.delete(key)
       }
     }
+  }
+}
+
+/** Evict expired entries when cache exceeds max size. */
+function pruneNegativeCache(now: number): void {
+  if (oauthNegativeCache.size <= NEGATIVE_CACHE_MAX_SIZE) return
+  for (const [key, entry] of oauthNegativeCache) {
+    if (entry.expiresAt <= now) oauthNegativeCache.delete(key)
+  }
+  while (oauthNegativeCache.size > NEGATIVE_CACHE_MAX_SIZE) {
+    const firstKey = oauthNegativeCache.keys().next().value
+    if (firstKey !== undefined) oauthNegativeCache.delete(firstKey)
   }
 }
 
@@ -141,6 +154,7 @@ export async function fetchOAuthTokens(userId: string, logger?: Logger): Promise
 
         // Cache the failure so we don't retry on the next request
         if (warning?.needsReauth) {
+          pruneNegativeCache(now)
           oauthNegativeCache.set(cacheKey, {
             expiresAt: now + NEGATIVE_CACHE_TTL_MS,
             warning,
