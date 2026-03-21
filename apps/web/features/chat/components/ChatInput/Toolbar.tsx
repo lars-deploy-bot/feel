@@ -5,6 +5,7 @@ import { Camera, ChevronDown, ClipboardList, Copy, FileText, Globe, MousePointer
 import type { RefObject } from "react"
 import { useCallback, useRef, useState } from "react"
 import toast from "react-hot-toast"
+import { Tooltip } from "@/components/ui/Tooltip"
 import { useWorkbenchContext } from "@/features/chat/lib/workbench-context"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { useSuperadmin } from "@/hooks/use-superadmin"
@@ -60,7 +61,7 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
   const skills = useAllSkills()
   const isLoading = useSkillsLoading()
   const messages = useTabMessages(tabId)
-  const { activateSelector, selectorActive } = useWorkbenchContext()
+  const { toggleSelector, selectorActive } = useWorkbenchContext()
   const isWorkbenchOpen = useWorkbench()
   const isWorkbenchMinimized = useWorkbenchMinimized()
   const showSelectorButton = isWorkbenchOpen && !isWorkbenchMinimized
@@ -117,31 +118,33 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
   return (
     <div data-panel-role="chat-toolbar" className="flex items-center gap-1">
       {/* Copy Messages - hidden for now */}
-      <button
-        type="button"
-        onClick={handleCopyMessages}
-        className="hidden items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
-        aria-label="Copy messages"
-        title="Copy messages"
-      >
-        <Copy className="size-4" />
-      </button>
+      <Tooltip content="Copy messages">
+        <button
+          type="button"
+          onClick={handleCopyMessages}
+          className="hidden items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
+          aria-label="Copy messages"
+        >
+          <Copy className="size-4" />
+        </button>
+      </Tooltip>
 
       {/* Skills Menu */}
       <div className="relative">
-        <button
-          type="button"
-          onClick={() => {
-            if (!showPromptMenu) trackSkillsMenuOpened()
-            setShowPromptMenu(!showPromptMenu)
-          }}
-          className="flex items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
-          data-testid="skills-button"
-          aria-label="Skills"
-          title="Skills"
-        >
-          <ClipboardList className="size-4" />
-        </button>
+        <Tooltip content="Skills">
+          <button
+            type="button"
+            onClick={() => {
+              if (!showPromptMenu) trackSkillsMenuOpened()
+              setShowPromptMenu(!showPromptMenu)
+            }}
+            className="flex items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
+            data-testid="skills-button"
+            aria-label="Skills"
+          >
+            <ClipboardList className="size-4" />
+          </button>
+        </Tooltip>
 
         {showPromptMenu && (
           <>
@@ -201,23 +204,24 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
 
       {/* Select Element - only show when workbench preview is open and visible */}
       {showSelectorButton && (
-        <button
-          type="button"
-          onClick={() => {
-            trackElementSelectorActivated()
-            activateSelector()
-          }}
-          className={`flex items-center justify-center size-8 rounded-full transition-colors ${
-            selectorActive
-              ? "bg-purple-500/20 text-purple-400"
-              : "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70"
-          }`}
-          data-testid="element-selector-button"
-          aria-label="Select element"
-          title="Select element from preview (or hold Cmd/Ctrl)"
-        >
-          <MousePointer2 className="size-4" />
-        </button>
+        <Tooltip content={selectorActive ? "Cancel selection (Esc)" : "Select element"}>
+          <button
+            type="button"
+            onClick={() => {
+              trackElementSelectorActivated()
+              toggleSelector()
+            }}
+            className={`flex items-center justify-center size-8 rounded-full transition-colors ${
+              selectorActive
+                ? "bg-purple-500/20 text-purple-400"
+                : "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70"
+            }`}
+            data-testid="element-selector-button"
+            aria-label="Select element"
+          >
+            <MousePointer2 className="size-4" />
+          </button>
+        </Tooltip>
       )}
 
       {/* Mode Selector */}
@@ -245,18 +249,20 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
         onStopRecording={voice.stopRecording}
       />
 
-      <button
-        type="button"
-        onClick={() => {
-          trackCameraUsed()
-          handleClick()
-        }}
-        className="flex items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
-        data-testid="upload-photo-button"
-        aria-label="Upload photo"
-      >
-        <Camera className="size-4" />
-      </button>
+      <Tooltip content="Upload photo">
+        <button
+          type="button"
+          onClick={() => {
+            trackCameraUsed()
+            handleClick()
+          }}
+          className="flex items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
+          data-testid="upload-photo-button"
+          aria-label="Upload photo"
+        >
+          <Camera className="size-4" />
+        </button>
+      </Tooltip>
     </div>
   )
 }
@@ -302,30 +308,32 @@ function StreamModeSelector({
   // Only 2 modes (default + plan) — simple toggle, no dropdown needed
   if (accessibleModes.length <= 2) {
     return (
-      <button
-        type="button"
-        onClick={() => onSelectMode(mode === "plan" ? "default" : "plan")}
-        className={`flex items-center justify-center size-8 rounded-full transition-colors ${MODE_BUTTON_STYLES[mode]}`}
-        aria-label={mode === "plan" ? "Disable plan mode" : "Enable plan mode"}
-        title={mode === "plan" ? activeConfig.description : "Click to enable plan mode"}
-      >
-        <FileText className="size-4" />
-      </button>
+      <Tooltip content={mode === "plan" ? "Disable plan mode" : "Plan mode"}>
+        <button
+          type="button"
+          onClick={() => onSelectMode(mode === "plan" ? "default" : "plan")}
+          className={`flex items-center justify-center size-8 rounded-full transition-colors ${MODE_BUTTON_STYLES[mode]}`}
+          aria-label={mode === "plan" ? "Disable plan mode" : "Enable plan mode"}
+        >
+          <FileText className="size-4" />
+        </button>
+      </Tooltip>
     )
   }
 
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={onToggleMenu}
-        className={`flex items-center gap-1 h-8 px-2 rounded-full transition-colors ${MODE_BUTTON_STYLES[mode]}`}
-        aria-label={`Mode: ${activeConfig.label}`}
-        title={activeConfig.description}
-      >
-        <Icon className="size-4" />
-        {mode !== "default" && <span className="text-[11px] font-medium">{activeConfig.label}</span>}
-      </button>
+      <Tooltip content={activeConfig.label}>
+        <button
+          type="button"
+          onClick={onToggleMenu}
+          className={`flex items-center gap-1 h-8 px-2 rounded-full transition-colors ${MODE_BUTTON_STYLES[mode]}`}
+          aria-label={`Mode: ${activeConfig.label}`}
+        >
+          <Icon className="size-4" />
+          {mode !== "default" && <span className="text-[11px] font-medium">{activeConfig.label}</span>}
+        </button>
+      </Tooltip>
 
       {showMenu && (
         <>

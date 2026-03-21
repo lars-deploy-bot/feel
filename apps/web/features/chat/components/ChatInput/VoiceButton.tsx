@@ -2,6 +2,7 @@
 
 import { Loader2, Mic, Square, X } from "lucide-react"
 import { useCallback, useEffect, useRef } from "react"
+import { Tooltip } from "@/components/ui/Tooltip"
 import type { VoiceState } from "./types/voice"
 
 /** Minimum hold duration (ms) to distinguish hold-to-speak from tap-to-toggle */
@@ -131,49 +132,50 @@ export function VoiceButton({
       )}
 
       {/* Main button with audio-reactive glow */}
-      <button
-        type="button"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerLeave}
-        onContextMenu={e => e.preventDefault()}
-        disabled={isStopping}
-        className={`relative flex items-center justify-center size-8 rounded-full transition-colors select-none touch-none ${
-          isError
-            ? "bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/15"
-            : isRecording
-              ? "bg-red-500/15 text-red-500"
-              : isBusy
-                ? "text-black/30 dark:text-white/30 cursor-wait"
-                : "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70"
-        }`}
-        aria-label={LABELS[state]}
-        title={LABELS[state]}
-      >
-        {/* Audio level glow ring — scales with voice volume */}
-        {isRecording && (
-          <span
-            className="absolute inset-0 rounded-full bg-red-500 pointer-events-none transition-transform duration-75"
-            style={{
-              transform: `scale(${ringScale})`,
-              opacity: ringOpacity,
-            }}
-          />
-        )}
-
-        {/* Icon */}
-        <span className="relative z-10">
-          {isError ? (
-            <X className="size-4" />
-          ) : isBusy ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : isRecording ? (
-            <Square className="size-3 fill-current" />
-          ) : (
-            <Mic className="size-4" />
+      <Tooltip content={LABELS[state]}>
+        <button
+          type="button"
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
+          onContextMenu={e => e.preventDefault()}
+          disabled={isStopping}
+          className={`relative flex items-center justify-center size-8 rounded-full transition-colors select-none touch-none ${
+            isError
+              ? "bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/15"
+              : isRecording
+                ? "bg-red-500/15 text-red-500"
+                : isBusy
+                  ? "text-black/30 dark:text-white/30 cursor-wait"
+                  : "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70"
+          }`}
+          aria-label={LABELS[state]}
+        >
+          {/* Audio level glow ring — scales with voice volume */}
+          {isRecording && (
+            <span
+              className="absolute inset-0 rounded-full bg-red-500 pointer-events-none transition-transform duration-75"
+              style={{
+                transform: `scale(${ringScale})`,
+                opacity: ringOpacity,
+              }}
+            />
           )}
-        </span>
-      </button>
+
+          {/* Icon */}
+          <span className="relative z-10">
+            {isError ? (
+              <X className="size-4" />
+            ) : isBusy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : isRecording ? (
+              <Square className="size-3 fill-current" />
+            ) : (
+              <Mic className="size-4" />
+            )}
+          </span>
+        </button>
+      </Tooltip>
     </div>
   )
 }

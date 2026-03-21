@@ -25,7 +25,7 @@ interface UsePreviewEngineOptions {
  * - Refresh navigating to stale path (#297)
  */
 export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UsePreviewEngineOptions) {
-  const { setSelectedElement, selectorActive, deactivateSelector } = useWorkbenchContext()
+  const { setSelectedElement, selectorActive, activateSelector, deactivateSelector } = useWorkbenchContext()
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
   // displayPath: what the URL bar shows, updated on every in-page navigation.
@@ -196,7 +196,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
         return
       }
 
-      // Element selected via alive-tagger (Cmd+Click in dev mode)
+      // Element selected via alive-tagger (Cmd+Click or button-activated click)
       if (event.data?.type === "alive-element-selected" && event.data.context) {
         const ctx = event.data.context
         setSelectedElement({
@@ -205,6 +205,19 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
           lineNumber: ctx.lineNumber,
           columnNumber: ctx.columnNumber,
         })
+        return
+      }
+
+      // Selector activated inside iframe (Cmd/Ctrl held) — sync parent button state
+      if (event.data?.type === "alive-tagger-activated") {
+        activateSelector()
+        return
+      }
+
+      // Selector deactivated inside iframe (Cmd/Ctrl released, Escape, blur) — sync parent
+      if (event.data?.type === "alive-tagger-deactivated") {
+        deactivateSelector()
+        return
       }
     }
 
@@ -213,7 +226,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
       window.removeEventListener("message", handleMessage)
       clearLoadingTimeout()
     }
-  }, [workspace, setSelectedElement, clearLoadingTimeout])
+  }, [workspace, setSelectedElement, activateSelector, deactivateSelector, clearLoadingTimeout])
 
   // --- Actions ---
 
