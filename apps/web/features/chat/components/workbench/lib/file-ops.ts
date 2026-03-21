@@ -4,7 +4,7 @@
  * All functions throw on failure (fail fast).
  */
 
-import { writeFile } from "./file-api"
+import { deleteFile, uploadFile, writeFile } from "./file-api"
 import { invalidateContent, invalidateList } from "./file-cache"
 import { notifyFileChange } from "./file-events"
 import { getParentPath } from "./file-path"
@@ -26,6 +26,33 @@ export async function saveFile(
   invalidateContent(workspace, worktree, path)
   invalidateList(workspace, worktree, getParentPath(path))
   notifyFileChange()
+}
+
+/** Delete a file or directory, invalidate caches, and notify subscribers. Throws on failure. */
+export async function removeFile(
+  workspace: string,
+  path: string,
+  options?: { worktree?: string | null; recursive?: boolean },
+): Promise<void> {
+  await deleteFile(workspace, path, options)
+  invalidateContent(workspace, options?.worktree, path)
+  invalidateList(workspace, options?.worktree, getParentPath(path))
+  notifyFileChange()
+}
+
+/** Upload a file, invalidate caches, and notify subscribers. Throws on failure. */
+export async function uploadFileToWorkspace(
+  workspace: string,
+  file: File,
+  worktree?: string | null,
+): Promise<{ path: string; originalName: string }> {
+  const result = await uploadFile(workspace, file, worktree)
+  // Invalidate the parent directory from the returned path (e.g. ".uploads")
+  invalidateList(workspace, worktree, getParentPath(result.path))
+  // Also invalidate root since the uploads dir may be newly created
+  invalidateList(workspace, worktree, "")
+  notifyFileChange()
+  return result
 }
 
 /** Handle filesystem events from the file watcher. Invalidates appropriate caches and notifies. */

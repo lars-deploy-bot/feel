@@ -96,3 +96,41 @@ export async function readFile(workspace: string, path: string, worktree?: strin
   })
   return { content, filename, language, size }
 }
+
+export async function deleteFile(
+  workspace: string,
+  path: string,
+  options?: { worktree?: string | null; recursive?: boolean },
+): Promise<void> {
+  await post<ApiEnvelope & { deleted: string; type: string }>("/api/files/delete", {
+    workspace,
+    path,
+    worktree: options?.worktree || undefined,
+    recursive: options?.recursive,
+  })
+}
+
+export async function uploadFile(
+  workspace: string,
+  file: File,
+  worktree?: string | null,
+): Promise<{ path: string; originalName: string }> {
+  const formData = new FormData()
+  formData.append("file", file)
+  formData.append("workspace", workspace)
+  if (worktree) formData.append("worktree", worktree)
+
+  const response = await fetch("/api/files/upload", {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error?.message ?? data.message ?? `Upload failed (${response.status})`)
+  }
+
+  return { path: data.path, originalName: data.originalName }
+}
