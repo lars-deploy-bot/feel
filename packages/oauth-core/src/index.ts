@@ -414,6 +414,13 @@ export class OAuthManager {
       throw new Error(`User ${userId} is not connected to '${provider}'`)
     }
 
+    // Reject disabled connections — user must re-authenticate
+    if (storedConnection.disabled_at) {
+      throw new Error(
+        `Connection to '${provider}' is disabled (reason: ${storedConnection.disabled_reason ?? "unknown"}, since: ${storedConnection.disabled_at}). User must re-authenticate.`,
+      )
+    }
+
     // Check if token needs refresh
     // Note: expires_at now stores "should refresh at" time (already includes buffer)
     const now = Date.now()
@@ -520,6 +527,19 @@ export class OAuthManager {
           // Audit: token refresh failed
           const errorMessage = error instanceof Error ? error.message : String(error)
           oauthAudit.tokenRefreshFailed(provider, userId, errorMessage, correlationId)
+
+          // Auto-disable on unrecoverable refresh errors
+          const isUnrecoverable =
+            errorMessage.includes("invalid_grant") ||
+            errorMessage.includes("revoked") ||
+            errorMessage.includes("expired")
+          if (isUnrecoverable) {
+            try {
+              await this.disableConnection(userId, provider, "refresh_failed")
+            } catch {
+              // Best-effort — don't mask the original error
+            }
+          }
 
           throw new Error(`Token refresh failed for '${provider}': ${errorMessage}. User may need to re-authenticate.`)
         }
@@ -651,6 +671,30 @@ export class OAuthManager {
    */
   async disconnect(userId: string, provider: string): Promise<void> {
     await this.storage.delete(userId, OAUTH_TOKENS_NAMESPACE, provider)
+  }
+
+  /**
+   * Marks a connection as disabled without deleting it.
+   * Disabled connections are rejected by getAccessToken() — user must re-authenticate.
+   *
+   * @param userId - User ID
+   * @param provider - Provider name
+   * @param reason - Why it was disabled (e.g., "refresh_failed", "token_revoked", "user_revoked")
+   */
+  async disableConnection(userId: string, provider: string, reason: string): Promise<void> {
+    const stored = await this.readStoredConnection(userId, provider)
+    if (!stored) {
+      throw new Error(`User ${userId} is not connected to '${provider}'`)
+    }
+
+    const updated: StoredOAuthConnection = {
+      ...stored,
+      version: 2,
+      disabled_at: new Date().toISOString(),
+      disabled_reason: reason,
+    }
+
+    await this.storage.save(userId, OAUTH_TOKENS_NAMESPACE, provider, JSON.stringify(updated))
   }
 
   /**

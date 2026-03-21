@@ -35,7 +35,14 @@ function isErrorResponse(val: unknown): val is { error: { code: number; message:
 function extractGoogleError(val: unknown, httpStatus: number): GoogleApiError {
   if (isErrorResponse(val)) {
     const code = val.error.code
-    const message = FRIENDLY_ERRORS[code] ?? `Google API error: ${val.error.message}`
+    const googleMessage = val.error.message
+
+    // API-not-enabled is a 403 but NOT a permissions issue — pass through Google's message with the fix link
+    if (code === 403 && (googleMessage.includes("has not been used") || googleMessage.includes("is disabled"))) {
+      return new GoogleApiError(`Google Search Console API is not enabled: ${googleMessage}`, code)
+    }
+
+    const message = FRIENDLY_ERRORS[code] ?? `Google API error: ${googleMessage}`
     return new GoogleApiError(message, code)
   }
   const message = FRIENDLY_ERRORS[httpStatus] ?? `Google API error: HTTP ${httpStatus}`
