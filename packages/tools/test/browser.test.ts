@@ -19,7 +19,7 @@ vi.mock("../src/lib/workspace-validator.js", () => ({
 import { browserAction } from "../src/tools/workspace/browser.js"
 
 const mockFetch = vi.fn()
-global.fetch = mockFetch as ReturnType<typeof vi.fn>
+vi.stubGlobal("fetch", mockFetch)
 
 describe("browserAction", () => {
   beforeEach(() => {

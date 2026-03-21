@@ -220,7 +220,8 @@ describe("voice.service", () => {
       expect(init?.headers).toEqual({ Authorization: "Bearer test-groq-key" })
 
       // Verify FormData contents
-      const body = init?.body as FormData
+      expect(init?.body).toBeInstanceOf(FormData)
+      const body = init?.body instanceof FormData ? init.body : new FormData()
       expect(body.get("model")).toBe("whisper-large-v3-turbo")
       expect(body.get("response_format")).toBe("verbose_json")
     })
@@ -231,7 +232,9 @@ describe("voice.service", () => {
 
       await transcribe({ file, language: "es" })
 
-      const body = fetchMock.mock.calls[0][1]?.body as FormData
+      const rawBody = fetchMock.mock.calls[0][1]?.body
+      expect(rawBody).toBeInstanceOf(FormData)
+      const body = rawBody instanceof FormData ? rawBody : new FormData()
       expect(body.get("language")).toBe("es")
     })
 
@@ -241,7 +244,9 @@ describe("voice.service", () => {
 
       await transcribe({ file })
 
-      const body = fetchMock.mock.calls[0][1]?.body as FormData
+      const rawBody = fetchMock.mock.calls[0][1]?.body
+      expect(rawBody).toBeInstanceOf(FormData)
+      const body = rawBody instanceof FormData ? rawBody : new FormData()
       expect(body.get("language")).toBeNull()
     })
 

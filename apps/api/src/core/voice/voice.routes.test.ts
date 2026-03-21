@@ -44,7 +44,8 @@ interface ErrorResponse {
 
 async function jsonBody<T>(response: Response): Promise<T> {
   const data: unknown = await response.json()
-  return data as T // Test-only narrowing — we verify shape via assertions below
+  // @ts-expect-error — test helper narrows unknown to T; shape verified by assertions below
+  return data
 }
 
 // ---------------------------------------------------------------------------

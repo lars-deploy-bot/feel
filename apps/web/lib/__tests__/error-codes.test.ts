@@ -36,8 +36,8 @@ describe("Error Code Registry", () => {
     })
 
     it("should return fallback for unknown error codes", () => {
-      type UnknownCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]
-      const message = getErrorMessage("UNKNOWN_CODE_XYZ" as UnknownCode)
+      // @ts-expect-error — deliberately passing an invalid code to test fallback
+      const message = getErrorMessage("UNKNOWN_CODE_XYZ")
       expect(message).toContain("unexpected")
     })
   })
