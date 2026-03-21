@@ -39,9 +39,12 @@ export async function sendMessageAndCapture(
   return { response, assistantText }
 }
 
-/** Wait for the stream to complete (send button re-enables after streaming ends). */
+/** Wait for the stream to complete (stop button disappears, send button returns). */
 export async function waitForStreamComplete(page: Page): Promise<void> {
-  await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({ timeout: TEST_TIMEOUTS.max })
+  // During streaming the SendButton component renders stop-button instead of send-button.
+  // Once streaming ends, send-button re-appears (disabled when input is empty, which is expected).
+  // We check for send-button attachment rather than enabled state, since enabled requires message text.
+  await expect(page.locator(TEST_SELECTORS.sendButton)).toBeAttached({ timeout: TEST_TIMEOUTS.max })
 }
 
 /** Wait for the message input to be visible (chat interface ready to type). */
