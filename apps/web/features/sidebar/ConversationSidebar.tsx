@@ -141,12 +141,13 @@ export function ConversationSidebar({
           <div className="flex-1 overflow-y-auto py-2 flex flex-col">
             {!hasConversations ? (
               <div className="px-4 py-10 text-center text-[13px] text-black/20 dark:text-white/20">
-                Start typing to begin
+                Start a conversation
               </div>
             ) : (
               <WorkspaceGroupsList
                 workspaceGroups={workspaceGroups}
                 expandedWorkspaces={expandedWorkspaces}
+                activeWorkspace={workspace}
                 onToggleExpanded={toggleExpanded}
                 activeTabGroupId={activeTabGroupId}
                 streamingConversationIds={streamingConversationIds}

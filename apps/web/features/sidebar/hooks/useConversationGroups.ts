@@ -37,7 +37,6 @@ export function useConversationGroups(
         workspace: ws,
         isFavorite: favorites.has(ws),
         conversations: activeByWs.get(ws) ?? [],
-        archivedConversations: [],
       })
     }
 

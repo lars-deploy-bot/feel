@@ -1,22 +1,19 @@
 /**
  * Automation Config Output
  *
- * Renders the ask_automation_config tool result as an interactive form.
- * The form creates the automation directly via API, then sends Claude
- * an informational confirmation message.
+ * When Claude calls ask_automation_config, this component opens the Agents tab
+ * in the workbench with a pre-filled create form — instead of rendering inline.
  */
 
 "use client"
 
 import { type ClaudeModel, isValidClaudeModel } from "@webalive/shared"
-import { useCallback, useState } from "react"
-import {
-  AutomationConfig,
-  type AutomationConfigData,
-  type AutomationConfigResult,
-} from "@/components/ai/AutomationConfig"
-import { ApiError, postty } from "@/lib/api/api-client"
-import { buildCreatePayload, configResultToFormData } from "@/lib/automation/build-payload"
+import { ArrowRight } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { AutomationConfigData } from "@/components/ai/AutomationConfig"
+import { useWorkbenchContext } from "@/features/chat/lib/workbench-context"
+import { useAgentCreateActions } from "@/lib/stores/agentCreateStore"
+import { useDebugActions } from "@/lib/stores/debug-store"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 
 /**
@@ -40,36 +37,18 @@ interface AutomationConfigToolData {
  */
 export function validateAutomationConfig(data: unknown): data is AutomationConfigToolData {
   if (!data || typeof data !== "object") return false
-  const d = data as Record<string, unknown>
 
-  if (d.type !== "automation_config") return false
-  if (!Array.isArray(d.sites)) return false
-  if (d.sites.length === 0) return false
+  if (!("type" in data) || data.type !== "automation_config") return false
+  if (!("sites" in data) || !Array.isArray(data.sites)) return false
+  if (data.sites.length === 0) return false
 
-  for (const s of d.sites) {
+  for (const s of data.sites) {
     if (typeof s !== "object" || !s) return false
-    const site = s as Record<string, unknown>
-    if (typeof site.id !== "string") return false
-    if (typeof site.hostname !== "string") return false
+    if (!("id" in s) || typeof s.id !== "string") return false
+    if (!("hostname" in s) || typeof s.hostname !== "string") return false
   }
 
   return true
-}
-
-function formatScheduleDescription(result: AutomationConfigResult): string {
-  if (result.scheduleType === "once") {
-    return `Once on ${result.scheduleDate} at ${result.scheduleTime}`
-  }
-  // For recurring schedules, show the human-readable text
-  if (result.scheduleText) {
-    return `${result.scheduleText} (${result.timezone})`
-  }
-  return `${result.scheduleType} at ${result.scheduleTime} (${result.timezone})`
-}
-
-function formatAutomationCreatedMessage(result: AutomationConfigResult): string {
-  const schedule = formatScheduleDescription(result)
-  return `Automation "${result.name}" created successfully for ${result.siteName}. Schedule: ${schedule}`
 }
 
 interface AutomationConfigOutputProps extends ToolResultRendererProps<AutomationConfigToolData> {
@@ -77,98 +56,77 @@ interface AutomationConfigOutputProps extends ToolResultRendererProps<Automation
 }
 
 export function AutomationConfigOutput({ data, onSubmitAnswer }: AutomationConfigOutputProps) {
-  const [status, setStatus] = useState<"idle" | "submitting" | "submitted" | "canceled">("idle")
-  const [submittedResult, setSubmittedResult] = useState<AutomationConfigResult | null>(null)
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [status, setStatus] = useState<"pending" | "opened" | "completed" | "canceled">("pending")
+  const [resultMessage, setResultMessage] = useState<string | null>(null)
+  const hasOpened = useRef(false)
+
+  const { setView } = useWorkbenchContext()
+  const { setWorkbench, setWorkbenchMinimized } = useDebugActions()
+  const { startCreate } = useAgentCreateActions()
 
   const defaultModel: ClaudeModel | undefined = isValidClaudeModel(data.defaultModel) ? data.defaultModel : undefined
 
-  const configData: AutomationConfigData = {
-    sites: data.sites,
-    defaultSiteId: data.defaultSiteId,
-    context: data.context,
-    defaultName: data.defaultName,
-    defaultPrompt: data.defaultPrompt,
-    defaultModel,
-  }
-
-  const handleComplete = useCallback(
-    async (result: AutomationConfigResult) => {
-      if (status === "submitting") return
-
-      setSubmitError(null)
-      setStatus("submitting")
-
-      try {
-        const request = buildCreatePayload(configResultToFormData(result))
-        await postty("automations/create", request)
-
-        setSubmittedResult(result)
-        setStatus("submitted")
-        onSubmitAnswer?.(formatAutomationCreatedMessage(result))
-      } catch (error) {
-        setStatus("idle")
-        if (error instanceof ApiError) {
-          setSubmitError(error.message)
-          return
-        }
-        setSubmitError(error instanceof Error ? error.message : "Failed to create automation")
-      }
-    },
-    [onSubmitAnswer, status],
+  const configData = useMemo<AutomationConfigData>(
+    () => ({
+      sites: data.sites,
+      defaultSiteId: data.defaultSiteId,
+      context: data.context,
+      defaultName: data.defaultName,
+      defaultPrompt: data.defaultPrompt,
+      defaultModel,
+    }),
+    [data.sites, data.defaultSiteId, data.context, data.defaultName, data.defaultPrompt, defaultModel],
   )
 
-  const handleCancel = useCallback(() => {
-    setSubmitError(null)
-    setStatus("canceled")
-    onSubmitAnswer?.("User canceled automation configuration.")
-  }, [onSubmitAnswer])
+  const openAgentsPanel = useCallback(() => {
+    setWorkbench(true)
+    setWorkbenchMinimized(false)
 
-  if (status === "submitted" || status === "canceled") {
-    return (
-      <div className="mt-2 p-3 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
-        <p className="text-xs text-black/50 dark:text-white/50">{status === "canceled" ? "Canceled" : "Created"}</p>
-        {submittedResult && status === "submitted" && (
-          <div className="mt-2 space-y-1">
-            <div className="text-xs">
-              <span className="text-black/40 dark:text-white/40">Task: </span>
-              <span className="text-black/70 dark:text-white/70">{submittedResult.name}</span>
-            </div>
-            <div className="text-xs">
-              <span className="text-black/40 dark:text-white/40">Website: </span>
-              <span className="text-black/70 dark:text-white/70">{submittedResult.siteName}</span>
-            </div>
-            <div className="text-xs">
-              <span className="text-black/40 dark:text-white/40">Schedule: </span>
-              <span className="text-black/70 dark:text-white/70">{formatScheduleDescription(submittedResult)}</span>
-            </div>
-          </div>
-        )}
-      </div>
-    )
+    startCreate(configData, (message: string) => {
+      // Note: message format is controlled by WorkbenchAgents.handleCreateCancel/handleCreateDone
+      if (message.includes("canceled")) {
+        setStatus("canceled")
+      } else {
+        setStatus("completed")
+        setResultMessage(message)
+      }
+      onSubmitAnswer?.(message)
+    })
+
+    setView("agents")
+    setStatus("opened")
+  }, [setWorkbench, setWorkbenchMinimized, startCreate, configData, setView, onSubmitAnswer])
+
+  // Auto-open on first render
+  useEffect(() => {
+    if (!hasOpened.current) {
+      hasOpened.current = true
+      openAgentsPanel()
+    }
+  }, [openAgentsPanel])
+
+  // Completed
+  if (status === "completed") {
+    return <p className="mt-2 text-[13px] text-zinc-500 dark:text-zinc-400">{resultMessage}</p>
   }
 
+  // Canceled
+  if (status === "canceled") {
+    return <p className="mt-2 text-[13px] text-zinc-400 dark:text-zinc-500">Canceled</p>
+  }
+
+  // Opened — subtle re-open link
   return (
-    <div className="mt-2">
-      {status === "submitting" && (
-        <div className="mb-2 rounded-lg border border-black/5 bg-black/[0.02] px-3 py-2 text-xs text-black/50 dark:border-white/5 dark:bg-white/[0.02] dark:text-white/50">
-          Creating automation...
-        </div>
-      )}
-      {submitError && (
-        <div
-          className="mb-2 rounded-lg border border-red-200/60 bg-red-500/5 px-3 py-2 text-xs text-red-600 dark:border-red-700/40 dark:text-red-400"
-          role="alert"
-        >
-          {submitError}
-        </div>
-      )}
-      <div
-        className={status === "submitting" ? "pointer-events-none opacity-50" : ""}
-        aria-busy={status === "submitting"}
-      >
-        <AutomationConfig data={configData} onComplete={handleComplete} onCancel={handleCancel} />
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={openAgentsPanel}
+      className="group mt-2 inline-flex items-center gap-1.5 text-[13px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors duration-100"
+    >
+      <span>{data.defaultName ?? "New agent"}</span>
+      <ArrowRight
+        size={12}
+        className="text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-500 dark:group-hover:text-zinc-400 transition-colors duration-100"
+      />
+    </button>
   )
 }

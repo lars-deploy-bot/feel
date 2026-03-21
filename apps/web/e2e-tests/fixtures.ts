@@ -44,11 +44,16 @@ export const test = base.extend<
     workerTenant: TestTenant
     tenant: TestTenant
     authenticatedPage: Page
+    testFeatureFlags: Record<string, boolean>
   },
   {
     workerStorageState: TestTenant
   }
 >({
+  // Feature flags to inject into localStorage before navigation.
+  // Override this fixture in test files that need specific flags (e.g. WORKTREES: true).
+  testFeatureFlags: [{}, { option: true }],
+
   // Override page fixture to mock preview iframe requests
   page: async ({ page }, use) => {
     // Mock preview subdomain requests — these load real sites and are slow/unnecessary for tests.
@@ -124,7 +129,7 @@ export const test = base.extend<
 
   // Test-scoped: authenticated page for each test
   // Sets JWT cookie AND localStorage via context-level init script
-  authenticatedPage: async ({ page, context, workerStorageState, baseURL }, use) => {
+  authenticatedPage: async ({ page, context, workerStorageState, baseURL, testFeatureFlags }, use) => {
     const strictApiGuardEnabled = getStrictApiGuardEnabled()
     const strictApiGuardViolations = new Set<string>()
 
@@ -195,8 +200,8 @@ export const test = base.extend<
     const storageEntries = createTestStorageState({
       workspace: workerStorageState.workspace,
       orgId: workerStorageState.orgId,
-      // E2E tests should run with clean defaults
-      featureFlags: {},
+      // E2E tests should run with clean defaults — override testFeatureFlags fixture for specific flags
+      featureFlags: testFeatureFlags,
       debug: {
         isDebugView: false,
         showWorkbench: false,

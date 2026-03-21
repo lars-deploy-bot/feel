@@ -56,30 +56,12 @@ export async function waitForAppReady(page: Page) {
   // Keep this below per-test timeout so fallback logic can still run.
   // Under heavy parallel load the E2E marker can lag behind UI readiness.
   const appReadyTimeout = TEST_TIMEOUTS.slow
-  const startedAt = Date.now()
-  const deadline = startedAt + appReadyTimeout
-  const pollIntervalMs = 100
 
   try {
-    while (Date.now() < deadline) {
-      if (page.isClosed()) {
-        throw new Error("Page closed while waiting for app ready")
-      }
-
-      const ready = await page
-        .evaluate(() => {
-          return Reflect.get(window, "__E2E_APP_READY__") === true || Reflect.get(window, "__APP_HYDRATED__") === true
-        })
-        .catch(() => false)
-
-      if (ready) {
-        return
-      }
-
-      await page.waitForTimeout(pollIntervalMs)
-    }
-
-    throw new Error(`App ready marker timeout after ${Date.now() - startedAt}ms`)
+    await page.waitForFunction(
+      () => Reflect.get(window, "__E2E_APP_READY__") === true || Reflect.get(window, "__APP_HYDRATED__") === true,
+      { timeout: appReadyTimeout },
+    )
   } catch (error) {
     // On timeout, dump E2E metrics for debugging
     const metrics = await getE2EReadiness(page)
@@ -287,38 +269,4 @@ export async function waitForE2EReadyAttribute(page: Page) {
   await expect(page.locator("html[data-e2e-ready='1']")).toBeAttached({
     timeout: TEST_TIMEOUTS.max,
   })
-}
-
-/**
- * Wait for app ready using the promise-based API
- *
- * This uses window.__E2E__.appReady which is a Promise that resolves
- * when all stores are hydrated. This is more robust than the boolean flag
- * because it can't race with the hydration process.
- *
- * Falls back to boolean flags if promise is not available (non-E2E mode).
- */
-export async function waitForAppReadyPromise(page: Page) {
-  try {
-    await page.waitForFunction(
-      () => {
-        const e2e = Reflect.get(window, "__E2E__")
-        if (typeof e2e === "object" && e2e !== null) {
-          const appReady = Reflect.get(e2e, "appReady")
-          if (appReady && typeof appReady === "object" && "then" in appReady) {
-            return Promise.resolve(appReady)
-              .then(() => true)
-              .catch(() => false)
-          }
-        }
-        // Fallback to boolean flags
-        return Reflect.get(window, "__E2E_APP_READY__") === true || Reflect.get(window, "__APP_HYDRATED__") === true
-      },
-      { timeout: TEST_TIMEOUTS.max },
-    )
-  } catch (error) {
-    const metrics = await getE2EReadiness(page)
-    console.error("[waitForAppReadyPromise] Timeout. Metrics:", JSON.stringify(metrics, null, 2))
-    throw error
-  }
 }

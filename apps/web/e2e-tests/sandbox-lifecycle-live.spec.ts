@@ -47,6 +47,8 @@ async function waitForSandboxState(baseUrl: string, email: string, predicate: (s
 }
 
 test.describe("E2B sandbox lifecycle", () => {
+  test.setTimeout(5 * 60 * 1000)
+
   test("reuses the same sandbox across consecutive chat requests", async ({ page }) => {
     const baseUrl = getProjectBaseUrl(test.info())
     const user = await getLiveStagingUser(test.info().workerIndex, baseUrl)

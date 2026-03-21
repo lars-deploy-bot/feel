@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=__ALIVE_ROOT__/apps/api
-EnvironmentFile=__ALIVE_ROOT__/apps/api/.env.staging
+EnvironmentFile=__ALIVE_ROOT__/apps/api/.env.production
 Environment=SERVER_CONFIG_PATH=/var/lib/alive/server-config.json
 
 ExecStart=/usr/local/bin/bun src/index.ts

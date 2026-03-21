@@ -10,7 +10,7 @@ interface WorkspaceGroupMenuProps {
   conversationCount: number
   onNewConversation: (workspace: string) => void
   onToggleFavorite: (workspace: string) => void
-  onArchiveAll: (workspace: string) => void
+  onArchiveAll: (workspace: string) => Promise<void>
 }
 
 export function WorkspaceGroupMenu({
@@ -23,16 +23,13 @@ export function WorkspaceGroupMenu({
 }: WorkspaceGroupMenuProps) {
   const { open, pos, triggerRef, menuRef, toggle, close } = usePortalMenu("below")
 
-  const itemClass =
-    "w-full flex items-center gap-3 px-3 py-2 text-[13px] text-black/60 dark:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors rounded-lg cursor-pointer"
-
   return (
     <>
       <button
         ref={triggerRef}
         type="button"
         onClick={toggle}
-        className="size-5 rounded-md flex items-center justify-center text-black/25 dark:text-white/25 hover:text-black/50 dark:hover:text-white/50 hover:bg-black/[0.06] dark:hover:bg-white/[0.06] opacity-0 group-hover/ws:opacity-100 transition-all duration-100 shrink-0"
+        className="size-[22px] rounded-md flex items-center justify-center text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors duration-100 shrink-0"
         aria-label="Workspace options"
       >
         <MoreHorizontal size={13} strokeWidth={1.75} />
@@ -42,60 +39,64 @@ export function WorkspaceGroupMenu({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[9999] w-48 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] overflow-hidden py-1.5"
+            className="fixed z-[9999] w-[200px] bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)] overflow-hidden py-1"
             style={pos}
           >
-            <button
-              type="button"
-              className={itemClass}
+            <MenuItem
+              icon={<Plus size={14} strokeWidth={1.5} />}
+              label="New conversation"
               onClick={() => {
                 close()
                 onNewConversation(workspace)
               }}
-            >
-              <Plus size={14} strokeWidth={1.5} />
-              New conversation
-            </button>
+            />
 
-            <div className="border-t border-black/[0.06] dark:border-white/[0.06] my-1" />
+            <div className="mx-2 my-0.5 border-t border-black/[0.06] dark:border-white/[0.06]" />
 
-            <button
-              type="button"
-              className={itemClass}
+            <MenuItem
+              icon={isFavorite ? <HeartOff size={14} strokeWidth={1.5} /> : <Heart size={14} strokeWidth={1.5} />}
+              label={isFavorite ? "Remove favorite" : "Add to favorites"}
               onClick={() => {
                 close()
                 onToggleFavorite(workspace)
               }}
-            >
-              {isFavorite ? (
-                <>
-                  <HeartOff size={14} strokeWidth={1.5} />
-                  Remove favorite
-                </>
-              ) : (
-                <>
-                  <Heart size={14} strokeWidth={1.5} />
-                  Add to favorites
-                </>
-              )}
-            </button>
+            />
 
             {conversationCount > 0 && (
-              <button
-                type="button"
-                className={itemClass}
+              <MenuItem
+                icon={<Archive size={14} strokeWidth={1.5} />}
+                label="Archive all"
                 onClick={() => {
                   close()
-                  onArchiveAll(workspace)
+                  onArchiveAll(workspace).catch(() => {
+                    // Menu already closed — nothing to surface here.
+                    // Individual archive failures are handled by useArchiveActions.
+                  })
                 }}
-              >
-                <Archive size={14} strokeWidth={1.5} />
-                Archive all
-              </button>
+              />
             )}
           </div>,
           document.body,
         )}
     </>
+  )
+}
+
+interface MenuItemProps {
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+}
+
+function MenuItem({ icon, label, onClick }: MenuItemProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-2.5 px-3 h-8 text-[13px] text-black/60 dark:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors cursor-pointer"
+    >
+      <span className="shrink-0 text-black/35 dark:text-white/35">{icon}</span>
+      {label}
+    </button>
   )
 }
