@@ -2,29 +2,12 @@ import type { Route } from "@playwright/test"
 import { ErrorCodes } from "@/lib/error-codes"
 import { StreamBuilder } from "./stream-builder"
 
-function createStreamHandler(
-  builder: StreamBuilder,
-  options: { delay?: number; fail?: boolean; errorMessage?: string } = {},
-) {
+function createStreamHandler(builder: StreamBuilder, options: { delay?: number } = {}) {
   return async (route: Route) => {
-    const { delay = 0, fail = false, errorMessage } = options
+    const { delay = 0 } = options
 
     if (delay) {
       await new Promise(r => setTimeout(r, delay))
-    }
-
-    if (fail) {
-      const errorStream = new StreamBuilder()
-        .start()
-        .error(errorMessage || "Internal error")
-        .toNDJSON()
-
-      await route.fulfill({
-        status: 200,
-        contentType: "application/x-ndjson; charset=utf-8",
-        body: errorStream,
-      })
-      return
     }
 
     await route.fulfill({
@@ -41,44 +24,25 @@ function createStreamHandler(
 }
 
 export const handlers = {
-  text: (message: string, options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
+  text: (message: string, options?: { delay?: number }) =>
     createStreamHandler(new StreamBuilder().start().text(message).complete(), options),
 
-  withThinking: (
-    thinking: string,
-    response: string,
-    options?: { delay?: number; fail?: boolean; errorMessage?: string },
-  ) => createStreamHandler(new StreamBuilder().start().thinking(thinking).text(response).complete(), options),
+  withThinking: (thinking: string, response: string, options?: { delay?: number }) =>
+    createStreamHandler(new StreamBuilder().start().thinking(thinking).text(response).complete(), options),
 
-  fileRead: (
-    path: string,
-    content: string,
-    response: string,
-    options?: { delay?: number; fail?: boolean; errorMessage?: string },
-  ) =>
+  fileRead: (path: string, content: string, response: string, options?: { delay?: number }) =>
     createStreamHandler(
       new StreamBuilder().start().tool("Read", { file_path: path }, content).text(response).complete(),
       options,
     ),
 
-  fileWrite: (
-    path: string,
-    content: string,
-    response: string,
-    options?: { delay?: number; fail?: boolean; errorMessage?: string },
-  ) =>
+  fileWrite: (path: string, content: string, response: string, options?: { delay?: number }) =>
     createStreamHandler(
       new StreamBuilder().start().tool("Write", { file_path: path, content }, "File written").text(response).complete(),
       options,
     ),
 
-  fileEdit: (
-    path: string,
-    oldString: string,
-    newString: string,
-    response: string,
-    options?: { delay?: number; fail?: boolean; errorMessage?: string },
-  ) =>
+  fileEdit: (path: string, oldString: string, newString: string, response: string, options?: { delay?: number }) =>
     createStreamHandler(
       new StreamBuilder()
         .start()
@@ -88,7 +52,7 @@ export const handlers = {
       options,
     ),
 
-  conversation: (messages: string[], options?: { delay?: number; fail?: boolean; errorMessage?: string }) => {
+  conversation: (messages: string[], options?: { delay?: number }) => {
     const builder = new StreamBuilder().start()
     for (const msg of messages) {
       builder.text(msg)
@@ -96,27 +60,44 @@ export const handlers = {
     return createStreamHandler(builder.complete({ totalTurns: messages.length }), options)
   },
 
-  custom: (builder: StreamBuilder, options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
-    createStreamHandler(builder, options),
+  custom: (builder: StreamBuilder, options?: { delay?: number }) => createStreamHandler(builder, options),
 
-  error: (message: string, options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
-    createStreamHandler(new StreamBuilder().start().error(message), {
-      ...options,
-      fail: true,
-      errorMessage: message,
-    }),
+  error: (message: string, options?: { delay?: number }) => async (route: Route) => {
+    if (options?.delay) {
+      await new Promise(r => setTimeout(r, options.delay))
+    }
+    const errorStream = new StreamBuilder().start().error(message).toNDJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: "application/x-ndjson; charset=utf-8",
+      body: errorStream,
+    })
+  },
 
-  maxTurns: (options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
-    createStreamHandler(
-      new StreamBuilder()
-        .start()
-        .error("Conversation reached maximum turn limit (25/25 turns)", ErrorCodes.ERROR_MAX_TURNS),
-      { ...options, fail: true },
-    ),
+  maxTurns: (options?: { delay?: number }) => async (route: Route) => {
+    if (options?.delay) {
+      await new Promise(r => setTimeout(r, options.delay))
+    }
+    const errorStream = new StreamBuilder()
+      .start()
+      .error("Conversation reached maximum turn limit (25/25 turns)", ErrorCodes.ERROR_MAX_TURNS)
+      .toNDJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: "application/x-ndjson; charset=utf-8",
+      body: errorStream,
+    })
+  },
 
-  timeout: (options?: { delay?: number; fail?: boolean; errorMessage?: string }) =>
-    createStreamHandler(new StreamBuilder().start().error("Request timeout", ErrorCodes.QUERY_FAILED), {
-      ...options,
-      fail: true,
-    }),
+  timeout: (options?: { delay?: number }) => async (route: Route) => {
+    if (options?.delay) {
+      await new Promise(r => setTimeout(r, options.delay))
+    }
+    const errorStream = new StreamBuilder().start().error("Request timeout", ErrorCodes.QUERY_FAILED).toNDJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: "application/x-ndjson; charset=utf-8",
+      body: errorStream,
+    })
+  },
 }

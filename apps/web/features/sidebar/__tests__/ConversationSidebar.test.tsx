@@ -24,7 +24,6 @@ vi.mock("@/lib/stores/featureFlagStore", () => ({
 vi.mock("../hooks/useConversationData", () => ({
   useConversationData: () => ({
     conversations: [{ id: "conv-1", workspace: "example.com", source: "chat", title: "Test", updatedAt: Date.now() }],
-    archivedConversations: [],
     favorites: new Set<string>(),
     toggleFavoriteWorkspace: vi.fn(),
     userDisplay: "Reviewer",
@@ -40,7 +39,6 @@ vi.mock("../hooks/useConversationGroups", () => ({
         conversations: [
           { id: "conv-1", workspace: "example.com", source: "chat", title: "Test", updatedAt: Date.now() },
         ],
-        archivedConversations: [],
       },
     ],
     expandedWorkspaces: new Set<string>(),

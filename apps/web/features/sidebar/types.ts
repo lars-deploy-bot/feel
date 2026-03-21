@@ -5,5 +5,4 @@ export interface WorkspaceGroup {
   workspace: string
   isFavorite: boolean
   conversations: DbConversation[]
-  archivedConversations: DbConversation[]
 }

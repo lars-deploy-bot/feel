@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Plus } from "lucide-react"
 import type { WorkspaceGroup } from "../types"
 import { deriveProjectName } from "../utils"
 import type { ConversationListProps } from "./ConversationList"
@@ -10,6 +10,7 @@ import { WorkspaceGroupMenu } from "./WorkspaceGroupMenu"
 interface WorkspaceGroupsListProps extends Omit<ConversationListProps, "conversations"> {
   workspaceGroups: WorkspaceGroup[]
   expandedWorkspaces: ReadonlySet<string>
+  activeWorkspace: string | null
   onToggleExpanded: (ws: string) => void
   onNewConversationInWorkspace: (workspace: string) => void
   onToggleFavorite: (workspace: string) => void
@@ -19,52 +20,54 @@ interface WorkspaceGroupsListProps extends Omit<ConversationListProps, "conversa
 export function WorkspaceGroupsList({
   workspaceGroups,
   expandedWorkspaces,
+  activeWorkspace,
   onToggleExpanded,
   onNewConversationInWorkspace,
   onToggleFavorite,
   onArchiveAllInWorkspace,
   ...listProps
 }: WorkspaceGroupsListProps) {
-  const firstNonFavIndex = workspaceGroups.findIndex(g => !g.isFavorite)
-  const hasFavorites = firstNonFavIndex > 0
+  // Split: active workspace conversations at top, everything else below
+  const activeGroup = activeWorkspace ? workspaceGroups.find(g => g.workspace === activeWorkspace) : null
+  const otherGroups = workspaceGroups.filter(g => g.workspace !== activeWorkspace)
 
   return (
-    <div className="flex flex-col gap-0.5">
-      {hasFavorites && <SectionLabel>Favorites</SectionLabel>}
-
-      {workspaceGroups.map(({ workspace: ws, isFavorite, conversations: wsConversations }, i) => (
-        <div key={ws}>
-          {hasFavorites && i === firstNonFavIndex && <SectionLabel className="pt-3">Other</SectionLabel>}
-          <WorkspaceGroupRow
-            workspace={ws}
-            isFavorite={isFavorite}
-            conversations={wsConversations}
-            isExpanded={expandedWorkspaces.has(ws)}
-            onToggleExpanded={onToggleExpanded}
-            onNewConversation={onNewConversationInWorkspace}
-            onToggleFavorite={onToggleFavorite}
-            onArchiveAll={onArchiveAllInWorkspace}
-            listProps={listProps}
-          />
+    <div className="flex flex-col">
+      {/* Active workspace conversations — no header, just the list */}
+      {activeGroup && activeGroup.conversations.length > 0 && (
+        <div className="pb-1">
+          <ConversationList conversations={activeGroup.conversations} {...listProps} />
         </div>
-      ))}
+      )}
+
+      {/* Other workspaces */}
+      {otherGroups.length > 0 && (
+        <>
+          {activeGroup && activeGroup.conversations.length > 0 && (
+            <div className="mx-3 my-1 border-b border-black/[0.06] dark:border-white/[0.06]" />
+          )}
+
+          {otherGroups.map(({ workspace: ws, isFavorite, conversations: wsConversations }) => (
+            <WorkspaceGroupRow
+              key={ws}
+              workspace={ws}
+              isFavorite={isFavorite}
+              conversations={wsConversations}
+              isExpanded={expandedWorkspaces.has(ws)}
+              onToggleExpanded={onToggleExpanded}
+              onNewConversation={onNewConversationInWorkspace}
+              onToggleFavorite={onToggleFavorite}
+              onArchiveAll={onArchiveAllInWorkspace}
+              listProps={listProps}
+            />
+          ))}
+        </>
+      )}
     </div>
   )
 }
 
-// ── Section label ────────────────────────────────────────────────────────────
-
-function SectionLabel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={`px-4 pt-1 pb-1.5 text-[11px] font-medium tracking-wider uppercase text-black/25 dark:text-white/25 ${className}`}
-    >
-      {children}
-    </div>
-  )
-}
-
-// ── Workspace group row (component so we can call useFavicon) ────────────────
+// ── Workspace group row ──────────────────────────────────────────────────────
 
 function WorkspaceGroupRow({
   workspace,
@@ -88,33 +91,31 @@ function WorkspaceGroupRow({
   listProps: Omit<ConversationListProps, "conversations">
 }) {
   const totalCount = conversations.length
+  const hasConversations = totalCount > 0
 
   return (
     <div className="group/ws">
-      <div className="flex items-center mx-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors duration-100">
-        {totalCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => onToggleExpanded(workspace)}
-            className="flex-1 flex items-center gap-2 px-2.5 h-8 text-[13px] text-black/45 dark:text-white/45 min-w-0"
-          >
-            <ChevronRight
-              size={12}
-              strokeWidth={1.75}
-              className={`shrink-0 text-black/20 dark:text-white/20 transition-transform duration-150 ease-out ${isExpanded ? "rotate-90" : ""}`}
-            />
-            <WorkspaceInitial workspace={workspace} />
-            <span className="truncate font-medium">{deriveProjectName(workspace)}</span>
-            <span className="text-[11px] text-black/15 dark:text-white/15 shrink-0 tabular-nums">{totalCount}</span>
-          </button>
-        ) : (
-          <div className="flex-1 flex items-center gap-2 px-2.5 h-8 text-[13px] text-black/45 dark:text-white/45 min-w-0">
-            <span className="shrink-0 w-3" />
-            <WorkspaceInitial workspace={workspace} />
-            <span className="truncate font-medium">{deriveProjectName(workspace)}</span>
-          </div>
-        )}
-        <div className="pr-2">
+      {/* Header row */}
+      <div className="flex items-center h-[30px] pr-1.5">
+        <button
+          type="button"
+          onClick={() => hasConversations && onToggleExpanded(workspace)}
+          className={`flex-1 flex items-center gap-1.5 pl-3 pr-2 h-full text-[13px] min-w-0 ${
+            hasConversations ? "cursor-pointer" : "cursor-default"
+          }`}
+        >
+          <ChevronRight
+            size={10}
+            strokeWidth={2}
+            className={`shrink-0 text-black/20 dark:text-white/20 transition-transform duration-150 ease-out ${
+              isExpanded && hasConversations ? "rotate-90" : ""
+            } ${hasConversations ? "" : "opacity-0"}`}
+          />
+          <span className="truncate font-medium text-black/45 dark:text-white/45">{deriveProjectName(workspace)}</span>
+        </button>
+
+        {/* Hover-reveal actions */}
+        <div className="flex items-center gap-px opacity-0 group-hover/ws:opacity-100 transition-opacity duration-100">
           <WorkspaceGroupMenu
             workspace={workspace}
             isFavorite={isFavorite}
@@ -123,18 +124,29 @@ function WorkspaceGroupRow({
             onToggleFavorite={onToggleFavorite}
             onArchiveAll={onArchiveAll}
           />
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation()
+              onNewConversation(workspace)
+            }}
+            className="size-[22px] rounded-md flex items-center justify-center text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors duration-100"
+            aria-label="New conversation"
+          >
+            <Plus size={13} strokeWidth={1.75} />
+          </button>
         </div>
       </div>
 
-      {isExpanded && totalCount > 0 && <ConversationList conversations={conversations} {...listProps} />}
-    </div>
-  )
-}
+      {/* Conversations */}
+      {isExpanded && hasConversations && (
+        <div className="pb-0.5">
+          <ConversationList conversations={conversations} {...listProps} />
+        </div>
+      )}
 
-function WorkspaceInitial({ workspace }: { workspace: string }) {
-  return (
-    <span className="size-4 shrink-0 rounded bg-black/10 dark:bg-white/10 flex items-center justify-center text-[9px] font-bold text-black/50 dark:text-white/50 leading-none">
-      {workspace.charAt(0).toUpperCase()}
-    </span>
+      {/* Separator line */}
+      <div className="mx-3 border-b border-black/[0.04] dark:border-white/[0.04]" />
+    </div>
   )
 }

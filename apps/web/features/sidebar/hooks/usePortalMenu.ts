@@ -39,7 +39,14 @@ export function usePortalMenu(anchor: "below" | "above" = "below") {
     if (!open) return
     updatePosition()
     window.addEventListener("resize", updatePosition)
-    return () => window.removeEventListener("resize", updatePosition)
+    // Close on scroll — the menu is portaled to body with fixed position,
+    // so scrolling the sidebar would leave it floating in the wrong place
+    const handleScroll = () => setOpen(false)
+    window.addEventListener("scroll", handleScroll, true)
+    return () => {
+      window.removeEventListener("resize", updatePosition)
+      window.removeEventListener("scroll", handleScroll, true)
+    }
   }, [open, updatePosition])
 
   // Close on click outside

@@ -522,39 +522,37 @@ pub(crate) async fn record_release(
     };
     let row = client
         .query_one(
-            &format!(
-                "
-                INSERT INTO deploy.releases (
-                  application_id,
-                  build_id,
-                  git_sha,
-                  commit_message,
-                  artifact_kind,
-                  artifact_ref,
-                  artifact_digest,
-                  alive_toml_snapshot,
-                  metadata
-                )
-                VALUES (
-                  $1,
-                  $2,
-                  $3,
-                  $4,
-                  '{}'::deploy.artifact_kind,
-                  $5,
-                  $6,
-                  $7,
-                  jsonb_build_object('build_fingerprint', $8::text)
-                )
-                RETURNING release_id
-                ",
-                artifact_kind
-            ),
+            "
+            INSERT INTO deploy.releases (
+              application_id,
+              build_id,
+              git_sha,
+              commit_message,
+              artifact_kind,
+              artifact_ref,
+              artifact_digest,
+              alive_toml_snapshot,
+              metadata
+            )
+            VALUES (
+              $1,
+              $2,
+              $3,
+              $4,
+              $5::text::deploy.artifact_kind,
+              $6,
+              $7,
+              $8,
+              jsonb_build_object('build_fingerprint', $9::text)
+            )
+            RETURNING release_id
+            ",
             &[
                 &application_id,
                 &build_id,
                 &git_sha,
                 &commit_message,
+                &artifact_kind,
                 &artifact_ref,
                 &artifact_digest,
                 &alive_toml_snapshot,
