@@ -2,6 +2,7 @@
 
 import { FilePlus, PanelLeftClose, PanelLeftOpen, Search, Upload } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import toast from "react-hot-toast"
 import { ConfirmModal } from "@/components/modals/ConfirmModal"
 import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { CodeViewer } from "./CodeViewer"
@@ -61,7 +62,10 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
   )
 
   // New file handler — creates untitled.txt (or untitled-2.txt, etc.)
+  const [creatingFile, setCreatingFile] = useState(false)
   const handleNewFile = useCallback(async () => {
+    if (creatingFile) return
+    setCreatingFile(true)
     try {
       const files = await listFiles(workspace, "", worktree)
       const existing = new Set(files.map(f => f.name))
@@ -74,9 +78,11 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
       await saveFile(workspace, name, "", worktree)
       openFile(name)
     } catch {
-      // File creation failed — silently handled
+      toast.error("Failed to create file")
+    } finally {
+      setCreatingFile(false)
     }
-  }, [workspace, worktree, openFile])
+  }, [workspace, worktree, openFile, creatingFile])
 
   // Delete handlers
   const handleDeleteRequest = useCallback((path: string, isDir: boolean) => {
@@ -164,7 +170,8 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
             <button
               type="button"
               onClick={handleNewFile}
-              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
+              disabled={creatingFile}
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors disabled:opacity-40"
               title="New file"
             >
               <FilePlus size={15} strokeWidth={1.5} />
