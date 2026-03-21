@@ -36,7 +36,7 @@ count_as_type() {
     | grep -v ' as unknown' \
     | grep -v 'import \* as' \
     | grep -v 'import type.*as' \
-    | grep -v '^\s*//' \
+    | grep -v ':\s*//' \
     | grep -v ' \* .*as [A-Z]' \
     | grep -v '".*as [A-Z].*"' \
     | grep -v "'.*as [A-Z].*'" \
@@ -88,7 +88,7 @@ if [ "$ACTUAL_AS_TYPE" -gt "$MAX_AS_TYPE" ]; then
     | grep -v ' as unknown' \
     | grep -v 'import \* as' \
     | grep -v 'import type.*as' \
-    | grep -v '^\s*//' \
+    | grep -v ':\s*//' \
     | grep -v ' \* .*as [A-Z]' \
     | grep -v '".*as [A-Z].*"' \
     | grep -v "'.*as [A-Z].*'" \
@@ -98,7 +98,7 @@ if [ "$ACTUAL_AS_TYPE" -gt "$MAX_AS_TYPE" ]; then
 fi
 
 if [ "$ACTUAL_AS_UNKNOWN" -gt "$MAX_AS_UNKNOWN" ]; then
-  echo "FAIL: Found $ACTUAL_AS_UNKNOWN 'as unknown as' assertions in tests (max: $MAX_AS_UNKNOWN)" >&2
+  echo "FAIL: Found $ACTUAL_AS_UNKNOWN 'as unknown' assertions in tests (max: $MAX_AS_UNKNOWN)" >&2
   FAILED=1
 fi
 

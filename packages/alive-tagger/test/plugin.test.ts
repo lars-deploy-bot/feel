@@ -12,7 +12,7 @@ import { aliveTagger } from "../src/plugin"
  */
 
 /** Extracts a hook function from a plugin, throwing if missing. */
-function extractHook(plugin: Plugin, name: keyof Plugin): (...args: never) => unknown {
+function extractHook(plugin: Plugin, name: keyof Plugin): (...args: unknown[]) => unknown {
   const hook = plugin[name]
   if (typeof hook !== "function") {
     throw new Error(`Expected plugin.${name} to be a function, got ${typeof hook}`)

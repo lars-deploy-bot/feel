@@ -65,8 +65,9 @@ describe("updateToolResultContentByToolUseId", () => {
 
     const updated = await store.updateToolResultContentByToolUseId(TEST_TAB_ID, "toolu_email_1", content => {
       if (!Array.isArray(content)) throw new Error("Expected array content")
-      const block: Record<string, unknown> = content[0]
-      if (typeof block.text !== "string") throw new Error("Expected text field")
+      const block = content[0]
+      if (!block || typeof block !== "object" || !("text" in block) || typeof block.text !== "string")
+        throw new Error("Expected text field")
       const parsed: Record<string, unknown> = JSON.parse(block.text)
       const next = [{ ...block, text: JSON.stringify({ ...parsed, status: "sent", id: "gmail-msg-1" }) }]
       return next

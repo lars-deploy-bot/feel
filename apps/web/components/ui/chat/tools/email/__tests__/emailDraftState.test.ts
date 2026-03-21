@@ -21,12 +21,16 @@ describe("emailDraftState", () => {
       threadId: "thread-456",
     })
 
-    expect(next).toBeInstanceOf(Array)
-    const items = Array.isArray(next) ? next : []
-    const parsed: Record<string, unknown> = JSON.parse(items[0].text)
-    expect(parsed.status).toBe("sent")
-    expect(parsed.id).toBe("gmail-msg-123")
-    expect(parsed.threadId).toBe("thread-456")
+    expect(Array.isArray(next)).toBe(true)
+    if (!Array.isArray(next)) throw new Error("Expected patched content array")
+    expect(next).toHaveLength(1)
+
+    const parsedUnknown: unknown = JSON.parse(next[0].text)
+    expect(parsedUnknown).toMatchObject({
+      status: "sent",
+      id: "gmail-msg-123",
+      threadId: "thread-456",
+    })
   })
 
   it("returns original content for non-email payloads", () => {

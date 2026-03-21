@@ -94,7 +94,7 @@ if [[ -d "$STANDALONE_OLD" ]]; then
     echo "  Rollback: $STANDALONE_OLD"
     echo ""
 
-    read -p "Continue with rollback? (y/N): " confirm
+    read -r -p "Continue with rollback? (y/N): " confirm
     if [[ "$confirm" != "y" ]] && [[ "$confirm" != "Y" ]]; then
         echo "Cancelled"
         exit 0
@@ -103,7 +103,11 @@ if [[ -d "$STANDALONE_OLD" ]]; then
     # Atomic swap: current → .failed, old → current
     STANDALONE_FAILED="$BUILDS_DIR/standalone.failed"
     rm -rf "$STANDALONE_FAILED"
-    mv "$STANDALONE_DIR" "$STANDALONE_FAILED"
+    if [[ -d "$STANDALONE_DIR" ]]; then
+        mv "$STANDALONE_DIR" "$STANDALONE_FAILED"
+    else
+        log_warn "Current build directory missing: $STANDALONE_DIR"
+    fi
     mv "$STANDALONE_OLD" "$STANDALONE_DIR"
     log_success "Build swapped (failed build saved as standalone.failed)"
 else

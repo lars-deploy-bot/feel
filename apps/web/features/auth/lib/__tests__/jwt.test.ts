@@ -22,9 +22,31 @@ const TEST_ORG_ROLES = {
 }
 const TEST_SCOPES = [SESSION_SCOPES.WORKSPACE_ACCESS, SESSION_SCOPES.WORKSPACE_LIST, SESSION_SCOPES.ORG_READ] as const
 
+function isSessionPayloadV3(value: unknown): value is SessionPayloadV3 {
+  if (typeof value !== "object" || value === null) return false
+  return (
+    "role" in value &&
+    value.role === "authenticated" &&
+    "sub" in value &&
+    typeof value.sub === "string" &&
+    "userId" in value &&
+    typeof value.userId === "string" &&
+    "email" in value &&
+    typeof value.email === "string" &&
+    "sid" in value &&
+    typeof value.sid === "string" &&
+    "scopes" in value &&
+    Array.isArray(value.scopes) &&
+    "orgIds" in value &&
+    Array.isArray(value.orgIds)
+  )
+}
+
 function decodeToken(token: string): SessionPayloadV3 {
-  const decoded = ES256_ENABLED ? decodeJwt(token) : verify(token, JWT_SECRET)
-  // @ts-expect-error - test helper: JWT payload shape matches SessionPayloadV3 after signing
+  const decoded: unknown = ES256_ENABLED ? decodeJwt(token) : verify(token, JWT_SECRET)
+  if (!isSessionPayloadV3(decoded)) {
+    throw new Error("Decoded JWT does not match SessionPayloadV3 structure")
+  }
   return decoded
 }
 
