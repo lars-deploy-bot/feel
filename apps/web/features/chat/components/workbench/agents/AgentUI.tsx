@@ -1,6 +1,6 @@
 "use client"
 
-import { Calendar, Check, Flame, Loader2, Mail, RotateCw, Webhook } from "lucide-react"
+import { Calendar, Check, Flame, Loader2, Mail, Plus, RotateCw, Webhook } from "lucide-react"
 import { useMemo } from "react"
 import type { AgentView, EnrichedJob, RecentRun } from "./agents-types"
 
@@ -104,10 +104,14 @@ export function AgentNav({
   view,
   hasSelected,
   onNavigate,
+  onNewAgent,
+  newAgentLoading,
 }: {
   view: AgentView
   hasSelected: boolean
   onNavigate: (kind: AgentView["kind"]) => void
+  onNewAgent?: () => void
+  newAgentLoading?: boolean
 }) {
   const tabs: { kind: AgentView["kind"]; label: string; enabled: boolean }[] = [
     { kind: "list", label: "Overview", enabled: true },
@@ -137,6 +141,17 @@ export function AgentNav({
           </button>
         )
       })}
+      {onNewAgent && (
+        <button
+          type="button"
+          onClick={onNewAgent}
+          disabled={newAgentLoading}
+          className="ml-auto h-7 w-7 flex items-center justify-center rounded-md text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-colors disabled:opacity-40"
+          title="New agent"
+        >
+          {newAgentLoading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={14} />}
+        </button>
+      )}
     </div>
   )
 }
