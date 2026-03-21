@@ -93,8 +93,8 @@ describe("useStreamCancellation", () => {
     mockCaptureResumeSessionAt.mockResolvedValue(null)
 
     const mockFetchInstance = createMockFetch()
-    vi.mocked(mockFetchInstance).mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, hasStream: false }), { status: 200 }),
+    vi.mocked(mockFetchInstance).mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ ok: true, hasStream: false }), { status: 200 })),
     )
     global.fetch = mockFetchInstance
 
@@ -249,10 +249,12 @@ describe("useStreamCancellation", () => {
     mockPostty.mockImplementation(() => new Promise(() => {}))
 
     const stillRunningFetch = createMockFetch()
-    vi.mocked(stillRunningFetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({ ok: true, hasStream: true, state: "streaming", requestId: "request-reconnect-1" }),
-        { status: 200 },
+    vi.mocked(stillRunningFetch).mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ ok: true, hasStream: true, state: "streaming", requestId: "request-reconnect-1" }),
+          { status: 200 },
+        ),
       ),
     )
     global.fetch = stillRunningFetch

@@ -26,7 +26,7 @@
     "validate:turbo-env": "bun scripts/validation/validate-turbo-env.ts",
     "check:canUseTool-dead": "bash scripts/validation/check-canUseTool-dead.sh",
     "check:env-sync": "bun scripts/validation/validate-env-sync.ts",
-    "static-check": "bun run validate:turbo-env && bun run check:workspace-contract && bun run check:canUseTool-dead && bun run check:env-sync && turbo run type-check ci && bun run test:core && bun run --cwd apps/web scripts/check-error-patterns.ts && bun run --cwd apps/web scripts/check-e2e-patterns.ts",
+    "static-check": "bun run validate:turbo-env && bun run check:workspace-contract && bun run check:canUseTool-dead && bun run check:env-sync && turbo run type-check ci && bun run test:core && bun run --cwd apps/web scripts/check-error-patterns.ts && bun run --cwd apps/web scripts/check-e2e-patterns.ts && ./scripts/validation/check-test-assertions.sh",
     "knip": "knip --no-progress",
     "depcruise": "depcruise apps/web --config config/.dependency-cruiser.json",
     "test": "turbo run test",

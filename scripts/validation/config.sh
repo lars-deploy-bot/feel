@@ -21,6 +21,7 @@ declare -a CHECKS=(
     "dependencies|Dependency architecture (depcruise)|check-dependencies.sh|true"
     "file-length|File length limits|check-file-length.sh|true"
     "repo-hygiene|Repo hygiene (no images, root .md allowlist)|check-repo-hygiene.sh|true"
+    "test-assertions|Test type assertion budget (#142)|check-test-assertions.sh|true"
 )
 
 # Get enabled checks
