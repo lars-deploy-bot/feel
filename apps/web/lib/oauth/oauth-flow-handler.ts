@@ -454,6 +454,10 @@ export async function handleOAuthCallback(
     console.log(`[${provider} OAuth] Successfully connected user ${user.id}`)
     resetRateLimit(req, provider)
 
+    // Clear negative cache so next stream request uses the fresh token immediately
+    const { clearOAuthNegativeCache } = await import("@/lib/oauth/fetch-oauth-tokens")
+    clearOAuthNegativeCache(user.id, provider)
+
     return {
       type: "redirect",
       url: buildOAuthCallbackRedirectUrl(baseUrl, createOAuthSuccessPayload(provider)),
