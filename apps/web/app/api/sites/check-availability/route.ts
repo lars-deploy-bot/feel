@@ -1,16 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { validateSlug } from "@/features/deployment/lib/slug-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { handleQuery, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { inspectSiteOccupancy } from "@/lib/deployment/site-occupancy"
 import { ErrorCodes } from "@/lib/error-codes"
-
-interface AvailabilityResponse {
-  available: boolean
-  slug?: string
-  reason?: string
-  error?: string
-}
 
 export async function GET(req: NextRequest) {
   const query = await handleQuery("sites/check-availability", req)
@@ -24,12 +17,5 @@ export async function GET(req: NextRequest) {
 
   const occupancy = inspectSiteOccupancy(slug)
 
-  console.log(
-    `[Availability] Checking slug "${slug}" -> occupied: ${occupancy.occupied} (${occupancy.reason ?? "free"})`,
-  )
-
-  return NextResponse.json(
-    { available: !occupancy.occupied, slug, reason: occupancy.reason } satisfies AvailabilityResponse,
-    { status: 200 },
-  )
+  return alrighty("sites/check-availability", { available: !occupancy.occupied, slug, reason: occupancy.reason })
 }

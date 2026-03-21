@@ -88,7 +88,9 @@ interface WorkbenchContextType {
   registerElementSelectHandler: (handler: (element: ElementSelection) => void) => void
   /** Whether element selector mode is active */
   selectorActive: boolean
-  /** Activate element selector mode in the preview iframe */
+  /** Toggle element selector mode in the preview iframe */
+  toggleSelector: () => void
+  /** Activate element selector mode (idempotent) */
   activateSelector: () => void
   /** Deactivate element selector mode */
   deactivateSelector: () => void
@@ -114,6 +116,10 @@ interface WorkbenchContextType {
   addImageToChat: ((imageKey: string) => void) | null
   /** Register the callback for adding images to chat */
   registerAddImageToChat: (handler: (imageKey: string) => void) => void
+  /** Open a conversation by its tabGroupId (conversation_id) */
+  onOpenConversation: ((conversationId: string) => void) | null
+  /** Register the callback for opening conversations */
+  registerOpenConversation: (handler: (conversationId: string) => void) => void
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined)
@@ -135,6 +141,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [workbenchState, setWorkbenchState] = useState<WorkbenchState>(DEFAULT_WORKBENCH_STATE)
   const [selectorActive, setSelectorActive] = useState(false)
   const [addImageToChat, setAddImageToChat] = useState<((imageKey: string) => void) | null>(null)
+  const [onOpenConversation, setOnOpenConversation] = useState<((conversationId: string) => void) | null>(null)
 
   const addEntry = (entry: Omit<WorkbenchEntry, "id" | "timestamp">) => {
     const newEntry: WorkbenchEntry = {
@@ -163,8 +170,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     [onElementSelect],
   )
 
-  const activateSelector = useCallback(() => {
+  const toggleSelector = useCallback(() => {
     setSelectorActive(prev => !prev)
+  }, [])
+
+  const activateSelector = useCallback(() => {
+    setSelectorActive(true)
   }, [])
 
   const deactivateSelector = useCallback(() => {
@@ -177,6 +188,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
   const registerAddImageToChat = useCallback((handler: (imageKey: string) => void) => {
     setAddImageToChat(() => handler)
+  }, [])
+
+  const registerOpenConversation = useCallback((handler: (conversationId: string) => void) => {
+    setOnOpenConversation(() => handler)
   }, [])
 
   const setView = useCallback((view: WorkbenchView) => {
@@ -224,6 +239,21 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     setWorkbenchState(prev => ({ ...prev, treeCollapsed: !prev.treeCollapsed }))
   }, [])
 
+  // Escape key deactivates the element selector
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectorActive(current => {
+          // Only consume the event if selector was active
+          if (current) e.stopPropagation()
+          return false
+        })
+      }
+    }
+    window.addEventListener("keydown", handleEscape, true)
+    return () => window.removeEventListener("keydown", handleEscape, true)
+  }, [])
+
   // ── Keyboard Shortcuts ──────────────────────────────────────────────────
   const shortcutsRef = useRef<Map<string, WorkbenchShortcut>>(new Map())
 
@@ -268,6 +298,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         onElementSelect,
         registerElementSelectHandler,
         selectorActive,
+        toggleSelector,
         activateSelector,
         deactivateSelector,
         workbench: workbenchState,
@@ -281,6 +312,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         viewStatesRef,
         addImageToChat,
         registerAddImageToChat,
+        onOpenConversation,
+        registerOpenConversation,
       }}
     >
       {children}

@@ -6,10 +6,9 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { handleQuery, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getLinearOAuth } from "@/lib/oauth/oauth-instances"
 
@@ -45,7 +44,7 @@ interface LinearIssuesResponse {
  * - limit: number (default 25, max 50)
  * - includeCompleted: boolean (default false)
  */
-export async function GET(req: Request): Promise<NextResponse> {
+export async function GET(req: Request) {
   // 1. Authenticate user
   const user = await getSessionUser()
   if (!user) {
@@ -87,10 +86,7 @@ export async function GET(req: Request): Promise<NextResponse> {
   try {
     const issues = await fetchLinearIssues(accessToken, { limit, includeCompleted })
 
-    return NextResponse.json({
-      ok: true,
-      ...issues,
-    })
+    return alrighty("linear/issues", issues)
   } catch (error) {
     console.error("[Linear Issues] Failed to fetch:", error)
     Sentry.captureException(error)

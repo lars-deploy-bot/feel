@@ -9,10 +9,10 @@
 
 import * as Sentry from "@sentry/nextjs"
 import type { SessionMessage } from "@webalive/tools"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { handleQuery, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
       .single()
 
     if (!session) {
-      return NextResponse.json({
+      return alrighty("sessions/history", {
         sessionKey,
         messages: [],
         count: 0,
@@ -90,11 +90,10 @@ export async function GET(req: NextRequest) {
 
     const messages: SessionMessage[] = []
 
-    return NextResponse.json({
+    return alrighty("sessions/history", {
       sessionKey,
       messages,
       count: messages.length,
-      note: "Session history retrieval is in development. SDK integration pending.",
     })
   } catch (err) {
     console.error("[Sessions History API] Error:", err)

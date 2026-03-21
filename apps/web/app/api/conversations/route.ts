@@ -6,10 +6,10 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { handleQuery, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { normalizeConversationSourcePayload } from "@/lib/conversations/source"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
     const own = page.filter(c => c.user_id === userId)
     const shared = page.filter(c => c.user_id !== userId)
 
-    return NextResponse.json({
+    return alrighty("conversations/list", {
       own: own.map(c => transform(c, true)),
       shared: shared.map(c => transform(c, false)),
       hasMore,

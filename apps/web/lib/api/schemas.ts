@@ -749,6 +749,7 @@ export const apiSchemas = {
               duration_ms: z.number().nullable(),
               error: z.string().nullable(),
               triggered_by: z.string().nullable(),
+              chat_conversation_id: z.string().nullable().optional(),
             }),
           ),
         }),
@@ -1694,6 +1695,20 @@ export const apiSchemas = {
       ok: z.literal(true),
       images: z.array(z.unknown()),
       count: z.number(),
+    }),
+  },
+
+  /**
+   * POST /api/voice/transcribe (multipart/form-data)
+   * Transcribe audio via Groq Whisper. Request is FormData (not JSON).
+   * Only the response is schema-validated via alrighty.
+   */
+  "voice/transcribe": {
+    res: z.object({
+      ok: z.literal(true),
+      text: z.string().min(1),
+      duration: z.number().nullable(),
+      language: z.string().nullable(),
     }),
   },
 } as const

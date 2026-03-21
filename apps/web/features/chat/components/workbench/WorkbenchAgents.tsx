@@ -3,7 +3,7 @@
 import { Bot, Loader2, RotateCw, TriangleAlert } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useCallback, useEffect, useState } from "react"
-import type { WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
+import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { useAgentCreateStore, usePendingCreate } from "@/lib/stores/agentCreateStore"
 import { AgentDetailView } from "./agents/AgentDetailView"
 import { AgentEditView } from "./agents/AgentEditView"
@@ -19,6 +19,7 @@ const AgentCreateView = dynamic(() => import("./agents/AgentCreateView").then(m 
 export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
   const { jobs, loading, error, refresh } = useAgents(workspace)
   const [view, setView] = useState<AgentView>({ kind: "list" })
+  const { onOpenConversation } = useWorkbenchContext()
 
   const pendingCreate = usePendingCreate()
   const onComplete = useAgentCreateStore(s => s.onComplete)
@@ -129,6 +130,7 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
             job={selectedJob}
             onEdit={() => setView({ kind: "edit", jobId: selectedJob.id })}
             onChanged={refresh}
+            onOpenConversation={onOpenConversation}
           />
         )}
         {view.kind === "edit" && selectedJob && (

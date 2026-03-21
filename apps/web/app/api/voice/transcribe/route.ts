@@ -1,11 +1,15 @@
 import { isValidVoiceLanguage } from "@webalive/shared"
-import { NextResponse } from "next/server"
 import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import type { TranscribeResult } from "@/lib/api/types"
-import { miniToolsFetch } from "@/lib/clients/mini-tools"
+import { alrighty } from "@/lib/api/server"
+import { ApiClientError, apiClient } from "@/lib/api-client"
 import { ErrorCodes } from "@/lib/error-codes"
 
+/**
+ * Thin proxy: authenticate user session, then forward to apps/api voice service.
+ * All validation, retry, and Groq communication lives in apps/api.
+ * Response is validated via alrighty ("voice/transcribe" schema).
+ */
 export async function POST(request: Request) {
   try {
     await requireSessionUser()
@@ -27,27 +31,26 @@ export async function POST(request: Request) {
     return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, { status: 400 })
   }
 
-  const language = formData.get("language")
-
+  // Forward to apps/api voice service
   const upstream = new FormData()
   upstream.append("file", file, file.name)
+  const language = formData.get("language")
   if (typeof language === "string" && isValidVoiceLanguage(language)) {
     upstream.append("language", language)
   }
 
-  const response = await miniToolsFetch("/groq/transcribe", { method: "POST", body: upstream })
-  const data = await response.json()
-
-  if (!response.ok) {
+  try {
+    const result = await apiClient.postRaw<{ text: string; duration: number | null; language: string | null }>(
+      "/voice/transcribe",
+      upstream,
+    )
+    return alrighty("voice/transcribe", result)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Transcription failed"
+    const status = err instanceof ApiClientError ? err.status : 502
     return structuredErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, {
-      status: response.status,
-      details: { upstream: data.error },
+      status,
+      details: { upstream: message },
     })
   }
-
-  return NextResponse.json<TranscribeResult>({
-    text: data.text,
-    duration: data.duration,
-    language: data.language,
-  })
 }

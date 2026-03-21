@@ -13,7 +13,7 @@ function getPasscode(): string {
   return passcode
 }
 
-class ApiClientError extends Error {
+export class ApiClientError extends Error {
   status: number
   constructor(message: string, status: number) {
     super(message)
@@ -41,6 +41,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json()
 }
 
+/**
+ * Raw fetch to the API app — no Content-Type override.
+ * Use for multipart/form-data or other non-JSON payloads.
+ */
+async function rawRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${getPasscode()}`,
+      ...init.headers,
+    },
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    const msg = typeof body.error === "string" ? body.error : (body.error?.message ?? `Request failed (${res.status})`)
+    throw new ApiClientError(msg, res.status)
+  }
+
+  return res.json()
+}
+
 export const apiClient = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
@@ -48,4 +70,6 @@ export const apiClient = {
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  /** Post raw body (e.g. FormData) without JSON Content-Type */
+  postRaw: <T>(path: string, body: BodyInit) => rawRequest<T>(path, { method: "POST", body }),
 }

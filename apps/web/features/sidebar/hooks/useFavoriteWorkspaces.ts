@@ -57,9 +57,15 @@ export function useFavoriteWorkspaces() {
   const [favorites, setFavorites] = useState(() => new Set(store.favorites))
 
   useEffect(() => {
+    let first = true
     return autorun(() => {
       // Reading store.favorites inside autorun subscribes to it
-      setFavorites(new Set(store.favorites))
+      const next = new Set(store.favorites)
+      if (first) {
+        first = false
+        return
+      }
+      setFavorites(next)
     })
   }, [])
 

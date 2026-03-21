@@ -2,14 +2,15 @@
 
 import { FilePlus, PanelLeftClose, PanelLeftOpen, Search, Upload } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import toast from "react-hot-toast"
 import { ConfirmModal } from "@/components/modals/ConfirmModal"
 import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { CodeViewer } from "./CodeViewer"
 import { FileTree } from "./FileTree"
 import { useFileWatcher } from "./hooks/useFileWatcher"
 import { useWorkbenchShortcuts } from "./hooks/useWorkbenchShortcuts"
-import { removeFile, uploadFileToWorkspace } from "./lib/file-ops"
-import { NewFileInput } from "./NewFileInput"
+import { listFiles } from "./lib/file-api"
+import { removeFile, saveFile, uploadFileToWorkspace } from "./lib/file-ops"
 import { PanelBar } from "./ui"
 
 const MIN_TREE_WIDTH = 160
@@ -19,7 +20,6 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
   const { workbench, openFile, closeFile, toggleFolder, setTreeWidth, toggleTreeCollapsed } = useWorkbenchContext()
   const { filePath, expandedFolders, treeWidth, treeCollapsed } = workbench
   const [isResizing, setIsResizing] = useState(false)
-  const [isCreatingFile, setIsCreatingFile] = useState(false)
   const [fileFilter, setFileFilter] = useState("")
   const [uploading, setUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ path: string; isDir: boolean } | null>(null)
@@ -60,6 +60,29 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
     },
     [handleUploadFiles],
   )
+
+  // New file handler — creates untitled.txt (or untitled-2.txt, etc.)
+  const [creatingFile, setCreatingFile] = useState(false)
+  const handleNewFile = useCallback(async () => {
+    if (creatingFile) return
+    setCreatingFile(true)
+    try {
+      const files = await listFiles(workspace, "", worktree)
+      const existing = new Set(files.map(f => f.name))
+      let name = "untitled.txt"
+      let n = 2
+      while (existing.has(name)) {
+        name = `untitled-${n}.txt`
+        n++
+      }
+      await saveFile(workspace, name, "", worktree)
+      openFile(name)
+    } catch {
+      toast.error("Failed to create file")
+    } finally {
+      setCreatingFile(false)
+    }
+  }, [workspace, worktree, openFile, creatingFile])
 
   // Delete handlers
   const handleDeleteRequest = useCallback((path: string, isDir: boolean) => {
@@ -146,8 +169,9 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
             </button>
             <button
               type="button"
-              onClick={() => setIsCreatingFile(true)}
-              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors"
+              onClick={handleNewFile}
+              disabled={creatingFile}
+              className="p-1.5 text-black/30 dark:text-white/25 hover:text-black/60 dark:hover:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] rounded-lg transition-colors disabled:opacity-40"
               title="New file"
             >
               <FilePlus size={15} strokeWidth={1.5} />
@@ -187,17 +211,6 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
 
           {/* Tree content */}
           <div className="flex-1 overflow-hidden">
-            {isCreatingFile && (
-              <NewFileInput
-                workspace={workspace}
-                worktree={worktree}
-                onCreated={createdPath => {
-                  setIsCreatingFile(false)
-                  openFile(createdPath)
-                }}
-                onCancel={() => setIsCreatingFile(false)}
-              />
-            )}
             <FileTree
               workspace={workspace}
               worktree={worktree}

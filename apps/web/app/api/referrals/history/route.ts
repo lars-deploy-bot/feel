@@ -1,9 +1,9 @@
 // apps/web/app/api/referrals/history/route.ts
 
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { handleQuery, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     .eq("referrer_id", userId)
 
   if (!total) {
-    return NextResponse.json({ ok: true, data: { referrals: [], total: 0, hasMore: false } })
+    return alrighty("referrals/history", { data: { referrals: [], total: 0, hasMore: false } })
   }
 
   // Get paginated referrals
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     .range(offset, offset + limit - 1)
 
   if (!referrals?.length) {
-    return NextResponse.json({ ok: true, data: { referrals: [], total, hasMore: false } })
+    return alrighty("referrals/history", { data: { referrals: [], total, hasMore: false } })
   }
 
   // Get referred users
@@ -51,8 +51,7 @@ export async function GET(request: NextRequest) {
 
   const hasMore = offset + referrals.length < total
 
-  return NextResponse.json({
-    ok: true,
+  return alrighty("referrals/history", {
     data: {
       referrals: referrals.map(r => {
         const referredUser = userMap.get(r.referred_id)

@@ -6,7 +6,14 @@
  */
 
 import type { Plugin, ResolvedConfig } from "vite"
-import type { AliveTaggerOptions } from "./types"
+import {
+  type AliveTaggerOptions,
+  ELEMENT_SELECTED_MESSAGE_TYPE,
+  TAGGER_ACTIVATE,
+  TAGGER_ACTIVATED,
+  TAGGER_DEACTIVATE,
+  TAGGER_DEACTIVATED,
+} from "./types"
 
 // Client script for element selection UI (Cmd+Click)
 // This is injected into the page automatically
@@ -174,7 +181,7 @@ const CLIENT_SCRIPT = `
       id: element.id || "",
       parentComponents: getParentComponents(element)
     };
-    window.parent.postMessage({ type: "alive-element-selected", context: context }, parentOrigin);
+    window.parent.postMessage({ type: "${ELEMENT_SELECTED_MESSAGE_TYPE}", context: context }, parentOrigin);
     console.log("[alive-tagger] Selected:", context.displayName, "at", context.fileName + ":" + context.lineNumber);
   }
 
@@ -238,16 +245,14 @@ const CLIENT_SCRIPT = `
   // Only accept messages from the verified parent origin.
   window.addEventListener("message", function(e) {
     if (!parentOrigin || e.origin !== parentOrigin) return;
-    if (e.data?.type === "alive-tagger-activate") {
+    if (e.data?.type === "${TAGGER_ACTIVATE}") {
       isActive = true;
       document.body.classList.add("alive-tagger-active");
-      console.log("[alive-tagger] Activated via button");
-    } else if (e.data?.type === "alive-tagger-deactivate") {
+    } else if (e.data?.type === "${TAGGER_DEACTIVATE}") {
       isActive = false;
       document.body.classList.remove("alive-tagger-active");
       hideUI();
       hoveredElement = null;
-      console.log("[alive-tagger] Deactivated via button");
     }
   });
 

@@ -382,6 +382,12 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
 
     const durationMs = Date.now() - startTime
 
+    // SDK completed but reported an error (auth failure, max turns, budget, etc.)
+    if (attempt.sdkError) {
+      const details = attempt.sdkError.errors.join("; ") || attempt.sdkError.subtype
+      throw new Error(`[${attempt.sdkError.subtype}] ${details}`)
+    }
+
     // When responseToolName is set, the tool MUST have been called
     let response: string
     if (params.responseToolName) {

@@ -16,6 +16,10 @@ import {
   type ElementSelectedMessage,
   SOURCE_KEY,
   type SourceInfo,
+  TAGGER_ACTIVATE,
+  TAGGER_ACTIVATED,
+  TAGGER_DEACTIVATE,
+  TAGGER_DEACTIVATED,
 } from "./types"
 
 /** Maximum length for HTML snippet */
@@ -418,22 +422,49 @@ export function initAliveTagger(): () => void {
   const ui = createUI()
 
   let isActive = false
+  /** Whether activation came from holding Cmd/Ctrl (vs button click from parent) */
+  let activatedByModifierKey = false
   let hoveredElement: Element | null = null
+
+  function activate(source: "modifier" | "button"): void {
+    if (isActive) return
+    isActive = true
+    activatedByModifierKey = source === "modifier"
+    document.body.classList.add("alive-tagger-active")
+    // Notify parent so its button state stays in sync
+    if (source === "modifier" && cachedParentOrigin) {
+      window.parent.postMessage({ type: TAGGER_ACTIVATED }, cachedParentOrigin)
+    }
+  }
+
+  /** Deactivate and optionally notify parent */
+  function deactivate(notifyParent: boolean): void {
+    if (!isActive) return
+    isActive = false
+    activatedByModifierKey = false
+    document.body.classList.remove("alive-tagger-active")
+    ui.hide()
+    hoveredElement = null
+    if (notifyParent && cachedParentOrigin) {
+      window.parent.postMessage({ type: TAGGER_DEACTIVATED }, cachedParentOrigin)
+    }
+  }
 
   // Track modifier key state
   function handleKeyDown(e: KeyboardEvent): void {
+    if (e.key === "Escape" && isActive) {
+      deactivate(true)
+      return
+    }
     if ((e.metaKey || e.ctrlKey) && !isActive) {
-      isActive = true
-      document.body.classList.add("alive-tagger-active")
+      activate("modifier")
     }
   }
 
   function handleKeyUp(e: KeyboardEvent): void {
-    if (!e.metaKey && !e.ctrlKey && isActive) {
-      isActive = false
-      document.body.classList.remove("alive-tagger-active")
-      ui.hide()
-      hoveredElement = null
+    // Only deactivate on key release if activated by modifier key
+    if (!e.metaKey && !e.ctrlKey && isActive && activatedByModifierKey) {
+      deactivate(true)
     }
   }
 
@@ -488,15 +519,23 @@ export function initAliveTagger(): () => void {
       // Build and send context
       const context = buildContext(target, source)
       sendToParent(context)
+
+      // Deactivate after selection — don't notify parent here because
+      // setSelectedElement() already calls setSelectorActive(false)
+      isActive = false
+      activatedByModifierKey = false
+      document.body.classList.remove("alive-tagger-active")
+      // Hide overlay after flash completes
+      setTimeout(() => {
+        ui.hide()
+        hoveredElement = null
+      }, 300)
     }
   }
 
   // Handle window blur (deactivate when losing focus)
   function handleBlur(): void {
-    isActive = false
-    document.body.classList.remove("alive-tagger-active")
-    ui.hide()
-    hoveredElement = null
+    deactivate(true)
   }
 
   // Listen for activation/deactivation message from parent (button click)
@@ -504,16 +543,16 @@ export function initAliveTagger(): () => void {
   function handleMessage(e: MessageEvent): void {
     if (!cachedParentOrigin || e.origin !== cachedParentOrigin) return
 
-    if (e.data?.type === "alive-tagger-activate") {
-      isActive = true
-      document.body.classList.add("alive-tagger-active")
-      console.log("[alive-tagger] Activated via button")
-    } else if (e.data?.type === "alive-tagger-deactivate") {
-      isActive = false
-      document.body.classList.remove("alive-tagger-active")
-      ui.hide()
-      hoveredElement = null
-      console.log("[alive-tagger] Deactivated via button")
+    if (e.data?.type === TAGGER_ACTIVATE) {
+      // Ignore if already active (e.g. modifier key held — don't overwrite activatedByModifierKey)
+      if (!isActive) {
+        isActive = true
+        activatedByModifierKey = false
+        document.body.classList.add("alive-tagger-active")
+      }
+    } else if (e.data?.type === TAGGER_DEACTIVATE) {
+      // Parent told us to deactivate — don't notify back (would loop)
+      deactivate(false)
     }
   }
 

@@ -1,5 +1,12 @@
 "use client"
 
+import {
+  ELEMENT_SELECTED_MESSAGE_TYPE,
+  TAGGER_ACTIVATE,
+  TAGGER_ACTIVATED,
+  TAGGER_DEACTIVATE,
+  TAGGER_DEACTIVATED,
+} from "@alive-game/alive-tagger"
 import { PREVIEW_MESSAGES } from "@webalive/shared"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useWorkbenchContext } from "@/features/chat/lib/workbench-context"
@@ -25,7 +32,7 @@ interface UsePreviewEngineOptions {
  * - Refresh navigating to stale path (#297)
  */
 export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UsePreviewEngineOptions) {
-  const { setSelectedElement, selectorActive, deactivateSelector } = useWorkbenchContext()
+  const { setSelectedElement, selectorActive, activateSelector, deactivateSelector } = useWorkbenchContext()
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
   // displayPath: what the URL bar shows, updated on every in-page navigation.
@@ -126,7 +133,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
   // Sync selector state after iframe loads
   useEffect(() => {
     if (!isLoading && selectorActive && iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({ type: "alive-tagger-activate" }, previewOrigin)
+      iframeRef.current.contentWindow.postMessage({ type: TAGGER_ACTIVATE }, previewOrigin)
     }
   }, [isLoading, selectorActive, previewOrigin])
 
@@ -134,7 +141,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: selectorActive ? "alive-tagger-activate" : "alive-tagger-deactivate" },
+        { type: selectorActive ? TAGGER_ACTIVATE : TAGGER_DEACTIVATE },
         previewOrigin,
       )
     }
@@ -196,8 +203,8 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
         return
       }
 
-      // Element selected via alive-tagger (Cmd+Click in dev mode)
-      if (event.data?.type === "alive-element-selected" && event.data.context) {
+      // Element selected via alive-tagger (Cmd+Click or button-activated click)
+      if (event.data?.type === ELEMENT_SELECTED_MESSAGE_TYPE && event.data.context) {
         const ctx = event.data.context
         setSelectedElement({
           displayName: ctx.displayName,
@@ -205,6 +212,19 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
           lineNumber: ctx.lineNumber,
           columnNumber: ctx.columnNumber,
         })
+        return
+      }
+
+      // Selector activated inside iframe (Cmd/Ctrl held) — sync parent button state
+      if (event.data?.type === TAGGER_ACTIVATED) {
+        activateSelector()
+        return
+      }
+
+      // Selector deactivated inside iframe (Cmd/Ctrl released, Escape, blur) — sync parent
+      if (event.data?.type === TAGGER_DEACTIVATED) {
+        deactivateSelector()
+        return
       }
     }
 
@@ -213,7 +233,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
       window.removeEventListener("message", handleMessage)
       clearLoadingTimeout()
     }
-  }, [workspace, setSelectedElement, clearLoadingTimeout])
+  }, [workspace, setSelectedElement, activateSelector, deactivateSelector, clearLoadingTimeout])
 
   // --- Actions ---
 

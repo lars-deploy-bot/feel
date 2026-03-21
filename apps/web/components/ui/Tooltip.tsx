@@ -46,7 +46,6 @@ export function Tooltip({ content, children, side = "top", delayMs = 400 }: Tool
               left: coords.x,
               top: coords.y,
               transform: `translate(-50%, ${side === "top" ? "-100%" : "0"})`,
-              animation: "alive-fade-in 150ms ease-out",
             }}
             className="fixed px-2 py-1 text-xs font-medium text-white dark:text-black bg-neutral-800 dark:bg-neutral-200 rounded-md whitespace-nowrap pointer-events-none z-[9999]"
           >

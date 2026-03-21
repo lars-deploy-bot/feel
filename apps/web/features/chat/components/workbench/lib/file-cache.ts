@@ -54,6 +54,24 @@ export function setCachedContent(key: string, content: FileContent): void {
   contentCache.set(key, { content, timestamp: Date.now() })
 }
 
+// --- Optimistic updates ---
+
+/** Remove a file from its parent's cached listing without an API call. Returns true if cache was updated. */
+export function optimisticRemoveFromList(
+  workspace: string,
+  worktree: string | null | undefined,
+  parentPath: string,
+  fileName: string,
+): boolean {
+  const key = cacheKey(workspace, worktree, parentPath)
+  const list = listCache.get(key)
+  if (!list) return false
+  const filtered = list.filter(f => f.name !== fileName)
+  if (filtered.length === list.length) return false
+  listCache.set(key, filtered)
+  return true
+}
+
 // --- Invalidation ---
 
 function invalidateMap(map: Map<string, unknown>, workspace?: string, worktree?: string | null, path?: string): void {

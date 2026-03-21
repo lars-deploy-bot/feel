@@ -1,9 +1,9 @@
 import * as Sentry from "@sentry/nextjs"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { AuthenticationError, isWorkspaceAuthenticated, requireSessionUser } from "@/features/auth/lib/auth"
 import { isValidSlug } from "@/features/deployment/lib/slug-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { handleQuery, isHandleBodyError } from "@/lib/api/server"
+import { alrighty, handleQuery, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
 
@@ -40,13 +40,7 @@ export async function GET(request: NextRequest) {
       return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, { status: 404, details: { slug } })
     }
 
-    return NextResponse.json(
-      {
-        ok: true,
-        metadata,
-      },
-      { status: 200 },
-    )
+    return alrighty("sites/metadata", { metadata })
   } catch (error) {
     console.error(`[Metadata API] Failed to fetch metadata for slug ${slug}:`, error)
     Sentry.captureException(error)

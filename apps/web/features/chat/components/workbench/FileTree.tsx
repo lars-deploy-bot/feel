@@ -331,7 +331,7 @@ const TreeNode = memo(function TreeNode({
           <button
             type="button"
             onClick={handleDelete}
-            className="opacity-0 group-hover/node:opacity-100 focus-visible:opacity-100 shrink-0 p-1 mr-1.5 rounded text-black/20 dark:text-white/15 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
+            className="opacity-0 group-hover/node:opacity-100 focus-visible:opacity-100 shrink-0 p-1 mr-1.5 rounded text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
             title={`Delete ${item.name}`}
           >
             <Trash2 size={13} strokeWidth={1.5} />

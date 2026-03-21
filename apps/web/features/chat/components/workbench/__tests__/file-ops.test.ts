@@ -19,6 +19,7 @@ vi.mock("../lib/file-api", () => ({
 vi.mock("../lib/file-cache", () => ({
   invalidateContent: vi.fn(),
   invalidateList: vi.fn(),
+  optimisticRemoveFromList: vi.fn().mockReturnValue(true),
 }))
 
 // Mock events module
@@ -27,7 +28,7 @@ vi.mock("../lib/file-events", () => ({
 }))
 
 const { deleteFile, uploadFile } = await import("../lib/file-api")
-const { invalidateContent, invalidateList } = await import("../lib/file-cache")
+const { invalidateContent, invalidateList, optimisticRemoveFromList } = await import("../lib/file-cache")
 const { notifyFileChange } = await import("../lib/file-events")
 const { removeFile, uploadFileToWorkspace, saveFile } = await import("../lib/file-ops")
 
@@ -46,28 +47,28 @@ describe("file-ops", () => {
       })
     })
 
+    it("should optimistically remove from cache before API call", async () => {
+      await removeFile("my-site.alive.best", "src/old.ts")
+
+      expect(optimisticRemoveFromList).toHaveBeenCalledWith("my-site.alive.best", undefined, "src", "old.ts")
+    })
+
     it("should invalidate content cache for the deleted path", async () => {
       await removeFile("my-site.alive.best", "src/old.ts")
 
       expect(invalidateContent).toHaveBeenCalledWith("my-site.alive.best", undefined, "src/old.ts")
     })
 
-    it("should invalidate list cache for the parent directory", async () => {
-      await removeFile("my-site.alive.best", "src/components/Button.tsx")
-
-      expect(invalidateList).toHaveBeenCalledWith("my-site.alive.best", undefined, "src/components")
-    })
-
-    it("should invalidate list cache for root when deleting root-level file", async () => {
-      await removeFile("my-site.alive.best", "README.md")
-
-      expect(invalidateList).toHaveBeenCalledWith("my-site.alive.best", undefined, "")
-    })
-
-    it("should notify subscribers of the change", async () => {
+    it("should notify subscribers immediately (optimistic)", async () => {
       await removeFile("my-site.alive.best", "test.txt")
 
-      expect(notifyFileChange).toHaveBeenCalledOnce()
+      expect(notifyFileChange).toHaveBeenCalled()
+    })
+
+    it("should optimistically remove root-level files", async () => {
+      await removeFile("my-site.alive.best", "README.md")
+
+      expect(optimisticRemoveFromList).toHaveBeenCalledWith("my-site.alive.best", undefined, "", "README.md")
     })
 
     it("should pass recursive flag for directory deletion", async () => {
@@ -84,7 +85,7 @@ describe("file-ops", () => {
       expect(deleteFile).toHaveBeenCalledWith("my-site.alive.best", "test.txt", {
         worktree: "feature-branch",
       })
-      expect(invalidateContent).toHaveBeenCalledWith("my-site.alive.best", "feature-branch", "test.txt")
+      expect(optimisticRemoveFromList).toHaveBeenCalledWith("my-site.alive.best", "feature-branch", "", "test.txt")
     })
 
     it("should propagate errors from deleteFile", async () => {
@@ -93,14 +94,15 @@ describe("file-ops", () => {
       await expect(removeFile("my-site.alive.best", "package.json")).rejects.toThrow("FILE_PROTECTED")
     })
 
-    it("should not invalidate cache or notify on error", async () => {
+    it("should invalidate list cache on error to restore tree", async () => {
       vi.mocked(deleteFile).mockRejectedValueOnce(new Error("fail"))
 
       await expect(removeFile("my-site.alive.best", "test.txt")).rejects.toThrow()
 
-      expect(invalidateContent).not.toHaveBeenCalled()
-      expect(invalidateList).not.toHaveBeenCalled()
-      expect(notifyFileChange).not.toHaveBeenCalled()
+      // Should invalidate the parent listing so tree re-fetches real state
+      expect(invalidateList).toHaveBeenCalledWith("my-site.alive.best", undefined, "")
+      // Should notify twice: once optimistic, once to restore
+      expect(notifyFileChange).toHaveBeenCalledTimes(2)
     })
   })
 

@@ -1,1 +1,1 @@
-export type VoiceState = "idle" | "recording" | "transcribing"
+export type VoiceState = "idle" | "recording" | "stopping" | "transcribing" | "error"

@@ -428,7 +428,7 @@ function ChatPageContent() {
 
   const streamingActions = useStreamingActions()
   const lastSeenStreamSeq = useLastSeenStreamSeq(sessionTabId)
-  const { registerElementSelectHandler, registerAddImageToChat } = useWorkbenchContext()
+  const { registerElementSelectHandler, registerAddImageToChat, registerOpenConversation } = useWorkbenchContext()
 
   // Context compaction state — tracks whether compaction is in progress
   // by comparing positions of the last "compacting" vs "compact_boundary" messages.
@@ -889,6 +889,11 @@ function ChatPageContent() {
       dexieLoadTabMessages,
     ],
   )
+
+  // Register conversation opener so workbench agents can navigate to run conversations
+  useEffect(() => {
+    registerOpenConversation(handleTabGroupSelect)
+  }, [registerOpenConversation, handleTabGroupSelect])
 
   const handleArchiveTabGroup = useCallback(
     async (tabGroupIdToArchive: string) => {

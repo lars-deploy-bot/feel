@@ -12,9 +12,10 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { getOAuthKeyForProvider } from "@webalive/shared"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 import { createIntegrationsClient } from "@/lib/supabase/integrations"
@@ -135,7 +136,8 @@ export async function GET(req: NextRequest) {
       })),
     )
 
-    return NextResponse.json(
+    return alrighty(
+      "integrations/available",
       {
         integrations: availableIntegrations,
         user_id: user.id,
