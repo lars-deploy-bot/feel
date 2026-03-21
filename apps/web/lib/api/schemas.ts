@@ -749,6 +749,7 @@ export const apiSchemas = {
               duration_ms: z.number().nullable(),
               error: z.string().nullable(),
               triggered_by: z.string().nullable(),
+              chat_conversation_id: z.string().nullable().optional(),
             }),
           ),
         }),

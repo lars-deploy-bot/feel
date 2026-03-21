@@ -237,6 +237,9 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
       {/* Voice input — hold to speak or tap to toggle */}
       <VoiceButton
         state={voice.state}
+        audioLevel={voice.audioLevel}
+        elapsed={voice.elapsed}
+        errorMessage={voice.errorMessage}
         onToggle={voice.toggle}
         onStartRecording={voice.startRecording}
         onStopRecording={voice.stopRecording}

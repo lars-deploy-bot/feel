@@ -13,6 +13,7 @@ import { sdkLogsRoutes } from "./manager/sdk-logs/sdk-logs.routes"
 import { templatesRoutes } from "./manager/templates/templates.routes"
 import { transfersRoutes } from "./manager/transfers/transfers.routes"
 import { usersRoutes } from "./manager/users/users.routes"
+import { voiceRoutes } from "./voice/voice.routes"
 
 /**
  * Mount all route groups onto a single Hono app.
@@ -46,6 +47,12 @@ export function buildRoutes(): OpenAPIHono<AppBindings> {
   manager.route("/templates", templatesRoutes)
   manager.route("/transfers", transfersRoutes)
   manager.route("/sdk-logs", sdkLogsRoutes)
+
+  // Protected voice routes
+  const voice = new OpenAPIHono<AppBindings>()
+  voice.use("/*", authMiddleware)
+  voice.route("/", voiceRoutes)
+  apiGroup.route("/voice", voice)
 
   apiGroup.route("/manager", manager)
 

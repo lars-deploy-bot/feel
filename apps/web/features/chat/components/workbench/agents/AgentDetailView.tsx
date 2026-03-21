@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckCircle2, Copy, Mail, Pause, Pencil, Play, RotateCw, Trash2, XCircle } from "lucide-react"
+import { CheckCircle2, Copy, ExternalLink, Mail, Pause, Pencil, Play, RotateCw, Trash2, XCircle } from "lucide-react"
 import { useState } from "react"
 import { ActionButton, RunDots, StatusDot, TrigIcon } from "./AgentUI"
 import { agentsApi } from "./agents-api"
@@ -11,10 +11,12 @@ export function AgentDetailView({
   job,
   onEdit,
   onChanged,
+  onOpenConversation,
 }: {
   job: EnrichedJob
   onEdit: () => void
   onChanged: () => void
+  onOpenConversation: ((conversationId: string) => void) | null
 }) {
   const [toggling, setToggling] = useState(false)
   const [triggering, setTriggering] = useState(false)
@@ -140,31 +142,44 @@ export function AgentDetailView({
             Recent runs
           </p>
           <div className="divide-y divide-zinc-100 dark:divide-white/[0.03]">
-            {job.recent_runs.map(run => (
-              <div key={run.id} className="flex items-center gap-2.5 py-2">
-                {run.status === "success" ? (
-                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                ) : run.status === "failure" ? (
-                  <XCircle size={12} className="text-red-500 shrink-0" />
-                ) : (
-                  <RotateCw size={12} className="text-blue-500 animate-spin shrink-0" />
-                )}
-                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums">
-                  {relTime(run.started_at)}
-                </span>
-                <span className="text-[10px] text-zinc-300 dark:text-zinc-700 tabular-nums">
-                  {dur(run.duration_ms)}
-                </span>
-                {run.triggered_by && (
-                  <span className="text-[10px] text-zinc-400 dark:text-zinc-600">{run.triggered_by}</span>
-                )}
-                {run.error && (
-                  <span className="text-[10px] text-red-500 truncate flex-1" title={run.error}>
-                    {run.error}
+            {job.recent_runs.map(run => {
+              const conversationId = run.chat_conversation_id
+              const canOpen = !!conversationId && !!onOpenConversation
+              return (
+                <button
+                  key={run.id}
+                  type="button"
+                  disabled={!canOpen}
+                  onClick={() => {
+                    if (conversationId && onOpenConversation) onOpenConversation(conversationId)
+                  }}
+                  className={`flex items-center gap-2.5 py-2 w-full text-left ${canOpen ? "hover:bg-zinc-50 dark:hover:bg-white/[0.02] rounded-md -mx-1 px-1 transition-colors cursor-pointer" : ""}`}
+                >
+                  {run.status === "success" ? (
+                    <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                  ) : run.status === "failure" ? (
+                    <XCircle size={12} className="text-red-500 shrink-0" />
+                  ) : (
+                    <RotateCw size={12} className="text-blue-500 animate-spin shrink-0" />
+                  )}
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums">
+                    {relTime(run.started_at)}
                   </span>
-                )}
-              </div>
-            ))}
+                  <span className="text-[10px] text-zinc-300 dark:text-zinc-700 tabular-nums">
+                    {dur(run.duration_ms)}
+                  </span>
+                  {run.triggered_by && (
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-600">{run.triggered_by}</span>
+                  )}
+                  {run.error && (
+                    <span className="text-[10px] text-red-500 truncate flex-1" title={run.error}>
+                      {run.error}
+                    </span>
+                  )}
+                  {canOpen && <ExternalLink size={10} className="text-zinc-300 dark:text-zinc-700 shrink-0 ml-auto" />}
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

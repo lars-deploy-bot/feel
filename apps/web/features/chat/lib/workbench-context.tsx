@@ -114,6 +114,10 @@ interface WorkbenchContextType {
   addImageToChat: ((imageKey: string) => void) | null
   /** Register the callback for adding images to chat */
   registerAddImageToChat: (handler: (imageKey: string) => void) => void
+  /** Open a conversation by its tabGroupId (conversation_id) */
+  onOpenConversation: ((conversationId: string) => void) | null
+  /** Register the callback for opening conversations */
+  registerOpenConversation: (handler: (conversationId: string) => void) => void
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined)
@@ -135,6 +139,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [workbenchState, setWorkbenchState] = useState<WorkbenchState>(DEFAULT_WORKBENCH_STATE)
   const [selectorActive, setSelectorActive] = useState(false)
   const [addImageToChat, setAddImageToChat] = useState<((imageKey: string) => void) | null>(null)
+  const [onOpenConversation, setOnOpenConversation] = useState<((conversationId: string) => void) | null>(null)
 
   const addEntry = (entry: Omit<WorkbenchEntry, "id" | "timestamp">) => {
     const newEntry: WorkbenchEntry = {
@@ -177,6 +182,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
   const registerAddImageToChat = useCallback((handler: (imageKey: string) => void) => {
     setAddImageToChat(() => handler)
+  }, [])
+
+  const registerOpenConversation = useCallback((handler: (conversationId: string) => void) => {
+    setOnOpenConversation(() => handler)
   }, [])
 
   const setView = useCallback((view: WorkbenchView) => {
@@ -281,6 +290,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         viewStatesRef,
         addImageToChat,
         registerAddImageToChat,
+        onOpenConversation,
+        registerOpenConversation,
       }}
     >
       {children}

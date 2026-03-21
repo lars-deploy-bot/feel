@@ -34,6 +34,7 @@ export interface AutomationRunRow {
   duration_ms: number | null
   error: string | null
   triggered_by: string | null
+  chat_conversation_id: string | null
 }
 
 export async function findAllJobs(): Promise<AutomationJobRow[]> {
@@ -55,7 +56,7 @@ export async function findRunsByJobIds(jobIds: string[], since: Date): Promise<A
 
   const { data, error } = await app
     .from("automation_runs")
-    .select("id, job_id, status, started_at, completed_at, duration_ms, error, triggered_by")
+    .select("id, job_id, status, started_at, completed_at, duration_ms, error, triggered_by, chat_conversation_id")
     .in("job_id", jobIds)
     .gte("started_at", since.toISOString())
     .order("started_at", { ascending: false })

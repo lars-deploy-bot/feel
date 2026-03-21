@@ -23,6 +23,48 @@ import { isRecord } from "@/lib/utils"
 // Isolated Attempt Result
 // =============================================================================
 
+// =============================================================================
+// SDK Result Type Guards
+// =============================================================================
+
+/**
+ * SDK result subtypes from SDKResultMessage (claude-agent-sdk).
+ * "success" = completed normally.
+ * All others are errors — the SDK ran but could not produce a valid result.
+ */
+const SDK_ERROR_SUBTYPES = new Set([
+  "error_during_execution",
+  "error_max_turns",
+  "error_max_budget_usd",
+  "error_max_structured_output_retries",
+])
+
+/** Shape of SDKResultSuccess (subtype: "success", result: string) */
+interface SdkSuccessResult {
+  subtype: "success"
+  result: string
+  total_cost_usd?: number
+  num_turns?: number
+  usage?: { input_tokens: number; output_tokens: number }
+}
+
+/** Shape of SDKResultError (subtype: error_*, errors: string[]) */
+interface SdkErrorResult {
+  subtype: string
+  errors: string[]
+  total_cost_usd?: number
+  num_turns?: number
+  usage?: { input_tokens: number; output_tokens: number }
+}
+
+function isSdkSuccessResult(v: unknown): v is SdkSuccessResult {
+  return isRecord(v) && v.subtype === "success" && typeof v.result === "string"
+}
+
+function isSdkErrorResult(v: unknown): v is SdkErrorResult {
+  return isRecord(v) && typeof v.subtype === "string" && SDK_ERROR_SUBTYPES.has(v.subtype) && Array.isArray(v.errors)
+}
+
 /** Each execution attempt produces its own isolated result */
 export interface AttemptResult {
   textMessages: string[]
@@ -30,6 +72,8 @@ export interface AttemptResult {
   finalResponse: string
   /** Text extracted from a named tool call's input.text (set via responseToolName) */
   toolResponseText?: string
+  /** Set when SDK reports an error result (auth failure, max turns, budget, etc.) */
+  sdkError?: SdkErrorResult
   costUsd?: number
   numTurns?: number
   usage?: { input_tokens: number; output_tokens: number }
@@ -109,11 +153,13 @@ function createMessageCollector(responseToolName?: string): {
       state.allMessages.push(msg)
       const result = msg.result
       // Worker pool: result.result is the SDK result object
-      if (isRecord(result.result)) {
-        const sdkResult = result.result
-        if (sdkResult.subtype === "success" && typeof sdkResult.result === "string") {
-          state.finalResponse = sdkResult.result
-        }
+      const sdkResult = result.result
+      if (isSdkSuccessResult(sdkResult)) {
+        state.finalResponse = sdkResult.result
+      } else if (isSdkErrorResult(sdkResult)) {
+        state.sdkError = sdkResult
+      }
+      if (isRecord(sdkResult)) {
         if (typeof sdkResult.total_cost_usd === "number") {
           state.costUsd = sdkResult.total_cost_usd
         }

@@ -59,6 +59,7 @@ interface EnrichedJob {
     duration_ms: number | null
     error: string | null
     triggered_by: string | null
+    chat_conversation_id: string | null
   }[]
 }
 
@@ -174,6 +175,7 @@ export async function listAutomations() {
       duration_ms: r.duration_ms,
       error: r.error,
       triggered_by: r.triggered_by,
+      chat_conversation_id: r.chat_conversation_id,
     }))
 
     const enriched: EnrichedJob = {
