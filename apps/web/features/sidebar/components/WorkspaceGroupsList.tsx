@@ -27,42 +27,23 @@ export function WorkspaceGroupsList({
   onArchiveAllInWorkspace,
   ...listProps
 }: WorkspaceGroupsListProps) {
-  // Split: active workspace conversations at top, everything else below
-  const activeGroup = activeWorkspace ? workspaceGroups.find(g => g.workspace === activeWorkspace) : null
-  const otherGroups = workspaceGroups.filter(g => g.workspace !== activeWorkspace)
-
   return (
     <div className="flex flex-col">
-      {/* Active workspace conversations — no header, just the list */}
-      {activeGroup && activeGroup.conversations.length > 0 && (
-        <div className="pb-1">
-          <ConversationList conversations={activeGroup.conversations} {...listProps} />
-        </div>
-      )}
-
-      {/* Other workspaces */}
-      {otherGroups.length > 0 && (
-        <>
-          {activeGroup && activeGroup.conversations.length > 0 && (
-            <div className="mx-3 my-1 border-b border-black/[0.06] dark:border-white/[0.06]" />
-          )}
-
-          {otherGroups.map(({ workspace: ws, isFavorite, conversations: wsConversations }) => (
-            <WorkspaceGroupRow
-              key={ws}
-              workspace={ws}
-              isFavorite={isFavorite}
-              conversations={wsConversations}
-              isExpanded={expandedWorkspaces.has(ws)}
-              onToggleExpanded={onToggleExpanded}
-              onNewConversation={onNewConversationInWorkspace}
-              onToggleFavorite={onToggleFavorite}
-              onArchiveAll={onArchiveAllInWorkspace}
-              listProps={listProps}
-            />
-          ))}
-        </>
-      )}
+      {workspaceGroups.map(({ workspace: ws, isFavorite, conversations: wsConversations }) => (
+        <WorkspaceGroupRow
+          key={ws}
+          workspace={ws}
+          isFavorite={isFavorite}
+          isActive={ws === activeWorkspace}
+          conversations={wsConversations}
+          isExpanded={ws === activeWorkspace || expandedWorkspaces.has(ws)}
+          onToggleExpanded={onToggleExpanded}
+          onNewConversation={onNewConversationInWorkspace}
+          onToggleFavorite={onToggleFavorite}
+          onArchiveAll={onArchiveAllInWorkspace}
+          listProps={listProps}
+        />
+      ))}
     </div>
   )
 }
@@ -72,6 +53,7 @@ export function WorkspaceGroupsList({
 function WorkspaceGroupRow({
   workspace,
   isFavorite,
+  isActive,
   conversations,
   isExpanded,
   onToggleExpanded,
@@ -82,6 +64,7 @@ function WorkspaceGroupRow({
 }: {
   workspace: string
   isFavorite: boolean
+  isActive: boolean
   conversations: WorkspaceGroup["conversations"]
   isExpanded: boolean
   onToggleExpanded: (ws: string) => void
@@ -111,7 +94,11 @@ function WorkspaceGroupRow({
               isExpanded && hasConversations ? "rotate-90" : ""
             } ${hasConversations ? "" : "opacity-0"}`}
           />
-          <span className="truncate font-medium text-black/45 dark:text-white/45">{deriveProjectName(workspace)}</span>
+          <span
+            className={`truncate font-medium ${isActive ? "text-black/70 dark:text-white/70" : "text-black/45 dark:text-white/45"}`}
+          >
+            {deriveProjectName(workspace)}
+          </span>
         </button>
 
         {/* Hover-reveal actions */}
