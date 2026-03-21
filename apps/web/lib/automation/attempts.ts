@@ -62,7 +62,13 @@ function isSdkSuccessResult(v: unknown): v is SdkSuccessResult {
 }
 
 function isSdkErrorResult(v: unknown): v is SdkErrorResult {
-  return isRecord(v) && typeof v.subtype === "string" && SDK_ERROR_SUBTYPES.has(v.subtype) && Array.isArray(v.errors)
+  return (
+    isRecord(v) &&
+    typeof v.subtype === "string" &&
+    v.subtype !== "success" &&
+    (v.subtype.startsWith("error_") || SDK_ERROR_SUBTYPES.has(v.subtype)) &&
+    Array.isArray(v.errors)
+  )
 }
 
 /** Each execution attempt produces its own isolated result */

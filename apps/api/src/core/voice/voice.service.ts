@@ -3,7 +3,7 @@
  *
  * No mini-tools indirection. Direct Groq API call with:
  * - File size validation (reject silence, cap at 25MB)
- * - Retry on transient errors (429, 500, 502, 503, 504)
+ * - Retry on transient errors (429, 5xx)
  * - Exponential backoff with jitter
  * - Timeout per attempt
  * - Structured error classification
@@ -88,14 +88,30 @@ function validateFile(file: File): void {
 // Groq API call
 // ---------------------------------------------------------------------------
 
-interface GroqResponse {
-  text?: string
-  duration?: number
-  language?: string
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status >= 500
 }
 
-function isRetryableStatus(status: number): boolean {
-  return status === 429 || status === 502 || status === 503 || status === 504
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null
+}
+
+function extractGroqErrorDetail(body: unknown): string {
+  if (isRecord(body) && isRecord(body.error) && typeof body.error.message === "string") {
+    return body.error.message
+  }
+  return JSON.stringify(body)
+}
+
+function parseGroqResponse(data: unknown): TranscribeResult {
+  if (!isRecord(data) || typeof data.text !== "string" || !data.text.trim()) {
+    throw new TranscribeError("No speech detected in audio", "NO_SPEECH", 422)
+  }
+  return {
+    text: data.text.trim(),
+    duration: typeof data.duration === "number" ? data.duration : null,
+    language: typeof data.language === "string" ? data.language : null,
+  }
 }
 
 async function callGroqTranscribe(file: File, language?: string): Promise<TranscribeResult> {
@@ -115,8 +131,8 @@ async function callGroqTranscribe(file: File, language?: string): Promise<Transc
   if (!res.ok) {
     let detail = ""
     try {
-      const body = await res.json()
-      detail = (body as { error?: { message?: string } }).error?.message ?? JSON.stringify(body)
+      const body: unknown = await res.json()
+      detail = extractGroqErrorDetail(body)
     } catch {
       detail = res.statusText
     }
@@ -129,17 +145,8 @@ async function callGroqTranscribe(file: File, language?: string): Promise<Transc
     throw new TranscribeError(`Transcription failed: ${detail}`, "GROQ_ERROR", res.status)
   }
 
-  const data = (await res.json()) as GroqResponse
-  const text = data.text?.trim()
-  if (!text) {
-    throw new TranscribeError("No speech detected in audio", "NO_SPEECH", 422)
-  }
-
-  return {
-    text,
-    duration: typeof data.duration === "number" ? data.duration : null,
-    language: typeof data.language === "string" ? data.language : null,
-  }
+  const data: unknown = await res.json()
+  return parseGroqResponse(data)
 }
 
 // ---------------------------------------------------------------------------

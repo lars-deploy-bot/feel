@@ -25,6 +25,29 @@ import { voiceRoutes } from "./voice.routes"
 import { TranscribeError, transcribe } from "./voice.service"
 
 // ---------------------------------------------------------------------------
+// Response types for typed test assertions
+// ---------------------------------------------------------------------------
+
+interface VoiceResponse {
+  text?: string
+  duration?: number | null
+  language?: string | null
+  error?: string
+  code?: string
+  ok?: boolean
+}
+
+interface ErrorResponse {
+  ok: false
+  error: { code: string; message: string }
+}
+
+async function jsonBody<T>(response: Response): Promise<T> {
+  const data: unknown = await response.json()
+  return data as T // Test-only narrowing — we verify shape via assertions below
+}
+
+// ---------------------------------------------------------------------------
 // Test app
 // ---------------------------------------------------------------------------
 
@@ -64,7 +87,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(400)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body.code).toBe("INVALID_FORMAT")
       expect(body.error).toContain("multipart/form-data")
       expect(transcribe).not.toHaveBeenCalled()
@@ -98,7 +121,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(400)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body.code).toBe("INVALID_FORMAT")
       expect(body.error).toContain("Missing audio file")
       expect(transcribe).not.toHaveBeenCalled()
@@ -142,7 +165,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(200)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body).toEqual({
         text: "Hello, world!",
         duration: 2.5,
@@ -308,7 +331,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(400)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body.code).toBe("TOO_SHORT")
       expect(body.error).toBe("Audio too short")
     })
@@ -327,7 +350,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(400)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body.code).toBe("TOO_LARGE")
     })
 
@@ -345,7 +368,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(422)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body.code).toBe("NO_SPEECH")
     })
 
@@ -363,7 +386,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(504)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body.code).toBe("TIMEOUT")
     })
 
@@ -381,7 +404,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(429)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body.code).toBe("GROQ_ERROR")
     })
 
@@ -399,7 +422,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(400)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body.code).toBe("INVALID_FORMAT")
     })
   })
@@ -424,7 +447,7 @@ describe("voice routes", () => {
 
       // errorHandler returns 500 for unknown errors
       expect(response.status).toBe(500)
-      const body = await response.json()
+      const body = await jsonBody<ErrorResponse>(response)
       expect(body.ok).toBe(false)
       expect(body.error.code).toBe("INTERNAL_ERROR")
     })
@@ -461,7 +484,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(401)
-      const body = await response.json()
+      const body = await jsonBody<ErrorResponse>(response)
       expect(body.error.code).toBe("UNAUTHORIZED")
       expect(transcribe).not.toHaveBeenCalled()
     })
@@ -500,7 +523,7 @@ describe("voice routes", () => {
       })
 
       expect(response.status).toBe(200)
-      const body = await response.json()
+      const body = await jsonBody<VoiceResponse>(response)
       expect(body.text).toBe("authenticated")
     })
   })

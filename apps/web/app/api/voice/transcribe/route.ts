@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import type { TranscribeResult } from "@/lib/api/types"
-import { apiClient } from "@/lib/api-client"
+import { ApiClientError, apiClient } from "@/lib/api-client"
 import { ErrorCodes } from "@/lib/error-codes"
 
 /**
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result)
   } catch (err) {
     const message = err instanceof Error ? err.message : "Transcription failed"
-    const status = err instanceof Error && "status" in err ? (err as { status: number }).status : 502
+    const status = err instanceof ApiClientError ? err.status : 502
     return structuredErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, {
       status,
       details: { upstream: message },

@@ -445,14 +445,14 @@ describe("voice.service", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1)
     })
 
-    it("does not retry on 500 (not in retryable set)", async () => {
-      // 500 is NOT retryable (only 429, 502, 503, 504)
-      fetchMock.mockResolvedValueOnce(groqError(500, "Internal error"))
+    it("retries on 500 and succeeds on second attempt", async () => {
+      fetchMock.mockResolvedValueOnce(groqError(500, "Internal error")).mockResolvedValueOnce(groqOk("recovered"))
       const file = makeAudioFile(5000)
 
-      await transcribe({ file }).catch(() => {})
+      const result = await transcribe({ file })
 
-      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(result.text).toBe("recovered")
+      expect(fetchMock).toHaveBeenCalledTimes(2)
     })
 
     it("recovers on third attempt after two failures", async () => {
