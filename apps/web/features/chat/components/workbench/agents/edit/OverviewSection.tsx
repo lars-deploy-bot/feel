@@ -1,6 +1,6 @@
 "use client"
 
-import type { ClaudeModel } from "@webalive/shared"
+import type { AgentFieldErrors, ClaudeModel } from "@webalive/shared"
 import { ChevronRight } from "lucide-react"
 import { MODEL_OPTIONS } from "@/lib/automation/form-options"
 import { TriggerIcon } from "./TriggerSection"
@@ -18,6 +18,7 @@ interface OverviewSectionProps {
   onPromptDrillIn: () => void
   onTriggerDrillIn: () => void
   error: string | null
+  fieldErrors: AgentFieldErrors
 }
 
 export function OverviewSection({
@@ -33,6 +34,7 @@ export function OverviewSection({
   onPromptDrillIn,
   onTriggerDrillIn,
   error,
+  fieldErrors,
 }: OverviewSectionProps) {
   return (
     <div className="px-4 py-4">
@@ -42,8 +44,9 @@ export function OverviewSection({
         value={name}
         onChange={e => onNameChange(e.target.value)}
         placeholder="Agent name"
-        className="w-full text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 bg-transparent border-0 outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700 caret-zinc-900 dark:caret-zinc-100"
+        className={`w-full text-[15px] font-semibold bg-transparent border-0 outline-none caret-zinc-900 dark:caret-zinc-100 ${fieldErrors.name ? "text-red-600 dark:text-red-400 placeholder:text-red-300 dark:placeholder:text-red-700" : "text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700"}`}
       />
+      {fieldErrors.name && <p className="text-[12px] text-red-500 dark:text-red-400 mt-1">{fieldErrors.name}</p>}
 
       {error && (
         <div className="mt-3 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/10">
@@ -71,6 +74,9 @@ export function OverviewSection({
           )}
         </div>
       </button>
+      {fieldErrors.prompt && (
+        <p className="text-[12px] text-red-500 dark:text-red-400 mt-1 px-0">{fieldErrors.prompt}</p>
+      )}
 
       {/* Trigger card */}
       <button type="button" onClick={onTriggerDrillIn} className="w-full mt-5 text-left group">

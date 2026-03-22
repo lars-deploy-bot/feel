@@ -1,6 +1,13 @@
 "use client"
 
-import { CLAUDE_MODELS, type ClaudeModel, isValidClaudeModel } from "@webalive/shared"
+import {
+  type AgentFieldErrors,
+  CLAUDE_MODELS,
+  type ClaudeModel,
+  isValidClaudeModel,
+  validateAgentCreate,
+  validateAgentField,
+} from "@webalive/shared"
 import { Loader2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import type { AutomationConfigData, AutomationConfigResult } from "@/components/ai/AutomationConfig"
@@ -40,6 +47,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
   const [timeout, setTimeout] = useState(job?.action_timeout_seconds ? String(job.action_timeout_seconds) : "")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<AgentFieldErrors>({})
 
   // Re-sync when job changes (navigating between agents)
   useEffect(() => {
@@ -51,6 +59,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       setTimeout(job.action_timeout_seconds ? String(job.action_timeout_seconds) : "")
     }
     setError(null)
+    setFieldErrors({})
     setSection("overview")
   }, [job?.id])
 
@@ -59,7 +68,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
   const origTimeout = job?.action_timeout_seconds ? String(job.action_timeout_seconds) : ""
 
   const hasChanges = isCreate
-    ? name.trim().length >= 3 && prompt.trim().length >= 10
+    ? true // always allow submit attempt in create mode — validation catches issues
     : name !== job.name ||
       prompt !== (job.action_prompt ?? "") ||
       model !== origModel ||
@@ -68,11 +77,39 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
 
   // ── Save ──
   const handleSave = useCallback(async () => {
+    // Validate before submit
+    if (isCreate) {
+      const errors = validateAgentCreate({ name, prompt, schedule, timeout })
+      if (errors) {
+        setFieldErrors(errors)
+        return
+      }
+    } else {
+      // Edit: validate only changed fields
+      const errors: AgentFieldErrors = {}
+      if (name !== job.name) {
+        const e = validateAgentField("name", name)
+        if (e) errors.name = e
+      }
+      if (prompt !== (job.action_prompt ?? "")) {
+        const e = validateAgentField("prompt", prompt)
+        if (e) errors.prompt = e
+      }
+      if (timeout !== origTimeout) {
+        const e = validateAgentField("timeout", timeout)
+        if (e) errors.timeout = e
+      }
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors)
+        return
+      }
+    }
+
+    setFieldErrors({})
     setSaving(true)
     setError(null)
     try {
       if (isCreate) {
-        // Create mode
         const site = createData?.sites?.[0]
         if (!site) throw new Error("No site available")
 
@@ -159,6 +196,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
           onPromptDrillIn={() => setSection("prompt")}
           onTriggerDrillIn={() => setSection("trigger")}
           error={error}
+          fieldErrors={fieldErrors}
         />
       </div>
 
