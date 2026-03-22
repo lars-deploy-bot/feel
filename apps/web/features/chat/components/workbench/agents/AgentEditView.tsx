@@ -226,20 +226,23 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
 
           <FieldGroup label="Model" color="violet">
             <div className="flex flex-wrap gap-2">
-              {MODEL_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setModel(model === opt.value ? "" : (opt.value as ClaudeModel))}
-                  className={`px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all ${
-                    model === opt.value
-                      ? "bg-violet-500 text-white border-b-[3px] border-violet-600 active:translate-y-[2px] active:border-b-0"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-b-[3px] border-zinc-200 dark:border-zinc-700 hover:brightness-95 dark:hover:brightness-110 active:translate-y-[2px] active:border-b-0"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              {MODEL_OPTIONS.map(opt => {
+                const selected = model === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setModel(selected ? "" : (opt.value as ClaudeModel))}
+                    className={`px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all border-b-[3px] active:translate-y-[2px] active:border-b-0 ${
+                      selected
+                        ? "bg-violet-500 dark:bg-violet-600 text-white border-violet-600 dark:border-violet-700"
+                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:brightness-95 dark:hover:brightness-110"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
             </div>
           </FieldGroup>
 
