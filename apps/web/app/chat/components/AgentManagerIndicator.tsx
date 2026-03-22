@@ -2,7 +2,6 @@
 
 interface AgentManagerIndicatorProps {
   isEvaluating: boolean
-  message: string
   workspace: string | null
   agentManagerAbortRef: React.RefObject<AbortController | null>
   agentManagerTimeoutRef: React.RefObject<NodeJS.Timeout | null>

@@ -2,6 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react"
 import toast from "react-hot-toast"
+import { useInputActions, useInputValue } from "@/lib/stores/inputStore"
 import { ChatInputProvider } from "./ChatInputContext"
 import { useAttachments } from "./hooks/useAttachments"
 import { useSuperTemplateDetection } from "./hooks/useTemplateDetection"
@@ -25,8 +26,6 @@ import type { ChatInputConfig, ChatInputContextValue, ChatInputHandle, ChatInput
  */
 export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "children">>(function ChatInput(
   {
-    message,
-    setMessage,
     busy,
     isStopping = false,
     isReady = true,
@@ -39,6 +38,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
   },
   ref,
 ) {
+  const message = useInputValue()
+  const { set: setMessage } = useInputActions()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 

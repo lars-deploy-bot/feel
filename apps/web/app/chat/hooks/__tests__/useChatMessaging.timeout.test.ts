@@ -227,7 +227,6 @@ function createAbortError(): DOMException {
 
 function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
   const addMessage = vi.fn().mockResolvedValue(undefined)
-  const setMsg = vi.fn()
   const forceScrollToBottom = vi.fn()
   const setShowCompletionDots = vi.fn()
 
@@ -239,8 +238,6 @@ function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
     tabGroupId: "tab-group-1",
     isTerminal: false,
     busy: false,
-    msg: "",
-    setMsg,
     addMessage,
     chatInputRef: {
       current: {
@@ -258,7 +255,7 @@ function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
     setShowCompletionDots,
   }
 
-  return { ...base, ...overrides, addMessage, setMsg, forceScrollToBottom }
+  return { ...base, ...overrides, addMessage, forceScrollToBottom }
 }
 
 function getCallBody(call: unknown[]): Record<string, unknown> {

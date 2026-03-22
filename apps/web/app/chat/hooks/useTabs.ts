@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react"
 import toast from "react-hot-toast"
 import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
+import { clearInput, getInputValue, setInput } from "@/lib/stores/inputStore"
 import { clearAbortController, getAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 import {
   useActiveTab,
@@ -22,10 +23,6 @@ interface UseTabsOptions {
   activeTabId: string | null
   onSwitchTab: (tabId: string) => void
   onInitializeTab: (tabId: string, tabGroupId: string, workspace: string) => void
-  /** Current input message - used to save draft on tab switch */
-  currentInput?: string
-  /** Callback to restore input when switching tabs */
-  onInputRestore?: (input: string) => void
 }
 
 /**
@@ -41,8 +38,6 @@ export function useTabsManagement({
   activeTabId,
   onSwitchTab,
   onInitializeTab,
-  currentInput,
-  onInputRestore,
 }: UseTabsOptions) {
   const tabs = useTabs(workspace, tabGroupId)
   const closedTabs = useClosedTabs(workspace, tabGroupId)
@@ -62,6 +57,18 @@ export function useTabsManagement({
   } = useTabActions()
   const { reopenTab: dexieReopenTab, loadTabMessages } = useDexieMessageActions()
   const streamingActions = useStreamingActions()
+
+  /** Save current input to the active tab's draft (before switching away). */
+  const saveDraft = useCallback(() => {
+    if (workspace && activeTabInGroup) {
+      setTabInputDraft(workspace, activeTabInGroup.id, getInputValue())
+    }
+  }, [workspace, activeTabInGroup, setTabInputDraft])
+
+  /** Restore input from a tab's draft (after switching to it). */
+  const restoreDraft = useCallback((draft: string | undefined) => {
+    setInput(draft ?? "")
+  }, [])
 
   const notifyTabLimit = useCallback(() => {
     toast("You have 10 tabs open — close one to make room", { id: "tab-limit" })
@@ -97,9 +104,7 @@ export function useTabsManagement({
     if (!workspace || !tabGroupId) return
 
     // Save current input to active tab before creating new tab
-    if (activeTabInGroup && currentInput !== undefined) {
-      setTabInputDraft(workspace, activeTabInGroup.id, currentInput)
-    }
+    saveDraft()
 
     // Tab.id IS the conversation key - no separate sessionId
     const tab = addTab(workspace, tabGroupId)
@@ -110,29 +115,15 @@ export function useTabsManagement({
     const tabId = initializeAndSwitchTab(tab, tabGroupId)
     if (!tabId) return
     // Clear input for new tab (attachments are scoped per-tab in the store)
-    if (onInputRestore) {
-      onInputRestore("")
-    }
-  }, [
-    workspace,
-    tabGroupId,
-    activeTabInGroup,
-    currentInput,
-    addTab,
-    setTabInputDraft,
-    onInputRestore,
-    notifyTabLimit,
-    initializeAndSwitchTab,
-  ])
+    clearInput()
+  }, [workspace, tabGroupId, saveDraft, addTab, notifyTabLimit, initializeAndSwitchTab])
 
   const handleTabSelect = useCallback(
     (tabId: string) => {
       const tab = tabs.find(t => t.id === tabId)
       if (tab && workspace) {
         // Save current input to the previous tab before switching
-        if (activeTabInGroup && currentInput !== undefined) {
-          setTabInputDraft(workspace, activeTabInGroup.id, currentInput)
-        }
+        saveDraft()
 
         setActiveTab(workspace, tabId)
         onSwitchTab(tab.id)
@@ -140,22 +131,10 @@ export function useTabsManagement({
         void loadTabMessages(tab.id)
 
         // Restore input from the new tab's draft (attachments are scoped per-tab in the store)
-        if (onInputRestore) {
-          onInputRestore(tab.inputDraft ?? "")
-        }
+        restoreDraft(tab.inputDraft)
       }
     },
-    [
-      tabs,
-      workspace,
-      activeTabInGroup,
-      currentInput,
-      setActiveTab,
-      onSwitchTab,
-      loadTabMessages,
-      setTabInputDraft,
-      onInputRestore,
-    ],
+    [tabs, workspace, saveDraft, restoreDraft, setActiveTab, onSwitchTab, loadTabMessages],
   )
 
   const handleTabClose = useCallback(
@@ -183,13 +162,11 @@ export function useTabsManagement({
         const newActiveTab = allTabs.find((t: { id: string }) => t.id === newActiveId)
         if (newActiveTab) {
           onSwitchTab(newActiveTab.id)
-          if (onInputRestore) {
-            onInputRestore(newActiveTab.inputDraft ?? "")
-          }
+          restoreDraft(newActiveTab.inputDraft)
         }
       }
     },
-    [tabs, workspace, streamingActions, removeTab, onSwitchTab, onInputRestore],
+    [tabs, workspace, streamingActions, removeTab, onSwitchTab, restoreDraft],
   )
 
   const handleTabRename = useCallback(
@@ -222,9 +199,7 @@ export function useTabsManagement({
         if (!reopenedTabId) return
         // loadTabMessages expects the tab ID (which is the conversation key)
         void loadTabMessages(reopenedTabId)
-        if (onInputRestore) {
-          onInputRestore(tab.inputDraft ?? "")
-        }
+        restoreDraft(tab.inputDraft)
       }
     },
     [
@@ -235,7 +210,7 @@ export function useTabsManagement({
       dexieReopenTab,
       loadTabMessages,
       toggleTabsExpanded,
-      onInputRestore,
+      restoreDraft,
       initializeAndSwitchTab,
     ],
   )
@@ -245,9 +220,7 @@ export function useTabsManagement({
       if (!workspace) return
 
       // Save current input to active tab before opening tab group in new/existing tab
-      if (activeTabInGroup && currentInput !== undefined) {
-        setTabInputDraft(workspace, activeTabInGroup.id, currentInput)
-      }
+      saveDraft()
 
       const tab = openTabGroupInTab(workspace, targetTabGroupId, name)
       if (!tab?.id) {
@@ -260,21 +233,9 @@ export function useTabsManagement({
       // syncFromServer fetches metadata only, messages must be fetched per-tab)
       void loadTabMessages(tabId)
       // Restore input from the tab's draft (attachments are scoped per-tab in the store)
-      if (onInputRestore) {
-        onInputRestore(tab.inputDraft ?? "")
-      }
+      restoreDraft(tab.inputDraft)
     },
-    [
-      workspace,
-      activeTabInGroup,
-      currentInput,
-      openTabGroupInTab,
-      loadTabMessages,
-      setTabInputDraft,
-      onInputRestore,
-      notifyTabLimit,
-      initializeAndSwitchTab,
-    ],
+    [workspace, saveDraft, restoreDraft, openTabGroupInTab, loadTabMessages, notifyTabLimit, initializeAndSwitchTab],
   )
 
   // Sync when active tab changes (e.g., after tab close triggers fallback)
@@ -289,11 +250,9 @@ export function useTabsManagement({
       // Load messages for the fallback tab (may not be in local Dexie on new device)
       void loadTabMessages(activeTabInGroup.id)
       // Restore input from the new active tab (attachments are scoped per-tab in the store)
-      if (onInputRestore) {
-        onInputRestore(activeTabInGroup.inputDraft ?? "")
-      }
+      restoreDraft(activeTabInGroup.inputDraft)
     }
-  }, [activeTabInGroup, activeTabId, onSwitchTab, loadTabMessages, onInputRestore])
+  }, [activeTabInGroup, activeTabId, onSwitchTab, loadTabMessages, restoreDraft])
 
   // Auto-create first tab when tabs expanded but empty
   useEffect(() => {
