@@ -82,6 +82,8 @@ describe("API Schema Type System", () => {
         | "conversations/messages"
         | "images/list"
         | "voice/transcribe"
+        | "polar/billing"
+        | "polar/checkout"
       >()
     })
 

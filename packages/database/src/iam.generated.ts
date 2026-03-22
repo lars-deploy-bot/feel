@@ -244,6 +244,30 @@ export type Database = {
           },
         ]
       }
+      processed_polar_orders: {
+        Row: {
+          created_at: string
+          credits_awarded: number
+          order_id: string
+          org_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_awarded: number
+          order_id: string
+          org_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits_awarded?: number
+          order_id?: string
+          org_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       referrals: {
         Row: {
           completed_at: string | null
@@ -484,7 +508,7 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals["iam"]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends

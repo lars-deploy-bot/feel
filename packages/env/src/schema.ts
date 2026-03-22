@@ -71,9 +71,7 @@ export const anthropicApiKey = z.string().regex(/^sk-ant-/, "Must be valid Anthr
 
 export const e2bApiKey = z.string().regex(/^e2b_/, "Must be valid E2B API key (e2b_*)")
 
-export const flowgladSecretKey = z
-  .string()
-  .regex(/^sk_(test|live)_/, "Must be valid Flowglad secret key (sk_test_* or sk_live_*)")
+export const polarAccessToken = z.string().regex(/^polar_oat_/, "Must be valid Polar access token (polar_oat_*)")
 
 /**
  * Custom validators for domain configuration
@@ -117,10 +115,11 @@ export const serverSchema = {
   STRIPE_CLIENT_ID: z.string().optional(), // Stripe Connect Client ID (ca_xxx)
   STRIPE_CLIENT_SECRET: z.string().optional(), // Platform API secret key
   STRIPE_REDIRECT_URI: z.string().optional(), // Optional, derived from baseUrl
-  // Flowglad billing/payment integration
+  // Polar.sh billing/payment integration (Merchant of Record)
   // REQUIRED in production/staging, optional in local dev (ALIVE_ENV=local)
-  // Validated at runtime by getFlowgladSecretKey() helper
-  FLOWGLAD_SECRET_KEY: flowgladSecretKey.optional(),
+  // Validated at runtime by getPolarAccessToken() helper
+  POLAR_ACCESS_TOKEN: polarAccessToken.optional(),
+  POLAR_WEBHOOK_SECRET: z.string().min(1, "Polar webhook secret must not be empty").optional(),
   LINEAR_CLIENT_ID: z.string().optional(),
   LINEAR_CLIENT_SECRET: z.string().optional(),
   LINEAR_REDIRECT_URI: z.string().optional(),
@@ -238,7 +237,8 @@ export const runtimeEnv = {
   STRIPE_CLIENT_ID: process.env.STRIPE_CLIENT_ID,
   STRIPE_CLIENT_SECRET: process.env.STRIPE_CLIENT_SECRET,
   STRIPE_REDIRECT_URI: process.env.STRIPE_REDIRECT_URI,
-  FLOWGLAD_SECRET_KEY: process.env.FLOWGLAD_SECRET_KEY,
+  POLAR_ACCESS_TOKEN: process.env.POLAR_ACCESS_TOKEN,
+  POLAR_WEBHOOK_SECRET: process.env.POLAR_WEBHOOK_SECRET,
   LINEAR_CLIENT_ID: process.env.LINEAR_CLIENT_ID,
   LINEAR_CLIENT_SECRET: process.env.LINEAR_CLIENT_SECRET,
   LINEAR_REDIRECT_URI: process.env.LINEAR_REDIRECT_URI,

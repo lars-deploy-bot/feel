@@ -13,6 +13,7 @@ import { sdkLogsRoutes } from "./manager/sdk-logs/sdk-logs.routes"
 import { templatesRoutes } from "./manager/templates/templates.routes"
 import { transfersRoutes } from "./manager/transfers/transfers.routes"
 import { usersRoutes } from "./manager/users/users.routes"
+import { polarRoutes } from "./polar/polar.routes"
 import { voiceRoutes } from "./voice/voice.routes"
 
 /**
@@ -53,6 +54,9 @@ export function buildRoutes(): OpenAPIHono<AppBindings> {
   voice.use("/*", authMiddleware)
   voice.route("/", voiceRoutes)
   apiGroup.route("/voice", voice)
+
+  // Polar billing routes — webhook is public, checkout/portal/billing use web app session auth
+  apiGroup.route("/polar", polarRoutes)
 
   apiGroup.route("/manager", manager)
 

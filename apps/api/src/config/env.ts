@@ -1,4 +1,4 @@
-import { e2bApiKey, supabaseSecretKey, supabaseUrl } from "@webalive/env"
+import { e2bApiKey, polarAccessToken, supabaseSecretKey, supabaseUrl } from "@webalive/env"
 import { z } from "zod"
 
 const envSchema = z.object({
@@ -13,6 +13,11 @@ const envSchema = z.object({
   POSTHOG_API_KEY: z.string().min(1),
   POSTHOG_HOST: z.string().url(),
   POSTHOG_PROJECT_ID: z.coerce.number().int().positive(),
+  // Polar.sh billing — REQUIRED, fail fast if not set
+  POLAR_ACCESS_TOKEN: polarAccessToken,
+  POLAR_WEBHOOK_SECRET: z.string().min(1),
+  // JWT — REQUIRED for verifying user session cookies from the web app
+  JWT_SECRET: z.string().min(1),
 })
 
 export type EnvConfig = z.infer<typeof envSchema>

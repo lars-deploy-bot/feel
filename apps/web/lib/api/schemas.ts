@@ -1711,6 +1711,51 @@ export const apiSchemas = {
       language: z.string().nullable(),
     }),
   },
+
+  // ---------------------------------------------------------------------------
+  // Polar billing (proxied to apps/api via Next.js rewrite)
+  // ---------------------------------------------------------------------------
+
+  "polar/billing": {
+    res: z.object({
+      subscription: z
+        .object({
+          id: z.string(),
+          status: z.string(),
+          productId: z.string(),
+          currentPeriodEnd: z.string().nullable(),
+        })
+        .nullable(),
+      products: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          description: z.string().nullable(),
+          isRecurring: z.boolean(),
+          prices: z.array(
+            z.object({
+              id: z.string(),
+              amountType: z.string(),
+              priceAmount: z.number().nullable(),
+              priceCurrency: z.string().nullable(),
+            }),
+          ),
+        }),
+      ),
+      portalUrl: z.string().nullable(),
+    }),
+  },
+
+  "polar/checkout": {
+    req: z
+      .object({
+        productId: z.string().min(1),
+      })
+      .brand<"PolarCheckoutRequest">(),
+    res: z.object({
+      url: z.string().url(),
+    }),
+  },
 } as const
 
 // ============================================================================

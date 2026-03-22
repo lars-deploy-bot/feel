@@ -1,12 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
-import {
-  ApplicationZ,
-  BuildZ,
-  CreateBuildBodyZ,
-  CreateDeploymentBodyZ,
-  DEPLOY_DEPLOYMENT_ACTION_DEPLOY,
-  DeploymentZ,
-} from "@webalive/database"
+import { ApplicationZ, BuildZ, CreateBuildBodyZ, CreateDeploymentBodyZ, DeploymentZ } from "@webalive/database"
 import type { AppBindings } from "../../../types/hono"
 import { listDeployApplications, queueBuild, queueDeployment, readBuildLog, readDeploymentLog } from "./deploys.service"
 

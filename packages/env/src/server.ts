@@ -172,26 +172,34 @@ export function getSuperadminEmails(): readonly string[] {
 }
 
 /**
- * Get Flowglad secret key with environment-aware validation
+ * Get Polar access token with environment-aware validation.
  *
- * - Production/Staging: FLOWGLAD_SECRET_KEY is REQUIRED (throws if missing)
+ * - Production/Staging: POLAR_ACCESS_TOKEN is REQUIRED (throws if missing)
  * - Local dev (ALIVE_ENV=local): Returns undefined (billing features disabled)
- *
- * This ensures billing integration works in deployed environments while
- * allowing local development without Flowglad credentials.
  */
-export function getFlowgladSecretKey(): string | undefined {
-  const secretKey = env.FLOWGLAD_SECRET_KEY
+export function getPolarAccessToken(): string | undefined {
+  const token = env.POLAR_ACCESS_TOKEN
   const isLocalDev = env.ALIVE_ENV === "local" || env.ALIVE_ENV === "standalone"
 
-  if (!secretKey && !isLocalDev) {
+  if (!token && !isLocalDev) {
     throw new Error(
-      "FLOWGLAD_SECRET_KEY is required in production/staging. " +
-        "Set FLOWGLAD_SECRET_KEY environment variable (sk_test_* or sk_live_*) or use ALIVE_ENV=local for development.",
+      "POLAR_ACCESS_TOKEN is required in production/staging. " +
+        "Set POLAR_ACCESS_TOKEN environment variable (polar_oat_*) or use ALIVE_ENV=local for development.",
     )
   }
 
-  return secretKey
+  return token
+}
+
+/**
+ * Get Polar webhook secret (required when handling webhooks).
+ */
+export function getPolarWebhookSecret(): string {
+  const secret = env.POLAR_WEBHOOK_SECRET
+  if (!secret) {
+    throw new Error("POLAR_WEBHOOK_SECRET is required. Set the POLAR_WEBHOOK_SECRET environment variable.")
+  }
+  return secret
 }
 
 /**

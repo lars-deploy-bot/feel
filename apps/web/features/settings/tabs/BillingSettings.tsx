@@ -1,15 +1,19 @@
 "use client"
 
-import { useBilling } from "@flowglad/nextjs"
+import { useQuery } from "@tanstack/react-query"
 import { ExternalLink } from "lucide-react"
 import { Component, type ErrorInfo, type ReactNode, useEffect, useState } from "react"
+import toast from "react-hot-toast"
+import { getty, postty } from "@/lib/api/api-client"
+import type { Res } from "@/lib/api/schemas"
+import { validateRequest } from "@/lib/api/schemas"
 import { useCredits, useCreditsError, useCreditsLoading, useUserActions } from "@/lib/providers/UserStoreProvider"
 import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
 import { smallButton, text } from "../styles"
 import { SettingsTabLayout } from "./SettingsTabLayout"
 
 // ---------------------------------------------------------------------------
-// Flowglad error boundary — billing SDK errors shouldn't crash settings
+// Error boundary — billing errors shouldn't crash settings
 // ---------------------------------------------------------------------------
 
 class BillingErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -43,11 +47,10 @@ function formatPrice(cents: number, currency: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Inner billing content (uses useBilling hook)
+// Inner billing content
 // ---------------------------------------------------------------------------
 
 function BillingContent() {
-  const billing = useBilling()
   const credits = useCredits()
   const creditsLoading = useCreditsLoading()
   const creditsError = useCreditsError()
@@ -59,42 +62,43 @@ function BillingContent() {
     if (workspace) fetchCredits(workspace)
   }, [fetchCredits, workspace])
 
-  // --- Derived billing state (safe when not loaded yet) ---
-  const billingLoaded = billing.loaded
-  const sub = billingLoaded ? billing.currentSubscription : null
-  const planName = sub?.name ?? "Free"
-  const isFreePlan = sub?.isFreePlan ?? true
+  // Fetch billing state from Polar via our API
+  const {
+    data: billing,
+    isLoading: billingLoading,
+    isError: billingError,
+  } = useQuery<Res<"polar/billing">>({
+    queryKey: ["polar-billing"],
+    queryFn: () => getty("polar/billing"),
+    staleTime: 60_000,
+    retry: 1,
+  })
+
+  const billingLoaded = !billingLoading && !billingError && billing != null
+  const sub = billing?.subscription
+  const hasSub = sub != null
+  const planName = hasSub ? "Pro" : "Free"
   const planStatus = sub?.status ?? "active"
 
-  const upgradeProduct = billingLoaded
-    ? billing.pricingModel?.products?.find(p => !p.default && p.active && p.defaultPrice?.type === "subscription")
-    : null
+  const subscriptionProduct = billing?.products.find(p => p.isRecurring)
+  const topUpProduct = billing?.products.find(p => !p.isRecurring)
 
-  const topUpProduct = billingLoaded
-    ? billing.pricingModel?.products?.find(p => !p.default && p.defaultPrice?.type === "single_payment")
-    : null
-
-  const handleCheckout = async (priceId: string) => {
-    if (!billingLoaded || !billing.createCheckoutSession) return
+  const handleCheckout = async (productId: string) => {
     setIsCheckingOut(true)
     try {
-      const result = await billing.createCheckoutSession({
-        priceId,
-        successUrl: `${window.location.origin}/chat?upgraded=true`,
-        cancelUrl: window.location.href,
-        autoRedirect: true,
-      })
-      if (result && "url" in result && result.url) {
-        window.location.href = result.url
+      const validated = validateRequest("polar/checkout", { productId })
+      const data = await postty("polar/checkout", validated)
+      if (data.url) {
+        window.location.href = data.url
       }
-    } catch (err) {
-      console.error("Checkout failed:", err)
+    } catch {
+      toast.error("Checkout failed — please try again")
     } finally {
       setIsCheckingOut(false)
     }
   }
 
-  // --- Credits display (available immediately, independent of Flowglad) ---
+  // Credits display (independent of Polar)
   const creditsValue = creditsLoading ? null : creditsError ? null : credits
   const isLow = creditsValue != null && creditsValue < 5
 
@@ -102,7 +106,7 @@ function BillingContent() {
     <SettingsTabLayout title="Billing" description="Plan, credits, and payment">
       <div className="space-y-5">
         {/* ================================================================
-            PLAN — skeleton while Flowglad loads, real data after
+            PLAN
             ================================================================ */}
         {!billingLoaded ? (
           <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] p-5">
@@ -116,7 +120,7 @@ function BillingContent() {
                 <p className="text-xs font-medium uppercase tracking-wider text-black/40 dark:text-white/40">Plan</p>
                 <div className="flex items-center gap-2.5 mt-1.5">
                   <span className="text-xl font-semibold text-black/90 dark:text-white/90">{planName}</span>
-                  {isFreePlan ? (
+                  {!hasSub ? (
                     <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full bg-black/[0.05] dark:bg-white/[0.05] text-black/40 dark:text-white/40">
                       Free
                     </span>
@@ -135,8 +139,8 @@ function BillingContent() {
                   )}
                 </div>
               </div>
-              {billing.billingPortalUrl && (
-                <a href={billing.billingPortalUrl} target="_blank" rel="noopener noreferrer" className={smallButton}>
+              {billing.portalUrl && (
+                <a href={billing.portalUrl} target="_blank" rel="noopener noreferrer" className={smallButton}>
                   Manage
                   <ExternalLink size={11} className="ml-1.5 opacity-40" />
                 </a>
@@ -144,18 +148,19 @@ function BillingContent() {
             </div>
 
             {/* Upgrade nudge — only when credits are running low */}
-            {isFreePlan && isLow && upgradeProduct?.defaultPrice && (
+            {!hasSub && isLow && subscriptionProduct && (
               <div className="mt-4 pt-4 border-t border-black/[0.05] dark:border-white/[0.05] flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-black/80 dark:text-white/80">Need more credits?</p>
                   <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">
-                    {upgradeProduct.name} \u00b7{" "}
-                    {formatPrice(upgradeProduct.defaultPrice.unitPrice, upgradeProduct.defaultPrice.currency)}/mo
+                    {subscriptionProduct.name}
+                    {subscriptionProduct.prices[0]?.priceAmount != null &&
+                      ` \u00b7 ${formatPrice(subscriptionProduct.prices[0].priceAmount, subscriptionProduct.prices[0].priceCurrency ?? "usd")}/mo`}
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleCheckout(upgradeProduct.defaultPrice!.id)}
+                  onClick={() => handleCheckout(subscriptionProduct.id)}
                   disabled={isCheckingOut}
                   className="inline-flex items-center justify-center h-9 px-5 bg-black dark:bg-white text-white dark:text-black text-sm font-medium rounded-xl hover:brightness-[0.85] active:brightness-75 active:scale-[0.98] transition-all duration-150 disabled:opacity-30"
                 >
@@ -167,7 +172,7 @@ function BillingContent() {
         )}
 
         {/* ================================================================
-            CREDITS — renders immediately, no Flowglad dependency
+            CREDITS
             ================================================================ */}
         <div
           className={`rounded-2xl border p-5 animate-in fade-in-0 slide-in-from-left-2 duration-200 ${
@@ -189,10 +194,10 @@ function BillingContent() {
               </div>
               {isLow && <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Running low</p>}
             </div>
-            {topUpProduct?.defaultPrice ? (
+            {topUpProduct ? (
               <button
                 type="button"
-                onClick={() => handleCheckout(topUpProduct.defaultPrice!.id)}
+                onClick={() => handleCheckout(topUpProduct.id)}
                 disabled={isCheckingOut}
                 className={
                   isLow
@@ -202,7 +207,7 @@ function BillingContent() {
               >
                 {isCheckingOut
                   ? "..."
-                  : `Buy credits \u00b7 ${formatPrice(topUpProduct.defaultPrice.unitPrice, topUpProduct.defaultPrice.currency)}`}
+                  : `Buy credits${topUpProduct.prices[0]?.priceAmount != null ? ` \u00b7 ${formatPrice(topUpProduct.prices[0].priceAmount, topUpProduct.prices[0].priceCurrency ?? "usd")}` : ""}`}
               </button>
             ) : !billingLoaded ? (
               <div className="h-8 w-28 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] animate-pulse" />

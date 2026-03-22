@@ -1,6 +1,6 @@
 "use client"
 
-import { type ClipboardEvent, useEffect, useRef } from "react"
+import { type ClipboardEvent, useEffect, useLayoutEffect, useRef } from "react"
 import { useLLMActions } from "@/lib/stores/llmStore"
 import { useChatInput } from "./ChatInputContext"
 import { useSkillMention } from "./hooks/useSkillMention"
@@ -47,7 +47,9 @@ export function InputArea() {
     }
   }
 
-  useEffect(() => {
+  // useLayoutEffect: measure and resize BEFORE paint so the user never sees
+  // the textarea flash at minHeight then jump to the correct height.
+  useLayoutEffect(() => {
     if (textareaRef.current) {
       const minHeightPx = parseInt(config.minHeight ?? "80px", 10)
       // Default max height is 2x min height for auto-grow
