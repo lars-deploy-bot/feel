@@ -20,13 +20,12 @@ const consumeCancelIntentByRequestIdMock = vi.fn()
 
 const fetchOAuthTokensMock = vi.fn()
 const fetchUserEnvKeysMock = vi.fn()
-const createRLSAppClientMock = vi.fn()
-const createAppClientMock = vi.fn()
+const fetchFullDomainRecordMock = vi.fn()
+const getOrgCreditsByOrgIdMock = vi.fn()
 
 const createRequestLoggerMock = vi.fn()
 const resolveWorkspaceMock = vi.fn()
 const getValidAccessTokenMock = vi.fn()
-const getOrgCreditsMock = vi.fn()
 const addCorsHeadersMock = vi.fn()
 const runAgentChildMock = vi.fn()
 const createNDJSONStreamMock = vi.fn()
@@ -194,16 +193,12 @@ vi.mock("@/lib/stream/stream-buffer", () => ({
   errorStreamBuffer: (...args: unknown[]) => errorStreamBufferMock(...args),
 }))
 
-vi.mock("@/lib/supabase/app", () => ({
-  createAppClient: (...args: unknown[]) => createAppClientMock(...args),
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  fetchFullDomainRecord: (...args: unknown[]) => fetchFullDomainRecordMock(...args),
 }))
 
-vi.mock("@/lib/supabase/server-rls", () => ({
-  createRLSAppClient: (...args: unknown[]) => createRLSAppClientMock(...args),
-}))
-
-vi.mock("@/lib/tokens", () => ({
-  getOrgCredits: (...args: unknown[]) => getOrgCreditsMock(...args),
+vi.mock("@/lib/credits/supabase-credits", () => ({
+  getOrgCreditsByOrgId: (...args: unknown[]) => getOrgCreditsByOrgIdMock(...args),
 }))
 
 vi.mock("@/lib/workspace-execution/agent-child-runner", () => ({
@@ -271,20 +266,6 @@ function createSuccessfulStream(): ReadableStream<Uint8Array> {
       controller.close()
     },
   })
-}
-
-function createMockDomainClient() {
-  return {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(async () => ({
-            data: { domain_id: "domain-1", hostname: "demo.test.example", port: 3777 },
-          })),
-        })),
-      })),
-    })),
-  }
 }
 
 async function readErrorPayload(response: Response): Promise<{
@@ -360,7 +341,18 @@ describe("POST /api/claude/stream cleanup", () => {
 
     resolveWorkspaceMock.mockResolvedValue({ success: true, workspace: "/tmp" })
     getValidAccessTokenMock.mockResolvedValue({ accessToken: "oauth-token", refreshed: false })
-    getOrgCreditsMock.mockResolvedValue(10)
+    fetchFullDomainRecordMock.mockResolvedValue({
+      domain_id: "domain-1",
+      hostname: "demo.test.example",
+      port: 3777,
+      is_test_env: null,
+      test_run_id: null,
+      execution_mode: "systemd",
+      sandbox_id: null,
+      sandbox_status: null,
+      org_id: "org-1",
+    })
+    getOrgCreditsByOrgIdMock.mockResolvedValue(10)
 
     createStreamBufferMock.mockResolvedValue(undefined)
     errorStreamBufferMock.mockResolvedValue(undefined)
@@ -369,9 +361,6 @@ describe("POST /api/claude/stream cleanup", () => {
 
     fetchOAuthTokensMock.mockResolvedValue({ tokens: {}, warnings: [] })
     fetchUserEnvKeysMock.mockResolvedValue({ envKeys: {} })
-
-    createRLSAppClientMock.mockResolvedValue(createMockDomainClient())
-    createAppClientMock.mockResolvedValue(createMockDomainClient())
 
     createRequestLoggerMock.mockReturnValue({
       log: vi.fn(),
@@ -399,8 +388,8 @@ describe("POST /api/claude/stream cleanup", () => {
   })
 
   it("unregisters cancellation and unlocks when AuthenticationError happens after lock", async () => {
-    sessionStoreGetMock.mockResolvedValueOnce(null)
-    fetchOAuthTokensMock.mockRejectedValueOnce(new AuthenticationError("Authentication required"))
+    // AuthenticationError from session store still propagates (not caught by Promise.allSettled)
+    sessionStoreGetMock.mockRejectedValueOnce(new AuthenticationError("Authentication required"))
 
     const res = await POST(createRequest())
     const payload = await readErrorPayload(res)
@@ -409,7 +398,8 @@ describe("POST /api/claude/stream cleanup", () => {
     expect(payload.error).toBe(ErrorCodes.NO_SESSION)
     expect(tryLockConversationMock).toHaveBeenCalledOnce()
     expectCancellationRegisteredOnce()
-    expectCleanupCalledOnce("Authentication required")
+    // Session lookup failure wraps the message
+    expectCleanupCalledOnce(expect.stringContaining("Authentication required"))
     expectCleanupOrder()
     expect(addCorsHeadersMock).toHaveBeenCalled()
   })
@@ -460,18 +450,18 @@ describe("POST /api/claude/stream cleanup", () => {
     expectCleanupOrder()
   })
 
-  it("uses Unknown error fallback for non-Error failures after lock", async () => {
-    sessionStoreGetMock.mockResolvedValueOnce(null)
-    fetchOAuthTokensMock.mockRejectedValueOnce("boom")
+  it("wraps non-Error session lookup failures in error message", async () => {
+    // Non-Error rejection from session store gets wrapped as [SESSION LOOKUP FAILED]
+    sessionStoreGetMock.mockRejectedValueOnce("boom")
 
     const res = await POST(createRequest())
     const payload = await readErrorPayload(res)
 
     expect(res.status).toBe(500)
     expect(payload.error).toBe(ErrorCodes.REQUEST_PROCESSING_FAILED)
-    expect(payload.message).toBe("Unknown error")
+    expect(payload.message).toBe("[SESSION LOOKUP FAILED] boom")
     expectCancellationRegisteredOnce()
-    expectCleanupCalledOnce("Unknown error")
+    expectCleanupCalledOnce("[SESSION LOOKUP FAILED] boom")
     expectCleanupOrder()
   })
 
@@ -520,8 +510,9 @@ describe("POST /api/claude/stream cleanup", () => {
     expect(unregisterCancellationMock).toHaveBeenCalledWith("req-123")
     expect(unlockConversationMock).toHaveBeenCalledWith(SESSION_KEY)
 
-    expect(createStreamBufferMock).not.toHaveBeenCalled()
-    expect(sessionStoreGetMock).not.toHaveBeenCalled()
+    // Note: createStreamBuffer and sessionStoreGet run in parallel with cancel intent
+    // in Phase 4, so they ARE called but the route short-circuits after unpacking results.
+    // The important assertion is that no error buffer cleanup ran.
     expect(errorStreamBufferMock).not.toHaveBeenCalled()
   })
 

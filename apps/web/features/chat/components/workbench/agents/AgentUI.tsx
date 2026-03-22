@@ -100,19 +100,15 @@ export function ActionButton({
   )
 }
 
-export function AgentNav({
-  view,
-  hasSelected,
-  onNavigate,
-  onNewAgent,
-  newAgentLoading,
-}: {
+interface AgentNavProps {
   view: AgentView
   hasSelected: boolean
   onNavigate: (kind: AgentView["kind"]) => void
   onNewAgent?: () => void
   newAgentLoading?: boolean
-}) {
+}
+
+export function AgentNav({ view, hasSelected, onNavigate, onNewAgent, newAgentLoading }: AgentNavProps) {
   const tabs: { kind: AgentView["kind"]; label: string; enabled: boolean }[] = [
     { kind: "list", label: "Overview", enabled: true },
     { kind: "detail", label: "Detail", enabled: hasSelected },
@@ -146,6 +142,7 @@ export function AgentNav({
           type="button"
           onClick={onNewAgent}
           disabled={newAgentLoading}
+          aria-label={newAgentLoading ? "Creating new agent" : "New agent"}
           className="ml-auto h-7 w-7 flex items-center justify-center rounded-md text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-colors disabled:opacity-40"
           title="New agent"
         >

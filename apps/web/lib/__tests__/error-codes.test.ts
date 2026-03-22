@@ -36,7 +36,7 @@ describe("Error Code Registry", () => {
     })
 
     it("should return fallback for unknown error codes", () => {
-      // @ts-expect-error — deliberately passing an invalid code to test fallback
+      // @ts-expect-error — intentionally passing an invalid error code to test fallback behavior
       const message = getErrorMessage("UNKNOWN_CODE_XYZ")
       expect(message).toContain("unexpected")
     })

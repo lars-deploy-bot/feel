@@ -61,7 +61,7 @@ Use the `/roadmap` skill to manage issues, milestones, and the project board. Th
 6. **CADDYFILE IS LARGE** - The generated sites file at `/root/webalive/alive/ops/caddy/generated/Caddyfile.sites` (synced from `/var/lib/alive/generated/Caddyfile.sites`) is too large to read in one go. Use `Read` with `offset` and `limit` parameters, or use `Grep` to find specific domain configurations.
 7. **OWN YOUR CHANGES** - When deploying or committing, NEVER say "these unrelated changes are not mine" or refuse to include changes in the working directory. If changes exist, they are part of the current work. Take responsibility and include them.
 8. **SEEMINGLY UNRELATED ISSUES ARE OFTEN RELATED** - When you see multiple errors or issues, assume they share a common cause until proven otherwise. Type errors in test files often stem from the same interface change. Build failures across packages usually have one root cause. Don't treat each error as isolated - find the pattern first.
-9. **INVESTIGATE BEFORE FIXING** - When something is "broken", first understand what it IS. Not all `*.alive.best` domains are Vite websites. Check nginx config, caddy-shell config, and existing services before creating anything new.
+9. **INVESTIGATE BEFORE FIXING** - When something is "broken", first understand what it IS. Not all `*.alive.best` domains are Vite websites. Check caddy config, caddy-shell config, and existing services before creating anything new.
 10. **DEPLOYMENTS REQUIRE NOHUP** - When deploying staging/production, ALWAYS use `nohup make staging > /tmp/staging-deploy.log 2>&1 &` (never bare `make staging`). If your chat session disconnects or you cancel, bare commands leave orphaned build processes that stack up and crash production. Check `tail -f /tmp/staging-deploy.log` for progress. NEVER run deployment commands multiple times - wait for the first to complete.
 11. **ONE DEPLOYMENT AT A TIME** - Before starting any deployment, check if one is already running: `make deploy-status`. If a deployment is running, WAIT. Do not start another. Stacked deployments cause memory exhaustion and production outages.
 12. **CLEAN BEFORE DEPLOY** - Before ANY deployment, check for orphaned processes: `ps aux | grep -E "make|ship|turbo|next build" | grep -v grep`. If you see old ones, kill them: `pkill -9 -f "ship.sh|build-and-serve|turbo|next build"` and remove stale lock: `rm -f /tmp/alive-deploy.lock`. Only then deploy.
@@ -87,35 +87,24 @@ Use the `/roadmap` skill to manage issues, milestones, and the project board. Th
 
 ## E2B Sandbox Migration (ACTIVE)
 
-We are moving to **E2B sandboxes** for site execution. Self-hosted E2B at `e2b.sonno.tech`. This will be aggressive — not a gentle migration with compatibility layers. The codebase will split between the current systemd approach and the new E2B approach as we figure out what needs to change.
+Migrating site execution from systemd to **E2B sandboxes**. Self-hosted E2B at `e2b.sonno.tech`. The codebase currently has both paths — systemd (legacy, still serving all live sites) and E2B (new, being wired up).
 
-**Experiment:** `apps/experimental/e2b-test/` — basic smoke test validating sandbox creation, commands, and file I/O.
+**Architecture:**
+- `packages/sandbox/` — Core package: `SandboxManager` (create/connect/pause/resume/kill), `SandboxSessionRegistry` (session caching + Supabase persistence), file sync, MCP tools, domain runtime facades
+- `apps/e2b-terminal/` — PTY bridge server (port 5075), accessed via `go.alive.best:8443/e2b/*` through caddy-shell
+- `apps/web/app/api/sandbox/ensure/` — API endpoint to ensure sandbox is ready for a domain
+- `apps/web/features/workspace/hooks/useSandboxEnsure.ts` — Frontend hook, fires on workspace change (fire-and-forget)
+- `apps/web/lib/sandbox/session-registry.ts` — Singleton registry backed by Supabase `app.domains` table (`sandbox_id`, `sandbox_status` columns)
 
-## Learn from OpenClaw (IMPORTANT)
+**Sandbox lifecycle:** `creating` → `running` → `paused` (30-day timeout) → `dead` (on failure). Sandboxes are keyed by `domain_id`. First create syncs host workspace files (500 files max, 10MB total, 1MB per file), installs deps, starts dev server. Reconnect reuses existing sandbox — does NOT resync.
 
-**OpenClaw** (formerly ClawdBot) is installed at `/opt/services/clawdbot/`. It's a well-architected open-source AI assistant with battle-tested patterns.
+**Critical rule:** NEVER delete/reset `sandbox_id` from the DB. The sandbox IS the user's filesystem after first sync.
 
-**When building new features, ALWAYS check OpenClaw first:**
-```bash
-# Search for relevant patterns
-ls /opt/services/clawdbot/src/
-grep -r "your-feature" /opt/services/clawdbot/src/
-```
+**Experiment:** `apps/experimental/e2b-test/` — original smoke test (still exists, superseded by `packages/sandbox/`).
 
-**Patterns we've already adopted:**
-- `proper-lockfile` for file-based locking (OAuth refresh)
-- `retryAsync` with exponential backoff and jitter (`@webalive/shared`)
-- `createDedupeCache` for TTL-based deduplication (`@webalive/shared`)
-- OAuth token auto-refresh with 5-minute buffer
+## Learn from OpenClaw
 
-**Patterns worth exploring:**
-- `/opt/services/clawdbot/src/security/external-content.ts` - Prompt injection protection for webhooks
-- `/opt/services/clawdbot/src/security/audit.ts` - Security audit system with findings/remediation
-- `/opt/services/clawdbot/src/infra/` - Infrastructure utilities (ports, restart, ssh-tunnel, etc.)
-- `/opt/services/clawdbot/src/memory/` - Embeddings and vector search for conversation memory
-- `/opt/services/clawdbot/src/sessions/` - Session management patterns
-
-**The goal:** Don't reinvent. When you need retry logic, deduplication, rate limiting, security patterns, or infrastructure utilities - check OpenClaw first. Copy what works, adapt to our architecture.
+**OpenClaw** at `/opt/services/clawdbot/` — check it before building new patterns. We already adopted: `proper-lockfile`, `retryAsync`, `createDedupeCache`, OAuth token auto-refresh. When you need retry logic, deduplication, rate limiting, or security patterns — `grep -r "your-feature" /opt/services/clawdbot/src/` first.
 
 ## Special Domains (NOT websites)
 
@@ -123,45 +112,22 @@ These domains are **NOT** Vite website templates. Do not deploy them as sites:
 
 | Domain | What it is | Service | Port | Routing |
 |--------|-----------|---------|------|---------|
-| `go.alive.best` | Go shell-server | `shell-server-go.service` | 3888 | nginx → caddy-shell (8443) → 3888 |
-**Nginx SNI routing**: These domains route through `caddy-shell` (not main Caddy) for SSE/WebSocket isolation. Config: `/etc/nginx/nginx.conf` and `/etc/caddy/caddy-shell.Caddyfile`.
+| `go.alive.best` | Go shell-server | `shell-server-go.service` | 3888 | caddy-shell (8443) → 3888 |
+| `go.alive.best/e2b/*` | E2B PTY bridge | `e2b-terminal` | 5075 | caddy-shell (8443) → 5075 |
+
+**caddy-shell** runs as a separate Caddy instance on port 8443 for SSE/WebSocket isolation. Config: `/etc/caddy/Caddyfile.shell` (generated at `/var/lib/alive/generated/Caddyfile.shell`). **nginx is configured but NOT running** — Caddy handles all routing directly.
 
 ## Architecture Smell Detector
 
-**ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
-   - Adding more tools/features to solve a problem (instead of one core constraint)
-   - "Let the AI figure it out" instead of clear success criteria
-   - Flexibility/options when opinionated defaults would work
-   - Integrating everything instead of doing one thing exceptionally well
-   - Complex autonomy when simple rules would suffice
-   - Building for "power users" that don't exist yet
-   - Asking users what they want instead of telling them how it works
+**Core constraint: Agents do what they promise. No mistakes.** Can't promise what it can't verify. Must know when to STOP. Small scope = verifiable scope.
 
-   **What winners did:**
-   - Linear: speed as the constraint. Everything keyboard-first, opinionated, no plugins.
-   - Figma: multiplayer as the constraint. Every feature designed for "5 people in this file."
-   - Superhuman: $30/mo email with NO features. Just fast. Trained users how to use it.
-   - Discord: communities as the constraint. Servers/roles, not "workplace collaboration."
+Warn on these anti-patterns: adding features instead of constraints, "let the AI figure it out" instead of clear success criteria, flexibility when opinionated defaults work, building for power users that don't exist yet.
 
-   **The pattern:** Strong opinions, great defaults, ONE core constraint that drives every decision.
-
-   **Our core constraint: Agents do what they promise. No mistakes.**
-   - Can't promise what it can't verify
-   - Must know when to STOP, not try and break things
-   - Small scope = verifiable scope
-
-   If you spot the anti-patterns, say: **"⚠️ Architecture smell: [pattern]. Does this help agents do exactly what they promise, or does it add ways to fail?"**
+If you spot them: **"⚠️ Architecture smell: [pattern]. Does this help agents do exactly what they promise, or does it add ways to fail?"**
 
 ## Project Overview
 
-Alive is a **multi-tenant development platform** that enables Claude AI to assist with website development through controlled file system access. Key characteristics:
-
-- **Multi-tenant architecture**: Each domain gets isolated workspace
-- **Security-first design**: Workspace sandboxing, systemd isolation, process separation
-- **TURBOREPO Next.js 16 + React 19**: Modern App Router architecture using **Turborepo** for building and deploying the project.
-- **NDJSON streaming**: Real-time Claude responses via HTTP chunked transfer (application/x-ndjson)
-- **Tool-based interaction**: Limited to safe file operations (Read, Write, Edit, Glob, Grep)
-- **Superadmin access**: Users in `SUPERADMIN_EMAILS` env var can edit this repo via the frontend (workspace: `alive`, runs as root, all tools enabled)
+Alive is a **multi-tenant development platform** — Claude AI assists with website development through sandboxed file system access. Each domain gets an isolated workspace. Turborepo + Next.js 16 + React 19. NDJSON streaming for real-time responses. Superadmin users (`SUPERADMIN_EMAILS`) can edit this repo via the frontend (workspace: `alive`, runs as root).
 
 ## Monorepo Structure
 
@@ -172,12 +138,14 @@ Alive is a **multi-tenant development platform** that enables Claude AI to assis
 | `web` | 8997/9000 | Next.js monolith: Chat UI, Claude API, file ops, auth, deployments |
 | `api` | 5080 | Hono on Bun. Standalone API — gradually taking over routes from `web` |
 | `manager` | 5090 | React + Vite admin dashboard. Frontend for `api` |
-| `shell-server-go` | - | Go rewrite of shell-server (WIP) |
-| `preview-proxy` | configurable | Go preview proxy for workspace preview subdomains |
+| `shell-server-go` | 3888 | Go shell-server for `go.alive.best` |
+| `preview-proxy` | 5055 | Go preview proxy for workspace preview subdomains |
 | `worker` | 5070 | Automation scheduler + executor (standalone Bun, survives web deploys) |
 | `deployer-rs` | 5095 | Rust deploy worker: builds, releases, deployments. Health API on localhost |
-| `image-processor` | 5012 | Python/FastAPI image manipulation service |
-| `mcp-servers/google-scraper` | - | MCP server for Google Maps business search |
+| `image-processor` | 5012 | Python/FastAPI image manipulation service (Docker, not systemd) |
+| `e2b-terminal` | 5075 | E2B PTY bridge server for sandbox terminal access |
+| `widget-server` | - | Go widget server |
+| `mcp/*` | - | MCP servers: browser-control (5061), gmail, google-calendar, google-search-console, ocr, outlook, stealth-request |
 
 #### API Migration (In Progress)
 
@@ -208,6 +176,11 @@ We're slowly decoupling from the Next.js monolith (`apps/web`) into a standalone
 | `@alive-game/alive-tagger` | Vite plugin: injects source locations so Claude knows file:line from UI clicks |
 | `@webalive/automation-engine` | Automation claim/finish lifecycle, lease-based locking, run logs |
 | `@webalive/automation` | Cron expression parsing utilities |
+| `@webalive/sandbox` | E2B sandbox lifecycle management (create, connect, pause, resume, file sync) |
+| `@webalive/org` | Organization membership domain logic (permissions, invites, credits) |
+| `@webalive/runtime-auth` | Runtime auth with jose + zod |
+| `@webalive/tunnel` | Cloudflare Tunnel routing manager |
+| `@alive-brug/alrighty` | Type-safe API client with Zod validation |
 
 ### Request Flow (Claude Chat)
 
@@ -239,33 +212,9 @@ Tools validate paths via `isPathWithinWorkspace()` before any file operation.
 **Workspace locations:**
 - Sites: `/srv/webalive/sites/[domain]/` (systemd-managed, secure)
 
-**Path validation:**
-```typescript
-if (!isPathWithinWorkspace(filePath, workspacePath)) {
-  throw new Error('Path traversal attack detected')
-}
-```
-
 ### 2. Session Management
 
-**Pattern**: Each browser tab = one independent chat session. Sessions are keyed by `userId::workspace::tabGroupId::tabId`
-
-```typescript
-// Session key builder
-import { tabKey } from '@/features/auth/lib/sessionStore'
-const key = tabKey({ userId, workspace, tabGroupId, tabId })
-// → "userId::workspace::tabGroupId::tabId"
-// or with worktree: "userId::workspace::wt/<slug>::tabGroupId::tabId"
-
-// Session store interface
-interface SessionStore {
-  get(key: string): Promise<string | null>
-  set(key: string, value: string): Promise<void>
-  delete(key: string): Promise<void>
-}
-```
-
-**Implementation**: Supabase IAM-backed (`iam.sessions` table) with domain_id caching. Sessions persist across server restarts.
+Each browser tab = one independent chat session. Key format: `userId::workspace::tabGroupId::tabId` (or with worktree: `userId::workspace::wt/<slug>::tabGroupId::tabId`). Built via `tabKey()` from `@/features/auth/lib/sessionStore`. Backed by Supabase `iam.sessions` table.
 
 ### 3. Streaming Protocol (NDJSON)
 
@@ -276,47 +225,17 @@ Each line is a self-contained JSON object. Reconnection is handled manually via 
 
 ### 4. Conversation Locking
 
-**CRITICAL**: Prevent concurrent requests to same conversation
-
-```typescript
-import { tryLockConversation, unlockConversation } from '@/features/auth/lib/sessionStore'
-
-const locked = tryLockConversation(key)
-if (!locked) {
-  return res.status(409).json({ error: 'Conversation in progress' })
-}
-try {
-  // SDK query
-} finally {
-  unlockConversation(key)
-}
-```
+Use `tryLockConversation(key)` / `unlockConversation(key)` from `@/features/auth/lib/sessionStore`. Return 409 if already locked.
 
 ### 5. Model Selection & Credits
 
-**CRITICAL**: Credit users restricted to DEFAULT_MODEL for cost management.
-
-See [docs/architecture/credits-and-tokens.md](./docs/architecture/credits-and-tokens.md) for model enforcement patterns.
+Credit users restricted to `DEFAULT_MODEL`. See [docs/architecture/credits-and-tokens.md](./docs/architecture/credits-and-tokens.md).
 
 ## Development Guidelines
 
-### Security Guidelines
-
-**ALWAYS follow these security rules:**
-
-1. **Path Validation**: Use `isPathWithinWorkspace()` before any file operation
-2. **User Isolation**: New sites MUST use systemd deployment (dedicated users)
-3. **Tool Restrictions**: Only expose Read, Write, Edit, Glob, Grep to Claude
-4. **Session Security**: Never expose session keys in logs or responses
-5. **Password Storage**: User passwords in Supabase `iam.users.password_hash` (bcrypt)
-
 ### Code Style
 
-- **Formatting**: Use `bun run format` (Biome)
-- **Linting**: Use `bun run lint` (Biome)
-- **TypeScript**: Strict mode enabled, no implicit any
-- **React**: Use hooks, functional components only
-- **Error Handling**: Always catch and properly format errors for NDJSON stream
+Biome for formatting (`bun run format`) and linting (`bun run lint`). TypeScript strict mode. Errors in stream routes must be formatted as NDJSON messages, not thrown.
 
 ### Git Hooks (Husky)
 
@@ -325,17 +244,21 @@ See [docs/architecture/credits-and-tokens.md](./docs/architecture/credits-and-to
 #### Pre-Commit Hook
 - **What it does**:
   - Blocks `.env` files from being committed
+  - Syncs skills (`bun run sync:skills`) and stages `.agents/skills`
   - Formats only staged files using `lint-staged`
   - Runs type-check (`bun run type-check`)
 - **Speed**: Instant (only touches staged files)
 - **When it runs**: Every `git commit`
 
 #### Pre-Push Hook
-- **What it does**: Runs `bun run static-check` before allowing push
+- **What it does**: Syncs skills, checks for skill drift, then runs `bun run static-check`:
   - Turbo env validation (`bun run validate:turbo-env`)
   - Workspace contract validation (`bun run check:workspace-contract`)
+  - canUseTool dead code check (`bun run check:canUseTool-dead`)
+  - Env sync check (`bun run check:env-sync`)
   - Type checking (`turbo run type-check`)
   - Lint/format check-only (`turbo run ci`)
+  - Error pattern check (`check-error-patterns.ts`, `check-e2e-patterns.ts`, `check-test-assertions.sh`)
   - Core unit tests (`bun run test:core`)
 - **Speed**: 10-60 seconds (uses Turborepo cache)
 - **When it runs**: Every `git push`
@@ -351,56 +274,17 @@ Fix the errors, run `bun run static-check` locally to verify, commit fixes, and 
 
 ### Common Tasks
 
-#### Adding a New API Endpoint
+#### New API Endpoints
 
-1. Create route handler in `app/api/[name]/route.ts`
-2. Import and use `requireSessionUser()` from `@/features/auth/lib/auth` for authentication
-3. Validate workspace if file operations involved
-4. Return proper status codes (401, 400, 500, etc.)
-5. **Write tests in `app/api/[name]/__tests__/route.test.ts`** (MANDATORY!)
-   - See "When to Write Tests" section for minimum required tests
-   - File operations require additional security tests
+Auth: `requireSessionUser()` from `@/features/auth/lib/auth`. Tests: `app/api/[name]/__tests__/route.test.ts` (MANDATORY — auth, happy path, error case minimum).
 
-#### Modifying Claude Integration
+#### Config Migrations
 
-**Files to update:**
-- `apps/web/app/api/claude/stream/route.ts` - NDJSON streaming endpoint
-- `apps/web/lib/stream/ndjson-stream-handler.ts` - Stream parsing and buffering
-- `apps/web/lib/tools/register-tools.ts` - Tool configuration
-
-**Key considerations:**
-- Tool callbacks must handle workspace paths correctly
-- All tool operations must be logged
-- Errors should be streamed as NDJSON messages, not thrown
-
-#### Migrating Config Files
-
-**⚠️ CRITICAL**: Config/file migrations can break production. Always follow the safe migration guide.
-
-**Required reading**: [`docs/guides/safe-config-migration.md`](./docs/guides/safe-config-migration.md)
-
-**Quick checklist:**
-1. ✅ Document the migration plan
-2. ✅ Search for ALL references: `grep -r "old-file" .`
-3. ✅ Validate before deleting: `./scripts/validate-no-deleted-refs.sh old-file`
-4. ✅ Test service restarts: `systemctl restart alive-dev && journalctl -u alive-dev -n 20`
-5. ✅ Run full test suite: `bun run test && bun run e2e`
-
-**Never**:
-- ❌ Delete files before updating all references
-- ❌ Skip the validation script
-- ❌ Use dynamic requires in npm scripts: `$(node -p "require('./config').value")`
-
-**See also**: Postmortems in `docs/postmortems/` for past outage lessons.
+Read [`docs/guides/safe-config-migration.md`](./docs/guides/safe-config-migration.md) first. Use `./scripts/validate-no-deleted-refs.sh` before deleting anything. See `docs/postmortems/` for past outage lessons.
 
 #### Deploying a New Site
 
-**Site deployments use the `@webalive/site-controller` package with the Shell-Operator Pattern:**
-
-- **API**: `POST /api/deploy-subdomain` with `{ domain, email, password? }`, or use `SiteOrchestrator.deploy()` from `@webalive/site-controller`
-- **Creates**: systemd service (`site@slug.service`), dedicated user, workspace in `/srv/webalive/sites/`, auto-assigned port (3333-3999), Caddy config
-- **Architecture**: Shell-Operator Pattern — TS orchestrates, bash executes. 7 atomic phases with automatic rollback. File locking for concurrency.
-- **Docs**: `packages/site-controller/README.md`, `docs/architecture/README.md`
+`POST /api/deploy-subdomain` or `SiteOrchestrator.deploy()` from `@webalive/site-controller`. Creates systemd service, dedicated user, workspace, port (3333-3999), Caddy config. 7 atomic phases with rollback. Docs: `packages/site-controller/README.md`.
 
 #### Updating Caddy Configuration
 
@@ -420,104 +304,26 @@ systemctl reload caddy
 systemctl status caddy
 ```
 
-**Auto-sync architecture**: Main `/etc/caddy/Caddyfile` imports `/root/webalive/alive/ops/caddy/Caddyfile`, which in turn imports the generated routing file.
+**Auto-sync architecture**: Main `/etc/caddy/Caddyfile` imports four files directly: `Caddyfile.custom` (Let's Encrypt domains), `Caddyfile.internal` (generated site routing on `:8444`), `Caddyfile.prod` (app/mg/widget), `Caddyfile.staging` (staging/dev). The internal config uses a `map` directive to route `{host}` to site upstreams, with unmatched hosts falling through to the Go preview proxy on port 5055.
 
 **⚠️ CRITICAL: `tls force_automate`** — Every explicit `*.sonno.tech` domain block MUST include `tls force_automate`. Without it, Caddy v2.10.x silently fails to obtain certs due to a bug with `on_demand_tls` ([#6996](https://github.com/caddyserver/caddy/issues/6996)). The routing generator template already includes this — see `ops/caddy/README.md` for details.
 
-## Testing Guidelines
+## Testing
 
-**Documentation**: See [docs/testing/README.md](./docs/testing/README.md) for complete testing guide.
+Full guide: [docs/testing/README.md](./docs/testing/README.md). Patterns: [docs/testing/TEST_PATTERNS.md](./docs/testing/TEST_PATTERNS.md).
 
-**E2E tests are our most valuable tests.** They catch real regressions that unit tests miss — auth flows, streaming, workspace isolation, deployment. When in doubt, write an E2E test. We need more of them. Every user-facing feature should have E2E coverage.
+**E2E tests are our most valuable tests.** When in doubt, write an E2E test.
 
-### When to Write Tests (STRICT - MANDATORY)
-
-**⚠️ IMPORTANT: Tests are NOT optional. You MUST write tests before considering any API work complete.**
-
-**✅ MUST write tests for:**
-1. **Security-critical functions** (100% coverage required)
-   - Path traversal protection (`isPathWithinWorkspace`)
-   - Session validation (`getSessionUser`, `hasSessionCookie`)
-   - Workspace boundary checks (`getWorkspace`)
-   - Shell command sanitization (if executing shell commands)
-   - Authentication logic
-   - **File operation endpoints** (Read, Write, Edit, Delete, etc.)
-
-2. **New API routes** (MANDATORY - not optional!)
-   - Any new endpoint in `app/api/`
-   - **Minimum required tests:**
-     - Authentication check (401 without session)
-     - Happy path (successful operation)
-     - At least one error case (400/403/404/500)
-   - **For file operations, also test:**
-     - Path traversal blocked
-     - Protected files/dirs blocked (if applicable)
-     - Workspace boundary enforced
-
-3. **File operation endpoints** (CRITICAL - security boundary)
-- These handle user data and filesystem access
-- Must test all security checks work correctly
-- Example: `/api/files/delete` has 15 tests covering auth, traversal, protected files
-
-**⚠️ SHOULD write tests for:**
-4. **Complex business logic**
-   - Workspace resolution (multiple branches, edge cases)
-   - Stream handling (if modifying NDJSON logic)
-   - Credit/billing operations
-
-**❌ DON'T write tests for:**
-- Simple formatters/transforms
-- Type guards (unless security-critical)
-- UI components (unless fixing a bug)
-- Third-party library wrappers
-- Configuration files
-
-### Quick Commands
+**Tests are MANDATORY for:** security-critical functions (100% coverage), new API routes (auth + happy path + error case minimum), file operation endpoints (path traversal, workspace boundary).
 
 ```bash
-# Fast PR checks (affected-only)
-bun run check:affected
-
-# Full local gate (matches pre-push)
-bun run static-check
-
-# Core unit tests
-bun run unit
-
-# Run E2E tests (first time: bunx playwright install chromium)
-bun run e2e
-
-# Run a specific web test
-cd apps/web && bun run test security.test.ts
+bun run check:affected  # Fast PR checks (affected-only)
+bun run static-check    # Full local gate (matches pre-push)
+bun run unit            # Core unit tests
+bun run e2e             # E2E tests
 ```
 
-**Testing Notes:**
-- Always use `bun run test`, never `bun test` directly
-- Do NOT use `npx vitest` - npx and vitest don't work well together in this codebase
-
-**E2E Test Best Practices**:
-- Tests should only wait for what they actually need (API tests don't need UI)
-- Use `toBeAttached` instead of `toBeVisible` when you just need DOM presence
-- Budget timeouts for parallel execution (4 workers = 2-3x slower)
-- Avoid timeout accumulation: put longest wait first, then quick confirmations
-
-### Test Patterns
-
-**MUST READ**: [docs/testing/TEST_PATTERNS.md](./docs/testing/TEST_PATTERNS.md) - Do/Don't examples for AI-generated tests.
-
-Key rules: No mocking internals, no `any` types, test real DB state, descriptive names, use test helpers, clean up data, test error paths.
-
-### Before Committing
-
-**Automated checks:**
-- [ ] Run `bun run check:affected` (or `bun run static-check` for broad changes)
-- [ ] Run targeted tests for touched paths (`bun run unit`, `cd apps/web && bun run test ...`, and/or `bun run e2e`)
-
-**Manual verification (if applicable):**
-- [ ] Tested security functions manually (path traversal, auth)
-- [ ] Tested both standard domain mode and terminal mode
-- [ ] Verified workspace isolation works
-- [ ] No real Anthropic API calls in tests (check logs)
+**Gotchas:** Always `bun run test`, never `bun test` directly. Never `npx vitest`.
 
 ## Production Deployment
 
@@ -531,46 +337,35 @@ make ship-fast   # Same as ship, skips E2E tests
 make staging     # Deploy staging only (port 8998)
 make staging-fast # Deploy staging only, skip E2E tests
 make production  # Deploy production only (port 9000)
+make production-fast # Deploy production only, skip E2E tests
 make dev         # Rebuild tools + restart dev server (port 8997)
 make devchat     # Restart dev server via systemctl (safe from chat)
 make logs-staging # View staging logs
 make logs-production # View production logs
 make logs-dev    # View dev environment logs
+make services    # Deploy API + Manager
+make api         # Deploy API only
+make manager     # Deploy Manager only
+make shell       # Build and deploy shell-server-go
+make rollback    # Interactive rollback
 
 # Status & monitoring
 make status      # Show all environments
 make deploy-status # Check if a deployment is running
 ```
 
-### Deploying from Chat
-
-See **Core Rules 10-12** at the top of this file. Summary: deploy with `nohup`, check `make deploy-status`, then clean orphaned processes and locks before starting if needed.
-
-### Site Deployment (Different)
-
-To deploy individual websites (not the Alive itself), use the API endpoint:
-```bash
-# Via web UI at /deploy (recommended)
-# Or via API:
-curl -X POST https://app.alive.best/api/deploy-subdomain \
-  -H "Content-Type: application/json" \
-  -d '{"domain": "newsite.alive.best", "email": "user@example.com"}'
-```
-
-**Package**: Site deployments are handled by `@webalive/site-controller` with atomic bash scripts and automatic rollback.
+Deploy from chat: see Core Rules 10-12. Site deployment (individual websites): see "Deploying a New Site" above.
 
 
 ## Key Dependencies
 
 Next.js 16 (App Router), React 19, Claude Agent SDK ^0.2.80, Bun 1.3+, TypeScript 5.9 (strict), TailwindCSS 4.x. See `package.json` for exact versions.
 
-## Common Issues & Solutions
+## Common Issues
 
-- **Stream buffering**: Set `X-Accel-Buffering: no` and `Cache-Control: no-cache, no-transform` on Response
-- **Path traversal**: Always use `isPathWithinWorkspace()` before file ops
-- **Session not persisting**: Check session key format via `tabKey()` from `@/features/auth/lib/sessionStore`
-- **Systemd site not starting**: `journalctl -u site@domain-com.service -n 50`, check permissions, verify user exists
-- **Credit race condition**: Use `iam.rpc('deduct_credits', ...)` atomic operation (see `docs/architecture/atomic-credit-charging.md`)
+- **Stream buffering**: Set `X-Accel-Buffering: no` and `Cache-Control: no-cache, no-transform`
+- **Session not persisting**: Check key format via `tabKey()` from `@/features/auth/lib/sessionStore`
+- **Credit race condition**: Use `iam.rpc('deduct_credits', ...)` (see `docs/architecture/atomic-credit-charging.md`)
 
 ### Template Sites Maintenance
 
@@ -593,23 +388,7 @@ Next.js 16 (App Router), React 19, Claude Agent SDK ^0.2.80, Bun 1.3+, TypeScrip
 | `tmpl_business` | `loodgieter.alive.best` | 3389 | `bun run dev` |
 | — | `components.alive.best` | 3364 | `bun run dev` |
 
-**Key points:**
-1. **rsync excludes** `node_modules` and `.bun` (see `02-setup-fs.sh`)
-2. Template sites need their `node_modules` for previews to work
-3. If template preview returns 502, reinstall deps and restart:
-```bash
-# Reinstall deps
-sudo -u site-blank-alive-best bun install --cwd /srv/webalive/templates/blank.alive.best/user
-systemctl restart template@blank-alive-best.service
-
-# Check all template services
-systemctl list-units 'template@*'
-```
-4. Template path resolution: `resolveTemplatePath(dbSourcePath)` from `@webalive/shared` extracts the directory name from the DB `source_path` and joins with `TEMPLATES_ROOT`
-
-**IMPORTANT:** When updating `@alive-game/alive-tagger` or similar packages:
-- Update both `vite.config.ts` AND `package.json` in all sites
-- The `generate-config.js` script generates vite configs - keep it in sync
+**Key points:** rsync excludes `node_modules` and `.bun`. Template 502 = reinstall deps as site user + restart `template@{slug}.service`. Path resolution: `resolveTemplatePath()` from `@webalive/shared`. When updating `@alive-game/alive-tagger`: update both `vite.config.ts` and `package.json` in all sites.
 
 ## Git Workflow
 
@@ -629,36 +408,7 @@ bun run pull
 
 ## Automation System
 
-Jobs are stored in Supabase `app.automation_jobs` and executed by a standalone worker process.
-
-**Architecture:**
-- `apps/worker` - Standalone Bun process: CronService (scheduler) + executor (Claude Agent SDK). Managed by systemd (`automation-worker.service`), survives web deploys.
-- `apps/web` - API + UI only. Thin client POSTs to worker's HTTP API for poke/trigger.
-- `packages/automation-engine` - Shared engine: claim/finish lifecycle, lease-based locking, heartbeat, run logs. Used by both worker and web trigger routes.
-- `packages/automation` - Cron expression parsing utilities.
-
-**Worker HTTP API** (port 5070):
-- `GET /health` - Health check
-- `POST /poke` - Re-arm scheduler immediately (called when jobs are created/updated)
-- `POST /trigger/:id` - Manually run a job (requires `X-Internal-Secret` header)
-- `GET /status` - Detailed service info
-
-**Web API endpoints:**
-- `GET/POST /api/automations` - List/create automations
-- `POST /api/automations/[id]/trigger` - Manually trigger a job
-- `GET /api/automations/[id]/runs` - Get run history
-
-**Debugging:**
-```bash
-# Worker logs
-journalctl -u automation-worker -f
-
-# Check worker health
-curl http://localhost:5070/health
-
-# Check app.automation_jobs in Supabase
-# psql "$SUPABASE_DB_URL" -c "select id, name, is_active, next_run_at from app.automation_jobs limit 20;"
-```
+Jobs in Supabase `app.automation_jobs`. Worker (`apps/worker`, port 5070, systemd `automation-worker.service`) runs standalone — survives web deploys. Engine in `packages/automation-engine` (claim/finish lifecycle, lease-based locking). Web POSTs to worker's HTTP API (`/poke`, `/trigger/:id`). Debug: `journalctl -u automation-worker -f`, `curl localhost:5070/health`.
 
 ## External Reference Repos
 

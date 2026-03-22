@@ -2,13 +2,7 @@
  * Cron expression parts and types for the cron scheduler component
  */
 
-export interface CronParts {
-  minute: string
-  hour: string
-  dayOfMonth: string
-  month: string
-  dayOfWeek: string
-}
+export type { CronParts } from "@/lib/automation/cron-description"
 
 export interface CronPreset {
   label: string

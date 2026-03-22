@@ -1,5 +1,5 @@
 /**
- * Text utilities for markdown and string manipulation.
+ * Text utilities for markdown, string manipulation, and formatting.
  */
 
 /**
@@ -15,4 +15,15 @@ export function truncateMarkdown(text: string, maxLen: number): string {
   // Snap to last newline if it's reasonably far in (>40% of maxLen)
   const cutPoint = lastNewline > maxLen * 0.4 ? lastNewline : maxLen
   return `${text.slice(0, cutPoint).trimEnd()}...`
+}
+
+/**
+ * Format a byte count into a human-readable string (e.g. "1.5 MB").
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B"
+  const k = 1024
+  const sizes = ["B", "KB", "MB", "GB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${Number.parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`
 }

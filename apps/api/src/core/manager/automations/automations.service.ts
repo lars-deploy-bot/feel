@@ -226,14 +226,8 @@ export async function listAutomations() {
     const successRuns = orgJobs.reduce((s, j) => s + j.success_runs_30d, 0)
     const failureRuns = orgJobs.reduce((s, j) => s + j.failure_runs_30d, 0)
 
-    // Estimate monthly cost from active cron jobs
-    let monthlyCost = 0
-    for (const job of orgJobs) {
-      if (!job.is_active) continue
-      const runsPerMonth = estimateRunsPerMonth(job.cron_schedule, job.trigger_type)
-      const costPerRun = COST_PER_RUN[job.action_model ?? ""] ?? DEFAULT_COST_PER_RUN
-      monthlyCost += runsPerMonth * costPerRun
-    }
+    // Derive monthly cost from already-computed weekly cost (avoid re-calling estimateRunsPerMonth)
+    const monthlyCost = orgJobs.reduce((s, j) => s + (j.estimated_weekly_cost_usd * 30) / 7, 0)
 
     summaries.push({
       org_id: orgId,

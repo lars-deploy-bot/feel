@@ -61,23 +61,21 @@ export async function fetchCaddySources(results: Map<string, SourceData>): Promi
  */
 export async function fetchFilesystemSources(results: Map<string, SourceData>): Promise<void> {
   for (const dir of [PATHS.SITES_ROOT, PATHS.TEMPLATES_ROOT]) {
-    let names: string[]
+    let entries: import("node:fs").Dirent[]
     try {
-      names = await fs.readdir(dir)
+      entries = await fs.readdir(dir, { withFileTypes: true })
     } catch {
       continue // Directory may not exist on all servers
     }
 
-    for (const name of names) {
-      const fullPath = `${dir}/${name}`
-      const stat = await fs.stat(fullPath).catch(() => null)
-      if (!stat?.isDirectory()) continue
-      if (isPreviewDomain(name)) continue
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      if (isPreviewDomain(entry.name)) continue
 
-      const domainData = ensureDomain(results, name)
+      const domainData = ensureDomain(results, entry.name)
       domainData.filesystem = {
         exists: true,
-        path: fullPath,
+        path: `${dir}/${entry.name}`,
       }
     }
   }

@@ -82,9 +82,9 @@ blocked_env_keys = [
   "MAILGUN_API_KEY",
   "MAILJET_API_KEY",
 ]
-forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin" }
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin" }
 
 [policies.production]
 allow_email = true
 blocked_env_keys = []
-forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin" }
+forced_env = { NODE_ENV = "production", HOSTNAME = "0.0.0.0", PATH = "/root/.bun/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin" }

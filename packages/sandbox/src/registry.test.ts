@@ -24,6 +24,7 @@ function createRegistry() {
 const domain = {
   domain_id: "dom_123",
   hostname: "example.alive.best",
+  port: 5173,
   sandbox_id: null,
   sandbox_status: null as string | null,
 }

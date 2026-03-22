@@ -213,6 +213,8 @@ export interface AgentConfig {
 export interface SandboxDomainPayload {
   domain_id: string
   hostname: string
+  /** The port the dev server should listen on inside the sandbox. */
+  port: number
   sandbox_id: string | null
   sandbox_status: SandboxStatus | null
   is_test_env?: boolean

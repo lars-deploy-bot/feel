@@ -89,6 +89,34 @@ export async function register() {
       process.exit(1)
     }
 
+    // Non-fatal: verify caddy-shell is reachable (terminal/watch WebSockets depend on it)
+    try {
+      const { SHELL } = await import("@webalive/shared")
+      if (SHELL.LISTEN) {
+        const net = await import("node:net")
+        const port = Number.parseInt(SHELL.LISTEN.replace(/^.*:/, ""), 10)
+        if (port) {
+          await new Promise<void>((resolve, reject) => {
+            const socket = net.createConnection({ host: "127.0.0.1", port, timeout: 2000 })
+            socket.once("connect", () => {
+              socket.destroy()
+              resolve()
+            })
+            socket.once("timeout", () => {
+              socket.destroy()
+              reject(new Error("timeout"))
+            })
+            socket.once("error", err => {
+              reject(err)
+            })
+          })
+        }
+      }
+    } catch (_err) {
+      const Sentry = await import("@sentry/nextjs")
+      Sentry.captureMessage("caddy-shell is not reachable — terminal and file watch WebSockets will fail", "warning")
+    }
+
     console.log("[Instrumentation] Server-side services initialized")
   }
 }

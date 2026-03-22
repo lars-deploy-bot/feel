@@ -51,6 +51,7 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     setNewError(null)
     try {
       const data = await getty("sites")
+      if (!data || !Array.isArray(data.sites)) throw new Error("Failed to load sites")
       const sites = data.sites.map(s => ({ id: s.id, hostname: s.hostname }))
       if (sites.length === 0) throw new Error("No websites available. Create a website first.")
       startCreate({ sites }, () => {})
@@ -120,7 +121,11 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
         </div>
         <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1">No agents yet</p>
         <p className="text-[12px] text-zinc-400 dark:text-zinc-600 text-center mb-4">Create one to get started</p>
-        {newError && <p className="text-[12px] text-red-500 dark:text-red-400 text-center mb-3">{newError}</p>}
+        {newError && (
+          <p role="alert" className="text-[12px] text-red-500 dark:text-red-400 text-center mb-3">
+            {newError}
+          </p>
+        )}
         <button
           type="button"
           onClick={handleNewAgent}
@@ -145,7 +150,9 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
       />
       {newError && (
         <div className="px-3 py-1.5">
-          <p className="text-[11px] text-red-500 dark:text-red-400">{newError}</p>
+          <p role="alert" className="text-[11px] text-red-500 dark:text-red-400">
+            {newError}
+          </p>
         </div>
       )}
       <div className="flex-1 overflow-auto">

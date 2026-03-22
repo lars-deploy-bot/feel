@@ -11,6 +11,15 @@ vi.stubGlobal("fetch", mockFetch)
 
 const { deleteFile, uploadFile } = await import("../lib/file-api")
 
+/** Extract FormData from a mock fetch call's body, with runtime type check */
+function getFormDataBody(call: (typeof mockFetch.mock.calls)[number]): FormData {
+  const body: unknown = call[1].body
+  if (!(body instanceof FormData)) {
+    throw new Error(`Expected FormData but got ${typeof body}`)
+  }
+  return body
+}
+
 describe("file-api client", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -103,9 +112,7 @@ describe("file-api client", () => {
         body: expect.any(FormData),
       })
 
-      const body = mockFetch.mock.calls[0][1].body
-      expect(body).toBeInstanceOf(FormData)
-      const formData = body instanceof FormData ? body : new FormData()
+      const formData = getFormDataBody(mockFetch.mock.calls[0])
       expect(formData.get("workspace")).toBe("my-site.alive.best")
       expect(formData.get("file")).toBe(file)
     })
@@ -124,9 +131,7 @@ describe("file-api client", () => {
       const file = new File(["content"], "test.png", { type: "image/png" })
       await uploadFile("my-site.alive.best", file, "feature-branch")
 
-      const body = mockFetch.mock.calls[0][1].body
-      expect(body).toBeInstanceOf(FormData)
-      const formData = body instanceof FormData ? body : new FormData()
+      const formData = getFormDataBody(mockFetch.mock.calls[0])
       expect(formData.get("worktree")).toBe("feature-branch")
     })
 
@@ -144,9 +149,7 @@ describe("file-api client", () => {
       const file = new File(["content"], "test.png", { type: "image/png" })
       await uploadFile("my-site.alive.best", file, null)
 
-      const body = mockFetch.mock.calls[0][1].body
-      expect(body).toBeInstanceOf(FormData)
-      const formData = body instanceof FormData ? body : new FormData()
+      const formData = getFormDataBody(mockFetch.mock.calls[0])
       expect(formData.get("worktree")).toBeNull()
     })
 
