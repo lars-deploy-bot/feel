@@ -8,13 +8,16 @@ import { healthScore, relTime, successRateColor, TRIGGER_REFRESH_DELAY, trigLabe
 import type { EnrichedJob } from "./agents-types"
 
 /** Deterministic avatar for an agent based on its ID */
-const AGENT_AVATARS = [
-  "/images/agent-avatars/agent-1.png",
-  "/images/agent-avatars/agent-2.png",
-  "/images/agent-avatars/agent-3.png",
-  "/images/agent-avatars/agent-4.png",
-  "/images/agent-avatars/agent-5.png",
-  "/images/agent-avatars/agent-6.png",
+const AGENT_AVATARS_MALE = [
+  "/images/agent-avatars/m-analyst.png",
+  "/images/agent-avatars/m-developer.png",
+  "/images/agent-avatars/m-strategist.png",
+] as const
+
+const AGENT_AVATARS_FEMALE = [
+  "/images/agent-avatars/f-writer.png",
+  "/images/agent-avatars/f-designer.png",
+  "/images/agent-avatars/f-marketer.png",
 ] as const
 
 function agentAvatar(id: string): string {
@@ -22,7 +25,10 @@ function agentAvatar(id: string): string {
   for (let i = 0; i < id.length; i++) {
     hash = (hash * 31 + id.charCodeAt(i)) | 0
   }
-  return AGENT_AVATARS[Math.abs(hash) % AGENT_AVATARS.length]
+  const abs = Math.abs(hash)
+  // Even hash = male, odd = female
+  const pool = abs % 2 === 0 ? AGENT_AVATARS_MALE : AGENT_AVATARS_FEMALE
+  return pool[abs % pool.length]
 }
 
 export function AgentListView({
@@ -72,7 +78,7 @@ export function AgentListView({
         </div>
       </div>
 
-      {/* Agent grid — 2 columns */}
+      {/* Agent grid */}
       <div className="grid grid-cols-2 gap-3 pb-4">
         {sorted.map(job => (
           <AgentCard key={job.id} job={job} onSelect={onSelect} onChanged={onChanged} />
@@ -102,62 +108,56 @@ function AgentCard({
       onKeyDown={e => {
         if (e.key === "Enter") onSelect(job)
       }}
-      className={`text-left rounded-2xl border bg-white dark:bg-white/[0.02] hover:shadow-md transition-all cursor-pointer overflow-hidden ${
+      className={`group text-left rounded-2xl border border-b-[3px] cursor-pointer transition-all hover:shadow-md active:translate-y-[1px] active:border-b flex overflow-hidden ${
         isRunning
-          ? "border-blue-200 dark:border-blue-500/20"
-          : "border-zinc-100 dark:border-white/[0.04] hover:border-zinc-200 dark:hover:border-white/[0.08]"
+          ? "bg-blue-50 dark:bg-blue-500/5 border-blue-200 dark:border-blue-500/20"
+          : "bg-white dark:bg-white/[0.02] border-zinc-200 dark:border-white/[0.06] hover:border-zinc-300 dark:hover:border-white/[0.1]"
       }`}
     >
-      {/* Avatar + status badge */}
-      <div className="relative px-4 pt-4 pb-2 flex justify-center">
-        <div className="relative">
-          <img src={agentAvatar(job.id)} alt="" className="size-16 rounded-2xl object-cover" />
-          {/* Status indicator overlaid on avatar */}
-          <div className="absolute -bottom-1 -right-1">
-            <StatusDot job={job} />
-          </div>
+      {/* Character image — left side */}
+      <div className="w-24 shrink-0 bg-zinc-50 dark:bg-white/[0.02]">
+        <img src={agentAvatar(job.id)} alt="" className="w-full h-full object-cover object-top" />
+      </div>
+
+      {/* Content — right side */}
+      <div className="flex-1 px-4 py-3 flex flex-col min-w-0">
+        {/* Header: name + status */}
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <span className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-1">
+            {job.name}
+          </span>
+          <StatusDot job={job} />
         </div>
-      </div>
 
-      {/* Name */}
-      <div className="px-4 pb-1 text-center">
-        <span className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100 line-clamp-1">{job.name}</span>
-      </div>
-
-      {/* Schedule + last seen */}
-      <div className="px-4 pb-2 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
-        <TrigIcon type={job.trigger_type} size={10} />
-        <span className="truncate">{trigLabel(job)}</span>
-        <Dot />
-        <span className="tabular-nums shrink-0">{relTime(job.last_run_at)}</span>
-      </div>
-
-      {/* Prompt snippet */}
-      {job.action_prompt && (
-        <div className="px-4 pb-3">
-          <p className="text-[12px] text-zinc-400 dark:text-zinc-500 leading-relaxed line-clamp-2 text-center">
+        {/* Prompt snippet */}
+        {job.action_prompt && (
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500 leading-relaxed line-clamp-2 mb-2">
             {job.action_prompt}
           </p>
-        </div>
-      )}
+        )}
 
-      {/* Footer: stats + run */}
-      <div className="px-4 py-3 border-t border-zinc-50 dark:border-white/[0.03] flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        {/* Stats + schedule */}
+        <div className="flex items-center gap-2 text-[10px] mb-2 mt-auto">
           <span className={`text-[13px] font-bold tabular-nums ${successRateColor(job.success_rate)}`}>
             {job.success_rate}%
           </span>
           <StreakBadge streak={job.streak} />
+          <span className="ml-auto flex items-center gap-1 text-zinc-400 dark:text-zinc-500">
+            <TrigIcon type={job.trigger_type} size={9} />
+            <span className="truncate">{trigLabel(job)}</span>
+          </span>
         </div>
+
+        {/* Run button */}
         <button
           type="button"
           onClick={e => {
             e.stopPropagation()
             agentsApi.trigger(job.id).then(() => globalThis.setTimeout(onChanged, TRIGGER_REFRESH_DELAY))
           }}
-          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-xl text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/15 border-b-2 border-emerald-200 dark:border-emerald-600/30 active:translate-y-[1px] active:border-b-0 transition-all"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-xl text-[12px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-b-[3px] border-emerald-200 dark:border-emerald-600/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/15 active:translate-y-[2px] active:border-b-0 transition-all"
         >
-          <Play size={10} />
+          <Play size={11} />
           Run
         </button>
       </div>

@@ -890,6 +890,131 @@ export class OAuthManager {
   }
 
   /**
+   * Creates env key rows for multiple environments at once.
+   * Empty environments array = single global row.
+   */
+  async setUserEnvKeyMultiEnv(
+    userId: string,
+    keyName: string,
+    keyValue: string,
+    opts: { workspace?: string; environments: string[] },
+  ): Promise<void> {
+    if (!/^[A-Z][A-Z0-9_]{0,127}$/.test(keyName)) {
+      throw new Error(
+        `Invalid key name '${keyName}'. Must be uppercase, start with a letter, contain only letters, numbers, and underscores, and be at most 128 characters.`,
+      )
+    }
+
+    const { workspace, environments } = opts
+
+    if (environments.length === 0) {
+      // Global (or workspace-only)
+      const scope = workspace ? workspaceScope(workspace) : GLOBAL_SCOPE
+      await this.storage.save(userId, USER_ENV_KEYS_NAMESPACE, keyName, keyValue, scope)
+    } else {
+      // One row per environment
+      await Promise.all(
+        environments.map(env => {
+          const scope = buildEnvKeyScope(workspace, env)
+          return this.storage.save(userId, USER_ENV_KEYS_NAMESPACE, keyName, keyValue, scope)
+        }),
+      )
+    }
+  }
+
+  /**
+   * Syncs which environments a key is available in.
+   * Reads the existing value from any row, diffs environments, creates/deletes as needed.
+   */
+  async syncUserEnvKeyEnvironments(
+    userId: string,
+    keyName: string,
+    opts: { workspace?: string; environments: string[] },
+  ): Promise<void> {
+    const { workspace, environments: desired } = opts
+
+    // List all current rows for this key
+    const allKeys = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
+    const currentRows = allKeys.filter(s => {
+      if (s.name !== keyName) return false
+      const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
+      return (scope?.workspace ?? "") === (workspace ?? "")
+    })
+
+    if (currentRows.length === 0) {
+      throw new Error(`Key '${keyName}' not found`)
+    }
+
+    // Read the decrypted value from the first available row
+    const firstRow = currentRows[0]
+    const firstScope = typeof firstRow.scope === "string" ? JSON.parse(firstRow.scope) : firstRow.scope
+    const value = await this.storage.get(
+      userId,
+      USER_ENV_KEYS_NAMESPACE,
+      keyName,
+      buildEnvKeyScope(firstScope?.workspace, firstScope?.environment),
+    )
+    if (!value) {
+      throw new Error(`Could not decrypt value for key '${keyName}'`)
+    }
+
+    // Determine current environments
+    const currentEnvs = new Set(
+      currentRows.map(s => {
+        const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
+        return (scope?.environment as string) ?? ""
+      }),
+    )
+    const desiredEnvs = new Set(desired)
+
+    // If desired is empty, that means "global" — represented as single row with no environment
+    if (desiredEnvs.size === 0) desiredEnvs.add("")
+
+    // Similarly normalize current: if it had no environment entries, it's [""]
+    if (currentEnvs.size === 0) currentEnvs.add("")
+
+    // Delete rows for removed environments
+    for (const env of currentEnvs) {
+      if (!desiredEnvs.has(env)) {
+        const scope = buildEnvKeyScope(workspace, env || undefined)
+        await this.storage.delete(userId, USER_ENV_KEYS_NAMESPACE, keyName, scope)
+      }
+    }
+
+    // Create rows for added environments
+    for (const env of desiredEnvs) {
+      if (!currentEnvs.has(env)) {
+        const scope = buildEnvKeyScope(workspace, env || undefined)
+        await this.storage.save(userId, USER_ENV_KEYS_NAMESPACE, keyName, value, scope)
+      }
+    }
+  }
+
+  /**
+   * Deletes all environment rows for a key + workspace combination.
+   */
+  async deleteAllUserEnvKeyScopes(userId: string, keyName: string, workspace?: string): Promise<void> {
+    const allKeys = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
+    const toDelete = allKeys.filter(s => {
+      if (s.name !== keyName) return false
+      const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
+      return (scope?.workspace ?? "") === (workspace ?? "")
+    })
+
+    await Promise.all(
+      toDelete.map(s => {
+        const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
+        return this.storage.delete(
+          userId,
+          USER_ENV_KEYS_NAMESPACE,
+          keyName,
+          buildEnvKeyScope(scope?.workspace, scope?.environment),
+        )
+      }),
+    )
+  }
+
+  /**
    * Checks if a user has a specific environment key
    *
    * @param userId - User ID

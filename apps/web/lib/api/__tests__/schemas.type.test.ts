@@ -68,6 +68,7 @@ describe("API Schema Type System", () => {
         | "rename-site"
         | "user-env-keys"
         | "user-env-keys/create"
+        | "user-env-keys/update"
         | "user-env-keys/delete"
         | "auth/sessions"
         | "auth/sessions/revoke"

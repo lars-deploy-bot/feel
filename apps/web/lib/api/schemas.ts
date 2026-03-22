@@ -1063,7 +1063,7 @@ export const apiSchemas = {
 
   /**
    * GET /api/user-env-keys
-   * List env key names (values are NOT returned for security)
+   * List env key names grouped by (name, workspace). Values are NOT returned.
    */
   "user-env-keys": {
     res: z.object({
@@ -1074,8 +1074,8 @@ export const apiSchemas = {
           hasValue: z.literal(true),
           /** "" = all workspaces (global), non-empty = workspace-scoped */
           workspace: z.string(),
-          /** "" = all environments (global), non-empty = environment-scoped (e.g. "prod", "staging") */
-          environment: z.string(),
+          /** Environments this key is available in. Empty array = all environments. */
+          environments: z.array(z.string()),
         }),
       ),
     }),
@@ -1083,7 +1083,7 @@ export const apiSchemas = {
 
   /**
    * POST /api/user-env-keys
-   * Create or update an env key
+   * Create or update an env key. Creates one DB row per environment.
    */
   "user-env-keys/create": {
     path: "user-env-keys",
@@ -1101,10 +1101,10 @@ export const apiSchemas = {
             message: "This is a reserved key name and cannot be set by users",
           }),
         keyValue: z.string().min(1, "Key value is required").max(10000, "Key value too long"),
-        /** "" or omit = all workspaces, non-empty = workspace-scoped */
+        /** "" = all workspaces, non-empty = workspace-scoped */
         workspace: z.string().optional().default(""),
-        /** "" or omit = all environments, non-empty = environment-scoped (e.g. "prod", "staging", "local") */
-        environment: z.string().optional().default(""),
+        /** Environments to make this key available in. Empty array = all environments (global). */
+        environments: z.array(z.string()).optional().default([]),
       })
       .brand<"UserEnvKeysCreateRequest">(),
     res: z.object({
@@ -1115,18 +1115,36 @@ export const apiSchemas = {
   },
 
   /**
+   * PUT /api/user-env-keys
+   * Update which environments a key is available in (server-side re-encryption).
+   */
+  "user-env-keys/update": {
+    path: "user-env-keys",
+    req: z
+      .object({
+        keyName: z.string().min(1, "Key name is required"),
+        workspace: z.string().optional().default(""),
+        /** New set of environments. Empty array = all environments (global). */
+        environments: z.array(z.string()),
+      })
+      .brand<"UserEnvKeysUpdateRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      message: z.string(),
+      keyName: z.string(),
+    }),
+  },
+
+  /**
    * DELETE /api/user-env-keys
-   * Remove an env key
+   * Remove an env key (all environment rows for the given name + workspace)
    */
   "user-env-keys/delete": {
     path: "user-env-keys",
     req: z
       .object({
         keyName: z.string().min(1, "Key name is required"),
-        /** Must match the scope of the key being deleted */
         workspace: z.string().optional().default(""),
-        /** Must match the scope of the key being deleted */
-        environment: z.string().optional().default(""),
       })
       .brand<"UserEnvKeysDeleteRequest">(),
     res: z.object({

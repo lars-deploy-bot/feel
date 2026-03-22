@@ -73,7 +73,6 @@
     "apps/shell-server-go/**",
     "apps/mcp-servers/**",
     "apps/image-processor/**",
-    "apps/preview-proxy/**",
     "apps/widget-server/**",
     "apps/web/e2e-tests/**",
     "apps/web/app/dead-components/**",

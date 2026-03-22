@@ -2,12 +2,13 @@
  * User Environment Keys API
  *
  * Manages user-defined environment keys stored in the lockbox.
- * These keys can be used by MCP servers for custom API integrations.
- * Keys can be scoped to a specific workspace and/or environment.
+ * Keys can be scoped to a workspace and/or multiple environments.
+ * One DB row per environment; the API groups them by (name, workspace).
  *
- * POST - Create/update an env key
- * GET - List env key names (without values for security)
- * DELETE - Remove an env key
+ * POST   - Create an env key (across multiple environments)
+ * GET    - List env keys (grouped by name + workspace)
+ * PUT    - Update which environments a key is available in
+ * DELETE - Remove all rows for a key + workspace
  */
 
 import * as Sentry from "@sentry/nextjs"
@@ -18,24 +19,8 @@ import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getUserEnvKeysManager } from "@/lib/oauth/oauth-instances"
 
-/** Convert empty-string scope fields to opts for OAuthManager methods */
-function toScopeOpts(workspace: string, environment: string) {
-  if (!workspace && !environment) return undefined
-  return {
-    ...(workspace ? { workspace } : {}),
-    ...(environment ? { environment } : {}),
-  }
-}
-
-function scopeLabel(workspace: string, environment: string): string {
-  const parts: string[] = []
-  if (workspace) parts.push(`workspace: ${workspace}`)
-  if (environment) parts.push(`env: ${environment}`)
-  return parts.length > 0 ? ` (${parts.join(", ")})` : " (global)"
-}
-
 /**
- * POST - Create or update an environment key
+ * POST - Create or update an environment key across multiple environments
  */
 export async function POST(req: NextRequest) {
   try {
@@ -47,11 +32,17 @@ export async function POST(req: NextRequest) {
     const parsed = await handleBody("user-env-keys/create", req)
     if (isHandleBodyError(parsed)) return parsed
 
-    const { keyName, keyValue, workspace, environment } = parsed
+    const { keyName, keyValue, workspace, environments } = parsed
 
-    await getUserEnvKeysManager().setUserEnvKey(user.id, keyName, keyValue, toScopeOpts(workspace, environment))
+    await getUserEnvKeysManager().setUserEnvKeyMultiEnv(user.id, keyName, keyValue, {
+      workspace: workspace || undefined,
+      environments,
+    })
 
-    console.log(`[User Env Keys] User ${user.id} set key: ${keyName}${scopeLabel(workspace, environment)}`)
+    const envLabel = environments.length > 0 ? environments.join(", ") : "global"
+    console.log(
+      `[User Env Keys] User ${user.id} set key: ${keyName} [${envLabel}]${workspace ? ` ws:${workspace}` : ""}`,
+    )
 
     return alrighty("user-env-keys/create", {
       message: `Environment key '${keyName}' saved successfully`,
@@ -70,7 +61,7 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * GET - List environment key names (values are not returned for security)
+ * GET - List environment keys grouped by (name, workspace)
  */
 export async function GET() {
   try {
@@ -79,14 +70,30 @@ export async function GET() {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const keys = await getUserEnvKeysManager().listUserEnvKeys(user.id)
+    const rows = await getUserEnvKeysManager().listUserEnvKeys(user.id)
+
+    // Group rows by (name, workspace) → collect environments
+    const grouped = new Map<string, { name: string; workspace: string; environments: string[] }>()
+    for (const row of rows) {
+      const key = `${row.name}::${row.workspace}`
+      const existing = grouped.get(key)
+      if (existing) {
+        if (row.environment) existing.environments.push(row.environment)
+      } else {
+        grouped.set(key, {
+          name: row.name,
+          workspace: row.workspace,
+          environments: row.environment ? [row.environment] : [],
+        })
+      }
+    }
 
     return alrighty("user-env-keys", {
-      keys: keys.map(k => ({
+      keys: Array.from(grouped.values()).map(k => ({
         name: k.name,
         hasValue: true as const,
-        workspace: k.workspace ?? "",
-        environment: k.environment ?? "",
+        workspace: k.workspace,
+        environments: k.environments,
       })),
     })
   } catch (error) {
@@ -102,7 +109,48 @@ export async function GET() {
 }
 
 /**
- * DELETE - Remove an environment key
+ * PUT - Update which environments a key is available in
+ */
+export async function PUT(req: NextRequest) {
+  try {
+    const user = await getSessionUser()
+    if (!user) {
+      return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
+    }
+
+    const parsed = await handleBody("user-env-keys/update", req)
+    if (isHandleBodyError(parsed)) return parsed
+
+    const { keyName, workspace, environments } = parsed
+
+    await getUserEnvKeysManager().syncUserEnvKeyEnvironments(user.id, keyName, {
+      workspace: workspace || undefined,
+      environments,
+    })
+
+    const envLabel = environments.length > 0 ? environments.join(", ") : "global"
+    console.log(
+      `[User Env Keys] User ${user.id} updated envs for ${keyName}: [${envLabel}]${workspace ? ` ws:${workspace}` : ""}`,
+    )
+
+    return alrighty("user-env-keys/update", {
+      message: `Environment key '${keyName}' updated successfully`,
+      keyName,
+    })
+  } catch (error) {
+    console.error("[User Env Keys] Failed to update key:", error)
+    Sentry.captureException(error)
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, {
+      status: 500,
+      details: {
+        reason: error instanceof Error ? error.message : "Unknown error",
+      },
+    })
+  }
+}
+
+/**
+ * DELETE - Remove all environment rows for a key + workspace
  */
 export async function DELETE(req: NextRequest) {
   try {
@@ -114,11 +162,11 @@ export async function DELETE(req: NextRequest) {
     const parsed = await handleBody("user-env-keys/delete", req)
     if (isHandleBodyError(parsed)) return parsed
 
-    const { keyName, workspace, environment } = parsed
+    const { keyName, workspace } = parsed
 
-    await getUserEnvKeysManager().deleteUserEnvKey(user.id, keyName, toScopeOpts(workspace, environment))
+    await getUserEnvKeysManager().deleteAllUserEnvKeyScopes(user.id, keyName, workspace || undefined)
 
-    console.log(`[User Env Keys] User ${user.id} deleted key: ${keyName}${scopeLabel(workspace, environment)}`)
+    console.log(`[User Env Keys] User ${user.id} deleted key: ${keyName}${workspace ? ` ws:${workspace}` : ""}`)
 
     return alrighty("user-env-keys/delete", {
       message: `Environment key '${keyName}' deleted successfully`,
