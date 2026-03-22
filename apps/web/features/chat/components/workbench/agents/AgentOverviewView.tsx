@@ -33,12 +33,13 @@ export function AgentOverviewView({
   }
 
   return (
-    <div className="px-6 py-4 max-w-2xl mx-auto w-full">
-      <div className="mb-4">
+    <div className="px-6 py-5 max-w-2xl mx-auto w-full">
+      <div className="mb-5">
         <StatusLine job={job} />
       </div>
 
-      <div className="pb-4 mb-5 border-b border-zinc-100 dark:border-white/[0.04]">
+      {/* Stats with success ring */}
+      <div className="p-4 rounded-2xl bg-zinc-50/50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] mb-5">
         <StatsGrid job={job} />
       </div>
 
@@ -54,16 +55,19 @@ export function AgentOverviewView({
         </div>
       )}
 
-      <div className="flex gap-2 mb-5">
-        <NavCard onClick={onGoToRuns} icon={<ClipboardList size={14} />} label="Inspect runs" />
-        <NavCard onClick={onGoToEdit} icon={<Pencil size={14} />} label="Edit agent" />
+      {/* Navigation cards */}
+      <div className="flex gap-3 mb-5">
+        <NavCard onClick={onGoToRuns} icon={<ClipboardList size={16} />} label="Inspect runs" color="blue" />
+        <NavCard onClick={onGoToEdit} icon={<Pencil size={16} />} label="Edit agent" color="violet" />
       </div>
 
-      <div className="flex items-center gap-1.5 flex-wrap pt-4 border-t border-zinc-100 dark:border-white/[0.04]">
+      {/* Actions */}
+      <div className="flex items-center gap-2 flex-wrap pt-4 border-t border-zinc-100 dark:border-white/[0.04]">
         <ActionButton
           onClick={() => act(() => agentsApi.trigger(job.id), setTriggering, 1500)}
           loading={triggering}
-          icon={<Play size={11} />}
+          icon={<Play size={12} />}
+          variant="success"
         >
           Run now
         </ActionButton>
@@ -71,7 +75,7 @@ export function AgentOverviewView({
           onClick={() => act(() => agentsApi.setActive(job.id, !job.is_active), setToggling)}
           loading={toggling}
           variant={job.is_active ? "warning" : "success"}
-          icon={job.is_active ? <Pause size={11} /> : <Play size={11} />}
+          icon={job.is_active ? <Pause size={12} /> : <Play size={12} />}
         >
           {job.is_active ? "Pause" : "Resume"}
         </ActionButton>
@@ -82,15 +86,30 @@ export function AgentOverviewView({
   )
 }
 
-function NavCard({ onClick, icon, label }: { onClick: () => void; icon: React.ReactNode; label: string }) {
+function NavCard({
+  onClick,
+  icon,
+  label,
+  color,
+}: {
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+  color: "blue" | "violet"
+}) {
+  const colors = {
+    blue: "bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 border-blue-100 dark:border-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/15",
+    violet:
+      "bg-violet-50 dark:bg-violet-500/10 text-violet-500 dark:text-violet-400 border-violet-100 dark:border-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/15",
+  }
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.03] hover:bg-zinc-100 dark:hover:bg-white/[0.06] border border-zinc-100 dark:border-white/[0.04] transition-colors"
+      className={`flex-1 flex items-center gap-2.5 px-4 py-3.5 rounded-2xl border border-b-[3px] active:translate-y-[2px] active:border-b transition-all ${colors[color]}`}
     >
-      <span className="text-zinc-400 dark:text-zinc-500">{icon}</span>
-      <span className="text-[13px] font-medium text-zinc-700 dark:text-zinc-300">{label}</span>
+      {icon}
+      <span className="text-[13px] font-bold">{label}</span>
     </button>
   )
 }

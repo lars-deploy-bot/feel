@@ -22,35 +22,62 @@ import type { AgentDetailTab, EnrichedJob, RecentRun } from "./agents-types"
 // ── Shared constants ──
 
 export const INPUT =
-  "w-full border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-[13px] text-zinc-900 dark:text-zinc-100 bg-transparent placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 focus:border-zinc-400 dark:focus:border-zinc-500 outline-none transition-colors duration-100"
+  "w-full border border-zinc-200 dark:border-zinc-700 rounded-2xl px-3.5 py-2.5 text-[13px] text-zinc-900 dark:text-zinc-100 bg-transparent placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-400/20 focus:border-emerald-400 dark:focus:border-emerald-500 outline-none transition-all duration-150"
 
 // ── Atoms ──
 
 export function StatusDot({ job }: { job: EnrichedJob }) {
   if (!job.is_active)
-    return <div className="size-2 rounded-full bg-zinc-300 dark:bg-zinc-600 shrink-0" title="Paused" />
+    return <div className="size-2.5 rounded-full bg-zinc-300 dark:bg-zinc-600 shrink-0" title="Paused" />
   if (job.status === "running")
     return (
-      <div className="relative size-2 shrink-0" title="Running">
-        <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-75" />
-        <span className="relative block size-2 rounded-full bg-blue-500" />
+      <div className="relative size-2.5 shrink-0" title="Running">
+        <span className="absolute inset-[-3px] rounded-full bg-blue-400/30 animate-ping" />
+        <span className="relative block size-2.5 rounded-full bg-blue-500" />
       </div>
     )
   if (job.last_run_status === "failure")
-    return <div className="size-2 rounded-full bg-red-500 shrink-0" title="Failed" />
-  return <div className="size-2 rounded-full bg-emerald-500 shrink-0" title="Healthy" />
+    return <div className="size-2.5 rounded-full bg-red-500 shrink-0" title="Failed" />
+  return (
+    <div className="relative size-2.5 shrink-0" title="Healthy">
+      <span className="absolute inset-[-2px] rounded-full bg-emerald-400/20 dark:bg-emerald-400/10" />
+      <span className="relative block size-2.5 rounded-full bg-emerald-500" />
+    </div>
+  )
 }
 
 export function StreakBadge({ streak }: { streak: number }) {
-  if (streak === 0) return null
+  if (streak === 0)
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] tabular-nums font-bold text-zinc-300 dark:text-zinc-700 ml-2">
+        <Flame size={13} />
+        {streak}
+      </span>
+    )
+
   const hot = streak >= 10
+  const warm = streak >= 5
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-[10px] tabular-nums font-medium ${hot ? "text-orange-500 dark:text-orange-400" : "text-zinc-400 dark:text-zinc-600"}`}
+      className={`inline-flex items-center gap-1 text-[12px] tabular-nums font-bold ml-2 ${
+        hot
+          ? "text-orange-500 dark:text-orange-400"
+          : warm
+            ? "text-amber-500 dark:text-amber-400"
+            : "text-zinc-400 dark:text-zinc-500"
+      }`}
     >
-      {hot && <Flame size={10} className="text-orange-400" />}
+      <Flame
+        size={14}
+        className={
+          hot
+            ? "text-orange-500 drop-shadow-[0_0_4px_rgba(251,146,60,0.5)]"
+            : warm
+              ? "text-amber-400"
+              : "text-zinc-300 dark:text-zinc-600"
+        }
+      />
       {streak}
-      <Check size={9} />
     </span>
   )
 }
@@ -62,13 +89,53 @@ export function RunDots({ runs }: { runs: RecentRun[] }) {
   )
   if (dots.length === 0) return null
   return (
-    <div className="flex items-center gap-[3px]">
+    <div className="flex items-end gap-[3px]">
       {dots.map((d, i) => (
         <div
           key={i}
-          className={`w-[7px] h-[20px] rounded-[3px] ${d === "s" ? "bg-emerald-400/60 dark:bg-emerald-500/40" : "bg-red-400/60 dark:bg-red-500/40"}`}
+          className={`w-[6px] rounded-full transition-all ${
+            d === "s" ? "bg-emerald-400 dark:bg-emerald-500/60 h-[18px]" : "bg-red-400 dark:bg-red-500/50 h-[12px]"
+          }`}
         />
       ))}
+    </div>
+  )
+}
+
+export function SuccessRing({ rate, size = 48 }: { rate: number; size?: number }) {
+  const stroke = 4
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (rate / 100) * circumference
+  const color = rate >= 95 ? "#10b981" : rate >= 80 ? "#f59e0b" : "#ef4444"
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={stroke}
+          className="stroke-zinc-100 dark:stroke-zinc-800"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={stroke}
+          stroke={color}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-all duration-500"
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
+        {rate}%
+      </span>
     </div>
   )
 }
@@ -102,21 +169,23 @@ export function ActionButton({
 }) {
   const v = variant ?? "default"
   const styles = {
-    default: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700",
+    default:
+      "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-b-[3px] border-zinc-200 dark:border-zinc-700 hover:brightness-95 dark:hover:brightness-110",
     warning:
-      "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/15",
+      "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-b-[3px] border-amber-200 dark:border-amber-600/30 hover:brightness-95 dark:hover:brightness-110",
     success:
-      "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/15",
-    danger: "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/15",
+      "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-b-[3px] border-emerald-200 dark:border-emerald-600/30 hover:brightness-95 dark:hover:brightness-110",
+    danger:
+      "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 border-b-[3px] border-red-200 dark:border-red-600/30 hover:brightness-95 dark:hover:brightness-110",
   }
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={loading}
-      className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[11px] font-medium transition-colors active:scale-[0.97] disabled:opacity-40 ${styles[v]}`}
+      className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-bold transition-all active:translate-y-[2px] active:border-b-0 disabled:opacity-40 ${styles[v]}`}
     >
-      {loading ? <Loader2 size={11} className="animate-spin" /> : icon}
+      {loading ? <Loader2 size={12} className="animate-spin" /> : icon}
       {children}
     </button>
   )
@@ -124,8 +193,8 @@ export function ActionButton({
 
 export function ErrorAlert({ message }: { message: string }) {
   return (
-    <div className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/10">
-      <p className="text-[11px] text-red-600 dark:text-red-400">{message}</p>
+    <div className="px-4 py-3 rounded-2xl bg-red-50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/10">
+      <p className="text-[12px] text-red-600 dark:text-red-400">{message}</p>
     </div>
   )
 }
@@ -138,7 +207,7 @@ export function StatusLine({ job }: { job: EnrichedJob }) {
   return (
     <div className="flex items-center gap-2">
       <StatusDot job={job} />
-      <span className="text-[13px] font-medium text-zinc-600 dark:text-zinc-400">{statusLabel(job)}</span>
+      <span className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-400">{statusLabel(job)}</span>
       <Dot />
       <span className="inline-flex items-center gap-1 text-[12px] text-zinc-400 dark:text-zinc-500">
         <TrigIcon type={job.trigger_type} />
@@ -160,7 +229,7 @@ export function DeleteConfirm({ onDelete, deleting }: { onDelete: () => void; de
         <button
           type="button"
           onClick={() => setConfirming(false)}
-          className="h-7 px-2 rounded-lg text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+          className="h-8 px-2.5 rounded-xl text-[12px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
         >
           Cancel
         </button>
@@ -172,55 +241,56 @@ export function DeleteConfirm({ onDelete, deleting }: { onDelete: () => void; de
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="h-7 px-2 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+      className="h-8 px-2.5 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
     >
-      <Trash2 size={12} />
+      <Trash2 size={13} />
     </button>
   )
 }
 
 // ── Composed components ──
 
-interface StatItem {
-  label: string
-  value: string
-  color: string
-}
-
-function buildStats(job: EnrichedJob, opts?: { nextLabel?: string }): StatItem[] {
-  return [
-    { label: "Success", value: `${job.success_rate}%`, color: successRateColor(job.success_rate) },
-    { label: "Avg time", value: dur(job.avg_duration_ms), color: "text-zinc-900 dark:text-zinc-100" },
+export function StatsGrid({ job, nextLabel, compact }: { job: EnrichedJob; nextLabel?: string; compact?: boolean }) {
+  const stats = [
+    { label: "Avg time", value: dur(job.avg_duration_ms) },
     {
-      label: opts?.nextLabel ?? "Next run",
+      label: nextLabel ?? "Next run",
       value: job.is_active ? (job.next_run_at ? relTime(job.next_run_at) : "—") : "paused",
-      color: "text-zinc-900 dark:text-zinc-100",
-    },
-    {
-      label: "Streak",
-      value: `${job.streak}`,
-      color: job.streak >= 10 ? "text-orange-500" : "text-zinc-900 dark:text-zinc-100",
     },
   ]
-}
 
-export function StatsGrid({
-  job,
-  nextLabel,
-  fontSize = "text-[16px]",
-}: {
-  job: EnrichedJob
-  nextLabel?: string
-  fontSize?: string
-}) {
+  if (compact) {
+    return (
+      <div className="flex items-center gap-4">
+        {stats.map(s => (
+          <div key={s.label}>
+            <p className="text-[14px] font-bold tabular-nums text-zinc-900 dark:text-zinc-100">{s.value}</p>
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-600">{s.label}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div className="flex gap-5">
-      {buildStats(job, { nextLabel }).map(s => (
-        <div key={s.label}>
-          <p className={`${fontSize} font-semibold tabular-nums ${s.color}`}>{s.value}</p>
-          <p className="text-[10px] text-zinc-400 dark:text-zinc-600 mt-0.5">{s.label}</p>
+    <div className="flex items-center gap-5">
+      <SuccessRing rate={job.success_rate} />
+      <div className="flex gap-5">
+        {stats.map(s => (
+          <div key={s.label}>
+            <p className="text-[16px] font-bold tabular-nums text-zinc-900 dark:text-zinc-100">{s.value}</p>
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-600 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+        <div>
+          <p
+            className={`text-[16px] font-bold tabular-nums ${job.streak >= 10 ? "text-orange-500" : job.streak >= 5 ? "text-amber-500" : "text-zinc-900 dark:text-zinc-100"}`}
+          >
+            {job.streak}
+          </p>
+          <p className="text-[10px] text-zinc-400 dark:text-zinc-600 mt-0.5">Streak</p>
         </div>
-      ))}
+      </div>
     </div>
   )
 }
@@ -241,24 +311,32 @@ export function RunRow({
       onClick={() => {
         if (conversationId && onOpenConversation) onOpenConversation(conversationId)
       }}
-      className={`flex items-center gap-2.5 py-2.5 w-full text-left ${canOpen ? "hover:bg-zinc-50 dark:hover:bg-white/[0.02] rounded-lg -mx-1 px-1 transition-colors cursor-pointer" : ""}`}
+      className={`flex items-center gap-3 py-3 w-full text-left ${canOpen ? "hover:bg-zinc-50 dark:hover:bg-white/[0.02] rounded-xl -mx-2 px-2 transition-colors cursor-pointer" : ""}`}
     >
       {run.status === "success" ? (
-        <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+        <div className="size-7 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
+          <Check size={14} className="text-emerald-500" />
+        </div>
       ) : run.status === "failure" ? (
-        <XCircle size={14} className="text-red-500 shrink-0" />
+        <div className="size-7 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0">
+          <XCircle size={14} className="text-red-500" />
+        </div>
       ) : (
-        <RotateCw size={14} className="text-blue-500 animate-spin shrink-0" />
+        <div className="size-7 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center shrink-0">
+          <RotateCw size={14} className="text-blue-500 animate-spin" />
+        </div>
       )}
-      <span className="text-[12px] text-zinc-500 dark:text-zinc-400 tabular-nums">{relTime(run.started_at)}</span>
-      <span className="text-[11px] text-zinc-300 dark:text-zinc-700 tabular-nums">{dur(run.duration_ms)}</span>
-      {run.triggered_by && <span className="text-[11px] text-zinc-400 dark:text-zinc-600">{run.triggered_by}</span>}
-      {run.error && (
-        <span className="text-[11px] text-red-500 truncate flex-1" title={run.error}>
-          {run.error}
-        </span>
-      )}
-      {canOpen && <ExternalLink size={11} className="text-zinc-300 dark:text-zinc-700 shrink-0 ml-auto" />}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">
+            {relTime(run.started_at)}
+          </span>
+          <span className="text-[11px] text-zinc-300 dark:text-zinc-700 tabular-nums">{dur(run.duration_ms)}</span>
+          {run.triggered_by && <span className="text-[11px] text-zinc-400 dark:text-zinc-600">{run.triggered_by}</span>}
+        </div>
+        {run.error && <p className="text-[11px] text-red-500 truncate mt-0.5">{run.error}</p>}
+      </div>
+      {canOpen && <ExternalLink size={12} className="text-zinc-300 dark:text-zinc-700 shrink-0" />}
     </button>
   )
 }
@@ -273,17 +351,17 @@ export function AgentListHeader({
   newAgentLoading?: boolean
 }) {
   return (
-    <div className="shrink-0 px-4 pt-4 pb-2 flex items-center justify-between">
-      <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Agents</h2>
+    <div className="shrink-0 px-5 pt-5 pb-2 flex items-center justify-between">
+      <h2 className="text-[17px] font-bold text-zinc-900 dark:text-zinc-100">Agents</h2>
       <button
         type="button"
         onClick={onNewAgent}
         disabled={newAgentLoading}
         aria-label={newAgentLoading ? "Creating new agent" : "New agent"}
-        className="size-8 flex items-center justify-center rounded-xl text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-all disabled:opacity-40"
+        className="size-9 flex items-center justify-center rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 border-b-[3px] border-emerald-600 active:translate-y-[2px] active:border-b-0 transition-all disabled:opacity-40"
         title="New agent"
       >
-        {newAgentLoading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={15} />}
+        {newAgentLoading ? <Loader2 size={15} className="animate-spin" /> : <Plus size={16} strokeWidth={2.5} />}
       </button>
     </div>
   )
@@ -307,16 +385,16 @@ export function AgentDetailNav({
   ]
 
   return (
-    <div className="shrink-0 px-3 pt-4 pb-2">
+    <div className="shrink-0 px-4 pt-4 pb-2">
       <div className="flex items-center gap-2 mb-3">
         <button
           type="button"
           onClick={onBack}
-          className="size-7 flex items-center justify-center rounded-lg text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-colors"
+          className="size-8 flex items-center justify-center rounded-xl text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-colors"
         >
-          <ArrowLeft size={14} />
+          <ArrowLeft size={15} />
         </button>
-        <h3 className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">{name}</h3>
+        <h3 className="text-[16px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{name}</h3>
       </div>
       <div className="flex flex-row items-center gap-1 justify-center">
         {tabs.map(tab => (
@@ -324,9 +402,9 @@ export function AgentDetailNav({
             key={tab.key}
             type="button"
             onClick={() => onTabChange(tab.key)}
-            className={`rounded-xl py-1.5 px-3.5 text-[13px] font-medium transition-all ${
+            className={`rounded-xl py-1.5 px-4 text-[13px] font-bold transition-all ${
               activeTab === tab.key
-                ? "bg-zinc-100 dark:bg-white/[0.08] text-zinc-900 dark:text-white"
+                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             }`}
           >
