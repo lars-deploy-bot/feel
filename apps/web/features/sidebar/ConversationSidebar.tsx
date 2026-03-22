@@ -1,6 +1,6 @@
 "use client"
 
-import { Layers, MessageCircle, Plus, Settings } from "lucide-react"
+import { MessageCircle, Plus, Settings } from "lucide-react"
 import { useCallback, useEffect, useRef } from "react"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
@@ -36,7 +36,6 @@ interface ConversationSidebarProps {
   onToggleSettings: () => void
   onSettingsClick: () => void
   onFeedbackClick?: () => void
-  onTemplatesClick?: () => void
 }
 
 export function ConversationSidebar({
@@ -58,7 +57,6 @@ export function ConversationSidebar({
   onToggleSettings,
   onSettingsClick,
   onFeedbackClick,
-  onTemplatesClick,
 }: ConversationSidebarProps) {
   const isOpen = useSidebarOpen()
   const { closeSidebar } = useSidebarActions()
@@ -171,7 +169,6 @@ export function ConversationSidebar({
         userDisplay={userDisplay}
         onSettingsClick={onSettingsClick}
         onFeedbackClick={onFeedbackClick}
-        onTemplatesClick={onTemplatesClick}
         closeSidebar={closeSidebar}
       />
     </div>
@@ -196,7 +193,6 @@ export function ConversationSidebar({
             onNewConversation={onNewConversation}
             onSettingsClick={onSettingsClick}
             onFeedbackClick={onFeedbackClick}
-            onTemplatesClick={onTemplatesClick}
           />
         )}
       </aside>
@@ -318,14 +314,12 @@ function SidebarFooter({
   userDisplay,
   onSettingsClick,
   onFeedbackClick,
-  onTemplatesClick,
   closeSidebar,
 }: {
   isMobile: boolean
   userDisplay: string | null
   onSettingsClick: () => void
   onFeedbackClick?: () => void
-  onTemplatesClick?: () => void
   closeSidebar: () => void
 }) {
   return (
@@ -341,27 +335,19 @@ function SidebarFooter({
         </div>
       )}
 
-      {isMobile && (onFeedbackClick || onTemplatesClick) && (
+      {isMobile && onFeedbackClick && (
         <div className={`flex items-center gap-1 px-3 py-2 shrink-0 border-t ${styles.borderSubtle}`}>
-          {[
-            { icon: MessageCircle, label: "Feedback", action: onFeedbackClick },
-            { icon: Layers, label: "Components", action: onTemplatesClick },
-          ].map(({ icon: Icon, label, action }) =>
-            action ? (
-              <button
-                key={label}
-                type="button"
-                onClick={() => {
-                  action()
-                  closeSidebar()
-                }}
-                className="inline-flex items-center gap-2 h-8 px-3 rounded-lg text-[13px] text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-100"
-              >
-                <Icon size={15} strokeWidth={1.5} />
-                {label}
-              </button>
-            ) : null,
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              onFeedbackClick()
+              closeSidebar()
+            }}
+            className="inline-flex items-center gap-2 h-8 px-3 rounded-lg text-[13px] text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-100"
+          >
+            <MessageCircle size={15} strokeWidth={1.5} />
+            Feedback
+          </button>
         </div>
       )}
 

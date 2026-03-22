@@ -48,7 +48,7 @@ export function AgentTemplatePicker({
   onBlank: () => void
 }) {
   return (
-    <div className="max-w-2xl mx-auto w-full px-5 py-8">
+    <div className="max-w-2xl mx-auto w-full px-5 py-8 min-h-full flex flex-col justify-center">
       <div className="text-center mb-8">
         <h2 className="text-[20px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">Your Agents</h2>
         <p className="text-[14px] text-zinc-400 dark:text-zinc-500">

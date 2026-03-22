@@ -10,7 +10,6 @@ interface ModalState {
   feedback: boolean
   invite: boolean
   settings: { initialTab?: SettingsTab } | null
-  templates: boolean
   mobilePreview: boolean
 }
 
@@ -22,8 +21,6 @@ interface ModalActions {
   openSettings: (initialTab?: SettingsTab) => void
   closeSettings: () => void
   toggleSettings: () => void
-  openTemplates: () => void
-  closeTemplates: () => void
   openMobilePreview: () => void
   closeMobilePreview: () => void
 }
@@ -70,7 +67,6 @@ export function useModals(): ModalState & ModalActions {
   const [state, setState] = useState<Omit<ModalState, "settings">>({
     feedback: false,
     invite: false,
-    templates: false,
     mobilePreview: false,
   })
 
@@ -93,9 +89,6 @@ export function useModals(): ModalState & ModalActions {
     setSettings(prev => (prev ? null : {}))
   }, [])
 
-  const openTemplates = useCallback(() => setState(s => ({ ...s, templates: true })), [])
-  const closeTemplates = useCallback(() => setState(s => ({ ...s, templates: false })), [])
-
   const openMobilePreview = useCallback(() => setState(s => ({ ...s, mobilePreview: true })), [])
   const closeMobilePreview = useCallback(() => setState(s => ({ ...s, mobilePreview: false })), [])
 
@@ -110,8 +103,6 @@ export function useModals(): ModalState & ModalActions {
       openSettings,
       closeSettings,
       toggleSettings,
-      openTemplates,
-      closeTemplates,
       openMobilePreview,
       closeMobilePreview,
     }),
@@ -125,8 +116,6 @@ export function useModals(): ModalState & ModalActions {
       openSettings,
       closeSettings,
       toggleSettings,
-      openTemplates,
-      closeTemplates,
       openMobilePreview,
       closeMobilePreview,
     ],

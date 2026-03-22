@@ -93,7 +93,6 @@ const defaultProps = {
   onToggleSettings: vi.fn(),
   onSettingsClick: vi.fn(),
   onFeedbackClick: vi.fn(),
-  onTemplatesClick: vi.fn(),
 } as const
 
 describe("ConversationSidebar", () => {

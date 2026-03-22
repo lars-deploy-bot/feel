@@ -2,9 +2,8 @@
 
 import { LIMITS } from "@webalive/shared"
 import { AlertTriangle, ArrowDown, ArrowUp, Building2, FolderOpen, Plus, Search, Shield, Star } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
-import { AddWebsiteModal } from "@/components/modals/AddWebsiteModal"
 import { GithubImportModal } from "@/components/modals/GithubImportModal"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"

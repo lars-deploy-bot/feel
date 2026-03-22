@@ -1,25 +1,17 @@
 "use client"
 
-import { Layers, MessageCircle, Settings } from "lucide-react"
-import { trackComponentsClicked, trackFeedbackClicked, trackSettingsClicked } from "@/lib/analytics/events"
+import { MessageCircle, Settings } from "lucide-react"
+import { trackFeedbackClicked, trackSettingsClicked } from "@/lib/analytics/events"
 
 interface NavProps {
   onFeedbackClick: () => void
-  onTemplatesClick: () => void
   isSidebarOpen: boolean
   onToggleSidebar: () => void
   settingsMode: boolean
   onSettingsClick: () => void
 }
 
-export function Nav({
-  onFeedbackClick,
-  onTemplatesClick,
-  isSidebarOpen,
-  onToggleSidebar,
-  settingsMode,
-  onSettingsClick,
-}: NavProps) {
+export function Nav({ onFeedbackClick, isSidebarOpen, onToggleSidebar, settingsMode, onSettingsClick }: NavProps) {
   // Shared base styles
   const buttonBase =
     "inline-flex items-center justify-center h-8 rounded-lg active:scale-95 transition-all duration-150 ease-out"
@@ -97,21 +89,6 @@ export function Nav({
             title="Send Feedback"
           >
             <MessageCircle size={16} strokeWidth={1.5} />
-          </button>
-
-          {/* Templates */}
-          <button
-            type="button"
-            onClick={() => {
-              trackComponentsClicked()
-              onTemplatesClick()
-            }}
-            className={iconButtonStyle}
-            data-testid="templates-button"
-            aria-label="Components"
-            title="Components"
-          >
-            <Layers size={16} strokeWidth={1.5} />
           </button>
         </div>
       </div>
