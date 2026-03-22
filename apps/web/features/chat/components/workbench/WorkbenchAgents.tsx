@@ -7,7 +7,6 @@ import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/li
 import { getty } from "@/lib/api/api-client"
 import { useAgentCreateStore, usePendingCreate } from "@/lib/stores/agentCreateStore"
 import { AgentDetailView } from "./agents/AgentDetailView"
-import { AgentEditView } from "./agents/AgentEditView"
 import { AgentListView } from "./agents/AgentListView"
 import { AgentNav } from "./agents/AgentUI"
 import type { AgentView } from "./agents/agents-types"
@@ -20,7 +19,7 @@ const AgentCreateView = dynamic(() => import("./agents/AgentCreateView").then(m 
 export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
   const { jobs, loading, error, refresh } = useAgents(workspace)
   const [view, setView] = useState<AgentView>({ kind: "list" })
-  const { onOpenConversation } = useWorkbenchContext()
+  const { onOpenConversation, onOpenSettings } = useWorkbenchContext()
 
   const pendingCreate = usePendingCreate()
   const onComplete = useAgentCreateStore(s => s.onComplete)
@@ -37,7 +36,7 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     else setView(prev => (prev.kind === "create" ? { kind: "list" } : prev))
   }, [pendingCreate])
 
-  const selectedId = view.kind === "detail" || view.kind === "edit" ? view.jobId : null
+  const selectedId = view.kind === "detail" ? view.jobId : null
   const selectedJob = selectedId ? jobs.find(j => j.id === selectedId) : null
 
   // If selected job was deleted, go back to list
@@ -167,16 +166,9 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
         {view.kind === "detail" && selectedJob && (
           <AgentDetailView
             job={selectedJob}
-            onEdit={() => setView({ kind: "edit", jobId: selectedJob.id })}
+            onEdit={() => onOpenSettings?.("automations")}
             onChanged={refresh}
             onOpenConversation={onOpenConversation}
-          />
-        )}
-        {view.kind === "edit" && selectedJob && (
-          <AgentEditView
-            job={selectedJob}
-            onBack={() => setView({ kind: "detail", jobId: selectedJob.id })}
-            onChanged={refresh}
           />
         )}
       </div>

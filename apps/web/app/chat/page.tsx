@@ -36,6 +36,7 @@ import { useWorkbenchContext, WorkbenchProvider } from "@/features/chat/lib/work
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { SettingsContent } from "@/features/settings/SettingsContent"
 import { SettingsTabProvider } from "@/features/settings/SettingsTabProvider"
+import type { SettingsTab } from "@/features/settings/settings-tabs"
 import { ConversationSidebar } from "@/features/sidebar/ConversationSidebar"
 import { useSidebarActions, useSidebarOpen } from "@/features/sidebar/sidebarStore"
 import { useSandboxEnsure } from "@/features/workspace/hooks/useSandboxEnsure"
@@ -430,7 +431,8 @@ function ChatPageContent() {
 
   const streamingActions = useStreamingActions()
   const lastSeenStreamSeq = useLastSeenStreamSeq(sessionTabId)
-  const { registerElementSelectHandler, registerAddImageToChat, registerOpenConversation } = useWorkbenchContext()
+  const { registerElementSelectHandler, registerAddImageToChat, registerOpenConversation, registerOpenSettings } =
+    useWorkbenchContext()
 
   // Context compaction state — tracks whether compaction is in progress
   // by comparing positions of the last "compacting" vs "compact_boundary" messages.
@@ -892,6 +894,13 @@ function ChatPageContent() {
   useEffect(() => {
     registerOpenConversation(handleTabGroupSelect)
   }, [registerOpenConversation, handleTabGroupSelect])
+
+  // Register settings opener so workbench views can open the settings modal
+  useEffect(() => {
+    registerOpenSettings((tab?: string) => {
+      modals.openSettings(tab as SettingsTab | undefined)
+    })
+  }, [registerOpenSettings, modals.openSettings])
 
   const handleArchiveTabGroup = useCallback(
     async (tabGroupIdToArchive: string) => {

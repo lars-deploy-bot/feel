@@ -120,6 +120,10 @@ interface WorkbenchContextType {
   onOpenConversation: ((conversationId: string) => void) | null
   /** Register the callback for opening conversations */
   registerOpenConversation: (handler: (conversationId: string) => void) => void
+  /** Open the settings modal to a specific tab */
+  onOpenSettings: ((tab?: string) => void) | null
+  /** Register the callback for opening settings */
+  registerOpenSettings: (handler: (tab?: string) => void) => void
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined)
@@ -142,6 +146,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [selectorActive, setSelectorActive] = useState(false)
   const [addImageToChat, setAddImageToChat] = useState<((imageKey: string) => void) | null>(null)
   const [onOpenConversation, setOnOpenConversation] = useState<((conversationId: string) => void) | null>(null)
+  const [onOpenSettings, setOnOpenSettings] = useState<((tab?: string) => void) | null>(null)
 
   const addEntry = (entry: Omit<WorkbenchEntry, "id" | "timestamp">) => {
     const newEntry: WorkbenchEntry = {
@@ -192,6 +197,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
   const registerOpenConversation = useCallback((handler: (conversationId: string) => void) => {
     setOnOpenConversation(() => handler)
+  }, [])
+
+  const registerOpenSettings = useCallback((handler: (tab?: string) => void) => {
+    setOnOpenSettings(() => handler)
   }, [])
 
   const setView = useCallback((view: WorkbenchView) => {
@@ -314,6 +323,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         registerAddImageToChat,
         onOpenConversation,
         registerOpenConversation,
+        onOpenSettings,
+        registerOpenSettings,
       }}
     >
       {children}

@@ -1,5 +1,6 @@
 "use client"
 
+import { getModelDisplayName, isValidClaudeModel } from "@webalive/shared"
 import { CheckCircle2, Copy, ExternalLink, Mail, Pause, Pencil, Play, RotateCw, Trash2, XCircle } from "lucide-react"
 import { useState } from "react"
 import { ActionButton, RunDots, StatusDot, TrigIcon } from "./AgentUI"
@@ -106,7 +107,7 @@ export function AgentDetailView({
       <div className="flex flex-wrap gap-1.5 mb-4">
         {job.action_model && (
           <span className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
-            {job.action_model}
+            {isValidClaudeModel(job.action_model) ? getModelDisplayName(job.action_model) : job.action_model}
           </span>
         )}
         {job.skills?.map(s => (
