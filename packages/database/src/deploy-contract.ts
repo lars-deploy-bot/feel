@@ -214,7 +214,7 @@ export const CreateDeploymentBodyZ = z
   .object({
     environment_id: z.string().trim().min(1),
     release_id: z.string().trim().min(1),
-    action: DeploymentActionZ.optional().default(DEPLOY_DEPLOYMENT_ACTION_DEPLOY),
+    action: DeploymentActionZ.optional(),
   })
   .strict()
 

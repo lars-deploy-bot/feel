@@ -138,7 +138,7 @@ describe("deploysRoutes", () => {
 
     expect(response.status).toBe(201)
     expect(okSchema.parse(await response.json()).ok).toBe(true)
-    expect(queueDeployment).toHaveBeenCalledWith("dep_env_123", "dep_rel_123", DEPLOY_DEPLOYMENT_ACTION_DEPLOY)
+    expect(queueDeployment).toHaveBeenCalledWith("dep_env_123", "dep_rel_123", undefined)
   })
 
   it("requires auth on the fully wired manager route", async () => {

@@ -28,6 +28,7 @@ DEPLOY_STATUS_PENDING="pending"
 DEPLOY_STATUS_RUNNING="running"
 DEPLOY_STATUS_SUCCEEDED="succeeded"
 DEPLOY_STATUS_FAILED="failed"
+DEPLOY_STATUS_CANCELLED="cancelled"
 
 # -- Environment names --
 DEPLOY_ENV_STAGING="staging"

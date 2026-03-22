@@ -206,17 +206,17 @@ echo ""
 
 echo -e "${BOLD}Health check:${NC}"
 if [ "$DEPLOY_STAGING" = true ]; then
-    if health_check "http://localhost:8998/" 1 1; then
-        echo -e "  Staging (8998):    ${GREEN}✓${NC}"
+    if health_check "http://localhost:${DEPLOY_PORT_STAGING}/" 1 1; then
+        echo -e "  Staging (${DEPLOY_PORT_STAGING}):    ${GREEN}✓${NC}"
     else
-        echo -e "  Staging (8998):    ${RED}✗${NC}"
+        echo -e "  Staging (${DEPLOY_PORT_STAGING}):    ${RED}✗${NC}"
     fi
 fi
 if [ "$DEPLOY_PRODUCTION" = true ]; then
-    if health_check "http://localhost:9000/" 1 1; then
-        echo -e "  Production (9000): ${GREEN}✓${NC}"
+    if health_check "http://localhost:${DEPLOY_PORT_PRODUCTION}/" 1 1; then
+        echo -e "  Production (${DEPLOY_PORT_PRODUCTION}): ${GREEN}✓${NC}"
     else
-        echo -e "  Production (9000): ${RED}✗${NC}"
+        echo -e "  Production (${DEPLOY_PORT_PRODUCTION}): ${RED}✗${NC}"
     fi
 fi
 echo ""

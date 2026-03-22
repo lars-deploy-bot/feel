@@ -281,7 +281,7 @@ fi
 # ============================================================================
 CHECK=$((CHECK + 1))
 echo "[$CHECK/$TOTAL_CHECKS] Orphaned build processes..."
-ORPHANS=$(ps aux | grep -E "turbo.*build|next build" | grep -v grep | grep -v "$$" || true)
+ORPHANS=$(pgrep -af "make|ship|build-and-serve|turbo.*build|next build" | grep -v "^$$ " || true)
 if [ -n "$ORPHANS" ]; then
   ORPHAN_COUNT=$(printf '%s\n' "$ORPHANS" | wc -l)
   fail_check "$ORPHAN_COUNT orphaned build process(es) found — kill them first:\n$ORPHANS"

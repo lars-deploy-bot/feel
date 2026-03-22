@@ -184,14 +184,14 @@ describe("deploy contract", () => {
       expect(result.success).toBe(false)
     })
 
-    it("CreateDeploymentBodyZ defaults action to deploy", () => {
+    it("CreateDeploymentBodyZ leaves action undefined when omitted", () => {
       const result = CreateDeploymentBodyZ.safeParse({
         environment_id: "e1",
         release_id: "r1",
       })
       expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.data.action).toBe("deploy")
+        expect(result.data.action).toBeUndefined()
       }
     })
 
@@ -214,7 +214,7 @@ describe("deploy contract", () => {
         ok: true,
         worker: {
           status: "sleeping",
-          last_poll_at: null,
+          last_poll_at: now,
           current_build_id: null,
           current_deployment_id: null,
           last_error: null,

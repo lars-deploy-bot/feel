@@ -51,6 +51,9 @@ describe("worker Docker module resolution", () => {
     const source = await readFile(join(repoRoot, "packages/database/src/deploy-contract.ts"), "utf8")
 
     // deploy-contract.ts must import from deploy.generated.js with explicit .js extension
-    expect(source).toContain('from "./deploy.generated.js"')
+    // Both the type import and runtime import must use .js
+    expect(source).not.toContain('from "./deploy.generated.ts"')
+    expect(source).toMatch(/import type\s+\{[^}]+\}\s+from "\.\/deploy\.generated\.js"/)
+    expect(source).toMatch(/import\s+\{[^}]+\}\s+from "\.\/deploy\.generated\.js"/)
   })
 })
