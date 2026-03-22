@@ -6,7 +6,7 @@ import { validate } from "../../shared/validation"
 import type { AppBindings } from "../../types/hono"
 import { type PolarAuthBindings, polarSessionAuth } from "./polar.auth"
 import { getPolarClient } from "./polar.client"
-import { POLAR_PRODUCTS, USD_TO_CREDITS } from "./polar.config"
+import { getPolarProducts, USD_TO_CREDITS } from "./polar.config"
 
 export const polarRoutes = new Hono<AppBindings>()
 
@@ -158,9 +158,10 @@ polarRoutes.post("/webhook", async c => {
       return c.json({ received: true })
     }
 
+    const products = getPolarProducts(env.ALIVE_ENV)
     let creditsToAward = 0
-    if (order.productId && POLAR_PRODUCTS[order.productId]) {
-      creditsToAward = POLAR_PRODUCTS[order.productId].credits
+    if (order.productId && products[order.productId]) {
+      creditsToAward = products[order.productId].credits
     } else {
       // Fallback: convert order total (cents) to credits
       creditsToAward = (order.totalAmount / 100) * USD_TO_CREDITS
