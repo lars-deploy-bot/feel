@@ -13,6 +13,9 @@ let polarClient: Polar | null = null
 export function getPolarClient(): Polar {
   if (polarClient) return polarClient
 
+  if (!env.ALIVE_ENV) {
+    throw new Error("ALIVE_ENV is required — cannot determine Polar environment (sandbox vs production)")
+  }
   const server = env.ALIVE_ENV === "production" ? "production" : "sandbox"
   polarClient = new Polar({ accessToken: env.POLAR_ACCESS_TOKEN, server })
   return polarClient

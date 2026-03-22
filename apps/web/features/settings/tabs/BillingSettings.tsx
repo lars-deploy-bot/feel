@@ -85,18 +85,22 @@ function BillingContent() {
   }, [fetchCredits, workspace])
 
   // Fetch billing state from Polar via our API
-  const { data: billing, isLoading: billingLoading } = useQuery<PolarBillingResponse>({
+  const {
+    data: billing,
+    isLoading: billingLoading,
+    isError: billingError,
+  } = useQuery<PolarBillingResponse>({
     queryKey: ["polar-billing"],
     queryFn: async () => {
       const res = await fetch("/api/polar/billing")
-      if (!res.ok) return { subscription: null, products: [], portalUrl: null }
+      if (!res.ok) throw new Error(`Billing fetch failed: ${res.status}`)
       return res.json()
     },
     staleTime: 60_000,
-    retry: false,
+    retry: 1,
   })
 
-  const billingLoaded = !billingLoading && billing != null
+  const billingLoaded = !billingLoading && !billingError && billing != null
   const sub = billing?.subscription
   const hasSub = sub != null
   const planName = hasSub ? "Pro" : "Free"

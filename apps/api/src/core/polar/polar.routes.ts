@@ -1,7 +1,11 @@
+import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks"
+import { DOMAINS } from "@webalive/shared"
 import { Hono } from "hono"
 import { z } from "zod"
 import { env } from "../../config/env"
 import { iam } from "../../db/clients"
+import { InternalError } from "../../infra/errors"
+import { Sentry } from "../../infra/sentry"
 import { validate } from "../../shared/validation"
 import type { AppBindings } from "../../types/hono"
 import { type PolarAuthBindings, polarSessionAuth } from "./polar.auth"
@@ -30,7 +34,7 @@ authed.post("/checkout", async c => {
     products: [productId],
     externalCustomerId: userId,
     customerEmail: email || undefined,
-    successUrl: `${c.req.header("origin") || "https://app.alive.best"}/chat?upgraded=true`,
+    successUrl: `${DOMAINS.APP_PROD}/chat?upgraded=true`,
   })
 
   return c.json({ url: checkout.url })
@@ -83,8 +87,14 @@ authed.get("/billing", async c => {
 
     const session = await polar.customerSessions.create({ customerId })
     portalUrl = session.customerPortalUrl
-  } catch {
-    // Customer doesn't exist in Polar yet — that's fine (free plan)
+  } catch (err) {
+    // 404 = customer doesn't exist in Polar yet (free plan) — that's fine
+    // Anything else is a real error — propagate it
+    const is404 = err instanceof Error && "statusCode" in err && (err as { statusCode: number }).statusCode === 404
+    if (!is404) {
+      Sentry.captureException(err)
+      throw new InternalError("Failed to fetch billing state from Polar")
+    }
   }
 
   let products: Array<{
@@ -95,25 +105,21 @@ authed.get("/billing", async c => {
     prices: Array<{ id: string; amountType: string; priceAmount: number | null; priceCurrency: string | null }>
   }> = []
 
-  try {
-    const productList = await polar.products.list({ isArchived: false })
-    const productItems = productList.result?.items
-    if (productItems) {
-      products = productItems.map(p => ({
-        id: p.id,
-        name: p.name,
-        description: p.description ?? null,
-        isRecurring: p.isRecurring,
-        prices: p.prices.map(pr => ({
-          id: pr.id,
-          amountType: pr.amountType,
-          priceAmount: "priceAmount" in pr ? (pr.priceAmount ?? null) : null,
-          priceCurrency: "priceCurrency" in pr ? (pr.priceCurrency ?? null) : null,
-        })),
-      }))
-    }
-  } catch (err) {
-    console.error("[polar/billing] Error fetching products:", err)
+  const productList = await polar.products.list({ isArchived: false })
+  const productItems = productList.result?.items
+  if (productItems) {
+    products = productItems.map(p => ({
+      id: p.id,
+      name: p.name,
+      description: p.description ?? null,
+      isRecurring: p.isRecurring,
+      prices: p.prices.map(pr => ({
+        id: pr.id,
+        amountType: pr.amountType,
+        priceAmount: "priceAmount" in pr ? (pr.priceAmount ?? null) : null,
+        priceCurrency: "priceCurrency" in pr ? (pr.priceCurrency ?? null) : null,
+      })),
+    }))
   }
 
   return c.json({ subscription, products, portalUrl })
@@ -127,28 +133,39 @@ polarRoutes.route("/", authed)
 // ---------------------------------------------------------------------------
 
 polarRoutes.post("/webhook", async c => {
-  const polar = getPolarClient()
   const body = await c.req.text()
   const headers: Record<string, string> = {}
   c.req.raw.headers.forEach((value, key) => {
     headers[key] = value
   })
 
-  let event: Awaited<ReturnType<typeof polar.validateWebhook>>
+  let event: ReturnType<typeof validateEvent>
   try {
-    event = await polar.validateWebhook({
-      request: { body, headers, url: c.req.url, method: "POST" },
-    })
+    event = validateEvent(body, headers, env.POLAR_WEBHOOK_SECRET)
   } catch (err) {
-    console.error("[polar/webhook] Signature verification failed:", err)
-    return c.json({ error: "Invalid signature" }, 400)
+    if (err instanceof WebhookVerificationError) {
+      Sentry.captureException(err)
+      return c.json({ error: "Invalid signature" }, 403)
+    }
+    throw err
   }
 
   if (event.type === "order.paid") {
     const order = event.data
     const externalId = order.customer.externalId
     if (!externalId) {
-      console.error("[polar/webhook] order.paid: customer has no externalId", order.customer.id)
+      Sentry.captureMessage(`[polar/webhook] order.paid: customer ${order.customer.id} has no externalId`)
+      return c.json({ received: true })
+    }
+
+    // Idempotency: skip if this order was already processed
+    const { data: existing } = await iam
+      .from("processed_polar_orders")
+      .select("order_id")
+      .eq("order_id", order.id)
+      .maybeSingle()
+
+    if (existing) {
       return c.json({ received: true })
     }
 
@@ -157,12 +174,11 @@ polarRoutes.post("/webhook", async c => {
     if (order.productId && products[order.productId]) {
       creditsToAward = products[order.productId].credits
     } else {
-      // Fallback: convert order total (cents) to credits
       creditsToAward = (order.totalAmount / 100) * USD_TO_CREDITS
     }
 
     if (creditsToAward > 0) {
-      const { data: membership } = await iam
+      const { data: membership, error: membershipError } = await iam
         .from("org_memberships")
         .select("org_id")
         .eq("user_id", externalId)
@@ -170,21 +186,28 @@ polarRoutes.post("/webhook", async c => {
         .limit(1)
         .single()
 
-      if (membership) {
-        const { error } = await iam.rpc("add_credits", {
-          p_org_id: membership.org_id,
-          p_amount: creditsToAward,
-        })
-        if (error) {
-          console.error("[polar/webhook] Failed to add credits:", error)
-        } else {
-          console.log(
-            `[polar/webhook] Awarded ${creditsToAward} credits to org ${membership.org_id} for user ${externalId}`,
-          )
-        }
-      } else {
-        console.error("[polar/webhook] No org found for user:", externalId)
+      if (membershipError || !membership) {
+        Sentry.captureMessage(`[polar/webhook] No org found for user ${externalId}`, { extra: { membershipError } })
+        return c.json({ error: "No org found for user" }, 500)
       }
+
+      const { error: creditError } = await iam.rpc("add_credits", {
+        p_org_id: membership.org_id,
+        p_amount: creditsToAward,
+      })
+
+      if (creditError) {
+        Sentry.captureException(creditError)
+        return c.json({ error: "Failed to add credits" }, 500)
+      }
+
+      // Record as processed (idempotency guard)
+      await iam.from("processed_polar_orders").insert({
+        order_id: order.id,
+        user_id: externalId,
+        org_id: membership.org_id,
+        credits_awarded: creditsToAward,
+      })
     }
   }
 
