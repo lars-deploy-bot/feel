@@ -44,22 +44,22 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     if (selectedId && jobs.length > 0 && !selectedJob) setView({ kind: "list" })
   }, [selectedId, selectedJob, jobs.length])
 
-  /** Fetch sites and open create form — used by button, routes through the same store as chat */
+  /** Fetch the current workspace's site and open create form */
   const handleNewAgent = useCallback(async () => {
     setNewLoading(true)
     setNewError(null)
     try {
       const data = await getty("sites")
       if (!data || !Array.isArray(data.sites)) throw new Error("Failed to load sites")
-      const sites = data.sites.map(s => ({ id: s.id, hostname: s.hostname }))
-      if (sites.length === 0) throw new Error("No websites available. Create a website first.")
-      startCreate({ sites }, () => {})
+      const site = data.sites.find(s => s.hostname === workspace)
+      if (!site) throw new Error(`Site "${workspace}" not found`)
+      startCreate({ sites: [{ id: site.id, hostname: site.hostname }], defaultSiteId: site.id }, () => {})
     } catch (e) {
       setNewError(e instanceof Error ? e.message : "Failed to load sites")
     } finally {
       setNewLoading(false)
     }
-  }, [startCreate])
+  }, [startCreate, workspace])
 
   const handleNavigate = (kind: AgentView["kind"]) => {
     if (kind === "list") setView({ kind: "list" })

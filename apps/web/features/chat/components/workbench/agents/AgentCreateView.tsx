@@ -27,12 +27,12 @@ export function AgentCreateView({
   onCreated: (message: string) => void
   onCancel: () => void
 }) {
-  const initialSiteSelection = getInitialSiteSelection(data.sites, data.defaultSiteId)
+  const initialSite = getInitialSiteSelection(data.sites, data.defaultSiteId)
+  const [siteId, setSiteId] = useState(initialSite.siteId)
+  const [siteSearch, setSiteSearch] = useState(initialSite.siteSearch)
 
   const [name, setName] = useState(data.defaultName ?? "")
   const [prompt, setPrompt] = useState(data.defaultPrompt ?? "")
-  const [siteId, setSiteId] = useState(initialSiteSelection.siteId)
-  const [siteSearch, setSiteSearch] = useState(initialSiteSelection.siteSearch)
   const [model, setModel] = useState<ClaudeModel>(data.defaultModel ?? CLAUDE_MODELS.HAIKU_4_5)
   const [isOneTime, setIsOneTime] = useState(false)
   const [scheduleText, setScheduleText] = useState("every day at 9am")
@@ -52,24 +52,23 @@ export function AgentCreateView({
     nameRef.current?.focus()
   }, [])
 
+  const resolvedSite = data.sites.find(s => s.id === siteId) ?? (data.sites.length === 1 ? data.sites[0] : undefined)
+
   const canSubmit =
     name.trim().length >= 3 &&
     prompt.trim().length >= 10 &&
-    (data.sites.some(s => s.id === siteId) || data.sites.length === 1) &&
+    !!resolvedSite &&
     (isOneTime ? scheduleDate && scheduleTime : scheduleText.trim().length > 0)
 
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit || status === "submitting") return
-
-    const site = data.sites.find(s => s.id === siteId) ?? (data.sites.length === 1 ? data.sites[0] : undefined)
-    if (!site) return
+    if (!canSubmit || status === "submitting" || !resolvedSite) return
 
     setError(null)
     setStatus("submitting")
 
     const result: AutomationConfigResult = {
-      siteId: site.id,
-      siteName: site.hostname,
+      siteId: resolvedSite.id,
+      siteName: resolvedSite.hostname,
       name,
       prompt,
       model,
@@ -88,7 +87,7 @@ export function AgentCreateView({
         ? `Once on ${scheduleDate} at ${scheduleTime}`
         : `${scheduleText} (${timezone.split("/")[1] ?? timezone})`
 
-      onCreated(`Automation "${name}" created for ${site.hostname}. Schedule: ${schedule}`)
+      onCreated(`Automation "${name}" created for ${resolvedSite.hostname}. Schedule: ${schedule}`)
     } catch (e) {
       setStatus("idle")
       if (e instanceof ApiError) {
@@ -100,8 +99,7 @@ export function AgentCreateView({
   }, [
     canSubmit,
     status,
-    data.sites,
-    siteId,
+    resolvedSite,
     name,
     prompt,
     model,
@@ -178,13 +176,6 @@ export function AgentCreateView({
                   onSearchChange={setSiteSearch}
                   className={INPUT}
                 />
-              </div>
-            )}
-
-            {data.sites.length === 1 && data.sites[0] && (
-              <div>
-                <span className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 block mb-1.5">Website</span>
-                <p className="text-[13px] text-zinc-500 dark:text-zinc-400">{data.sites[0].hostname}</p>
               </div>
             )}
 
