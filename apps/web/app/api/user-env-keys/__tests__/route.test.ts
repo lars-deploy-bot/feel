@@ -5,13 +5,15 @@ import { ErrorCodes } from "@/lib/error-codes"
 
 const {
   getSessionUserMock,
-  setUserEnvKeyMock,
+  setUserEnvKeyMultiEnvMock,
+  syncUserEnvKeyEnvironmentsMock,
   listUserEnvKeysMock,
   deleteAllUserEnvKeyScopesMock,
   captureExceptionMock,
 } = vi.hoisted(() => ({
   getSessionUserMock: vi.fn(),
-  setUserEnvKeyMock: vi.fn(),
+  setUserEnvKeyMultiEnvMock: vi.fn(),
+  syncUserEnvKeyEnvironmentsMock: vi.fn(),
   listUserEnvKeysMock: vi.fn(),
   deleteAllUserEnvKeyScopesMock: vi.fn(),
   captureExceptionMock: vi.fn(),
@@ -23,7 +25,8 @@ vi.mock("@/features/auth/lib/auth", () => ({
 
 vi.mock("@/lib/oauth/oauth-instances", () => ({
   getUserEnvKeysManager: () => ({
-    setUserEnvKey: setUserEnvKeyMock,
+    setUserEnvKeyMultiEnv: setUserEnvKeyMultiEnvMock,
+    syncUserEnvKeyEnvironments: syncUserEnvKeyEnvironmentsMock,
     listUserEnvKeys: listUserEnvKeysMock,
     deleteAllUserEnvKeyScopes: deleteAllUserEnvKeyScopesMock,
   }),
@@ -54,7 +57,7 @@ function createDeleteRequest(body: Record<string, unknown>): NextRequest {
 describe("POST /api/user-env-keys", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setUserEnvKeyMock.mockResolvedValue(undefined)
+    setUserEnvKeyMultiEnvMock.mockResolvedValue(undefined)
   })
 
   it("returns 401 when unauthenticated", async () => {
@@ -92,7 +95,7 @@ describe("POST /api/user-env-keys", () => {
     expect(json.error).toBe(ErrorCodes.INVALID_REQUEST)
     expect(json.details.field).toBe("keyName")
     expect(json.details.message).toContain("reserved")
-    expect(setUserEnvKeyMock).not.toHaveBeenCalled()
+    expect(setUserEnvKeyMultiEnvMock).not.toHaveBeenCalled()
   })
 
   it("returns 200 and stores key on valid request", async () => {
@@ -104,13 +107,16 @@ describe("POST /api/user-env-keys", () => {
     expect(response.status).toBe(200)
     expect(json.ok).toBe(true)
     expect(json.keyName).toBe("OPENAI_API_KEY")
-    expect(setUserEnvKeyMock).toHaveBeenCalledWith("user-1", "OPENAI_API_KEY", "secret", undefined)
+    expect(setUserEnvKeyMultiEnvMock).toHaveBeenCalledWith("user-1", "OPENAI_API_KEY", "secret", {
+      workspace: undefined,
+      environments: [],
+    })
   })
 
   it("returns 500 when storage layer throws", async () => {
     getSessionUserMock.mockResolvedValue({ id: "user-1" })
     const error = new Error("lockbox unavailable")
-    setUserEnvKeyMock.mockRejectedValue(error)
+    setUserEnvKeyMultiEnvMock.mockRejectedValue(error)
 
     const response = await POST(createPostRequest({ keyName: "OPENAI_API_KEY", keyValue: "secret" }))
     const json = await response.json()
