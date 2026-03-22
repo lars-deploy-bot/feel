@@ -12,13 +12,7 @@ vi.mock("@sentry/nextjs", () => ({
 
 import { useDexieMessageStore } from "../dexieMessageStore"
 import { type DbMessage, getMessageDb, resetMessageDb } from "../messageDb"
-import {
-  type TabMessage,
-  useActiveStreamId,
-  useIsTabStreaming,
-  useStreamingText,
-  useTabMessages,
-} from "../useTabMessages"
+import { useActiveStreamId, useIsTabStreaming, useStreamingText, useTabMessages } from "../useTabMessages"
 
 const TEST_USER_ID = "test-user-tab-messages"
 const TEST_TAB_ID = "tab-123"

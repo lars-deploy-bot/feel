@@ -2,6 +2,7 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { getModelDisplayName, isValidClaudeModel } from "@webalive/shared"
 import { ArrowLeft, Calendar, Globe, Mail, Pause, Play, Plus, Trash2, Zap } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
@@ -47,7 +48,7 @@ export function AutomationsSettings() {
   const queryClient = useQueryClient()
   const currentWorkspace = useCurrentWorkspace()
   const selectedOrgId = useSelectedOrgId()
-  const { data: sitesData, isLoading: sitesLoading } = useSitesQuery()
+  const { data: sitesData } = useSitesQuery()
 
   const [projectOnly, setProjectOnly] = useState(false)
 
@@ -72,7 +73,8 @@ export function AutomationsSettings() {
     }
   }, [rawAutomationsData, projectOnly, currentWorkspace])
 
-  const loading = automationsLoading || sitesLoading
+  // Sites are only needed for create/edit form — don't block the list view on them
+  const loading = automationsLoading
 
   useEffect(() => {
     trackAutomationsViewed()
@@ -127,6 +129,7 @@ export function AutomationsSettings() {
       if (!variables.editingJobId) {
         trackAutomationCreated({ has_prompt: !!variables.formData.action_prompt })
       }
+      toast.success("Agent saved")
       queryClient.invalidateQueries({ queryKey: queryKeys.automations.all })
       setSelectedJobId(null)
       setIsCreating(false)
@@ -240,27 +243,32 @@ export function AutomationsSettings() {
     )
   }
 
-  // After loading/error guards, data is guaranteed
-  if (!automationsData || !sitesData) return null
+  // After loading/error guards, automations data is guaranteed
+  if (!automationsData) return null
   const { automations } = automationsData
-  const { sites } = sitesData
+  const sites = sitesData?.sites ?? []
   const activeCount = automations.filter(a => a.is_active).length
 
   // ─── Create view ──────────────────────────────
 
   if (isCreating) {
     return (
-      <SettingsTabLayout title="Agents" description="Create a new agent">
-        <div>
+      <SettingsTabLayout
+        title="Agents"
+        description="Create a new agent"
+        className="h-full min-h-0 flex flex-col"
+        contentClassName="flex-1 min-h-0 flex flex-col"
+      >
+        <div className="flex-1 min-h-0 flex flex-col">
           <button
             type="button"
             onClick={handleBack}
-            className="inline-flex items-center gap-1.5 text-sm text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors mb-4"
+            className="inline-flex items-center gap-1.5 text-sm text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors mb-4 shrink-0"
           >
             <ArrowLeft size={16} />
             Back to agents
           </button>
-          <div className="max-w-2xl">
+          <div className="max-w-2xl flex-1 min-h-0">
             <AutomationSidePanel
               isOpen={true}
               onClose={handleBack}
@@ -574,7 +582,10 @@ function OverviewTab({ job }: { job: AutomationJob }) {
   }
 
   if (job.action_model) {
-    rows.push({ label: "Model", value: job.action_model })
+    rows.push({
+      label: "Model",
+      value: isValidClaudeModel(job.action_model) ? getModelDisplayName(job.action_model) : job.action_model,
+    })
   }
 
   if (job.action_timeout_seconds) {

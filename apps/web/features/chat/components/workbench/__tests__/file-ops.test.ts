@@ -6,7 +6,7 @@
  * - Invalidate the correct caches
  * - Notify subscribers of changes
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // Mock the underlying API module
 vi.mock("../lib/file-api", () => ({
