@@ -8,7 +8,7 @@ import type {
   ResPayload as PkgResPayload,
 } from "@alive-brug/alrighty"
 import { AppConstants, type TriggerType } from "@webalive/database"
-import { CLAUDE_MODELS, ORG_ROLES, RESERVED_USER_ENV_KEYS } from "@webalive/shared"
+import { AGENT_CONSTRAINTS, CLAUDE_MODELS, ORG_ROLES, RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 import { z } from "zod"
 import {
   DeploySiteIdeasSchema,
@@ -733,6 +733,7 @@ export const apiSchemas = {
           action_prompt: z.string().nullable(),
           action_model: z.string().nullable(),
           action_target_page: z.string().nullable(),
+          action_timeout_seconds: z.number().nullable().optional(),
           skills: z.array(z.string()).nullable(),
           created_at: z.string(),
           runs_30d: z.number(),
@@ -767,18 +768,23 @@ export const apiSchemas = {
     req: z
       .object({
         site_id: z.string().min(1),
-        name: z.string().min(1),
+        name: z.string().min(AGENT_CONSTRAINTS.NAME_MIN).max(AGENT_CONSTRAINTS.NAME_MAX),
         trigger_type: TriggerTypeSchema,
         action_type: ActionTypeSchema,
         description: z.string().nullable().optional(),
         cron_schedule: z.string().nullable().optional(),
         cron_timezone: z.string().nullable().optional(),
-        schedule_text: z.string().nullable().optional(),
+        schedule_text: z.string().max(AGENT_CONSTRAINTS.SCHEDULE_TEXT_MAX).nullable().optional(),
         run_at: z.string().nullable().optional(),
-        action_prompt: z.string().nullable().optional(),
+        action_prompt: z.string().max(AGENT_CONSTRAINTS.PROMPT_MAX).nullable().optional(),
         action_source: z.string().nullable().optional(),
         action_target_page: z.string().nullable().optional(),
-        action_timeout_seconds: z.number().positive().max(3600).nullable().optional(),
+        action_timeout_seconds: z
+          .number()
+          .min(AGENT_CONSTRAINTS.TIMEOUT_MIN)
+          .max(AGENT_CONSTRAINTS.TIMEOUT_MAX)
+          .nullable()
+          .optional(),
         action_model: ClaudeModelSchema.nullable().optional(),
         skills: z.array(z.string()).optional().default([]),
         email_address: z.string().email().nullable().optional(),
@@ -833,17 +839,22 @@ export const apiSchemas = {
     params: z.object({ id: z.string().min(1) }),
     req: z
       .object({
-        name: z.string().min(1).optional(),
+        name: z.string().min(AGENT_CONSTRAINTS.NAME_MIN).max(AGENT_CONSTRAINTS.NAME_MAX).optional(),
         description: z.string().nullable().optional(),
         cron_schedule: z.string().nullable().optional(),
         cron_timezone: z.string().nullable().optional(),
-        schedule_text: z.string().nullable().optional(),
+        schedule_text: z.string().max(AGENT_CONSTRAINTS.SCHEDULE_TEXT_MAX).nullable().optional(),
         run_at: z.string().nullable().optional(),
-        action_prompt: z.string().nullable().optional(),
+        action_prompt: z.string().max(AGENT_CONSTRAINTS.PROMPT_MAX).nullable().optional(),
         action_source: z.string().nullable().optional(),
         action_target_page: z.string().nullable().optional(),
         action_model: ClaudeModelSchema.nullable().optional(),
-        action_timeout_seconds: z.number().positive().max(3600).nullable().optional(),
+        action_timeout_seconds: z
+          .number()
+          .min(AGENT_CONSTRAINTS.TIMEOUT_MIN)
+          .max(AGENT_CONSTRAINTS.TIMEOUT_MAX)
+          .nullable()
+          .optional(),
         skills: z.array(z.string()).optional(),
         is_active: z.boolean().optional(),
       })

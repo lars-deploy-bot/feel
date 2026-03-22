@@ -1,6 +1,6 @@
 "use client"
 
-import { Layers, MessageCircle, Plus, Settings } from "lucide-react"
+import { MessageCircle, Plus, Settings } from "lucide-react"
 import { SIDEBAR_RAIL } from "@/lib/layout"
 import { useSidebarActions } from "../sidebarStore"
 import { AccountMenu } from "./AccountMenu"
@@ -22,7 +22,7 @@ export function CollapsedRail({
   onNewConversation,
   onSettingsClick,
   onFeedbackClick,
-  onTemplatesClick,
+  onTemplatesClick: _onTemplatesClick,
 }: CollapsedRailProps) {
   const { openSidebar } = useSidebarActions()
 
@@ -69,15 +69,7 @@ export function CollapsedRail({
       <div className="flex-1" />
 
       {/* Action buttons */}
-      <button
-        type="button"
-        onClick={onTemplatesClick}
-        className={railIconClass}
-        style={railIconStyle}
-        aria-label="Components"
-      >
-        <Layers size={16} strokeWidth={1.5} />
-      </button>
+      {/* Components button — hidden, kept for future use */}
       <button
         type="button"
         onClick={onFeedbackClick}

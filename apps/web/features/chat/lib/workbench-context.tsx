@@ -142,7 +142,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [selectorActive, setSelectorActive] = useState(false)
   const [addImageToChat, setAddImageToChat] = useState<((imageKey: string) => void) | null>(null)
   const [onOpenConversation, setOnOpenConversation] = useState<((conversationId: string) => void) | null>(null)
-
   const addEntry = (entry: Omit<WorkbenchEntry, "id" | "timestamp">) => {
     const newEntry: WorkbenchEntry = {
       ...entry,

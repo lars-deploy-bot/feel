@@ -1,41 +1,39 @@
 "use client"
 
-import { Bot, Loader2, RotateCw, TriangleAlert } from "lucide-react"
-import dynamic from "next/dynamic"
+import { Loader2, Plus, RotateCw, TriangleAlert } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
+import { useSitesQuery } from "@/lib/hooks/useSettingsQueries"
 import { useAgentCreateStore, usePendingCreate } from "@/lib/stores/agentCreateStore"
-import { AgentDetailView } from "./agents/AgentDetailView"
 import { AgentEditView } from "./agents/AgentEditView"
 import { AgentListView } from "./agents/AgentListView"
-import { AgentNav } from "./agents/AgentUI"
+import { AgentOverviewView } from "./agents/AgentOverviewView"
+import { AgentRunsView } from "./agents/AgentRunsView"
+import { AgentDetailNav, AgentListHeader } from "./agents/AgentUI"
 import type { AgentView } from "./agents/agents-types"
+import { AgentTemplatePicker } from "./agents/templates/AgentTemplatePicker"
+import type { AgentTemplate } from "./agents/templates/agent-templates"
 import { useAgents } from "./agents/useAgents"
-
-const AgentCreateView = dynamic(() => import("./agents/AgentCreateView").then(m => ({ default: m.AgentCreateView })), {
-  ssr: false,
-})
 
 export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
   const { jobs, loading, error, refresh } = useAgents(workspace)
   const [view, setView] = useState<AgentView>({ kind: "list" })
   const { onOpenConversation } = useWorkbenchContext()
+  const { data: sitesData } = useSitesQuery()
 
   const pendingCreate = usePendingCreate()
   const onComplete = useAgentCreateStore(s => s.onComplete)
-  const { clearCreate } = useAgentCreateStore(s => s.actions)
+  const { startCreate, clearCreate } = useAgentCreateStore(s => s.actions)
 
-  // When pending create data arrives, switch to create view.
-  // When it's cleared (after create/cancel), go back to list.
+  const [newError, setNewError] = useState<string | null>(null)
+
+  // When pending create data arrives (from chat OR button), switch to create view.
   useEffect(() => {
-    if (pendingCreate) {
-      setView({ kind: "create" })
-    } else {
-      setView(prev => (prev.kind === "create" ? { kind: "list" } : prev))
-    }
+    if (pendingCreate) setView({ kind: "create" })
+    else setView(prev => (prev.kind === "create" ? { kind: "list" } : prev))
   }, [pendingCreate])
 
-  const selectedId = view.kind === "detail" || view.kind === "edit" ? view.jobId : null
+  const selectedId = view.kind === "detail" ? view.jobId : null
   const selectedJob = selectedId ? jobs.find(j => j.id === selectedId) : null
 
   // If selected job was deleted, go back to list
@@ -43,15 +41,49 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     if (selectedId && jobs.length > 0 && !selectedJob) setView({ kind: "list" })
   }, [selectedId, selectedJob, jobs.length])
 
-  const handleNavigate = (kind: AgentView["kind"]) => {
-    if (kind === "list") setView({ kind: "list" })
-    else if (kind === "create" && pendingCreate) setView({ kind: "create" })
-    else if (selectedId) setView({ kind, jobId: selectedId })
-  }
+  /** Resolve the current workspace site for create flows */
+  const resolveSite = useCallback(() => {
+    setNewError(null)
+    const sites = sitesData?.sites
+    if (!sites || sites.length === 0) {
+      setNewError("No websites available. Create a website first.")
+      return null
+    }
+    const match = sites.find(s => s.hostname === workspace)
+    if (!match) {
+      setNewError(`Site "${workspace}" not found`)
+      return null
+    }
+    return { id: match.id, hostname: match.hostname }
+  }, [workspace, sitesData])
+
+  /** Open blank create form */
+  const handleNewAgent = useCallback(() => {
+    const site = resolveSite()
+    if (!site) return
+    startCreate({ sites: [site], defaultSiteId: site.id }, () => {})
+  }, [resolveSite, startCreate])
+
+  /** Open create form pre-filled from a template */
+  const handleTemplateSelect = useCallback(
+    (template: AgentTemplate) => {
+      const site = resolveSite()
+      if (!site) return
+      startCreate(
+        {
+          sites: [site],
+          defaultSiteId: site.id,
+          defaultName: template.name,
+          defaultPrompt: template.prompt,
+        },
+        () => {},
+      )
+    },
+    [resolveSite, startCreate],
+  )
 
   const handleCreateDone = useCallback(
     (message: string) => {
-      // Notify the chat (if triggered from chat tool)
       onComplete?.(message)
       clearCreate()
       setView({ kind: "list" })
@@ -63,7 +95,6 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
   const handleCreateCancel = useCallback(() => {
     onComplete?.("User canceled automation configuration.")
     clearCreate()
-    setView({ kind: "list" })
   }, [onComplete, clearCreate])
 
   if (loading) {
@@ -92,54 +123,92 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     )
   }
 
-  // Create view — requires pendingCreate from the chat tool
-  if (view.kind === "create" && pendingCreate) {
-    return <AgentCreateView data={pendingCreate} onCreated={handleCreateDone} onCancel={handleCreateCancel} />
-  }
-
-  if (jobs.length === 0) {
+  // ── Agent detail sub-page (back + tabs) ──
+  if (view.kind === "detail" && selectedJob) {
     return (
-      <div className="h-full flex flex-col items-center justify-center px-6">
-        <div className="w-12 h-12 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 flex items-center justify-center mb-4">
-          <Bot size={20} strokeWidth={1.5} className="text-zinc-400 dark:text-zinc-600" />
+      <div className="h-full flex flex-col">
+        <AgentDetailNav
+          name={selectedJob.name}
+          activeTab={view.tab}
+          onBack={() => setView({ kind: "list" })}
+          onTabChange={tab => setView({ kind: "detail", jobId: selectedJob.id, tab })}
+        />
+        <div className="flex-1 overflow-auto">
+          {view.tab === "overview" && (
+            <AgentOverviewView
+              job={selectedJob}
+              onGoToRuns={() => setView({ kind: "detail", jobId: selectedJob.id, tab: "runs" })}
+              onGoToEdit={() => setView({ kind: "detail", jobId: selectedJob.id, tab: "edit" })}
+              onChanged={refresh}
+            />
+          )}
+          {view.tab === "runs" && <AgentRunsView job={selectedJob} onOpenConversation={onOpenConversation} />}
+          {view.tab === "edit" && (
+            <AgentEditView
+              job={selectedJob}
+              onDone={() => setView({ kind: "detail", jobId: selectedJob.id, tab: "overview" })}
+              onChanged={refresh}
+            />
+          )}
         </div>
-        <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 mb-1">No agents yet</p>
-        <p className="text-[12px] text-zinc-400 dark:text-zinc-600 text-center">Ask in the chat to set one up</p>
       </div>
     )
   }
 
+  // ── Create mode (no header — the edit view IS the full screen) ──
+  if (view.kind === "create" && pendingCreate) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-auto">
+          <AgentEditView
+            job={null}
+            createData={pendingCreate}
+            onDone={msg => {
+              if (msg) handleCreateDone(msg)
+              else handleCreateCancel()
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // ── Empty state: template picker (no header — picker has its own) ──
+  if (jobs.length === 0) {
+    return (
+      <div className="h-full flex flex-col">
+        {newError && (
+          <div className="px-3 py-1.5">
+            <p role="alert" className="text-[11px] text-red-500 dark:text-red-400">
+              {newError}
+            </p>
+          </div>
+        )}
+        <div className="flex-1 overflow-auto">
+          <AgentTemplatePicker onSelect={handleTemplateSelect} onBlank={handleNewAgent} />
+        </div>
+      </div>
+    )
+  }
+
+  // ── Agent list (main page) ──
   return (
     <div className="h-full flex flex-col">
-      <AgentNav
-        view={view}
-        hasSelected={selectedJob !== null && selectedJob !== undefined}
-        onNavigate={handleNavigate}
-      />
+      <AgentListHeader onNewAgent={handleNewAgent} newAgentLoading={!sitesData} />
+      {newError && (
+        <div className="px-3 py-1.5">
+          <p role="alert" className="text-[11px] text-red-500 dark:text-red-400">
+            {newError}
+          </p>
+        </div>
+      )}
       <div className="flex-1 overflow-auto">
-        {view.kind === "list" && (
-          <AgentListView
-            jobs={jobs}
-            onSelect={job => setView({ kind: "detail", jobId: job.id })}
-            onChanged={refresh}
-            refresh={refresh}
-          />
-        )}
-        {view.kind === "detail" && selectedJob && (
-          <AgentDetailView
-            job={selectedJob}
-            onEdit={() => setView({ kind: "edit", jobId: selectedJob.id })}
-            onChanged={refresh}
-            onOpenConversation={onOpenConversation}
-          />
-        )}
-        {view.kind === "edit" && selectedJob && (
-          <AgentEditView
-            job={selectedJob}
-            onBack={() => setView({ kind: "detail", jobId: selectedJob.id })}
-            onChanged={refresh}
-          />
-        )}
+        <AgentListView
+          jobs={jobs}
+          onSelect={job => setView({ kind: "detail", jobId: job.id, tab: "overview" })}
+          onChanged={refresh}
+          refresh={refresh}
+        />
       </div>
     </div>
   )

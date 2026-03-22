@@ -3,7 +3,7 @@ export interface AutomationScheduleInput {
   scheduleTime: string
   scheduleDate?: string
   cronExpression?: string
-  timezone: string
+  timezone?: string
 }
 
 type SchedulePayload =
@@ -14,7 +14,7 @@ type SchedulePayload =
   | {
       trigger_type: "cron"
       cron_schedule: string
-      cron_timezone: string
+      cron_timezone?: string
     }
 
 function parseScheduleDate(scheduleDate: string): { year: number; month: number; day: number } {
@@ -146,7 +146,7 @@ export function scheduleResultToApiPayload(result: AutomationScheduleInput): Sch
 
       return {
         trigger_type: "one-time",
-        run_at: toZonedDateTimeIso(result.scheduleDate, result.scheduleTime, result.timezone),
+        run_at: toZonedDateTimeIso(result.scheduleDate, result.scheduleTime, result.timezone ?? "UTC"),
       }
     }
 

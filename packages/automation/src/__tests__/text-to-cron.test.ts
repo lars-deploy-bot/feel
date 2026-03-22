@@ -37,27 +37,39 @@ async function importTextToCron() {
 }
 
 describe("textToCron", () => {
-  test("parses a simple cron-only response", async () => {
-    globalThis.fetch = mock(() => Promise.resolve(groqResponse("0 9 * * 1-5")))
+  test("parses cron + description response", async () => {
+    globalThis.fetch = mock(() => Promise.resolve(groqResponse("0 9 * * 1-5\nWeekdays at 9:00 AM")))
     const textToCron = await importTextToCron()
     const result: TextToCronResult = await textToCron("weekdays at 9am", FAKE_API_KEY)
     expect(result.cron).toBe("0 9 * * 1-5")
+    expect(result.description).toBe("Weekdays at 9:00 AM")
     expect(result.timezone).toBeNull()
   })
 
-  test("parses cron + timezone on two lines", async () => {
-    globalThis.fetch = mock(() => Promise.resolve(groqResponse("30 9 * * 1-5\nEurope/Amsterdam")))
+  test("parses cron + description + timezone on three lines", async () => {
+    globalThis.fetch = mock(() => Promise.resolve(groqResponse("30 9 * * 1-5\nWeekdays at 9:30 AM\nEurope/Amsterdam")))
     const textToCron = await importTextToCron()
     const result = await textToCron("weekdays at 9:30 amsterdam time", FAKE_API_KEY)
     expect(result.cron).toBe("30 9 * * 1-5")
+    expect(result.description).toBe("Weekdays at 9:30 AM")
     expect(result.timezone).toBe("Europe/Amsterdam")
   })
 
-  test("trims whitespace and blank lines", async () => {
-    globalThis.fetch = mock(() => Promise.resolve(groqResponse("  */15 * * * *  \n  \n")))
+  test("falls back to cron as description when only one line", async () => {
+    globalThis.fetch = mock(() => Promise.resolve(groqResponse("*/15 * * * *")))
     const textToCron = await importTextToCron()
     const result = await textToCron("every 15 minutes", FAKE_API_KEY)
     expect(result.cron).toBe("*/15 * * * *")
+    expect(result.description).toBe("*/15 * * * *")
+    expect(result.timezone).toBeNull()
+  })
+
+  test("trims whitespace and blank lines", async () => {
+    globalThis.fetch = mock(() => Promise.resolve(groqResponse("  */15 * * * *  \n Every 15 minutes \n  \n")))
+    const textToCron = await importTextToCron()
+    const result = await textToCron("every 15 minutes", FAKE_API_KEY)
+    expect(result.cron).toBe("*/15 * * * *")
+    expect(result.description).toBe("Every 15 minutes")
     expect(result.timezone).toBeNull()
   })
 
@@ -68,7 +80,7 @@ describe("textToCron", () => {
   })
 
   test("throws on invalid timezone", async () => {
-    globalThis.fetch = mock(() => Promise.resolve(groqResponse("0 9 * * *\nFake/Timezone")))
+    globalThis.fetch = mock(() => Promise.resolve(groqResponse("0 9 * * *\nEvery day at 9:00 AM\nFake/Timezone")))
     const textToCron = await importTextToCron()
     await expect(textToCron("daily at 9am fake tz", FAKE_API_KEY)).rejects.toThrow(/Invalid timezone/)
   })
@@ -85,8 +97,10 @@ describe("textToCron", () => {
     await expect(textToCron("test", FAKE_API_KEY)).rejects.toThrow("Empty response")
   })
 
-  test("throws on too many lines (3+)", async () => {
-    globalThis.fetch = mock(() => Promise.resolve(groqResponse("0 9 * * *\nEurope/Amsterdam\nextra line")))
+  test("throws on too many lines (4+)", async () => {
+    globalThis.fetch = mock(() =>
+      Promise.resolve(groqResponse("0 9 * * *\nEvery day at 9 AM\nEurope/Amsterdam\nextra line")),
+    )
     const textToCron = await importTextToCron()
     await expect(textToCron("daily at 9am", FAKE_API_KEY)).rejects.toThrow("Unexpected format")
   })
@@ -98,7 +112,7 @@ describe("textToCron", () => {
   })
 
   test("sends correct request to Groq", async () => {
-    const mockFetch = mock(() => Promise.resolve(groqResponse("0 * * * *")))
+    const mockFetch = mock(() => Promise.resolve(groqResponse("0 * * * *\nEvery hour")))
     globalThis.fetch = mockFetch
     const textToCron = await importTextToCron()
     await textToCron("every hour", FAKE_API_KEY)
@@ -115,10 +129,13 @@ describe("textToCron", () => {
   })
 
   test("handles \\r\\n line endings", async () => {
-    globalThis.fetch = mock(() => Promise.resolve(groqResponse("0 8 * * *\r\nAmerica/New_York")))
+    globalThis.fetch = mock(() =>
+      Promise.resolve(groqResponse("0 8 * * *\r\nEvery day at 8:00 AM\r\nAmerica/New_York")),
+    )
     const textToCron = await importTextToCron()
     const result = await textToCron("daily at 8am eastern", FAKE_API_KEY)
     expect(result.cron).toBe("0 8 * * *")
+    expect(result.description).toBe("Every day at 8:00 AM")
     expect(result.timezone).toBe("America/New_York")
   })
 })

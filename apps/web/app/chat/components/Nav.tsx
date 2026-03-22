@@ -99,20 +99,22 @@ export function Nav({
             <MessageCircle size={16} strokeWidth={1.5} />
           </button>
 
-          {/* Templates */}
-          <button
-            type="button"
-            onClick={() => {
-              trackComponentsClicked()
-              onTemplatesClick()
-            }}
-            className={iconButtonStyle}
-            data-testid="templates-button"
-            aria-label="Components"
-            title="Components"
-          >
-            <Layers size={16} strokeWidth={1.5} />
-          </button>
+          {/* Templates — hidden, kept for future use */}
+          {false && (
+            <button
+              type="button"
+              onClick={() => {
+                trackComponentsClicked()
+                onTemplatesClick()
+              }}
+              className={iconButtonStyle}
+              data-testid="templates-button"
+              aria-label="Components"
+              title="Components"
+            >
+              <Layers size={16} strokeWidth={1.5} />
+            </button>
+          )}
         </div>
       </div>
     </div>

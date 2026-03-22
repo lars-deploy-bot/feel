@@ -6,15 +6,15 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
+import { AGENT_CONSTRAINTS } from "@webalive/shared"
 import { z } from "zod"
 import { protectedRoute } from "@/features/auth/lib/protectedRoute"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { SCHEDULE_TEXT_MAX_LENGTH } from "@/lib/automation/form-options"
 import { textToCron } from "@/lib/automation/text-to-cron"
 import { ErrorCodes } from "@/lib/error-codes"
 
 const bodySchema = z.object({
-  text: z.string().trim().min(1).max(SCHEDULE_TEXT_MAX_LENGTH),
+  text: z.string().trim().min(1).max(AGENT_CONSTRAINTS.SCHEDULE_TEXT_MAX),
 })
 
 export const POST = protectedRoute(async ({ req }) => {
@@ -26,7 +26,7 @@ export const POST = protectedRoute(async ({ req }) => {
 
   try {
     const result = await textToCron(parsed.data.text)
-    return Response.json({ ok: true, cron: result.cron, timezone: result.timezone })
+    return Response.json({ ok: true, cron: result.cron, description: result.description, timezone: result.timezone })
   } catch (err) {
     Sentry.captureException(err)
     return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {

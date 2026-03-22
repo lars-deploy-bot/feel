@@ -149,6 +149,8 @@ export const serverConfigSchema = z
       })
       .strict(),
 
+    services: z.record(z.string().min(1), z.number().int().min(1).max(65535)).optional(),
+
     generated: z
       .object({
         dir: pathStr,

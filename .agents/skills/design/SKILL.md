@@ -351,16 +351,81 @@ Use `transition-colors` when only color changes. Use `transition-all` when shado
 
 ---
 
+## Playful Panels (Duolingo-Inspired)
+
+For gamified features like **agents**, we break from the restrained style into something warmer and more rewarding. Think Duolingo: rounded, tactile, colorful — but not childish.
+
+### When to Use Playful Style
+- Agent overview, runs, streaks, stats
+- Anywhere with progress/achievement data
+- Interactive dashboards inside the workbench panel
+
+### 3D Pushable Buttons
+Every interactive element should feel tactile. The signature pattern: a thick bottom border that disappears on click, with a `translateY` to simulate pressing.
+
+```tsx
+// Primary (green)
+"bg-emerald-500 text-white border-b-[3px] border-emerald-600 active:translate-y-[2px] active:border-b-0"
+
+// Default
+"bg-zinc-100 dark:bg-zinc-800 text-zinc-600 border-b-[3px] border-zinc-200 active:translate-y-[2px] active:border-b-0"
+
+// Warning (amber)
+"bg-amber-100 text-amber-700 border-b-[3px] border-amber-200 active:translate-y-[2px] active:border-b-0"
+```
+
+- `rounded-xl` (12px) — rounder than the main app
+- `font-bold` — always bold in playful contexts
+- `transition-all` — the push needs to animate smoothly
+
+### Streak Badge
+Always visible. Gray flame at 0 (loss aversion), amber at 5+, orange with glow at 10+.
+
+```tsx
+// Cold (0): text-zinc-300, Flame icon gray
+// Warm (5+): text-amber-500, Flame amber
+// Hot (10+): text-orange-500, Flame with drop-shadow glow
+```
+
+### Success Ring (SVG)
+Circular progress indicator for success rate. Color shifts: emerald (95%+), amber (80%+), red (<80%). The percentage sits centered inside.
+
+### Run Dots
+Variable-height bars, bottom-aligned. Success = tall (18px), failure = short (12px). Creates a heartbeat-like visual rhythm.
+
+### Card-Based Lists
+In playful panels, items are cards (not row+divider). `rounded-2xl`, subtle border, hover shadow. Each card is self-contained.
+
+### Colored Section Labels
+Field groups get colored labels: emerald for identity, blue for scheduling, violet for model config.
+
+### Color Palette (Playful Panels)
+| Role | Light | Dark | Use |
+|------|-------|------|-----|
+| Success/Primary | `emerald-500` | `emerald-400` | CTAs, success ring, healthy dots |
+| Streak warm | `amber-500` | `amber-400` | 5+ streak |
+| Streak hot | `orange-500` | `orange-400` | 10+ streak, fire glow |
+| Danger | `red-500` | `red-400` | Failures, delete |
+| Info | `blue-500` | `blue-400` | Running state, nav cards |
+| Special | `violet-500` | `violet-400` | Model selection, edit nav cards |
+
+### Auto-Save
+Edit forms auto-save with a 1.5s debounce. Show "Saving..." with spinner, then "Saved" with checkmark (fades after 2s). No manual save button needed (except for create flows).
+
+### Nav Tabs (Pill Style)
+Centered pill tabs with active state using the primary color background (`bg-emerald-50 text-emerald-600`). Inactive: muted text with hover.
+
+---
+
 ## What We Don't Do
 
 - No emojis (use SVG or nothing)
-- No gradients
-- No colored container backgrounds (only black/white at low opacity, or semantic fills for badges)
-- No card-per-item in lists (use rows with dividers)
+- No gradients (except streak fire glow shadow)
+- No colored container backgrounds in the main app (playful panels are the exception)
 - No heavy shadows (dark bg provides contrast naturally)
-- No indigo/purple as primary action color (primary buttons are near-black)
+- No indigo/purple as primary action color (primary buttons are near-black in main app, emerald in playful panels)
 - No icons with strokeWidth > 2
-- No `rounded-md` — minimum `rounded-lg`
+- No `rounded-md` — minimum `rounded-lg` (main app), `rounded-xl`/`rounded-2xl` (playful panels)
 - No slide-in-from-left/right animations
 - No tooltips when context is obvious
 - No "Untitled" as placeholder — name things or don't show them

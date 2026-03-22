@@ -14,6 +14,11 @@ const AutomationsPage = lazy(() =>
 const TemplatesPage = lazy(() => import("@/features/templates/TemplatesPage").then(m => ({ default: m.TemplatesPage })))
 const FeedbackPage = lazy(() => import("@/features/feedback/FeedbackPage").then(m => ({ default: m.FeedbackPage })))
 const SdkLogsPage = lazy(() => import("@/features/sdk-logs/SdkLogsPage").then(m => ({ default: m.SdkLogsPage })))
+const PortsPage = lazy(() => import("@/features/ports/PortsPage").then(m => ({ default: m.PortsPage })))
+const ServicesPage = lazy(() => import("@/features/services/ServicesPage").then(m => ({ default: m.ServicesPage })))
+const ProcessesPage = lazy(() => import("@/features/processes/ProcessesPage").then(m => ({ default: m.ProcessesPage })))
+const DiskPage = lazy(() => import("@/features/disk/DiskPage").then(m => ({ default: m.DiskPage })))
+const DockerPage = lazy(() => import("@/features/docker/DockerPage").then(m => ({ default: m.DockerPage })))
 const SettingsPage = lazy(() => import("@/features/settings/SettingsPage").then(m => ({ default: m.SettingsPage })))
 
 interface RouterProps {
@@ -55,6 +60,21 @@ export function Router({ page }: RouterProps) {
       break
     case "sdk-logs":
       content = <SdkLogsPage />
+      break
+    case "ports":
+      content = <PortsPage />
+      break
+    case "services":
+      content = <ServicesPage />
+      break
+    case "processes":
+      content = <ProcessesPage />
+      break
+    case "disk":
+      content = <DiskPage />
+      break
+    case "docker":
+      content = <DockerPage />
       break
     case "settings":
       content = <SettingsPage />

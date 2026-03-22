@@ -1,6 +1,6 @@
 "use client"
 
-import { Layers, MessageCircle, Plus, Settings } from "lucide-react"
+import { MessageCircle, Plus, Settings } from "lucide-react"
 import { useCallback, useEffect, useRef } from "react"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
@@ -318,7 +318,7 @@ function SidebarFooter({
   userDisplay,
   onSettingsClick,
   onFeedbackClick,
-  onTemplatesClick,
+  onTemplatesClick: _onTemplatesClick,
   closeSidebar,
 }: {
   isMobile: boolean
@@ -341,12 +341,10 @@ function SidebarFooter({
         </div>
       )}
 
-      {isMobile && (onFeedbackClick || onTemplatesClick) && (
+      {/* Components button hidden, kept for future use */}
+      {isMobile && onFeedbackClick && (
         <div className={`flex items-center gap-1 px-3 py-2 shrink-0 border-t ${styles.borderSubtle}`}>
-          {[
-            { icon: MessageCircle, label: "Feedback", action: onFeedbackClick },
-            { icon: Layers, label: "Components", action: onTemplatesClick },
-          ].map(({ icon: Icon, label, action }) =>
+          {[{ icon: MessageCircle, label: "Feedback", action: onFeedbackClick }].map(({ icon: Icon, label, action }) =>
             action ? (
               <button
                 key={label}

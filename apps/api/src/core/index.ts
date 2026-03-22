@@ -6,10 +6,15 @@ import { faviconRoutes } from "./favicon/favicon.routes"
 import { healthRoutes } from "./health/health.routes"
 import { automationsRoutes } from "./manager/automations/automations.routes"
 import { deploysRoutes } from "./manager/deploys/deploys.routes"
+import { diskRoutes } from "./manager/disk/disk.routes"
+import { dockerRoutes } from "./manager/docker/docker.routes"
 import { domainsRoutes } from "./manager/domains/domains.routes"
 import { feedbackRoutes } from "./manager/feedback/feedback.routes"
 import { orgsRoutes } from "./manager/orgs/orgs.routes"
+import { portsRoutes } from "./manager/ports/ports.routes"
+import { processesRoutes } from "./manager/processes/processes.routes"
 import { sdkLogsRoutes } from "./manager/sdk-logs/sdk-logs.routes"
+import { servicesRoutes } from "./manager/services/services.routes"
 import { templatesRoutes } from "./manager/templates/templates.routes"
 import { transfersRoutes } from "./manager/transfers/transfers.routes"
 import { usersRoutes } from "./manager/users/users.routes"
@@ -48,6 +53,11 @@ export function buildRoutes(): OpenAPIHono<AppBindings> {
   manager.route("/templates", templatesRoutes)
   manager.route("/transfers", transfersRoutes)
   manager.route("/sdk-logs", sdkLogsRoutes)
+  manager.route("/ports", portsRoutes)
+  manager.route("/services", servicesRoutes)
+  manager.route("/disk", diskRoutes)
+  manager.route("/processes", processesRoutes)
+  manager.route("/docker", dockerRoutes)
 
   // Protected voice routes
   const voice = new OpenAPIHono<AppBindings>()
