@@ -15,6 +15,7 @@ import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { GithubImportModal } from "@/components/modals/GithubImportModal"
 import { InviteModal } from "@/components/modals/InviteModal"
 import { SessionExpiredModal } from "@/components/modals/SessionExpiredModal"
+import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
@@ -838,6 +839,10 @@ function ChatPageContent() {
     setWorktreeModalOpen(true)
   }, [workspace, isSuperadminWorkspace])
 
+  const handleInsertTemplate = useCallback((prompt: string) => {
+    setInput(prompt)
+  }, [])
+
   const handleTabGroupSelect = useCallback(
     async (selectedTabGroupId: string) => {
       if (!selectedTabGroupId) return
@@ -980,6 +985,7 @@ function ChatPageContent() {
         onToggleSettings={modals.toggleSettings}
         onSettingsClick={handleNavSettingsClick}
         onFeedbackClick={modals.openFeedback}
+        onTemplatesClick={modals.openTemplates}
       />
 
       {/* Main content column: chat + workbench */}
@@ -1149,6 +1155,7 @@ function ChatPageContent() {
                           isStopping={isStopping}
                           onSubmit={sendMessage}
                           onStop={stopStreaming}
+                          onOpenTemplates={modals.openTemplates}
                           tabId={tabId}
                           config={{
                             enableAttachments: true,
@@ -1241,6 +1248,9 @@ function ChatPageContent() {
         />
       )}
 
+      {modals.templates && (
+        <SuperTemplatesModal onClose={modals.closeTemplates} onInsertTemplate={handleInsertTemplate} />
+      )}
       {modals.invite && <InviteModal onClose={modals.closeInvite} />}
       {githubImportOpen && (
         <GithubImportModal

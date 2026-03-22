@@ -10,6 +10,7 @@ interface CollapsedRailProps {
   onNewConversation: () => void
   onSettingsClick: () => void
   onFeedbackClick?: () => void
+  onTemplatesClick?: () => void
 }
 
 const railIconClass =
@@ -21,6 +22,7 @@ export function CollapsedRail({
   onNewConversation,
   onSettingsClick,
   onFeedbackClick,
+  onTemplatesClick: _onTemplatesClick,
 }: CollapsedRailProps) {
   const { openSidebar } = useSidebarActions()
 
@@ -67,6 +69,7 @@ export function CollapsedRail({
       <div className="flex-1" />
 
       {/* Action buttons */}
+      {/* Components button — hidden, kept for future use */}
       <button
         type="button"
         onClick={onFeedbackClick}
