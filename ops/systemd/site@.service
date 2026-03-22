@@ -50,7 +50,7 @@ AmbientCapabilities=
 UMask=0027
 
 # Network restrictions - block raw sockets and limit to TCP/UDP only
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 SystemCallFilter=~@raw-io @reboot @swap @clock @module @mount @obsolete
 
 [Install]
