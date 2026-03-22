@@ -173,7 +173,7 @@ WantedBy=multi-user.target
 `
 }
 
-function generateGoService(cfg: GoServiceConfig): string {
+function _generateGoService(cfg: GoServiceConfig): string {
   const envFileLines = cfg.envFiles.map(f => `EnvironmentFile=-${f}`).join("\n")
   const envVarLines = Object.entries(cfg.envVars)
     .map(([k, v]) => `Environment="${k}=${v}"`)
@@ -310,46 +310,10 @@ async function main() {
     )
   }
 
-  // Generate preview-proxy service (opt-in: only when previewProxy.port is set)
-  const previewPort = config.previewProxy?.port
-  if (previewPort) {
-    const previewBase = config.domains.previewBase
-    const frameAncestors = config.domains.frameAncestors ?? []
-    const portMapPath = `${generatedDir}/port-map.json`
-
-    const previewProxyCfg: GoServiceConfig = {
-      name: "preview-proxy",
-      description: "Alive Preview Proxy (Go)",
-      workingDir: `${aliveRoot}/apps/preview-proxy`,
-      execStart: `${aliveRoot}/apps/preview-proxy/dist/preview-proxy`,
-      envFiles: [`${aliveRoot}/.env.local`],
-      envVars: {
-        PREVIEW_BASE: previewBase,
-        LISTEN_ADDR: `:${previewPort}`,
-        PORT_MAP_PATH: portMapPath,
-        SANDBOX_MAP_PATH: `${generatedDir}/sandbox-map.json`,
-        FRAME_ANCESTORS: frameAncestors.join(","),
-        IMAGES_STORAGE: config.paths.imagesStorage,
-      },
-      memory: { max: "128M", high: "96M" },
-      cpu: "50%",
-      tasksMax: 128,
-      syslogId: "preview-proxy",
-    }
-
-    const content = generateGoService(previewProxyCfg)
-    const path = `${generatedDir}/${previewProxyCfg.name}.service`
-    const status = await writeFileIfChanged(path, content)
-    console.log(
-      status === "written"
-        ? `${COLORS.green}✓${COLORS.reset} ${previewProxyCfg.name}.service`
-        : `${COLORS.dim}-${COLORS.reset} ${previewProxyCfg.name}.service ${COLORS.dim}(unchanged)${COLORS.reset}`,
-    )
-  } else {
-    console.log(
-      `${COLORS.dim}-${COLORS.reset} preview-proxy.service ${COLORS.dim}(skipped: previewProxy.port not set)${COLORS.reset}`,
-    )
-  }
+  // Preview proxy is now integrated into shell-server-go (no separate service)
+  console.log(
+    `${COLORS.dim}-${COLORS.reset} preview-proxy.service ${COLORS.dim}(merged into shell-server-go)${COLORS.reset}`,
+  )
 
   console.log(`
 ${COLORS.dim}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}
