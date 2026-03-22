@@ -35,7 +35,35 @@ export {
   type TriggerType,
 } from "./automation-enums.js"
 export { Constants as DeployConstants } from "./deploy.generated.js"
+export type {
+  // Row types
+  ApplicationRow as DeployApplicationRow,
+  BuildRow as DeployBuildRow,
+  // Enum types
+  DeployArtifactKind,
+  DeployDeploymentAction,
+  DeployEnvironmentName,
+  DeployExecutorBackend,
+  // Pipeline / health types
+  DeployerBuildStage,
+  DeployerDeploymentStage,
+  DeployerHealthResponse,
+  DeployerWorkerStatus,
+  DeployGitProvider,
+  DeploymentRow as DeployDeploymentRow,
+  DeployTaskStatus,
+  EnvironmentRow as DeployEnvironmentRow,
+  ReleaseRow as DeployReleaseRow,
+} from "./deploy-contract.js"
+// Deploy contract — single source of truth for the entire deploy pipeline
 export {
+  // Zod schemas (API routes MUST use these, not define their own)
+  ApplicationZ,
+  ArtifactKindZ,
+  BuildZ,
+  CreateBuildBodyZ,
+  CreateDeploymentBodyZ,
+  // Enum runtime values
   DEPLOY_ARTIFACT_KIND_DOCKER_IMAGE,
   DEPLOY_ARTIFACT_KINDS,
   DEPLOY_DEPLOYMENT_ACTION_DEPLOY,
@@ -55,19 +83,26 @@ export {
   DEPLOY_TASK_STATUS_RUNNING,
   DEPLOY_TASK_STATUS_SUCCEEDED,
   DEPLOY_TASK_STATUSES,
-  type DeployArtifactKind,
-  type DeployDeploymentAction,
-  type DeployEnvironmentName,
-  type DeployExecutorBackend,
-  type DeployGitProvider,
-  type DeployTaskStatus,
+  // Pipeline stages
+  DEPLOYER_BUILD_STAGES,
+  DEPLOYER_DEPLOYMENT_STAGES,
+  DEPLOYER_WORKER_STATUSES,
+  DeployerHealthZ,
+  DeploymentActionZ,
+  DeploymentZ,
+  EnvironmentNameZ,
+  EnvironmentZ,
+  ExecutorBackendZ,
+  // Type guards
   isDeployArtifactKind,
   isDeployDeploymentAction,
   isDeployEnvironmentName,
   isDeployExecutorBackend,
   isDeployGitProvider,
   isDeployTaskStatus,
-} from "./deploy-enums.js"
+  ReleaseZ,
+  TaskStatusZ,
+} from "./deploy-contract.js"
 
 // Export common types from public schema (if available) or lockbox as fallback
 export {

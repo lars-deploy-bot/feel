@@ -1,3 +1,10 @@
+import {
+  DEPLOY_ARTIFACT_KIND_DOCKER_IMAGE,
+  DEPLOY_DEPLOYMENT_ACTION_DEPLOY,
+  DEPLOY_ENVIRONMENT_STAGING,
+  DEPLOY_TASK_STATUS_PENDING,
+} from "@webalive/database"
+import { PORTS } from "@webalive/shared"
 import { Hono } from "hono"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
@@ -55,11 +62,11 @@ describe("deploysRoutes", () => {
     vi.mocked(queueBuild).mockResolvedValueOnce({
       build_id: "dep_build_123",
       application_id: "dep_app_123",
-      status: "pending",
+      status: DEPLOY_TASK_STATUS_PENDING,
       git_ref: "HEAD",
       git_sha: null,
       commit_message: null,
-      artifact_kind: "docker_image",
+      artifact_kind: DEPLOY_ARTIFACT_KIND_DOCKER_IMAGE,
       artifact_ref: null,
       artifact_digest: null,
       build_log_path: null,
@@ -105,12 +112,12 @@ describe("deploysRoutes", () => {
     vi.mocked(queueDeployment).mockResolvedValueOnce({
       deployment_id: "dep_deploy_123",
       environment_id: "dep_env_123",
-      environment_name: "staging",
+      environment_name: DEPLOY_ENVIRONMENT_STAGING,
       environment_hostname: "staging.test.example",
-      environment_port: 8998,
+      environment_port: PORTS.STAGING,
       release_id: "dep_rel_123",
-      action: "deploy",
-      status: "pending",
+      action: DEPLOY_DEPLOYMENT_ACTION_DEPLOY,
+      status: DEPLOY_TASK_STATUS_PENDING,
       deployment_log_path: null,
       error_message: null,
       healthcheck_status: null,
@@ -131,7 +138,7 @@ describe("deploysRoutes", () => {
 
     expect(response.status).toBe(201)
     expect(okSchema.parse(await response.json()).ok).toBe(true)
-    expect(queueDeployment).toHaveBeenCalledWith("dep_env_123", "dep_rel_123", "deploy")
+    expect(queueDeployment).toHaveBeenCalledWith("dep_env_123", "dep_rel_123", DEPLOY_DEPLOYMENT_ACTION_DEPLOY)
   })
 
   it("requires auth on the fully wired manager route", async () => {

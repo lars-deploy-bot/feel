@@ -17,8 +17,8 @@ This repo is deployed on two servers. Check which one you're on:
 Both servers run the same codebase. Server 1 is primary production, Server 2 is the replica. PostHog and Sentry are only on Server 2 but serve both.
 
 **Supabase instances are SEPARATE per environment — never mix credentials:**
-- **Production** → Supabase Cloud (project ID in `.env.production`)
-- **Staging** → Self-hosted Supabase on Server 2 (`supabase-api.sonno.tech`)
+- **Production** → Supabase Cloud (`qnvprftdorualkdyogka.supabase.co`), used by both servers. Credentials in `.env.production`.
+- **Staging** → Self-hosted Supabase on Server 2 (`supabase-api.sonno.tech`, raw Postgres on `127.0.0.1:5433`). Credentials in `.env.staging`. **On Server 2 this is local (localhost); on Server 1 it is remote (reachable via WireGuard at `10.8.0.1:5433`).** The `deploy.*` tables and all other schemas live in whichever Supabase instance the env file points to — staging services use the staging Supabase, production services use the cloud Supabase. The deployer-rs (`alive-deployer.service`) must use the **same** Supabase as the API (`alive-api.service`) so they read/write the same `deploy.builds` rows.
 
 **PostHog Analytics**: Queryable from any server via API. Use the `/analytics` skill to check app performance. API key is in `apps/web/.env.production` as `POSTHOG_PERSONAL_API_KEY`, project ID is `2`.
 

@@ -27,6 +27,7 @@ cd "$PROJECT_ROOT"
 # Load libraries
 source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/lock.sh"
+source "$SCRIPT_DIR/lib/deploy-contract.sh"
 
 # =============================================================================
 # Configuration
@@ -34,7 +35,7 @@ source "$SCRIPT_DIR/lib/lock.sh"
 DEPLOY_STAGING=true
 DEPLOY_PRODUCTION=true
 SKIP_E2E=false
-DEPLOYER_HEALTH_URL="http://127.0.0.1:5095/health"
+DEPLOYER_HEALTH_URL="$DEPLOY_DEPLOYER_URL$DEPLOY_HEALTH_PATH"
 
 deployer_busy_summary() {
     local health_json build_id deployment_id
@@ -44,8 +45,8 @@ deployer_busy_summary() {
         return 1
     fi
 
-    build_id=$(printf '%s' "$health_json" | jq -r '.worker.current_build_id // empty' 2>/dev/null || true)
-    deployment_id=$(printf '%s' "$health_json" | jq -r '.worker.current_deployment_id // empty' 2>/dev/null || true)
+    build_id=$(printf '%s' "$health_json" | jq -r "$DEPLOYER_JQ_WORKER_BUILD_ID // empty" 2>/dev/null || true)
+    deployment_id=$(printf '%s' "$health_json" | jq -r "$DEPLOYER_JQ_WORKER_DEPLOY_ID // empty" 2>/dev/null || true)
 
     if [[ -n "$build_id" || -n "$deployment_id" ]]; then
         printf 'deployer busy (build=%s deployment=%s)\n' "$build_id" "$deployment_id"
