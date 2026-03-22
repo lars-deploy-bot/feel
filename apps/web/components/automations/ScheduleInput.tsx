@@ -11,10 +11,10 @@
 
 "use client"
 
+import { AGENT_CONSTRAINTS } from "@webalive/shared"
 import { Check, Loader2 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { inputClass } from "@/components/automations/form-styles"
-import { SCHEDULE_TEXT_MAX_LENGTH } from "@/lib/automation/form-options"
 
 const PREVIEW_DEBOUNCE_MS = 800
 
@@ -225,7 +225,7 @@ export function ScheduleInput({
               value={value}
               onChange={e => onChange(e.target.value)}
               placeholder="e.g. every weekday at 9am"
-              maxLength={SCHEDULE_TEXT_MAX_LENGTH}
+              maxLength={AGENT_CONSTRAINTS.SCHEDULE_TEXT_MAX}
               className="w-full h-10 px-3 pr-8 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.12] dark:focus:ring-white/[0.12] transition-all"
             />
             {preview.loading && (

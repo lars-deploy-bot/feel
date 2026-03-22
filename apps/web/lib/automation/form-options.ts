@@ -7,7 +7,7 @@
  *   - TriggerTab (settings side panel)
  */
 
-import { AGENT_CONSTRAINTS, CLAUDE_MODELS, type ClaudeModel, getModelDisplayName } from "@webalive/shared"
+import { CLAUDE_MODELS, type ClaudeModel, getModelDisplayName } from "@webalive/shared"
 
 export const MODEL_OPTIONS: { label: string; value: ClaudeModel }[] = Object.values(CLAUDE_MODELS).map(id => ({
   label: getModelDisplayName(id),
@@ -27,6 +27,3 @@ export const DEFAULT_TIMEZONE = TIMEZONE_OPTIONS[0].value
 
 /** Default schedule text for new recurring automations */
 export const DEFAULT_SCHEDULE_TEXT = "weekdays at 9am"
-
-/** Max length for schedule_text input — from shared constraints */
-export const SCHEDULE_TEXT_MAX_LENGTH = AGENT_CONSTRAINTS.SCHEDULE_TEXT_MAX
