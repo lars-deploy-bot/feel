@@ -353,7 +353,7 @@ export function AgentListHeader({
 }) {
   return (
     <div className="shrink-0 pl-5 pr-16 pt-5 pb-2 flex items-center justify-center relative">
-      <h2 className="text-[17px] font-bold text-zinc-900 dark:text-zinc-100">Agents</h2>
+      <h2 className="text-[17px] font-bold text-zinc-900 dark:text-zinc-100">Your Agents</h2>
       <button
         type="button"
         onClick={onNewAgent}
@@ -392,7 +392,7 @@ export function AgentDetailNav({
         <button
           type="button"
           onClick={onBack}
-          className="absolute left-0 size-8 flex items-center justify-center rounded-xl text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-colors"
+          className="absolute left-0 size-8 flex items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 border-b-2 border-zinc-200 dark:border-zinc-700 active:translate-y-[1px] active:border-b-0 transition-all"
         >
           <ArrowLeft size={15} />
         </button>
