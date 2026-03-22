@@ -13,6 +13,7 @@
 
 import { Check, Clock, Loader2 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { inputClass } from "@/components/automations/form-styles"
 import { describeCron } from "@/lib/automation/cron-description"
 import { SCHEDULE_TEXT_MAX_LENGTH } from "@/lib/automation/form-options"
 
@@ -182,7 +183,7 @@ export function ScheduleInput({
                 type="date"
                 value={oneTimeDate || ""}
                 onChange={e => onOneTimeDateChange?.(e.target.value)}
-                className="w-full h-9 px-3 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.08] dark:focus:ring-white/[0.08] cursor-pointer transition-all mt-1"
+                className={`${inputClass} cursor-pointer mt-1`}
               />
             </label>
           </div>
@@ -193,7 +194,7 @@ export function ScheduleInput({
                 type="time"
                 value={oneTimeTime || ""}
                 onChange={e => onOneTimeTimeChange?.(e.target.value)}
-                className="w-full h-9 px-3 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.08] dark:focus:ring-white/[0.08] cursor-pointer transition-all mt-1"
+                className={`${inputClass} cursor-pointer mt-1`}
               />
             </label>
           </div>

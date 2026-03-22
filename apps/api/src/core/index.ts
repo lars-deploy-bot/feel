@@ -9,6 +9,7 @@ import { deploysRoutes } from "./manager/deploys/deploys.routes"
 import { domainsRoutes } from "./manager/domains/domains.routes"
 import { feedbackRoutes } from "./manager/feedback/feedback.routes"
 import { orgsRoutes } from "./manager/orgs/orgs.routes"
+import { portsRoutes } from "./manager/ports/ports.routes"
 import { sdkLogsRoutes } from "./manager/sdk-logs/sdk-logs.routes"
 import { templatesRoutes } from "./manager/templates/templates.routes"
 import { transfersRoutes } from "./manager/transfers/transfers.routes"
@@ -47,6 +48,7 @@ export function buildRoutes(): OpenAPIHono<AppBindings> {
   manager.route("/templates", templatesRoutes)
   manager.route("/transfers", transfersRoutes)
   manager.route("/sdk-logs", sdkLogsRoutes)
+  manager.route("/ports", portsRoutes)
 
   // Protected voice routes
   const voice = new OpenAPIHono<AppBindings>()

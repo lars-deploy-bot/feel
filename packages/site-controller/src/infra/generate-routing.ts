@@ -434,7 +434,9 @@ function renderCaddyInternal(cfg: ServerConfig, domains: DomainRow[]): string {
     "",
   ].join("\n")
 
-  const mapEntries = domains.map(d => `        ${d.hostname} "localhost:${d.port}"`)
+  // Infrastructure services from server-config (e.g. mg.alive.best → 5090)
+  const serviceEntries = Object.entries(cfg.services ?? {}).map(([host, port]) => `        ${host} "localhost:${port}"`)
+  const mapEntries = [...serviceEntries, ...domains.map(d => `        ${d.hostname} "localhost:${d.port}"`)]
 
   const block = [
     ":8444 {",

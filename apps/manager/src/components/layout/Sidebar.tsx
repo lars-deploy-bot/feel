@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { id: "templates", label: "Templates" },
   { id: "feedback", label: "Feedback" },
   { id: "sdk-logs", label: "SDK Logs" },
+  { id: "ports", label: "Ports" },
   { id: "settings", label: "Settings" },
 ]
 

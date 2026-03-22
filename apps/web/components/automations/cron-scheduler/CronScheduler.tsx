@@ -2,6 +2,7 @@
 
 import { Clock } from "lucide-react"
 import { useEffect, useState } from "react"
+import { inputClass } from "@/components/automations/form-styles"
 import { CronExpressionInput } from "./CronExpressionInput"
 import { CronPresetsPanel } from "./CronPresetsPanel"
 import { describeCron, parseCronExpression } from "./cron-parser"
@@ -116,7 +117,7 @@ export function CronScheduler({
               type="date"
               value={oneTimeDate || ""}
               onChange={e => onOneTimeDateChange?.(e.target.value)}
-              className="w-full h-9 px-3 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.08] dark:focus:ring-white/[0.08] cursor-pointer transition-all"
+              className={`${inputClass} cursor-pointer`}
             />
           </div>
           <div className="space-y-1.5">
@@ -128,7 +129,7 @@ export function CronScheduler({
               type="time"
               value={oneTimeTime || ""}
               onChange={e => onOneTimeTimeChange?.(e.target.value)}
-              className="w-full h-9 px-3 rounded-lg text-sm bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white border-0 focus:outline-none focus:ring-1 focus:ring-black/[0.08] dark:focus:ring-white/[0.08] cursor-pointer transition-all"
+              className={`${inputClass} cursor-pointer`}
             />
           </div>
         </div>
