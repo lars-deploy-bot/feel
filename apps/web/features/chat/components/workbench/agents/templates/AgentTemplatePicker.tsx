@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3, Mail, Search, Shield, TrendingUp, Zap } from "lucide-react"
+import { BarChart3, Mail, Plus, Search, Shield, TrendingUp, Zap } from "lucide-react"
 import type { AgentTemplate } from "./agent-templates"
 import { AGENT_TEMPLATES } from "./agent-templates"
 
@@ -40,17 +40,21 @@ const COLORS: Record<AgentTemplate["color"], { card: string; icon: string }> = {
   },
 }
 
-export function AgentTemplatePicker({ onSelect }: { onSelect: (template: AgentTemplate) => void }) {
+export function AgentTemplatePicker({
+  onSelect,
+  onBlank,
+}: {
+  onSelect: (template: AgentTemplate) => void
+  onBlank: () => void
+}) {
   return (
-    <div className="max-w-2xl mx-auto w-full px-5 py-6">
-      <div className="text-center mb-6">
-        <h2 className="text-[18px] font-bold text-zinc-900 dark:text-zinc-100 mb-1">Create your first agent</h2>
-        <p className="text-[13px] text-zinc-400 dark:text-zinc-500">
-          Pick a template to get started, or create from scratch
-        </p>
+    <div className="max-w-2xl mx-auto w-full px-5 py-8">
+      <div className="text-center mb-8">
+        <h2 className="text-[20px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">Your Agents</h2>
+        <p className="text-[14px] text-zinc-400 dark:text-zinc-500">Pick a template to get started</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-3 mb-5">
         {AGENT_TEMPLATES.map(template => {
           const Icon = ICONS[template.icon]
           const colors = COLORS[template.color]
@@ -72,6 +76,16 @@ export function AgentTemplatePicker({ onSelect }: { onSelect: (template: AgentTe
           )
         })}
       </div>
+
+      {/* Start from scratch */}
+      <button
+        type="button"
+        onClick={onBlank}
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors"
+      >
+        <Plus size={16} />
+        <span className="text-[14px] font-bold">Start from scratch</span>
+      </button>
     </div>
   )
 }

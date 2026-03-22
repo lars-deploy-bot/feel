@@ -174,6 +174,24 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     )
   }
 
+  // ── Empty state: template picker (no header — picker has its own) ──
+  if (jobs.length === 0) {
+    return (
+      <div className="h-full flex flex-col">
+        {newError && (
+          <div className="px-3 py-1.5">
+            <p role="alert" className="text-[11px] text-red-500 dark:text-red-400">
+              {newError}
+            </p>
+          </div>
+        )}
+        <div className="flex-1 overflow-auto">
+          <AgentTemplatePicker onSelect={handleTemplateSelect} onBlank={handleNewAgent} />
+        </div>
+      </div>
+    )
+  }
+
   // ── Agent list (main page) ──
   return (
     <div className="h-full flex flex-col">
@@ -186,16 +204,12 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
         </div>
       )}
       <div className="flex-1 overflow-auto">
-        {jobs.length === 0 ? (
-          <AgentTemplatePicker onSelect={handleTemplateSelect} />
-        ) : (
-          <AgentListView
-            jobs={jobs}
-            onSelect={job => setView({ kind: "detail", jobId: job.id, tab: "overview" })}
-            onChanged={refresh}
-            refresh={refresh}
-          />
-        )}
+        <AgentListView
+          jobs={jobs}
+          onSelect={job => setView({ kind: "detail", jobId: job.id, tab: "overview" })}
+          onChanged={refresh}
+          refresh={refresh}
+        />
       </div>
     </div>
   )
