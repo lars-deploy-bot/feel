@@ -11,6 +11,7 @@ WorkingDirectory=__ALIVE_ROOT__
 EnvironmentFile=__ALIVE_ROOT__/apps/web/.env.production
 Environment=DOCKER_BUILDKIT=1
 Environment=BUILDX_CONFIG=/var/lib/alive/deployer/buildx-config
+Environment=PATH=/root/.bun/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin
 
 ExecStart=__ALIVE_ROOT__/apps/deployer-rs/target/release/alive-deployer-rs
 

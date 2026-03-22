@@ -200,6 +200,7 @@ describe("POST /api/terminal/lease", () => {
     mockResolveDomainRuntime.mockResolvedValue({
       domain_id: "domain-123",
       hostname: "example.com",
+      port: 5173,
       execution_mode: "e2b",
       sandbox_id: null,
       sandbox_status: "dead",
@@ -217,6 +218,7 @@ describe("POST /api/terminal/lease", () => {
     mockResolveDomainRuntime.mockResolvedValue({
       domain_id: "domain-123",
       hostname: "example.com",
+      port: 5173,
       execution_mode: "e2b",
       sandbox_id: "sandbox-123",
       sandbox_status: "running",
@@ -245,6 +247,7 @@ describe("POST /api/terminal/lease", () => {
       sandboxDomain: {
         domain_id: "domain-123",
         hostname: "example.com",
+        port: 5173,
         sandbox_id: "sandbox-123",
         sandbox_status: "running",
       },

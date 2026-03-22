@@ -69,6 +69,7 @@ export async function POST(req: Request) {
           sandboxDomain: {
             domain_id: domain.domain_id,
             hostname: domain.hostname,
+            port: domain.port,
             sandbox_id: domain.sandbox_id,
             sandbox_status: domain.sandbox_status,
           },

@@ -1,22 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import type { RuntimeConfig } from "@/app/api/config/route"
 
-/**
- * Runtime config shape returned by GET /api/config.
- * Mirrors the RuntimeConfig interface in app/api/config/route.ts.
- */
-export interface RuntimeConfig {
-  supabaseUrl: string
-  supabaseAnonKey: string
-  posthogKey: string
-  posthogHost: string
-  sentryDsn: string
-  contactEmail: string
-  serverIp: string
-  previewBase: string
-  aliveEnv: string
-}
+export type { RuntimeConfig }
 
 // ---------------------------------------------------------------------------
 // Module-scope cache: fetched once, shared across all hook consumers.

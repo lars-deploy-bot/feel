@@ -40,6 +40,7 @@ describe("SandboxManager", () => {
     const result = await manager.getOrCreate({
       domain_id: "dom_123",
       hostname: "example.test.example",
+      port: 5173,
       sandbox_id: "sbx_old",
       sandbox_status: "running",
       is_test_env: true,
@@ -80,6 +81,7 @@ describe("SandboxManager", () => {
     await manager.getOrCreate({
       domain_id: "dom_123",
       hostname: "example.test.example",
+      port: 5173,
       sandbox_id: null,
       sandbox_status: null,
     })
@@ -104,6 +106,7 @@ describe("SandboxManager", () => {
     const result = await manager.getOrCreate({
       domain_id: "dom_123",
       hostname: "example.test.example",
+      port: 5173,
       sandbox_id: "sbx_paused",
       sandbox_status: "paused",
     })
@@ -112,6 +115,8 @@ describe("SandboxManager", () => {
     expect(mockConnect).toHaveBeenCalledWith("sbx_paused", expect.objectContaining({ domain: "e2b.test.local" }))
     // Should NOT call create — reconnect handles paused sandboxes
     expect(mockCreate).not.toHaveBeenCalled()
+    // Must update DB status to "running" so regeneratePortMap includes this sandbox
+    expect(updateSandbox).toHaveBeenCalledWith("dom_123", "sbx_paused", "running")
   })
 
   it("pause() sets DB status to 'paused' when sandbox.pause() returns true", async () => {
@@ -127,6 +132,7 @@ describe("SandboxManager", () => {
     await manager.getOrCreate({
       domain_id: "dom_123",
       hostname: "example.test.example",
+      port: 5173,
       sandbox_id: null,
       sandbox_status: null,
     })
@@ -151,6 +157,7 @@ describe("SandboxManager", () => {
     await manager.getOrCreate({
       domain_id: "dom_123",
       hostname: "example.test.example",
+      port: 5173,
       sandbox_id: null,
       sandbox_status: null,
     })

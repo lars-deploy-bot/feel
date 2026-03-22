@@ -5,7 +5,7 @@
  * Used by both API routes and frontend consumers.
  */
 
-import type { OrgRole } from "@webalive/shared"
+import type { OrgRole, TranscribeResult } from "@webalive/shared"
 import { z } from "zod"
 
 // ============================================================================
@@ -74,11 +74,7 @@ export interface ReferralData {
 // Voice / Transcription API Types
 // ============================================================================
 
-export interface TranscribeResult {
-  text: string
-  duration: number | null
-  language: string | null
-}
+export type { TranscribeResult }
 
 export interface TranscribeError {
   error: string

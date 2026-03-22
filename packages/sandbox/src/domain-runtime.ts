@@ -6,6 +6,7 @@ const DomainRuntimeRecordSchema = z.object({
   hostname: z.string().min(1),
   port: z.number().int(),
   is_test_env: z.boolean().nullable(),
+  test_run_id: z.string().nullable(),
   execution_mode: z.enum(AppConstants.app.Enums.execution_mode),
   sandbox_id: z.string().nullable(),
   sandbox_status: z.enum(AppConstants.app.Enums.sandbox_status).nullable(),
@@ -26,8 +27,10 @@ interface DomainRuntimeQueryResult {
   error?: DomainRuntimeQueryError | null
 }
 
+// Keep in sync with apps/web/lib/domain/resolve-domain-runtime.ts DOMAIN_RUNTIME_SELECT
+// TODO: extract to @webalive/shared to avoid drift (#DRY)
 export const DOMAIN_RUNTIME_SELECT =
-  "domain_id, hostname, port, is_test_env, execution_mode, sandbox_id, sandbox_status"
+  "domain_id, hostname, port, is_test_env, test_run_id, execution_mode, sandbox_id, sandbox_status"
 
 export async function resolveDomainRuntimeQuery(
   hostname: string,

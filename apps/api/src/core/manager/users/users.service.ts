@@ -19,10 +19,8 @@ interface MembershipWithOrg {
   orgs: { org_id: string; name: string } | null
 }
 
-async function fetchMembershipsGrouped(): Promise<Record<string, ManagerUserOrg[]>> {
-  const { data, error } = await iam
-    .from("org_memberships")
-    .select(`
+async function fetchMembershipsGrouped(userId?: string): Promise<Record<string, ManagerUserOrg[]>> {
+  let query = iam.from("org_memberships").select(`
       user_id,
       role,
       orgs:org_id (
@@ -30,7 +28,8 @@ async function fetchMembershipsGrouped(): Promise<Record<string, ManagerUserOrg[
         name
       )
     `)
-    .overrideTypes<MembershipWithOrg[], { merge: false }>()
+  if (userId) query = query.eq("user_id", userId)
+  const { data, error } = await query.overrideTypes<MembershipWithOrg[], { merge: false }>()
 
   if (error) {
     throw new InternalError(`Failed to fetch memberships: ${error.message}`)
@@ -64,12 +63,13 @@ interface SessionsGrouped {
   sessions: Record<string, ManagerUserSession[]>
 }
 
-async function fetchSessionsGrouped(): Promise<SessionsGrouped> {
-  const { data, error } = await iam
+async function fetchSessionsGrouped(userId?: string): Promise<SessionsGrouped> {
+  let query = iam
     .from("sessions")
     .select("user_id, domain_id, last_activity")
     .order("last_activity", { ascending: false })
-    .overrideTypes<SessionRow[], { merge: false }>()
+  if (userId) query = query.eq("user_id", userId)
+  const { data, error } = await query.overrideTypes<SessionRow[], { merge: false }>()
 
   if (error) {
     throw new InternalError(`Failed to fetch sessions: ${error.message}`)
@@ -167,8 +167,8 @@ export async function listUsers(): Promise<ManagerUser[]> {
 export async function getUserById(userId: string): Promise<ManagerUser> {
   const [u, orgsByUser, sessionsData] = await Promise.all([
     usersRepo.findById(userId),
-    fetchMembershipsGrouped(),
-    fetchSessionsGrouped(),
+    fetchMembershipsGrouped(userId),
+    fetchSessionsGrouped(userId),
   ])
 
   return enrichUser(u, orgsByUser, sessionsData)

@@ -33,6 +33,14 @@ export function getSessionRegistry(): SandboxSessionRegistry {
           throw new Error(`Failed to persist sandbox state for ${domainId}: ${error.message}`)
         }
       },
+      async updatePort(domainId, port) {
+        const app = await createAppClient("service")
+        const { error } = await app.from("domains").update({ port }).eq("domain_id", domainId)
+
+        if (error) {
+          throw new Error(`Failed to update port for ${domainId}: ${error.message}`)
+        }
+      },
     },
   })
 

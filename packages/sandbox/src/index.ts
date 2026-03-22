@@ -7,7 +7,13 @@ export {
   isSandboxDefinitelyGone,
 } from "./connect-errors.js"
 export type { E2bTemplate } from "./constants.js"
-export { E2B_DEFAULT_TEMPLATE, E2B_DISABLED_SDK_TOOLS, E2B_MCP_TOOLS, E2B_TEMPLATES } from "./constants.js"
+export {
+  E2B_DEFAULT_PORT,
+  E2B_DEFAULT_TEMPLATE,
+  E2B_DISABLED_SDK_TOOLS,
+  E2B_MCP_TOOLS,
+  E2B_TEMPLATES,
+} from "./constants.js"
 export type { DomainRuntimeRecord, FetchDomainRuntimeByHostnameInput } from "./domain-runtime.js"
 export { DOMAIN_RUNTIME_SELECT, fetchDomainRuntimeByHostname, resolveDomainRuntimeQuery } from "./domain-runtime.js"
 export type { E2bErrorReporter, E2bMcpConfig } from "./e2b-mcp.js"

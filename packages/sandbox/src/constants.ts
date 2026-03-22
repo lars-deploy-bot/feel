@@ -21,3 +21,6 @@ export type E2bTemplate = (typeof E2B_TEMPLATES)[keyof typeof E2B_TEMPLATES]
 
 /** Default template used when creating new sandboxes. */
 export const E2B_DEFAULT_TEMPLATE: E2bTemplate = E2B_TEMPLATES.ALIVE
+
+/** Default dev server port inside E2B sandboxes (Vite default). */
+export const E2B_DEFAULT_PORT = 5173
