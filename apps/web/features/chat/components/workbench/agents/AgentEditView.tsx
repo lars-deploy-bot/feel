@@ -16,7 +16,16 @@ import { buildCreatePayload, configResultToFormData } from "@/lib/automation/bui
 import { MODEL_OPTIONS } from "@/lib/automation/form-options"
 import { ErrorAlert, INPUT, TrigIcon } from "./AgentUI"
 import { agentsApi } from "./agents-api"
-import { timeoutMinutes, trigLabel } from "./agents-helpers"
+import {
+  AUTO_SAVE_DEBOUNCE,
+  DEFAULT_SCHEDULE,
+  DEFAULT_SCHEDULE_TIME,
+  minutesToSeconds,
+  minutesToSecondsOrNull,
+  SAVED_BADGE_DURATION,
+  timeoutMinutes,
+  trigLabel,
+} from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 
 interface AgentEditViewProps {
@@ -37,8 +46,7 @@ function buildEditFields(
   if (state.prompt !== (job.action_prompt ?? "")) fields.action_prompt = state.prompt || null
   if (state.model !== orig.model) fields.action_model = state.model || null
   if (state.schedule !== orig.schedule) fields.schedule_text = state.schedule || null
-  if (state.timeoutMin !== orig.timeoutMin)
-    fields.action_timeout_seconds = state.timeoutMin ? Number(state.timeoutMin) * 60 : null
+  if (state.timeoutMin !== orig.timeoutMin) fields.action_timeout_seconds = minutesToSecondsOrNull(state.timeoutMin)
   return fields
 }
 
@@ -58,7 +66,7 @@ function validateEditFields(
     if (e) errors.prompt = e
   }
   if (state.timeoutMin !== origTimeoutMin) {
-    const e = validateAgentField("timeout", state.timeoutMin ? String(Number(state.timeoutMin) * 60) : "")
+    const e = validateAgentField("timeout", minutesToSeconds(state.timeoutMin))
     if (e) errors.timeout = e
   }
   return Object.keys(errors).length > 0 ? errors : null
@@ -74,7 +82,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       ? job.action_model
       : (createData?.defaultModel ?? CLAUDE_MODELS.HAIKU_4_5),
   )
-  const [schedule, setSchedule] = useState(job ? trigLabel(job) : "every day at 9am")
+  const [schedule, setSchedule] = useState(job ? trigLabel(job) : DEFAULT_SCHEDULE)
   const [timeoutMin, setTimeoutMin] = useState(String(timeoutMinutes(job?.action_timeout_seconds)))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -125,7 +133,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       name,
       prompt,
       schedule,
-      timeout: timeoutMin ? String(Number(timeoutMin) * 60) : "",
+      timeout: minutesToSeconds(timeoutMin),
     })
     if (errors) {
       setFieldErrors(errors)
@@ -147,7 +155,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
         model: (model || CLAUDE_MODELS.HAIKU_4_5) as ClaudeModel,
         scheduleType: "custom",
         scheduleText: schedule,
-        scheduleTime: "09:00",
+        scheduleTime: DEFAULT_SCHEDULE_TIME,
       }
       const request = buildCreatePayload(configResultToFormData(result))
       await postty("automations/create", request)
@@ -180,7 +188,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       await agentsApi.update(job.id, fields)
       onChanged?.()
       setSaved(true)
-      globalThis.setTimeout(() => setSaved(false), 2000)
+      globalThis.setTimeout(() => setSaved(false), SAVED_BADGE_DURATION)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Failed to save")
     } finally {
@@ -192,7 +200,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
   useEffect(() => {
     if (isCreate || !hasChanges) return
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = globalThis.setTimeout(autoSave, 1500)
+    autoSaveTimer.current = globalThis.setTimeout(autoSave, AUTO_SAVE_DEBOUNCE)
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     }
@@ -223,7 +231,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
                   type="text"
                   value={schedule}
                   onChange={e => setSchedule(e.target.value)}
-                  placeholder="every day at 9am"
+                  placeholder={DEFAULT_SCHEDULE}
                   className={INPUT}
                 />
                 <div>

@@ -4,7 +4,7 @@ import { ClipboardList, Pause, Pencil, Play } from "lucide-react"
 import { useState } from "react"
 import { ActionButton, DeleteConfirm, ErrorAlert, RunDots, StatusLine, StreakBadge, SuccessRing } from "./AgentUI"
 import { agentsApi } from "./agents-api"
-import { dur } from "./agents-helpers"
+import { dur, isStreakHot, isStreakWarm, TRIGGER_REFRESH_DELAY } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 
 export function AgentOverviewView({
@@ -54,7 +54,7 @@ export function AgentOverviewView({
           <div className="flex flex-col items-start">
             <div className="flex items-center">
               <span
-                className={`text-[20px] font-bold tabular-nums ${job.streak >= 10 ? "text-orange-500" : job.streak >= 5 ? "text-amber-500" : "text-zinc-900 dark:text-zinc-100"}`}
+                className={`text-[20px] font-bold tabular-nums ${isStreakHot(job.streak) ? "text-orange-500" : isStreakWarm(job.streak) ? "text-amber-500" : "text-zinc-900 dark:text-zinc-100"}`}
               >
                 {job.streak}
               </span>
@@ -90,7 +90,7 @@ export function AgentOverviewView({
       {/* Actions */}
       <div className="flex items-center gap-2 flex-wrap pt-5 border-t border-zinc-100 dark:border-white/[0.04]">
         <ActionButton
-          onClick={() => act(() => agentsApi.trigger(job.id), setTriggering, 1500)}
+          onClick={() => act(() => agentsApi.trigger(job.id), setTriggering, TRIGGER_REFRESH_DELAY)}
           loading={triggering}
           icon={<Play size={12} />}
           variant="success"

@@ -4,7 +4,7 @@ import { Play, RotateCw } from "lucide-react"
 import { useMemo } from "react"
 import { Dot, RunDots, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
 import { agentsApi } from "./agents-api"
-import { healthScore, relTime, trigLabel } from "./agents-helpers"
+import { healthScore, relTime, TRIGGER_REFRESH_DELAY, trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 
 export function AgentListView({
@@ -110,7 +110,7 @@ function AgentCard({
           type="button"
           onClick={e => {
             e.stopPropagation()
-            agentsApi.trigger(job.id).then(() => globalThis.setTimeout(onChanged, 1500))
+            agentsApi.trigger(job.id).then(() => globalThis.setTimeout(onChanged, TRIGGER_REFRESH_DELAY))
           }}
           className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/15 border-b-2 border-emerald-200 dark:border-emerald-600/30 active:translate-y-[1px] active:border-b-0 transition-all"
         >

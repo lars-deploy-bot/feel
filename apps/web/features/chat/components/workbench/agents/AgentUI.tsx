@@ -15,7 +15,16 @@ import {
   XCircle,
 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { dur, relTime, statusLabel, trigLabel } from "./agents-helpers"
+import {
+  dur,
+  isStreakHot,
+  isStreakWarm,
+  RATE_EXCELLENT,
+  RATE_GOOD,
+  relTime,
+  statusLabel,
+  trigLabel,
+} from "./agents-helpers"
 import type { AgentDetailTab, EnrichedJob, RecentRun } from "./agents-types"
 
 // ── Shared constants ──
@@ -54,8 +63,8 @@ export function StreakBadge({ streak }: { streak: number }) {
       </span>
     )
 
-  const hot = streak >= 10
-  const warm = streak >= 5
+  const hot = isStreakHot(streak)
+  const warm = isStreakWarm(streak)
   return (
     <span
       className={`inline-flex items-center gap-1 text-[12px] tabular-nums font-bold ml-2 ${
@@ -106,7 +115,7 @@ export function SuccessRing({ rate, size = 48 }: { rate: number; size?: number }
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (rate / 100) * circumference
-  const color = rate >= 95 ? "#10b981" : rate >= 80 ? "#f59e0b" : "#ef4444"
+  const color = rate >= RATE_EXCELLENT ? "#10b981" : rate >= RATE_GOOD ? "#f59e0b" : "#ef4444"
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -285,7 +294,7 @@ export function StatsGrid({ job, nextLabel, compact }: { job: EnrichedJob; nextL
         ))}
         <div>
           <p
-            className={`text-[16px] font-bold tabular-nums ${job.streak >= 10 ? "text-orange-500" : job.streak >= 5 ? "text-amber-500" : "text-zinc-900 dark:text-zinc-100"}`}
+            className={`text-[16px] font-bold tabular-nums ${isStreakHot(job.streak) ? "text-orange-500" : isStreakWarm(job.streak) ? "text-amber-500" : "text-zinc-900 dark:text-zinc-100"}`}
           >
             {job.streak}
           </p>
