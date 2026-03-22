@@ -373,9 +373,9 @@ if [ -f "$LOCK_FILE" ]; then
   # Check if the lock owner is an ancestor of this script (we're called from the deploy pipeline)
   _is_ancestor=false
   if [ -n "$LOCK_PID" ]; then
-    echo "$SELF_PIDS" | tr '|' '\n' | while read -r _apid; do
-      [ "$_apid" = "$LOCK_PID" ] && exit 0
-    done && _is_ancestor=true
+    if echo "$SELF_PIDS" | tr '|' '\n' | grep -qx "$LOCK_PID"; then
+      _is_ancestor=true
+    fi
   fi
   if [ "$_is_ancestor" = true ]; then
     pass_check "Deploy lock held by parent pipeline (PID $LOCK_PID)"
