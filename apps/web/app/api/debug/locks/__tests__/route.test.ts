@@ -85,7 +85,7 @@ describe("GET /api/debug/locks", () => {
       expect(response.status).toBe(403)
       expect(data.ok).toBe(false)
       expect(data.error).toBe("FORBIDDEN")
-      expect(data.message).toContain("don't have permission")
+      expect(data.message).toContain("Not allowed")
     })
 
     it("should not expose any debug information in production", async () => {

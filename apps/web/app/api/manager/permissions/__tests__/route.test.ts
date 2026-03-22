@@ -187,7 +187,7 @@ describe("GET /api/manager/permissions (Check Permissions)", () => {
     expect(response.status).toBe(200)
     expect(data.ok).toBe(true)
     expect(data.result.siteDirectoryExists).toBe(false)
-    expect(data.result.error).toContain("does not exist")
+    expect(data.result.error).toContain("No directory for")
   })
 })
 
