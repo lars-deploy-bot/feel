@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { formatFileSize } from "@webalive/shared"
 
 /**
  * Result of fetching and saving an image for analysis
@@ -119,10 +120,3 @@ The Read tool will show you the image content so you can describe, analyze, or a
 ${originalMessage}`
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B"
-  const k = 1024
-  const sizes = ["B", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${Number.parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`
-}

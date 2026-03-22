@@ -38,6 +38,7 @@ import { SettingsContent } from "@/features/settings/SettingsContent"
 import { SettingsTabProvider } from "@/features/settings/SettingsTabProvider"
 import { ConversationSidebar } from "@/features/sidebar/ConversationSidebar"
 import { useSidebarActions, useSidebarOpen } from "@/features/sidebar/sidebarStore"
+import { useSandboxEnsure } from "@/features/workspace/hooks/useSandboxEnsure"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { validateWorktreeSlug } from "@/features/workspace/lib/worktree-utils"
 import { useRedeemReferral } from "@/hooks/useRedeemReferral"
@@ -168,6 +169,7 @@ function ChatPageContent() {
   const { workspace, worktree, workspaceKey, isTerminal, mounted, setWorkspace, setWorktree } = useWorkspace({
     allowEmpty: true,
   })
+  useSandboxEnsure(workspace)
   const tabWorkspace = workspaceKey
 
   // Tab-isolated messages, busy state, and session actions from single source of truth

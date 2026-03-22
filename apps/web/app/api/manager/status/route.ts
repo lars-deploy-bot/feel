@@ -1,4 +1,6 @@
 import { exec } from "node:child_process"
+import { existsSync } from "node:fs"
+import { readFile } from "node:fs/promises"
 import { promisify } from "node:util"
 import * as Sentry from "@sentry/nextjs"
 import { DEFAULTS, PATHS, TIMEOUTS } from "@webalive/shared"
@@ -11,15 +13,72 @@ import type { DomainStatus } from "@/types/domain"
 
 const execAsync = promisify(exec)
 
-async function checkPortListening(port: number): Promise<boolean> {
+// ---------------------------------------------------------------------------
+// Batched lookups — run once, shared across all domains
+// ---------------------------------------------------------------------------
+
+/** Parse `ss -ln` output into a set of listening ports (1 shell spawn for all domains) */
+async function getListeningPorts(): Promise<Set<number>> {
   try {
-    const { stdout } = await execAsync(`ss -ln | grep -E ':${port}\\s'`)
-    return stdout.trim().length > 0
-  } catch (_err) {
-    // Expected: ss command may fail if port not found
-    return false
+    const { stdout } = await execAsync("ss -tlnH")
+    const ports = new Set<number>()
+    for (const line of stdout.split("\n")) {
+      // Match the local address:port column (e.g. *:3352, 0.0.0.0:8998, [::]:443)
+      const match = line.match(/:(\d+)\s/)
+      if (match) ports.add(Number.parseInt(match[1], 10))
+    }
+    return ports
+  } catch {
+    return new Set()
   }
 }
+
+/** Read Caddyfile once and extract configured domains (1 file read for all domains) */
+async function getCaddyDomains(): Promise<Set<string>> {
+  try {
+    const content = await readFile(PATHS.CADDYFILE_PATH, "utf-8")
+    const domains = new Set<string>()
+    for (const line of content.split("\n")) {
+      const match = line.match(/^(\S+)\s*\{/)
+      if (match) domains.add(match[1])
+    }
+    return domains
+  } catch {
+    return new Set()
+  }
+}
+
+/** List all site@* units and their states (1 shell spawn for all domains) */
+async function getSystemdServiceStates(): Promise<
+  Map<string, { exists: boolean; running: boolean }>
+> {
+  const states = new Map<string, { exists: boolean; running: boolean }>()
+  try {
+    const { stdout } = await execAsync(
+      "systemctl list-units 'site@*.service' --all --no-legend --plain 2>/dev/null || true",
+    )
+    for (const line of stdout.split("\n")) {
+      const parts = line.trim().split(/\s+/)
+      if (parts.length < 4) continue
+      // unit, load, active, sub
+      const unit = parts[0]
+      const active = parts[2]
+      // Extract domain slug from site@slug.service
+      const slugMatch = unit.match(/^site@(.+)\.service$/)
+      if (slugMatch) {
+        const slug = slugMatch[1]
+        states.set(slug, { exists: true, running: active === "active" })
+      }
+    }
+  } catch (err) {
+    Sentry.captureException(err, { tags: { check: "systemd-batch" } })
+  }
+  return states
+}
+
+// ---------------------------------------------------------------------------
+// Per-domain checks (only for things that MUST be per-domain)
+// ---------------------------------------------------------------------------
 
 async function checkHttpAccessible(domain: string): Promise<boolean> {
   try {
@@ -34,7 +93,6 @@ async function checkHttpAccessible(domain: string): Promise<boolean> {
     clearTimeout(timeout)
     return response.status < 500
   } catch (_err) {
-    // Expected: domain may be unreachable
     return false
   }
 }
@@ -52,84 +110,23 @@ async function checkHttpsAccessible(domain: string): Promise<boolean> {
     clearTimeout(timeout)
     return response.status < 500
   } catch (_err) {
-    // Expected: domain may be unreachable
     return false
   }
 }
 
-async function checkSystemdService(domain: string): Promise<{ exists: boolean; running: boolean }> {
-  const serviceName = `site@${domain.replace(/\./g, "-")}.service`
-
-  try {
-    const { stdout: statusOutput } = await execAsync(
-      `systemctl is-active ${serviceName} 2>/dev/null || echo "inactive"`,
-    )
-    const running = statusOutput.trim() === "active"
-
-    try {
-      await execAsync(`systemctl status ${serviceName} 2>/dev/null`)
-      return { exists: true, running }
-    } catch (_err) {
-      // Expected: service may not exist
-      return { exists: running, running }
-    }
-  } catch (err) {
-    Sentry.captureException(err, { tags: { check: "systemd-service" } })
-    return { exists: false, running: false }
-  }
-}
-
-async function checkCaddyConfigured(domain: string): Promise<boolean> {
-  try {
-    const { stdout } = await execAsync(
-      `grep -q "^${domain} {" ${PATHS.CADDYFILE_PATH} && echo "found" || echo "missing"`,
-    )
-    return stdout.trim() === "found"
-  } catch (err) {
-    Sentry.captureException(err, { tags: { check: "caddy-config" } })
-    return false
-  }
-}
-
-async function checkSiteDirectory(domain: string): Promise<boolean> {
-  try {
-    const possiblePaths = [`${PATHS.SITES_ROOT}/${domain}`, `${PATHS.SITES_ROOT}/${domain.replace(/\./g, "-")}`]
-
-    for (const path of possiblePaths) {
-      const { stdout } = await execAsync(`test -d ${path} && echo "exists" || echo "missing"`)
-      if (stdout.trim() === "exists") {
-        return true
-      }
-    }
-
-    return false
-  } catch (err) {
-    Sentry.captureException(err, { tags: { check: "site-directory" } })
-    return false
-  }
-}
-
-/**
- * Check DNS resolution by verifying the domain serves our verification file
- * This works with any CDN/proxy setup (Cloudflare, etc.)
- */
 async function checkDnsResolution(
   domain: string,
   serverIp: string,
 ): Promise<{ pointsToServer: boolean; resolvedIp: string | null; isProxied?: boolean; verificationMethod?: string }> {
   try {
-    // First, get the resolved IP for display purposes
     const { stdout } = await execAsync(`host -t A ${domain} 2>/dev/null || echo "NXDOMAIN"`)
 
     let resolvedIp: string | null = null
     if (!stdout.includes("NXDOMAIN") && !stdout.includes("not found")) {
       const match = stdout.match(/has address\s+(\d+\.\d+\.\d+\.\d+)/)
-      if (match) {
-        resolvedIp = match[1]
-      }
+      if (match) resolvedIp = match[1]
     }
 
-    // Try to fetch the verification file via HTTPS first, then HTTP
     const verificationPath = "/.well-known/alive-verify.txt"
 
     for (const protocol of ["https", "http"]) {
@@ -149,20 +146,13 @@ async function checkDnsResolution(
           const pointsToServer = content === serverIp
           const isProxied = resolvedIp !== null && resolvedIp !== serverIp
 
-          return {
-            pointsToServer,
-            resolvedIp,
-            isProxied,
-            verificationMethod: protocol,
-          }
+          return { pointsToServer, resolvedIp, isProxied, verificationMethod: protocol }
         }
       } catch (_err) {
         // Expected: verification endpoint may be unreachable
       }
     }
 
-    // Verification file not found or unreachable
-    // Fall back to direct IP comparison
     const directMatch = resolvedIp === serverIp
     return {
       pointsToServer: directMatch,
@@ -176,70 +166,70 @@ async function checkDnsResolution(
   }
 }
 
-async function checkServeMode(domain: string): Promise<"dev" | "build" | "unknown"> {
+/** Check serve mode using direct file reads instead of spawning cat */
+function checkServeMode(domain: string): "dev" | "build" | "unknown" {
   const slug = domain.replace(/\./g, "-")
   const serviceDir = `/etc/systemd/system/site@${slug}.service.d`
-  // serve-mode.conf is canonical (written by switch_serve_mode), override.conf is legacy fallback
   for (const file of ["serve-mode.conf", "override.conf"]) {
     try {
-      const { stdout } = await execAsync(`cat "${serviceDir}/${file}" 2>/dev/null || echo ""`)
-      if (stdout.includes("preview") || stdout.includes("bun run start")) return "build"
-      if (stdout.includes("bun run dev")) return "dev"
-    } catch (_err) {
+      // Use require("fs").readFileSync — this is admin-only, sync is fine for small config files
+      const content = require("node:fs").readFileSync(`${serviceDir}/${file}`, "utf-8")
+      if (content.includes("preview") || content.includes("bun run start")) return "build"
+      if (content.includes("bun run dev")) return "dev"
+    } catch {
       // File doesn't exist, try next
     }
   }
-  return "dev" // No config = base template dev mode
+  return "dev"
 }
 
-async function checkViteConfigPort(
+/** Check vite config port using direct file reads instead of spawning test/grep */
+function checkViteConfigPort(
   domain: string,
   expectedPort: number,
-): Promise<{ mismatch: boolean; actualPort: number | null; hasSystemdOverride: boolean }> {
+): { mismatch: boolean; actualPort: number | null; hasSystemdOverride: boolean } {
   try {
     const sitePath = `${PATHS.SITES_ROOT}/${domain}`
     const slug = domain.replace(/[^a-zA-Z0-9]/g, "-")
 
-    // Check for systemd override file
-    let hasSystemdOverride = false
-    try {
-      await execAsync(`test -f "/etc/systemd/system/site@${slug}.service.d/port-override.conf"`)
-      hasSystemdOverride = true
-    } catch (_err) {
-      // Expected: override file may not exist
-      hasSystemdOverride = false
-    }
+    const hasSystemdOverride = existsSync(
+      `/etc/systemd/system/site@${slug}.service.d/port-override.conf`,
+    )
 
-    // Try vite.config.ts first
-    let configPath: string | null = null
-    try {
-      await execAsync(`test -f "${sitePath}/user/vite.config.ts"`)
-      configPath = `${sitePath}/user/vite.config.ts`
-    } catch (_err) {
+    // Try vite.config.ts then .js
+    let configContent: string | null = null
+    for (const ext of ["ts", "js"]) {
+      const configPath = `${sitePath}/user/vite.config.${ext}`
       try {
-        await execAsync(`test -f "${sitePath}/user/vite.config.js"`)
-        configPath = `${sitePath}/user/vite.config.js`
-      } catch (_err) {
-        // Expected: config file may not exist
-        return { mismatch: hasSystemdOverride, actualPort: null, hasSystemdOverride }
+        configContent = require("node:fs").readFileSync(configPath, "utf-8")
+        break
+      } catch {
+        // Try next extension
       }
     }
 
-    const { stdout } = await execAsync(`grep -o 'port: [0-9]*' "${configPath}" | head -1`)
-    const match = stdout.match(/port: (\d+)/)
+    if (!configContent) {
+      return { mismatch: hasSystemdOverride, actualPort: null, hasSystemdOverride }
+    }
 
+    const match = configContent.match(/port:\s*(\d+)/)
     if (!match) {
       return { mismatch: hasSystemdOverride, actualPort: null, hasSystemdOverride }
     }
 
     const actualPort = Number.parseInt(match[1], 10)
-    const mismatch = actualPort !== expectedPort || hasSystemdOverride
-
-    return { mismatch, actualPort, hasSystemdOverride }
+    return { mismatch: actualPort !== expectedPort || hasSystemdOverride, actualPort, hasSystemdOverride }
   } catch (err) {
     Sentry.captureException(err, { tags: { check: "vite-config-port" } })
     return { mismatch: false, actualPort: null, hasSystemdOverride: false }
   }
+}
+
+function checkSiteDirectory(domain: string): boolean {
+  return (
+    existsSync(`${PATHS.SITES_ROOT}/${domain}`) ||
+    existsSync(`${PATHS.SITES_ROOT}/${domain.replace(/\./g, "-")}`)
+  )
 }
 
 export async function GET(req: NextRequest) {
@@ -251,7 +241,6 @@ export async function GET(req: NextRequest) {
   }
 
   const domains = await getAllDomains()
-  const statuses: DomainStatus[] = []
   const serverIp = DEFAULTS.SERVER_IP
   if (!serverIp) {
     return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, {
@@ -259,30 +248,32 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // Run batched lookups once (3 operations instead of 3 × N)
+  const [listeningPorts, caddyDomains, systemdStates] = await Promise.all([
+    getListeningPorts(),
+    getCaddyDomains(),
+    getSystemdServiceStates(),
+  ])
+
+  // Per-domain: only network checks (HTTP/HTTPS/DNS) still need individual calls
   const checks = domains.map(async domainInfo => {
     const domain = domainInfo.hostname
     const port = domainInfo.port
+    const slug = domain.replace(/\./g, "-")
 
-    const [
-      portListening,
-      httpAccessible,
-      httpsAccessible,
-      systemdService,
-      caddyConfigured,
-      siteDirectoryExists,
-      dnsCheck,
-      vitePortCheck,
-      serveMode,
-    ] = await Promise.all([
-      checkPortListening(port),
+    // These are instant lookups from pre-fetched data
+    const portListening = listeningPorts.has(port)
+    const caddyConfigured = caddyDomains.has(domain)
+    const systemdService = systemdStates.get(slug) ?? { exists: false, running: false }
+    const siteDirectoryExists = checkSiteDirectory(domain)
+    const serveMode = checkServeMode(domain)
+    const vitePortCheck = checkViteConfigPort(domain, port)
+
+    // These still need per-domain network calls
+    const [httpAccessible, httpsAccessible, dnsCheck] = await Promise.all([
       checkHttpAccessible(domain),
       checkHttpsAccessible(domain),
-      checkSystemdService(domain),
-      checkCaddyConfigured(domain),
-      checkSiteDirectory(domain),
       checkDnsResolution(domain, serverIp),
-      checkViteConfigPort(domain, port),
-      checkServeMode(domain),
     ])
 
     return {
@@ -308,8 +299,7 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  const results = await Promise.all(checks)
-  statuses.push(...results)
+  const statuses: DomainStatus[] = await Promise.all(checks)
 
   return createCorsSuccessResponse(origin, { statuses })
 }

@@ -728,6 +728,7 @@ export async function POST(req: NextRequest) {
                   sandboxDomain: {
                     domain_id: domainRecord.domain_id,
                     hostname: domainRecord.hostname,
+                    port: domainRecord.port,
                     sandbox_id: domainRecord.sandbox_id,
                     sandbox_status: domainRecord.sandbox_status,
                     is_test_env: domainRecord.is_test_env ?? undefined,

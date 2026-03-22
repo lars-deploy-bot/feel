@@ -9,7 +9,7 @@
  * - Structured error classification
  */
 
-import { retryAsync } from "@webalive/shared"
+import { type TranscribeResult, retryAsync } from "@webalive/shared"
 import { env } from "../../config/env"
 import { logger } from "../../infra/logger"
 
@@ -32,11 +32,7 @@ export interface TranscribeRequest {
   language?: string
 }
 
-export interface TranscribeResult {
-  text: string
-  duration: number | null
-  language: string | null
-}
+export type { TranscribeResult }
 
 export type TranscribeErrorCode = "TOO_SHORT" | "TOO_LARGE" | "INVALID_FORMAT" | "GROQ_ERROR" | "TIMEOUT" | "NO_SPEECH"
 

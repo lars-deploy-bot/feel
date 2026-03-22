@@ -1,0 +1,11 @@
+{
+  "name": "@webalive/stream-fsm",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "wasm-pack build --target bundler --out-dir pkg",
+    "build:node": "wasm-pack build --target nodejs --out-dir pkg-node",
+    "test": "cargo test",
+    "type-check": "echo 'Rust types checked at build time'"
+  }
+}

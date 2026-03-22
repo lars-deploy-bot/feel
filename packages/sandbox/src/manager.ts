@@ -21,6 +21,8 @@ import { E2B_DEFAULT_TEMPLATE } from "./constants.js"
 export interface SandboxDomain {
   domain_id: string
   hostname: string
+  /** The port the dev server should listen on inside the sandbox. */
+  port: number
   sandbox_id: string | null
   sandbox_status: SandboxStatus | null
   is_test_env?: boolean | null
@@ -33,6 +35,8 @@ export const SANDBOX_WORKSPACE_ROOT = "/home/user/project"
 /** Callback to persist sandbox state changes to the database. */
 export interface SandboxPersistence {
   updateSandbox(domainId: string, sandboxId: string, status: SandboxStatus): Promise<void>
+  /** Update the port the dev server is listening on (called when detected port differs from DB). */
+  updatePort?(domainId: string, port: number): Promise<void>
 }
 
 interface SandboxManagerConfig {
@@ -187,6 +191,17 @@ export class SandboxManager {
     }
   }
 
+  /** Ensure dev server is running and update DB port if it changed. */
+  private async ensureDevServerAndSyncPort(sandbox: Sandbox, domain: SandboxDomain): Promise<void> {
+    const actualPort = await ensureDevServer(sandbox, domain.port)
+    if (actualPort && actualPort !== domain.port && this.persistence.updatePort) {
+      console.error(
+        `[sandbox-manager] Port drift for ${domain.hostname}: expected ${domain.port}, got ${actualPort}. Syncing DB.`,
+      )
+      await this.persistence.updatePort(domain.domain_id, actualPort)
+    }
+  }
+
   /** Try to reconnect by stored sandbox_id, fall back to creating a new one. */
   private async resolve(domain: SandboxDomain, hostWorkspacePath?: string): Promise<Sandbox> {
     // Try reconnect if we have a stored sandbox_id.
@@ -210,6 +225,15 @@ export class SandboxManager {
         // Ensure dependencies are installed — node_modules may be missing if the
         // sandbox was created before installDependencies existed, or if it was deleted.
         await ensureDependencies(sandbox)
+
+        // Mark as running BEFORE starting dev server — pause→running must be persisted
+        // so regeneratePortMap() includes this sandbox in sandbox-map.json.
+        if (domain.sandbox_status !== "running") {
+          await this.persistence.updateSandbox(domain.domain_id, domain.sandbox_id, "running")
+        }
+
+        // Ensure dev server is running — it dies on pause/resume and process restarts.
+        await this.ensureDevServerAndSyncPort(sandbox, domain)
 
         const verb = domain.sandbox_status === "paused" ? "Resumed" : "Reconnected to"
         console.error(`[sandbox-manager] ${verb} ${domain.sandbox_id} for ${domain.hostname}`)
@@ -254,6 +278,9 @@ export class SandboxManager {
     }
 
     await this.persistence.updateSandbox(domain.domain_id, sandbox.sandboxId, "running")
+
+    // Start dev server so the preview works immediately
+    await this.ensureDevServerAndSyncPort(sandbox, domain)
 
     console.error(`[sandbox-manager] Created ${sandbox.sandboxId} for ${domain.hostname}`)
     return sandbox
@@ -454,6 +481,123 @@ async function ensureDependencies(sandbox: Sandbox): Promise<void> {
     console.error("[sandbox-manager] node_modules missing on reconnect, installing")
     await runInstall(sandbox, installCmd)
   }
+}
+
+/**
+ * Ensure the dev server is running inside the sandbox and return the port it's listening on.
+ * After pause/resume or process restart, the dev server process is gone.
+ *
+ * The system owns the port: `expectedPort` is passed as the PORT env var when starting
+ * the dev server, so the actual port is deterministic. Detection is a verification step,
+ * not a discovery step. If the project ignores PORT (custom vite config), the actual port
+ * is detected and returned so the caller can sync the DB.
+ *
+ * @param sandbox - E2B sandbox instance
+ * @param expectedPort - The port the dev server should bind to (from DB)
+ * @returns The actual port the dev server is listening on, or null if none
+ */
+export async function ensureDevServer(sandbox: Sandbox, expectedPort: number): Promise<number | null> {
+  // 1. Check if the expected port is already listening — fast path
+  if (await isPortListening(sandbox, expectedPort)) return expectedPort
+
+  // 2. Check if something else is listening (project ignores PORT, or multiple services)
+  const otherPort = await detectAnyListeningPort(sandbox)
+  if (otherPort) {
+    console.error(
+      `[sandbox-manager] Expected port ${expectedPort} not listening, but found ${otherPort}. Project may ignore PORT env var.`,
+    )
+    return otherPort
+  }
+
+  // 3. Check if there's a dev script to run
+  let pkgJson: string
+  try {
+    pkgJson = await sandbox.files.read(path.join(SANDBOX_WORKSPACE_ROOT, "package.json"))
+  } catch {
+    return null
+  }
+
+  let pkg: { scripts?: Record<string, string> }
+  try {
+    pkg = JSON.parse(pkgJson)
+  } catch {
+    return null
+  }
+
+  if (!pkg.scripts?.dev) return null
+
+  // 4. Start dev server with PORT env var — the system owns the port
+  try {
+    await sandbox.commands.run("bun run dev", {
+      background: true,
+      cwd: SANDBOX_WORKSPACE_ROOT,
+      envs: { PORT: String(expectedPort) },
+    })
+  } catch {
+    return null
+  }
+
+  // 5. Wait for the expected port to bind (poll up to 10s)
+  for (let i = 0; i < 10; i++) {
+    await new Promise(r => setTimeout(r, 1000))
+    if (await isPortListening(sandbox, expectedPort)) return expectedPort
+  }
+
+  // 6. Expected port didn't bind — check if project bound to a different port
+  const fallbackPort = await detectAnyListeningPort(sandbox)
+  if (fallbackPort) {
+    console.error(`[sandbox-manager] Dev server ignored PORT=${expectedPort}, bound to ${fallbackPort} instead.`)
+    return fallbackPort
+  }
+
+  return null
+}
+
+/**
+ * Check if a specific port is listening inside the sandbox.
+ * Uses `ss` with a sport filter for a targeted check.
+ */
+async function isPortListening(sandbox: Sandbox, port: number): Promise<boolean> {
+  try {
+    const result = await sandbox.commands.run(`ss -tlnH sport = :${port} 2>/dev/null || true`, {
+      cwd: SANDBOX_WORKSPACE_ROOT,
+      timeoutMs: 5_000,
+    })
+    return result.stdout.trim().length > 0
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Detect any TCP port > 1024 listening inside the sandbox.
+ * Used as a fallback when the expected port is not listening — the project
+ * may have its own port configured and ignore the PORT env var.
+ */
+async function detectAnyListeningPort(sandbox: Sandbox): Promise<number | null> {
+  try {
+    const result = await sandbox.commands.run("ss -tlnH 2>/dev/null || true", {
+      cwd: SANDBOX_WORKSPACE_ROOT,
+      timeoutMs: 5_000,
+    })
+    const output = result.stdout.trim()
+    if (!output) return null
+
+    // Parse lines like: LISTEN  0  511  *:5173  *:*
+    // Local Address:Port is the 4th column
+    for (const line of output.split("\n")) {
+      const parts = line.trim().split(/\s+/)
+      const localAddr = parts[3] // e.g. "*:5173" or "0.0.0.0:3000" or "[::]:5173"
+      if (!localAddr) continue
+      const colonIdx = localAddr.lastIndexOf(":")
+      if (colonIdx === -1) continue
+      const port = Number.parseInt(localAddr.slice(colonIdx + 1), 10)
+      if (port && !Number.isNaN(port) && port > 1024) return port
+    }
+  } catch {
+    // ss not available
+  }
+  return null
 }
 
 /**

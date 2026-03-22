@@ -391,12 +391,21 @@ export const DOMAINS = {
   SHELL_HOST: serverConfig.shell?.domains?.[0] ?? "",
 } as const
 
-export const SHELL = {
-  /** Internal shell-server upstream from server-config.json shell.upstream */
-  UPSTREAM: serverConfig.shell?.upstream ?? "",
+/** Ensure a host:port string has an http:// scheme for fetch() */
+function ensureHttpScheme(value: string): string {
+	if (!value) return ""
+	return value.includes("://") ? value : `http://${value}`
+}
 
-  /** Internal E2B terminal bridge upstream from server-config.json shell.e2bUpstream */
-  E2B_UPSTREAM: serverConfig.shell?.e2bUpstream ?? "",
+export const SHELL = {
+	/** Internal shell-server upstream URL (scheme-normalized for fetch) */
+	UPSTREAM: ensureHttpScheme(serverConfig.shell?.upstream ?? ""),
+
+	/** Internal E2B terminal bridge upstream URL (scheme-normalized for fetch) */
+	E2B_UPSTREAM: ensureHttpScheme(serverConfig.shell?.e2bUpstream ?? ""),
+
+	/** caddy-shell listen address (e.g. ":8443") — used for reachability checks */
+	LISTEN: serverConfig.shell?.listen ?? "",
 } as const
 
 // =============================================================================

@@ -1,6 +1,28 @@
-import { existsSync } from "node:fs"
+import { readdirSync } from "node:fs"
 import { PATHS, SUPERADMIN } from "@webalive/shared"
 import { createAppClient } from "@/lib/supabase/app"
+
+/**
+ * Cached set of site directories. Single readdirSync instead of N existsSync calls.
+ * Refreshed every 30s since directories rarely change.
+ */
+let _siteDirCache: Set<string> | null = null
+let _siteDirCacheTime = 0
+const SITE_DIR_CACHE_TTL = 30_000
+
+function getSiteDirs(): Set<string> {
+  const now = Date.now()
+  if (_siteDirCache && now - _siteDirCacheTime < SITE_DIR_CACHE_TTL) {
+    return _siteDirCache
+  }
+  try {
+    _siteDirCache = new Set(readdirSync(PATHS.SITES_ROOT))
+  } catch {
+    _siteDirCache = new Set()
+  }
+  _siteDirCacheTime = now
+  return _siteDirCache
+}
 
 /**
  * Check if a domain exists on this server (has a site directory)
@@ -9,12 +31,8 @@ import { createAppClient } from "@/lib/supabase/app"
  * Special case: alive is always available (it's the codebase itself)
  */
 export function domainExistsOnThisServer(hostname: string): boolean {
-  // alive is always available - it's the codebase itself
-  if (hostname === SUPERADMIN.WORKSPACE_NAME) {
-    return true
-  }
-  const sitePath = `${PATHS.SITES_ROOT}/${hostname}`
-  return existsSync(sitePath)
+  if (hostname === SUPERADMIN.WORKSPACE_NAME) return true
+  return getSiteDirs().has(hostname)
 }
 
 /**

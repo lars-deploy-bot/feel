@@ -269,6 +269,7 @@ export {
 } from "./templates.js"
 export {
   // Text utilities
+  formatFileSize,
   truncateMarkdown,
 } from "./text-utils.js"
 export {
@@ -349,6 +350,7 @@ export {
   getLanguageDisplayName,
   getThinkingPhrase,
   isValidVoiceLanguage,
+  type TranscribeResult,
   VOICE_LANGUAGE_CODES,
   VOICE_LANGUAGES,
   type VoiceLanguage,

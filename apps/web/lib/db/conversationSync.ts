@@ -329,10 +329,21 @@ async function pushBatch(db: MessageDb, batch: SyncItem[], userId: string): Prom
       }
     }
 
-    for (const item of batch) {
-      if (result.conflicts?.some(c => c.conversationId === item.conversationId)) continue
+    // Build lookup sets to avoid O(batch × conflicts) and O(batch × errors) scans
+    const conflictIds = new Set(result.conflicts?.map(c => c.conversationId))
+    const errorByConvo = new Map<string, string>()
+    for (const e of result.errors ?? []) {
+      for (const item of batch) {
+        if (e.includes(item.conversationId)) {
+          errorByConvo.set(item.conversationId, e)
+        }
+      }
+    }
 
-      const matchedError = result.errors?.find(e => e.includes(item.conversationId))
+    for (const item of batch) {
+      if (conflictIds.has(item.conversationId)) continue
+
+      const matchedError = errorByConvo.get(item.conversationId)
       if (matchedError) {
         await db.conversations.update(item.conversationId, {
           lastSyncError: matchedError,
@@ -401,25 +412,49 @@ export async function fetchConversations(
 
     const tabsByWorkspace = new Map<string, { tabs: DbTab[]; conversations: Array<{ id: string; title: string }> }>()
 
-    for (const convo of [...own, ...shared]) {
-      const local = await db.conversations.get(convo.id)
-      if (local?.pendingSync) continue
+    const allConvos = [...own, ...shared]
+
+    // Bulk-fetch local conversations to check pendingSync (1 query instead of N)
+    const localConvos = await db.conversations.bulkGet(allConvos.map(c => c.id))
+    const pendingConvoIds = new Set(
+      localConvos.filter((c): c is NonNullable<typeof c> => c?.pendingSync === true).map(c => c.id),
+    )
+
+    // Collect all tabs across all non-pending conversations
+    const allTabs: Array<{ tab: ServerTab; convoWorkspace: string }> = []
+    const convosToStore: ReturnType<typeof serverConvoToDb>[] = []
+
+    for (const convo of allConvos) {
+      if (pendingConvoIds.has(convo.id)) continue
 
       const ws = convo.workspace
       if (!tabsByWorkspace.has(ws)) tabsByWorkspace.set(ws, { tabs: [], conversations: [] })
-      const wsGroup = tabsByWorkspace.get(ws)!
-      wsGroup.conversations.push({ id: convo.id, title: convo.title })
+      tabsByWorkspace.get(ws)!.conversations.push({ id: convo.id, title: convo.title })
 
-      await db.conversations.put(serverConvoToDb(convo))
+      convosToStore.push(serverConvoToDb(convo))
 
       for (const tab of convo.tabs || []) {
-        const localTab = await db.tabs.get(tab.id)
-        if (localTab?.pendingSync) continue
-        const dbTab = serverTabToDb(tab)
-        await db.tabs.put(dbTab)
-        wsGroup.tabs.push(dbTab)
+        allTabs.push({ tab, convoWorkspace: ws })
       }
     }
+
+    // Bulk-fetch local tabs to check pendingSync (1 query instead of M)
+    const localTabs = await db.tabs.bulkGet(allTabs.map(t => t.tab.id))
+    const pendingTabIds = new Set(
+      localTabs.filter((t): t is NonNullable<typeof t> => t?.pendingSync === true).map(t => t.id),
+    )
+
+    const tabsToStore: DbTab[] = []
+    for (const { tab, convoWorkspace } of allTabs) {
+      if (pendingTabIds.has(tab.id)) continue
+      const dbTab = serverTabToDb(tab)
+      tabsToStore.push(dbTab)
+      tabsByWorkspace.get(convoWorkspace)!.tabs.push(dbTab)
+    }
+
+    // Bulk-write all conversations and tabs (2 writes instead of N+M)
+    await db.conversations.bulkPut(convosToStore)
+    await db.tabs.bulkPut(tabsToStore)
 
     for (const [ws, { tabs, conversations }] of tabsByWorkspace) {
       syncDexieTabsToLocalStorage(ws, tabs, conversations)
@@ -581,12 +616,27 @@ async function reconcileMessageCounts(userId: string, workspace: string): Promis
     .anyOf(conversations.map(c => c.id))
     .toArray()
 
+  // Filter tabs that have server-side messages
+  const tabsWithMessages = tabs.filter(t => (t.messageCount ?? 0) > 0)
+
+  // Single query: get all local message counts at once instead of N serial queries
   const tabsToFetch: string[] = []
-  for (const tab of tabs) {
-    const serverCount = tab.messageCount ?? 0
-    if (serverCount === 0) continue
-    const localCount = await db.messages.where("tabId").equals(tab.id).count()
-    if (serverCount > localCount) tabsToFetch.push(tab.id)
+  if (tabsWithMessages.length > 0) {
+    const localMessages = await db.messages
+      .where("tabId")
+      .anyOf(tabsWithMessages.map(t => t.id))
+      .toArray()
+
+    const countByTab = new Map<string, number>()
+    for (const msg of localMessages) {
+      countByTab.set(msg.tabId, (countByTab.get(msg.tabId) ?? 0) + 1)
+    }
+
+    for (const tab of tabsWithMessages) {
+      if ((tab.messageCount ?? 0) > (countByTab.get(tab.id) ?? 0)) {
+        tabsToFetch.push(tab.id)
+      }
+    }
   }
 
   if (tabsToFetch.length === 0) return

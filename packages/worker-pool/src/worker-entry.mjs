@@ -788,6 +788,9 @@ async function handleQuery(ipc, requestId, payload) {
       if (typeof domain.hostname !== "string" || domain.hostname.length === 0) {
         validationErrors.push("sandboxDomain.hostname must be a non-empty string")
       }
+      if (typeof domain.port !== "number" || !Number.isInteger(domain.port) || domain.port <= 0) {
+        validationErrors.push("sandboxDomain.port must be a positive integer")
+      }
       if (domain.sandbox_id !== null && typeof domain.sandbox_id !== "string") {
         validationErrors.push("sandboxDomain.sandbox_id must be string|null")
       }

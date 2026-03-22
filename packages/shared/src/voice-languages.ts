@@ -202,3 +202,10 @@ export function getThinkingPhrase(lang: VoiceLanguage): string {
   if (!pool) return "thinking"
   return pool[Math.floor(Math.random() * pool.length)]
 }
+
+/** Result of a transcription request (shared between web and API). */
+export interface TranscribeResult {
+  text: string
+  duration: number | null
+  language: string | null
+}

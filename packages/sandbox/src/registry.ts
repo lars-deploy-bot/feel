@@ -10,7 +10,7 @@
 
 import type { E2bTemplate } from "./constants.js"
 import type { SandboxDomain, SandboxPersistence } from "./manager.js"
-import { SandboxManager } from "./manager.js"
+import { ensureDevServer, SandboxManager } from "./manager.js"
 import type { SandboxSession } from "./session.js"
 import { createSandboxSession } from "./session.js"
 
@@ -34,6 +34,12 @@ export interface SandboxSessionRegistry {
    * @param hostWorkspacePath - Host-side path to seed the sandbox from on first create.
    */
   acquire(domain: SandboxDomain, hostWorkspacePath?: string): Promise<SandboxSession>
+
+  /**
+   * Ensure sandbox is connected, dev server is running, and port is synced.
+   * Unlike acquire(), this always checks the dev server state (even for cached sessions).
+   */
+  ensureReady(domain: SandboxDomain, hostWorkspacePath?: string): Promise<SandboxSession>
 
   /**
    * Evict the cached session WITHOUT killing the sandbox.
@@ -63,6 +69,22 @@ export function createSandboxSessionRegistry(config: SandboxSessionRegistryConfi
       const session = createSandboxSession({ domain_id: domain.domain_id, hostname: domain.hostname }, sandbox, manager)
 
       sessions.set(domain.domain_id, session)
+      return session
+    },
+
+    async ensureReady(domain: SandboxDomain, hostWorkspacePath?: string): Promise<SandboxSession> {
+      const session = await this.acquire(domain, hostWorkspacePath)
+
+      // Always check dev server state, even for cached sessions.
+      // Pass the expected port — the system owns the port, not the sandbox.
+      const actualPort = await ensureDevServer(session.raw, domain.port)
+      if (actualPort && actualPort !== domain.port && config.persistence.updatePort) {
+        console.error(
+          `[sandbox-registry] Port drift for ${domain.hostname}: expected ${domain.port}, got ${actualPort}. Syncing DB.`,
+        )
+        await config.persistence.updatePort(domain.domain_id, actualPort)
+      }
+
       return session
     },
 
