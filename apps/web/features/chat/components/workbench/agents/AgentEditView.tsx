@@ -16,7 +16,7 @@ import { buildCreatePayload, configResultToFormData } from "@/lib/automation/bui
 import { MODEL_OPTIONS } from "@/lib/automation/form-options"
 import { ErrorAlert, INPUT, TrigIcon } from "./AgentUI"
 import { agentsApi } from "./agents-api"
-import { trigLabel } from "./agents-helpers"
+import { timeoutMinutes, trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 
 interface AgentEditViewProps {
@@ -36,8 +36,8 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       ? job.action_model
       : (createData?.defaultModel ?? CLAUDE_MODELS.HAIKU_4_5),
   )
-  const [schedule, setSchedule] = useState(job?.cron_schedule ?? "every day at 9am")
-  const [timeout, setTimeout] = useState(job?.action_timeout_seconds ? String(job.action_timeout_seconds) : "")
+  const [schedule, setSchedule] = useState(job ? trigLabel(job) : "every day at 9am")
+  const [timeoutMin, setTimeoutMin] = useState(String(timeoutMinutes(job?.action_timeout_seconds)))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<AgentFieldErrors>({})
@@ -50,8 +50,8 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       setName(job.name)
       setPrompt(job.action_prompt ?? "")
       setModel(isValidClaudeModel(job.action_model) ? job.action_model : "")
-      setSchedule(job.cron_schedule ?? "")
-      setTimeout(job.action_timeout_seconds ? String(job.action_timeout_seconds) : "")
+      setSchedule(trigLabel(job))
+      setTimeoutMin(String(timeoutMinutes(job.action_timeout_seconds)))
     }
     setError(null)
     setFieldErrors({})
@@ -66,20 +66,23 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
 
   // ── Change detection ──
   const origModel = job && isValidClaudeModel(job.action_model) ? job.action_model : ""
-  const origTimeout = job?.action_timeout_seconds ? String(job.action_timeout_seconds) : ""
+  const origTimeoutMin = String(timeoutMinutes(job?.action_timeout_seconds))
+  const origSchedule = job ? trigLabel(job) : ""
 
   const hasChanges = isCreate
     ? true
     : name !== job.name ||
       prompt !== (job.action_prompt ?? "") ||
       model !== origModel ||
-      schedule !== (job.cron_schedule ?? "") ||
-      timeout !== origTimeout
+      schedule !== origSchedule ||
+      timeoutMin !== origTimeoutMin
 
   // ── Save ──
+  const timeoutSeconds = timeoutMin ? String(Number(timeoutMin) * 60) : ""
+
   const handleSave = useCallback(async () => {
     if (isCreate) {
-      const errors = validateAgentCreate({ name, prompt, schedule, timeout })
+      const errors = validateAgentCreate({ name, prompt, schedule, timeout: timeoutSeconds })
       if (errors) {
         setFieldErrors(errors)
         return
@@ -94,8 +97,8 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
         const e = validateAgentField("prompt", prompt)
         if (e) errors.prompt = e
       }
-      if (timeout !== origTimeout) {
-        const e = validateAgentField("timeout", timeout)
+      if (timeoutMin !== origTimeoutMin) {
+        const e = validateAgentField("timeout", timeoutSeconds)
         if (e) errors.timeout = e
       }
       if (Object.keys(errors).length > 0) {
@@ -130,8 +133,8 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
         if (name !== job.name) fields.name = name
         if (prompt !== (job.action_prompt ?? "")) fields.action_prompt = prompt || null
         if (model !== origModel) fields.action_model = model || null
-        if (schedule !== (job.cron_schedule ?? "")) fields.cron_schedule = schedule || null
-        if (timeout !== origTimeout) fields.action_timeout_seconds = timeout ? Number(timeout) : null
+        if (schedule !== origSchedule) fields.schedule_text = schedule || null
+        if (timeoutMin !== origTimeoutMin) fields.action_timeout_seconds = timeoutMin ? Number(timeoutMin) * 60 : null
 
         await agentsApi.update(job.id, fields)
         onChanged?.()
@@ -146,11 +149,24 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
     } finally {
       setSaving(false)
     }
-  }, [isCreate, createData, job, name, prompt, model, schedule, timeout, origModel, origTimeout, onDone, onChanged])
+  }, [
+    isCreate,
+    createData,
+    job,
+    name,
+    prompt,
+    model,
+    schedule,
+    timeoutMin,
+    timeoutSeconds,
+    origModel,
+    origSchedule,
+    origTimeoutMin,
+    onDone,
+    onChanged,
+  ])
 
   const triggerType = job?.trigger_type ?? "cron"
-  const scheduleDescription = job ? trigLabel(job) : ""
-  const timezoneShort = job?.cron_timezone ? job.cron_timezone.replace(/^.*\//, "") : ""
 
   return (
     <div className="h-full flex flex-col">
@@ -176,28 +192,22 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
                     type="text"
                     value={schedule}
                     onChange={e => setSchedule(e.target.value)}
-                    placeholder="0 9 * * *"
-                    className={`${INPUT} font-mono text-[12px]`}
+                    placeholder="every day at 9am"
+                    className={`${INPUT} text-[12px]`}
                   />
-                  {scheduleDescription && (
-                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
-                      {scheduleDescription}
-                      {timezoneShort ? ` (${timezoneShort})` : ""}
-                    </p>
-                  )}
                 </div>
                 <div>
                   <label htmlFor="edit-timeout" className="text-[10px] text-zinc-400 dark:text-zinc-600 block mb-1">
-                    Timeout (seconds)
+                    Timeout (minutes)
                   </label>
                   <input
                     id="edit-timeout"
                     type="number"
-                    min={10}
-                    max={3600}
-                    value={timeout}
-                    onChange={e => setTimeout(e.target.value)}
-                    placeholder="300"
+                    min={1}
+                    max={60}
+                    value={timeoutMin}
+                    onChange={e => setTimeoutMin(e.target.value)}
+                    placeholder="5"
                     className={`${INPUT} w-24 tabular-nums text-[12px]`}
                   />
                 </div>

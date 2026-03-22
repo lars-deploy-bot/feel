@@ -50,17 +50,23 @@ interface TrigLabelInput {
 }
 
 /**
- * Human-readable trigger label using describeCron for rich display.
+ * Human-readable trigger label. Converts cron to natural language.
+ * Users never see raw cron expressions.
  */
 export function trigLabel(a: TrigLabelInput): string {
-  if (a.trigger_type === "email") {
-    return a.email_address ? a.email_address : "On email"
-  }
+  if (a.trigger_type === "email") return a.email_address ?? "On email"
   if (a.trigger_type === "webhook") return "Webhook"
   if (a.trigger_type === "one-time") return "One-time"
   if (!a.cron_schedule) return "—"
-
   return describeCron(a.cron_schedule)
+}
+
+/**
+ * Timeout in minutes from seconds. Defaults to 5.
+ */
+export function timeoutMinutes(seconds: number | null | undefined): number {
+  if (!seconds) return 5
+  return Math.round(seconds / 60)
 }
 
 /** Minimal shape needed by healthScore */
