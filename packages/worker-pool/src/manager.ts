@@ -8,7 +8,7 @@
 import { type ChildProcess, execFile, spawn } from "node:child_process"
 import { EventEmitter } from "node:events"
 import { chmod, mkdir, readFile, stat } from "node:fs/promises"
-import { cpus, loadavg, platform } from "node:os"
+import { cpus, homedir, loadavg, platform } from "node:os"
 import * as path from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { promisify } from "node:util"
@@ -319,17 +319,6 @@ export class WorkerPoolManager extends EventEmitter {
   constructor(config?: Partial<WorkerPoolConfig>) {
     super()
     this.config = createConfig(config)
-
-    // Fail fast: HOME is required to locate Claude credentials.
-    // Without it, every query silently fails with 0 messages.
-    // Typically missing when systemd services don't set Environment="HOME=/root".
-    if (!process.env.CLAUDE_CONFIG_DIR?.startsWith("/") && !process.env.HOME) {
-      throw new Error(
-        "FATAL: Neither HOME nor CLAUDE_CONFIG_DIR is set. " +
-          "Worker pool cannot locate Claude credentials. " +
-          'Add Environment="HOME=/root" to the systemd service.',
-      )
-    }
   }
 
   // ==========================================================================
@@ -1044,9 +1033,8 @@ export class WorkerPoolManager extends EventEmitter {
     if (configured?.startsWith("/")) {
       return configured
     }
-    const home = process.env.HOME
-    if (!home) throw new Error("HOME environment variable is required")
-    return path.join(home, ".claude")
+    // homedir() reads /etc/passwd when HOME is unset — works in systemd without Environment="HOME=..."
+    return path.join(homedir(), ".claude")
   }
 
   private getCredentialsPath(): string {

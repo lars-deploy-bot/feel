@@ -9,7 +9,6 @@ ExecStart=/usr/local/bin/bun run dev
 
 EnvironmentFile=-__ALIVE_ROOT__/apps/web/.env.local
 
-Environment="HOME=/root"
 Environment="NODE_ENV=development"
 Environment="PORT=8997"
 Environment="BRIDGE_ENV=local"

@@ -18,7 +18,7 @@
 
 import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, readdirSync, statSync } from "node:fs"
 import { createConnection } from "node:net"
-import { tmpdir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
 import process from "node:process"
 
@@ -431,8 +431,8 @@ function dropPrivileges() {
   //   4. Verify session files exist:
   //      find /root/.claude/projects/ -name "*.jsonl" -ls
   //
-  const originalHome = process.env.HOME
-  if (!originalHome) throw new Error("HOME environment variable is required")
+  // homedir() reads /etc/passwd when HOME is unset — works in systemd without Environment="HOME=..."
+  const originalHome = process.env.HOME || homedir()
   const workspaceKey = process.env.WORKER_WORKSPACE_KEY
 
   // CLAUDE_CONFIG_DIR must point to a directory with valid SDK credentials.
@@ -584,8 +584,8 @@ function dropPrivileges() {
   }
 
   // Ensure temp directory is writable by the workspace user
-  if (!process.env.HOME) throw new Error("HOME environment variable is required")
-  const tempDir = join(process.env.HOME, "tmp")
+  const workerHomeDir = process.env.HOME || homedir()
+  const tempDir = join(workerHomeDir, "tmp")
   try {
     if (!existsSync(tempDir)) {
       mkdirSync(tempDir, { recursive: true, mode: 0o700 })

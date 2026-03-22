@@ -13,7 +13,6 @@ ExecStartPre=/usr/bin/chmod 755 /var/lib/claude-sessions
 
 ExecStart=/usr/local/bin/bun __ALIVE_ROOT__/.builds/staging/standalone/apps/web/server.js
 
-Environment="HOME=/root"
 Environment="NODE_ENV=production"
 Environment="PORT=8998"
 Environment="NODE_PATH=__ALIVE_ROOT__/node_modules"
