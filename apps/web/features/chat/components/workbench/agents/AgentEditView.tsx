@@ -7,6 +7,7 @@ import type { AutomationConfigData, AutomationConfigResult } from "@/components/
 import { ApiError, postty } from "@/lib/api/api-client"
 import { buildCreatePayload, configResultToFormData } from "@/lib/automation/build-payload"
 import { agentsApi } from "./agents-api"
+import { trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 import { OverviewSection } from "./edit/OverviewSection"
 import { PromptSection } from "./edit/PromptSection"
@@ -112,6 +113,14 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
     }
   }, [isCreate, createData, job, name, prompt, model, schedule, timeout, origModel, origTimeout, onDone, onChanged])
 
+  // ── Derived values — computed once, passed to children ──
+  const triggerType = job?.trigger_type ?? "cron"
+  const triggerLabelText = job ? trigLabel(job) : schedule
+  const scheduleDescription = job ? trigLabel(job) : ""
+  const timezoneShort = job?.cron_timezone ? job.cron_timezone.replace(/^.*\//, "") : ""
+  const emailAddress = job?.email_address ?? ""
+  const skills = job?.skills ?? []
+
   // ── Drill-in sections ──
   if (section === "prompt") {
     return <PromptSection prompt={prompt} onChange={setPrompt} onBack={() => setSection("overview")} />
@@ -120,11 +129,14 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
   if (section === "trigger") {
     return (
       <TriggerSection
-        job={job}
+        triggerType={triggerType}
         schedule={schedule}
         onScheduleChange={setSchedule}
         timeout={timeout}
         onTimeoutChange={setTimeout}
+        scheduleDescription={scheduleDescription}
+        timezoneShort={timezoneShort}
+        emailAddress={emailAddress}
         onBack={() => setSection("overview")}
       />
     )
@@ -135,14 +147,15 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-auto">
         <OverviewSection
-          job={job}
           name={name}
           onNameChange={setName}
           prompt={prompt}
           model={model}
           onModelChange={setModel}
-          schedule={schedule}
+          triggerType={triggerType}
+          triggerLabel={triggerLabelText}
           timeout={timeout}
+          skills={skills}
           onPromptDrillIn={() => setSection("prompt")}
           onTriggerDrillIn={() => setSection("trigger")}
           error={error}

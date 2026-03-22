@@ -1,37 +1,39 @@
 "use client"
 
-import { type ClaudeModel, isValidClaudeModel } from "@webalive/shared"
+import type { ClaudeModel } from "@webalive/shared"
 import { ChevronRight } from "lucide-react"
 import { MODEL_OPTIONS } from "@/lib/automation/form-options"
-import { trigLabel } from "../agents-helpers"
-import type { EnrichedJob } from "../agents-types"
 import { TriggerIcon } from "./TriggerSection"
 
-export function OverviewSection({
-  job,
-  name,
-  onNameChange,
-  prompt,
-  model,
-  onModelChange,
-  schedule,
-  timeout,
-  onPromptDrillIn,
-  onTriggerDrillIn,
-  error,
-}: {
-  job: EnrichedJob | null
+interface OverviewSectionProps {
   name: string
   onNameChange: (v: string) => void
   prompt: string
   model: ClaudeModel | ""
   onModelChange: (v: ClaudeModel | "") => void
-  schedule: string
+  triggerType: string
+  triggerLabel: string
   timeout: string
+  skills: string[]
   onPromptDrillIn: () => void
   onTriggerDrillIn: () => void
   error: string | null
-}) {
+}
+
+export function OverviewSection({
+  name,
+  onNameChange,
+  prompt,
+  model,
+  onModelChange,
+  triggerType,
+  triggerLabel,
+  timeout,
+  skills,
+  onPromptDrillIn,
+  onTriggerDrillIn,
+  error,
+}: OverviewSectionProps) {
   return (
     <div className="px-4 py-4">
       {/* Name — inline editable */}
@@ -80,10 +82,8 @@ export function OverviewSection({
           />
         </div>
         <div className="flex items-center gap-2 mt-1.5">
-          <TriggerIcon type={job?.trigger_type ?? "cron"} />
-          <span className="text-[13px] text-zinc-600 dark:text-zinc-400">
-            {job ? trigLabel(job) : schedule || "Not set"}
-          </span>
+          <TriggerIcon type={triggerType} />
+          <span className="text-[13px] text-zinc-600 dark:text-zinc-400">{triggerLabel}</span>
           {timeout && (
             <>
               <span className="text-zinc-200 dark:text-zinc-800">·</span>
@@ -120,13 +120,13 @@ export function OverviewSection({
       </div>
 
       {/* Skills */}
-      {job?.skills && job.skills.length > 0 && (
+      {skills.length > 0 && (
         <div className="mt-5">
           <p className="text-[11px] font-medium text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-1.5">
             Skills
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {job.skills.map(s => (
+            {skills.map(s => (
               <span
                 key={s}
                 className="px-2 py-0.5 rounded-md text-[11px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"

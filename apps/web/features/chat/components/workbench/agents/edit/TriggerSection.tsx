@@ -1,28 +1,35 @@
 "use client"
 
-import { ArrowLeft, Calendar, Clock, Mail, RotateCw, Webhook } from "lucide-react"
-import { trigLabel } from "../agents-helpers"
-import type { EnrichedJob } from "../agents-types"
+import { ArrowLeft, Clock, Mail, RotateCw, Webhook } from "lucide-react"
 
 const INPUT =
   "w-full border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-[13px] text-zinc-900 dark:text-zinc-100 bg-transparent placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 focus:border-zinc-400 dark:focus:border-zinc-500 outline-none transition-colors duration-100"
 
-export function TriggerSection({
-  job,
-  schedule,
-  onScheduleChange,
-  timeout,
-  onTimeoutChange,
-  onBack,
-}: {
-  job: EnrichedJob | null
+interface TriggerSectionProps {
+  triggerType: string
   schedule: string
   onScheduleChange: (v: string) => void
   timeout: string
   onTimeoutChange: (v: string) => void
+  /** Human-readable description of the current schedule */
+  scheduleDescription: string
+  /** IANA timezone city name, e.g. "Amsterdam" */
+  timezoneShort: string
+  emailAddress: string
   onBack: () => void
-}) {
-  const triggerType = job?.trigger_type ?? "cron"
+}
+
+export function TriggerSection({
+  triggerType,
+  schedule,
+  onScheduleChange,
+  timeout,
+  onTimeoutChange,
+  scheduleDescription,
+  timezoneShort,
+  emailAddress,
+  onBack,
+}: TriggerSectionProps) {
   return (
     <div className="h-full flex flex-col">
       <div className="shrink-0 px-4 h-10 flex items-center gap-2 border-b border-zinc-100 dark:border-white/[0.04]">
@@ -61,10 +68,10 @@ export function TriggerSection({
                 placeholder="0 9 * * *"
                 className={`${INPUT} font-mono`}
               />
-              {job?.cron_schedule && (
+              {scheduleDescription && (
                 <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1.5">
-                  {trigLabel(job)}
-                  {job?.cron_timezone ? ` (${job?.cron_timezone.replace(/^.*\//, "")})` : ""}
+                  {scheduleDescription}
+                  {timezoneShort ? ` (${timezoneShort})` : ""}
                 </p>
               )}
             </div>
@@ -93,12 +100,12 @@ export function TriggerSection({
           </div>
         )}
 
-        {triggerType === "email" && job?.email_address && (
+        {triggerType === "email" && emailAddress && (
           <div>
             <p className="text-[11px] font-medium text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-1.5">
               Email address
             </p>
-            <p className="text-[13px] text-zinc-600 dark:text-zinc-400 font-mono">{job?.email_address}</p>
+            <p className="text-[13px] text-zinc-600 dark:text-zinc-400 font-mono">{emailAddress}</p>
           </div>
         )}
 
