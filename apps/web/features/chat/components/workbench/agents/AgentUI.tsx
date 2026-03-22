@@ -102,7 +102,7 @@ export function RunDots({ runs }: { runs: RecentRun[] }) {
 }
 
 export function SuccessRing({ rate, size = 48 }: { rate: number; size?: number }) {
-  const stroke = 4
+  const stroke = size >= 64 ? 5 : 4
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (rate / 100) * circumference
@@ -132,7 +132,9 @@ export function SuccessRing({ rate, size = 48 }: { rate: number; size?: number }
           className="transition-all duration-500"
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
+      <span
+        className={`absolute inset-0 flex items-center justify-center font-bold tabular-nums text-zinc-900 dark:text-zinc-100 ${size >= 64 ? "text-[16px]" : "text-[13px]"}`}
+      >
         {rate}%
       </span>
     </div>

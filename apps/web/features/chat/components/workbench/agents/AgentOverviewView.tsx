@@ -2,8 +2,9 @@
 
 import { ClipboardList, Pause, Pencil, Play } from "lucide-react"
 import { useState } from "react"
-import { ActionButton, DeleteConfirm, ErrorAlert, RunDots, StatsGrid, StatusLine } from "./AgentUI"
+import { ActionButton, DeleteConfirm, ErrorAlert, RunDots, StatusLine, StreakBadge, SuccessRing } from "./AgentUI"
 import { agentsApi } from "./agents-api"
+import { dur } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 
 export function AgentOverviewView({
@@ -32,37 +33,62 @@ export function AgentOverviewView({
     }
   }
 
+  const nextRun = job.is_active
+    ? job.next_run_at
+      ? new Date(job.next_run_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "—"
+    : "paused"
+
   return (
     <div className="px-6 py-5 max-w-2xl mx-auto w-full">
-      <div className="mb-5">
+      <div className="mb-6">
         <StatusLine job={job} />
       </div>
 
-      {/* Stats with success ring */}
-      <div className="p-4 rounded-2xl bg-zinc-50/50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] mb-5">
-        <StatsGrid job={job} />
+      {/* Hero stats — success ring + key metrics */}
+      <div className="flex items-center gap-6 p-5 rounded-2xl bg-zinc-50/50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] mb-6">
+        <SuccessRing rate={job.success_rate} size={72} />
+        <div className="flex-1 grid grid-cols-3 gap-4">
+          <StatBlock label="Avg time" value={dur(job.avg_duration_ms)} />
+          <StatBlock label="Next run" value={nextRun} />
+          <div className="flex flex-col items-start">
+            <div className="flex items-center">
+              <span
+                className={`text-[20px] font-bold tabular-nums ${job.streak >= 10 ? "text-orange-500" : job.streak >= 5 ? "text-amber-500" : "text-zinc-900 dark:text-zinc-100"}`}
+              >
+                {job.streak}
+              </span>
+              <StreakBadge streak={job.streak} />
+            </div>
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-600">Streak</p>
+          </div>
+        </div>
       </div>
 
       {job.last_run_error && (
-        <div className="mb-5">
+        <div className="mb-6">
           <ErrorAlert message={job.last_run_error} />
         </div>
       )}
 
+      {/* Recent activity */}
       {job.recent_runs.length > 0 && (
-        <div className="mb-5">
+        <div className="mb-6">
+          <p className="text-[11px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-2">
+            Recent activity
+          </p>
           <RunDots runs={job.recent_runs} />
         </div>
       )}
 
       {/* Navigation cards */}
-      <div className="flex gap-3 mb-5">
-        <NavCard onClick={onGoToRuns} icon={<ClipboardList size={16} />} label="Inspect runs" color="blue" />
-        <NavCard onClick={onGoToEdit} icon={<Pencil size={16} />} label="Edit agent" color="violet" />
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <NavCard onClick={onGoToRuns} icon={<ClipboardList size={18} />} label="Inspect runs" color="blue" />
+        <NavCard onClick={onGoToEdit} icon={<Pencil size={18} />} label="Edit agent" color="violet" />
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 flex-wrap pt-4 border-t border-zinc-100 dark:border-white/[0.04]">
+      <div className="flex items-center gap-2 flex-wrap pt-5 border-t border-zinc-100 dark:border-white/[0.04]">
         <ActionButton
           onClick={() => act(() => agentsApi.trigger(job.id), setTriggering, 1500)}
           loading={triggering}
@@ -82,6 +108,15 @@ export function AgentOverviewView({
         <div className="flex-1" />
         <DeleteConfirm onDelete={() => act(() => agentsApi.delete(job.id), setDeleting)} deleting={deleting} />
       </div>
+    </div>
+  )
+}
+
+function StatBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[20px] font-bold tabular-nums text-zinc-900 dark:text-zinc-100">{value}</p>
+      <p className="text-[11px] text-zinc-400 dark:text-zinc-600">{label}</p>
     </div>
   )
 }
@@ -106,10 +141,10 @@ function NavCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 flex items-center gap-2.5 px-4 py-3.5 rounded-2xl border border-b-[3px] active:translate-y-[2px] active:border-b transition-all ${colors[color]}`}
+      className={`flex items-center gap-3 px-4 py-4 rounded-2xl border border-b-[3px] active:translate-y-[2px] active:border-b transition-all ${colors[color]}`}
     >
       {icon}
-      <span className="text-[13px] font-bold">{label}</span>
+      <span className="text-[14px] font-bold">{label}</span>
     </button>
   )
 }
