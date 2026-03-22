@@ -293,7 +293,14 @@ fi
 # ============================================================================
 CHECK=$((CHECK + 1))
 echo "[$CHECK/$TOTAL_CHECKS] Orphaned build processes..."
-ORPHANS=$(pgrep -af "make|ship|build-and-serve|turbo.*build|next build" | grep -v "^$$ " || true)
+# Walk up the process tree to collect all ancestor PIDs (avoids self-detection)
+_pid=$$
+SELF_PIDS=""
+while [ "$_pid" -gt 1 ] 2>/dev/null; do
+  SELF_PIDS="${SELF_PIDS:+$SELF_PIDS|}$_pid"
+  _pid=$(ps -o ppid= -p "$_pid" 2>/dev/null | tr -d ' ')
+done
+ORPHANS=$(pgrep -af "make|ship|build-and-serve|turbo.*build|next build" | grep -vE "^($SELF_PIDS) " || true)
 if [ -n "$ORPHANS" ]; then
   ORPHAN_COUNT=$(printf '%s\n' "$ORPHANS" | wc -l)
   fail_check "$ORPHAN_COUNT orphaned build process(es) found — kill them first:\n$ORPHANS"
@@ -362,13 +369,25 @@ CHECK=$((CHECK + 1))
 echo "[$CHECK/$TOTAL_CHECKS] Deploy lock..."
 LOCK_FILE="/tmp/alive-deploy.lock"
 if [ -f "$LOCK_FILE" ]; then
-  LOCK_AGE_SEC=$(( $(date +%s) - $(stat -c %Y "$LOCK_FILE") ))
-  LOCK_AGE_MIN=$(( LOCK_AGE_SEC / 60 ))
-  if [ "$LOCK_AGE_SEC" -gt 1800 ]; then
-    fail_check "Stale deploy lock (${LOCK_AGE_MIN} min old) — likely orphaned. Remove: rm $LOCK_FILE"
+  LOCK_PID=$(cut -d'|' -f1 "$LOCK_FILE" 2>/dev/null)
+  # Check if the lock owner is an ancestor of this script (we're called from the deploy pipeline)
+  _is_ancestor=false
+  if [ -n "$LOCK_PID" ]; then
+    echo "$SELF_PIDS" | tr '|' '\n' | while read -r _apid; do
+      [ "$_apid" = "$LOCK_PID" ] && exit 0
+    done && _is_ancestor=true
+  fi
+  if [ "$_is_ancestor" = true ]; then
+    pass_check "Deploy lock held by parent pipeline (PID $LOCK_PID)"
   else
-    # Fresh lock = another deploy is probably running
-    fail_check "Deploy lock held (${LOCK_AGE_MIN} min old) — another deploy may be running"
+    LOCK_AGE_SEC=$(( $(date +%s) - $(stat -c %Y "$LOCK_FILE") ))
+    LOCK_AGE_MIN=$(( LOCK_AGE_SEC / 60 ))
+    if [ "$LOCK_AGE_SEC" -gt 1800 ]; then
+      fail_check "Stale deploy lock (${LOCK_AGE_MIN} min old) — likely orphaned. Remove: rm $LOCK_FILE"
+    else
+      # Fresh lock = another deploy is probably running
+      fail_check "Deploy lock held (${LOCK_AGE_MIN} min old) — another deploy may be running"
+    fi
   fi
 else
   pass_check "No deploy lock"
