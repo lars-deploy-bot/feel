@@ -468,6 +468,10 @@
         "typescript": "^5.9.3",
       },
     },
+    "packages/stream-fsm": {
+      "name": "@webalive/stream-fsm",
+      "version": "0.1.0",
+    },
     "packages/tools": {
       "name": "@webalive/tools",
       "version": "1.0.0",
@@ -1387,6 +1391,8 @@
     "@webalive/shell-server-go": ["@webalive/shell-server-go@workspace:apps/shell-server-go"],
 
     "@webalive/site-controller": ["@webalive/site-controller@workspace:packages/site-controller"],
+
+    "@webalive/stream-fsm": ["@webalive/stream-fsm@workspace:packages/stream-fsm"],
 
     "@webalive/tools": ["@webalive/tools@workspace:packages/tools"],
 
