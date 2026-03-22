@@ -9,7 +9,7 @@ import {
   validateAgentCreate,
   validateAgentField,
 } from "@webalive/shared"
-import { Check, ChevronDown, Loader2, X } from "lucide-react"
+import { Check, ChevronDown, Loader2, Sparkles, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { AutomationConfigData, AutomationConfigResult } from "@/components/ai/AutomationConfig"
 import type { SkillItem } from "@/components/automations/types"
@@ -17,6 +17,7 @@ import { ApiError, postty } from "@/lib/api/api-client"
 import { buildCreatePayload, configResultToFormData } from "@/lib/automation/build-payload"
 import { MODEL_OPTIONS } from "@/lib/automation/form-options"
 import { ErrorAlert, INPUT, TrigIcon } from "./AgentUI"
+import { agentAvatar } from "./agent-avatars"
 import { agentsApi } from "./agents-api"
 import {
   AUTO_SAVE_DEBOUNCE,
@@ -287,6 +288,8 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       <div className="flex-1 min-h-0 flex">
         {/* Left column — settings */}
         <div className="w-[300px] shrink-0 border-r border-zinc-100 dark:border-white/[0.04] overflow-auto px-5 py-5">
+          <AvatarEditor jobId={job?.id ?? name} savedAvatarUrl={job?.avatar_url ?? null} onAvatarSaved={onChanged} />
+
           <FieldGroup label="Agent's name" color="emerald">
             <input
               type="text"
@@ -554,6 +557,110 @@ function SkillsPicker({
             )
           })}
         </div>
+      )}
+    </div>
+  )
+}
+
+function AvatarEditor({
+  jobId,
+  savedAvatarUrl,
+  onAvatarSaved,
+}: {
+  jobId: string
+  savedAvatarUrl: string | null
+  onAvatarSaved?: () => void
+}) {
+  const [description, setDescription] = useState("")
+  const [gender, setGender] = useState<"man" | "woman">("man")
+  const [generating, setGenerating] = useState(false)
+  const [customUrl, setCustomUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const src = customUrl ?? savedAvatarUrl ?? agentAvatar(jobId)
+
+  const generate = async () => {
+    if (!description.trim() || generating) return
+    setGenerating(true)
+    setError(null)
+    try {
+      const fullDescription = `${gender}. ${description.trim()}`
+      const res = await fetch("/api/agents/avatar/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ description: fullDescription }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        const msg = data.error ?? "Generation failed"
+        setError(msg.includes("Too many") ? "Rate limited — try again in a few minutes" : msg)
+        return
+      }
+      if (data.file_url) {
+        setCustomUrl(data.file_url)
+        setDescription("")
+        // Save avatar_url to the job in DB
+        if (jobId && !jobId.includes(" ")) {
+          agentsApi.update(jobId, { avatar_url: data.file_url }).then(() => onAvatarSaved?.())
+        }
+      }
+    } catch {
+      setError("Could not reach the server")
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  return (
+    <div className="mb-6 flex flex-col items-center">
+      <img src={src} alt="" className="w-20 h-28 object-cover object-top rounded-xl mb-3" />
+      <div className="flex gap-1 mb-2">
+        {(["man", "woman"] as const).map(g => (
+          <button
+            key={g}
+            type="button"
+            onClick={() => setGender(g)}
+            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
+              gender === g
+                ? "bg-violet-500 text-white"
+                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 hover:brightness-95 dark:hover:brightness-110"
+            }`}
+          >
+            {g === "man" ? "Man" : "Woman"}
+          </button>
+        ))}
+      </div>
+      <div className="w-full flex gap-2">
+        <input
+          type="text"
+          value={description}
+          onChange={e => {
+            setDescription(e.target.value)
+            if (error) setError(null)
+          }}
+          onKeyDown={e => {
+            if (e.key === "Enter") generate()
+          }}
+          placeholder="Describe your agent's look..."
+          className={`flex-1 min-w-0 px-3 py-1.5 rounded-xl border bg-transparent text-[12px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 outline-none transition-colors ${
+            error
+              ? "border-red-300 dark:border-red-700"
+              : "border-zinc-200 dark:border-zinc-700 focus:border-violet-300 dark:focus:border-violet-500/30"
+          }`}
+        />
+        <button
+          type="button"
+          onClick={generate}
+          disabled={generating || !description.trim()}
+          className="shrink-0 size-8 flex items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10 text-violet-500 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-500/15 disabled:opacity-40 transition-all"
+        >
+          {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+        </button>
+      </div>
+      {error && <p className="text-[11px] text-red-500 mt-1.5 text-center">{error}</p>}
+      {generating && (
+        <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1.5 text-center">Generating avatar...</p>
       )}
     </div>
   )

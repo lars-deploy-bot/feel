@@ -37,6 +37,7 @@ interface EnrichedJob {
   cron_schedule: string | null
   cron_timezone: string | null
   skills: string[] | null
+  avatar_url: string | null
   email_address: string | null
   last_run_status: string | null
   last_run_at: string | null
@@ -193,6 +194,7 @@ export async function listAutomations() {
       cron_schedule: job.cron_schedule,
       cron_timezone: job.cron_timezone,
       skills: job.skills,
+      avatar_url: job.avatar_url,
       email_address: job.email_address,
       last_run_status: job.last_run_status,
       last_run_at: job.last_run_at,

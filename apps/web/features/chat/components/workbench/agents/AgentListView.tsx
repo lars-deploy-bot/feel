@@ -3,33 +3,10 @@
 import { Play, RotateCw } from "lucide-react"
 import { useMemo } from "react"
 import { Dot, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
+import { agentAvatar } from "./agent-avatars"
 import { agentsApi } from "./agents-api"
 import { healthScore, relTime, successRateColor, TRIGGER_REFRESH_DELAY, trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
-
-/** Deterministic avatar for an agent based on its ID */
-const AGENT_AVATARS_MALE = [
-  "/images/agent-avatars/m-analyst.png",
-  "/images/agent-avatars/m-developer.png",
-  "/images/agent-avatars/m-strategist.png",
-] as const
-
-const AGENT_AVATARS_FEMALE = [
-  "/images/agent-avatars/f-writer.png",
-  "/images/agent-avatars/f-designer.png",
-  "/images/agent-avatars/f-marketer.png",
-] as const
-
-function agentAvatar(id: string): string {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) | 0
-  }
-  const abs = Math.abs(hash)
-  // Even hash = male, odd = female
-  const pool = abs % 2 === 0 ? AGENT_AVATARS_MALE : AGENT_AVATARS_FEMALE
-  return pool[abs % pool.length]
-}
 
 export function AgentListView({
   jobs,
@@ -116,7 +93,7 @@ function AgentCard({
     >
       {/* Character image — left side */}
       <div className="w-24 shrink-0 bg-zinc-50 dark:bg-white/[0.02]">
-        <img src={agentAvatar(job.id)} alt="" className="w-full h-full object-cover object-top" />
+        <img src={job.avatar_url ?? agentAvatar(job.id)} alt="" className="w-full h-full object-cover object-top" />
       </div>
 
       {/* Content — right side */}

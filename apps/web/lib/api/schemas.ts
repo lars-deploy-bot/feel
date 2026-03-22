@@ -735,6 +735,7 @@ export const apiSchemas = {
           action_target_page: z.string().nullable(),
           action_timeout_seconds: z.number().nullable().optional(),
           skills: z.array(z.string()).nullable(),
+          avatar_url: z.string().nullable().optional(),
           created_at: z.string(),
           runs_30d: z.number(),
           success_runs_30d: z.number(),

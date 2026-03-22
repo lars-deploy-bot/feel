@@ -20,6 +20,8 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(1),
   // Redis — REQUIRED for rate limiting
   REDIS_URL: z.string().min(1),
+  // Alive internal services API key
+  ALIVE_SECRET_KEY: z.string().min(1),
 })
 
 export type EnvConfig = z.infer<typeof envSchema>

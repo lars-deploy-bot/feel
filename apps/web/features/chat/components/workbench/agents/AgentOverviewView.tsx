@@ -3,6 +3,7 @@
 import { ClipboardList, Pause, Pencil, Play } from "lucide-react"
 import { useState } from "react"
 import { ActionButton, DeleteConfirm, ErrorAlert, RunDots, StatusLine, StreakBadge, SuccessRing } from "./AgentUI"
+import { agentAvatar } from "./agent-avatars"
 import { agentsApi } from "./agents-api"
 import { dur, isStreakHot, isStreakWarm, TRIGGER_REFRESH_DELAY } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
@@ -45,10 +46,17 @@ export function AgentOverviewView({
     <div className="px-6 max-w-2xl mx-auto w-full min-h-full flex flex-col">
       <div className="flex-[3]" />
 
-      {/* Agent name + status */}
-      <div className="mb-6">
-        <h3 className="text-[20px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">{job.name}</h3>
-        <StatusLine job={job} />
+      {/* Agent name + avatar + status */}
+      <div className="flex items-center gap-4 mb-6">
+        <img
+          src={job.avatar_url ?? agentAvatar(job.id)}
+          alt=""
+          className="w-16 h-20 object-cover object-top rounded-xl shrink-0"
+        />
+        <div>
+          <h3 className="text-[20px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">{job.name}</h3>
+          <StatusLine job={job} />
+        </div>
       </div>
 
       {/* Hero stats — success ring + key metrics */}

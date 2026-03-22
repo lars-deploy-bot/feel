@@ -2,6 +2,7 @@ import { OpenAPIHono } from "@hono/zod-openapi"
 import { authMiddleware } from "../middleware/auth"
 import type { AppBindings } from "../types/hono"
 import { authRoutes } from "./auth/auth.routes"
+import { avatarsRoutes } from "./avatars/avatars.routes"
 import { faviconRoutes } from "./favicon/favicon.routes"
 import { healthRoutes } from "./health/health.routes"
 import { automationsRoutes } from "./manager/automations/automations.routes"
@@ -58,6 +59,7 @@ export function buildRoutes(): OpenAPIHono<AppBindings> {
   manager.route("/disk", diskRoutes)
   manager.route("/processes", processesRoutes)
   manager.route("/docker", dockerRoutes)
+  manager.route("/avatars", avatarsRoutes)
 
   // Protected voice routes
   const voice = new OpenAPIHono<AppBindings>()
