@@ -440,7 +440,7 @@ function renderCaddyInternal(cfg: ServerConfig, domains: DomainRow[]): string {
     ":8444 {",
     "    map {host} {site_upstream} {",
     ...mapEntries,
-    '        default "localhost:5055"',
+    `        default "localhost:${cfg.previewProxy.port}"`,
     "    }",
     "",
     "    # Global image serving from /srv/webalive/storage",

@@ -19,10 +19,13 @@ if (typeof navigator === "undefined") {
 
 // Mock Dexie database
 const mockConversationsGet = vi.fn()
+const mockConversationsBulkGet = vi.fn()
 const mockConversationsUpdate = vi.fn()
 const mockConversationsPut = vi.fn()
+const mockConversationsBulkPut = vi.fn()
 const mockConversationsWhere = vi.fn()
 const mockTabsGet = vi.fn()
+const mockTabsBulkGet = vi.fn()
 const mockTabsWhere = vi.fn()
 const mockTabsBulkPut = vi.fn()
 const mockTabsPut = vi.fn()
@@ -65,12 +68,15 @@ vi.mock("../messageDb", () => ({
     const db = {
       conversations: {
         get: mockConversationsGet,
+        bulkGet: mockConversationsBulkGet,
         update: mockConversationsUpdate,
         put: mockConversationsPut,
+        bulkPut: mockConversationsBulkPut,
         where: mockConversationsWhere,
       },
       tabs: {
         get: mockTabsGet,
+        bulkGet: mockTabsBulkGet,
         where: mockTabsWhere,
         bulkPut: mockTabsBulkPut,
         put: mockTabsPut,
@@ -173,8 +179,10 @@ describe("Conversation Sync Service", () => {
 
     // Default mock implementations
     mockConversationsGet.mockResolvedValue(TEST_CONVERSATION)
+    mockConversationsBulkGet.mockResolvedValue([])
     mockConversationsUpdate.mockResolvedValue(1)
     mockConversationsPut.mockResolvedValue("conv-123")
+    mockConversationsBulkPut.mockResolvedValue([])
     mockConversationsWhere.mockReturnValue({
       equals: vi.fn().mockReturnValue({
         count: vi.fn().mockResolvedValue(1),
@@ -187,6 +195,7 @@ describe("Conversation Sync Service", () => {
       }),
     })
     mockTabsGet.mockResolvedValue(null)
+    mockTabsBulkGet.mockResolvedValue([])
     mockTabsBulkPut.mockResolvedValue([])
     mockTabsPut.mockResolvedValue("tab-123")
 
@@ -430,25 +439,26 @@ describe("Conversation Sync Service", () => {
           }),
       })
 
-      mockConversationsGet.mockResolvedValue(null) // No local version
+      mockConversationsBulkGet.mockResolvedValue([null]) // No local version
+      mockTabsBulkGet.mockResolvedValue([])
 
       const result = await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
       expect(result.hasMore).toBe(false)
       expect(result.nextCursor).toBeNull()
-      expect(mockConversationsPut).toHaveBeenCalledWith(
+      expect(mockConversationsBulkPut).toHaveBeenCalledWith([
         expect.objectContaining({
           id: "conv-server-1",
           pendingSync: false,
           syncedAt: expect.any(Number),
         }),
-      )
-      expect(mockTabsPut).toHaveBeenCalledWith(
+      ])
+      expect(mockTabsBulkPut).toHaveBeenCalledWith([
         expect.objectContaining({
           id: "tab-server-1",
           draft: { text: "Saved draft", attachments: [] },
         }),
-      )
+      ])
     })
 
     it("should skip server update if local has pending changes", async () => {
@@ -463,13 +473,13 @@ describe("Conversation Sync Service", () => {
           }),
       })
 
-      // Local has pending changes
-      mockConversationsGet.mockResolvedValue({ ...TEST_CONVERSATION, pendingSync: true })
+      // Local has pending changes — bulkGet returns the pending record
+      mockConversationsBulkGet.mockResolvedValue([{ ...TEST_CONVERSATION, pendingSync: true }])
 
       await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
-      // Should NOT overwrite local
-      expect(mockConversationsPut).not.toHaveBeenCalled()
+      // Should NOT overwrite local — bulkPut called with empty array
+      expect(mockConversationsBulkPut).toHaveBeenCalledWith([])
     })
 
     it("should preserve null tab drafts from server payloads", async () => {
@@ -496,16 +506,17 @@ describe("Conversation Sync Service", () => {
           }),
       })
 
-      mockConversationsGet.mockResolvedValue(null)
+      mockConversationsBulkGet.mockResolvedValue([null])
+      mockTabsBulkGet.mockResolvedValue([])
 
       await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
-      expect(mockTabsPut).toHaveBeenCalledWith(
+      expect(mockTabsBulkPut).toHaveBeenCalledWith([
         expect.objectContaining({
           id: "tab-server-2",
           draft: undefined,
         }),
-      )
+      ])
     })
   })
 
@@ -667,16 +678,16 @@ describe("Conversation Sync Service", () => {
           }),
       })
 
-      mockConversationsGet.mockResolvedValue(null) // No local version
+      mockConversationsBulkGet.mockResolvedValue([null]) // No local version
 
       await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
-      expect(mockConversationsPut).toHaveBeenCalledWith(
+      expect(mockConversationsBulkPut).toHaveBeenCalledWith([
         expect.objectContaining({
           source: "automation_run",
           sourceMetadata: metadata,
         }),
-      )
+      ])
     })
 
     it("should default source to 'chat' when server returns no source", async () => {
@@ -699,15 +710,15 @@ describe("Conversation Sync Service", () => {
           }),
       })
 
-      mockConversationsGet.mockResolvedValue(null)
+      mockConversationsBulkGet.mockResolvedValue([null])
 
       await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
-      expect(mockConversationsPut).toHaveBeenCalledWith(
+      expect(mockConversationsBulkPut).toHaveBeenCalledWith([
         expect.objectContaining({
           source: "chat",
         }),
-      )
+      ])
     })
 
     it("should reject invalid source values and default to 'chat'", async () => {
@@ -730,15 +741,15 @@ describe("Conversation Sync Service", () => {
           }),
       })
 
-      mockConversationsGet.mockResolvedValue(null)
+      mockConversationsBulkGet.mockResolvedValue([null])
 
       await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
-      expect(mockConversationsPut).toHaveBeenCalledWith(
+      expect(mockConversationsBulkPut).toHaveBeenCalledWith([
         expect.objectContaining({
           source: "chat",
         }),
-      )
+      ])
     })
 
     it("should reject malformed sourceMetadata (array, missing fields)", async () => {
@@ -761,15 +772,15 @@ describe("Conversation Sync Service", () => {
           }),
       })
 
-      mockConversationsGet.mockResolvedValue(null)
+      mockConversationsBulkGet.mockResolvedValue([null])
 
       await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
-      expect(mockConversationsPut).toHaveBeenCalledWith(
+      expect(mockConversationsBulkPut).toHaveBeenCalledWith([
         expect.objectContaining({
           sourceMetadata: undefined,
         }),
-      )
+      ])
     })
 
     it("should default sourceMetadata to undefined when null", async () => {
@@ -792,16 +803,16 @@ describe("Conversation Sync Service", () => {
           }),
       })
 
-      mockConversationsGet.mockResolvedValue(null)
+      mockConversationsBulkGet.mockResolvedValue([null])
 
       await fetchConversations(TEST_USER_ID, TEST_ORG_ID, TEST_WORKSPACE)
 
-      expect(mockConversationsPut).toHaveBeenCalledWith(
+      expect(mockConversationsBulkPut).toHaveBeenCalledWith([
         expect.objectContaining({
           source: "chat",
           sourceMetadata: undefined,
         }),
-      )
+      ])
     })
   })
 
@@ -856,7 +867,7 @@ describe("Conversation Sync Service", () => {
           }),
       })
 
-      mockConversationsGet.mockResolvedValue(null)
+      mockConversationsBulkGet.mockResolvedValue([null])
       mockConversationsWhere.mockReturnValue({
         equals: vi.fn().mockReturnValue({
           count: vi.fn().mockResolvedValue(3),

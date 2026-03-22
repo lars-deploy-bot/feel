@@ -23,6 +23,8 @@ import { assertNoDangerousCountDrop, readExistingPortMapCount } from "../generat
 import { loadCanonicalInfraEnvFileOnly } from "../infra-env.js"
 
 const PORT_MAP_FILENAME = "port-map.json"
+/** Default dev server port inside E2B sandboxes (Vite default). Must match E2B_DEFAULT_PORT in @webalive/sandbox. */
+const E2B_DEFAULT_PORT = 5173
 const SANDBOX_MAP_FILENAME = "sandbox-map.json"
 const PREVIEW_PROXY_SERVICE = "preview-proxy.service"
 const TEMPLATE_ENV_DIR = "/etc/templates"
@@ -184,7 +186,7 @@ export async function regeneratePortMap(requiredHostname?: string): Promise<numb
           sandboxes[row.hostname] = {
             sandboxId: row.sandbox_id,
             e2bDomain,
-            port: row.port || 5173,
+            port: row.port || E2B_DEFAULT_PORT,
           }
         } else if (row.port) {
           ports[row.hostname] = row.port
