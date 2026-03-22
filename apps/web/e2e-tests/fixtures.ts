@@ -302,8 +302,10 @@ export const test = base.extend<
       ),
     )
 
-    // Mock Flowglad billing to prevent crashes for test users
-    await page.route("**/api/flowglad/**", route => route.fulfill(buildJsonMockResponse({ data: null, error: null })))
+    // Mock Polar billing to prevent crashes for test users
+    await page.route("**/api/polar/**", route =>
+      route.fulfill(buildJsonMockResponse({ subscription: null, products: [], portalUrl: null })),
+    )
 
     // Mock /api/tokens to prevent credit-fetching errors
     await page.route("**/api/tokens**", route =>

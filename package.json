@@ -103,8 +103,5 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.80"
-  },
-  "patchedDependencies": {
-    "@flowglad/react@0.18.0": "patches/@flowglad%2Freact@0.18.0.patch"
   }
 }

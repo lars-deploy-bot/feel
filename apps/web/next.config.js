@@ -115,6 +115,11 @@ const nextConfig = {
         source: "/_images/:path*",
         destination: `http://localhost:${previewProxyPort}/_images/:path*`,
       },
+      // Proxy billing routes to the standalone API (apps/api, port 5080)
+      {
+        source: "/api/polar/:path*",
+        destination: "http://localhost:5080/api/polar/:path*",
+      },
     ]
   },
   // PostHog proxy: handled by app/a/[...path]/route.ts (generic path to bypass adblockers)

@@ -23,7 +23,8 @@ const PLATFORM_SECRETS = {
   STRIPE_OAUTH_TOKEN: "rk_live_fake_stripe_token",
   LINEAR_CLIENT_SECRET: "fake-linear-client-secret",
   GOOGLE_CLIENT_SECRET: "fake-google-client-secret",
-  FLOWGLAD_SECRET_KEY: "fake-flowglad-key",
+  POLAR_ACCESS_TOKEN: "polar_oat_fake_token",
+  POLAR_WEBHOOK_SECRET: "fake-polar-webhook-secret",
   GROQ_API_SECRET: "fake-groq-key",
   SHELL_PASSWORD: "fake-shell-password",
   INTERNAL_TOOLS_SECRET: "fake-internal-tools-secret",
@@ -86,7 +87,8 @@ describe("createSandboxEnv", () => {
       expect(env.STRIPE_OAUTH_TOKEN).toBeUndefined()
       expect(env.LINEAR_CLIENT_SECRET).toBeUndefined()
       expect(env.GOOGLE_CLIENT_SECRET).toBeUndefined()
-      expect(env.FLOWGLAD_SECRET_KEY).toBeUndefined()
+      expect(env.POLAR_ACCESS_TOKEN).toBeUndefined()
+      expect(env.POLAR_WEBHOOK_SECRET).toBeUndefined()
       expect(env.GROQ_API_SECRET).toBeUndefined()
     })
 

@@ -2,7 +2,6 @@ import { CONTACT_EMAIL, DOMAINS } from "@webalive/shared"
 import NextTopLoader from "nextjs-toploader"
 import { NuqsAdapter } from "nuqs/adapters/next/app"
 import { AuthModal } from "@/components/modals/AuthModal"
-import { FlowgladProviderWrapper } from "@/components/providers/FlowgladProviderWrapper"
 import { PostHogProvider } from "@/components/providers/PostHogProvider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { DomainConfigProvider } from "@/lib/providers/DomainConfigProvider"
@@ -52,14 +51,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ThemeProvider>
               <DomainConfigProvider config={domainConfig}>
                 <QueryClientProvider>
-                  <FlowgladProviderWrapper>
-                    <UserStoreProvider>
-                      <SkillsStoreProvider>
-                        {children}
-                        <AuthModal />
-                      </SkillsStoreProvider>
-                    </UserStoreProvider>
-                  </FlowgladProviderWrapper>
+                  <UserStoreProvider>
+                    <SkillsStoreProvider>
+                      {children}
+                      <AuthModal />
+                    </SkillsStoreProvider>
+                  </UserStoreProvider>
                 </QueryClientProvider>
               </DomainConfigProvider>
             </ThemeProvider>

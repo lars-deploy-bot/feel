@@ -13,15 +13,13 @@ import { buildJsonMockResponse } from "./lib/strict-api-guard"
  *
  * Flow: open sidebar → click a settings entrypoint → verify settings content.
  *
- * IMPORTANT: The FlowgladProvider in the layout makes API calls to /api/flowglad
- * which can crash for E2E test users (no Flowglad customer record). We mock all
- * billing-related APIs to isolate the test from these issues.
+ * We mock billing-related APIs (Polar) to isolate the test from these issues.
  */
 
 test("can open settings and see General tab", async ({ authenticatedPage, workerTenant }) => {
   // Mock billing/user/token APIs to prevent crashes for test users
-  await authenticatedPage.route("**/api/flowglad/**", route =>
-    route.fulfill(buildJsonMockResponse({ data: null, error: null })),
+  await authenticatedPage.route("**/api/polar/**", route =>
+    route.fulfill(buildJsonMockResponse({ subscription: null, products: [], portalUrl: null })),
   )
   await authenticatedPage.route("**/api/user**", route =>
     route.fulfill(

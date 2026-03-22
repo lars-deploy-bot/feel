@@ -6,9 +6,9 @@
  * sets context on one copy while hooks read from another, causing
  * "No QueryClient set" or similar runtime crashes.
  *
- * Root cause example: @flowglad/react pinned @tanstack/react-query@5.66.0
- * while we used 5.90.20, creating two copies. The QueryClientProvider
- * set context on 5.90.20 but useQuery in settings read from 5.66.0.
+ * Root cause example: a transitive dep pinned @tanstack/react-query to an
+ * older version while we used a newer one, creating two copies. The
+ * QueryClientProvider set context on one but useQuery read from the other.
  *
  * @see https://github.com/lars-deploy-bot/feel/pull/31
  */
