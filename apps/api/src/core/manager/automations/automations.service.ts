@@ -33,6 +33,7 @@ interface EnrichedJob {
   action_model: string | null
   action_prompt: string | null
   action_target_page: string | null
+  action_timeout_seconds: number | null
   cron_schedule: string | null
   cron_timezone: string | null
   skills: string[] | null
@@ -188,6 +189,7 @@ export async function listAutomations() {
       action_model: job.action_model,
       action_prompt: job.action_prompt,
       action_target_page: job.action_target_page,
+      action_timeout_seconds: job.action_timeout_seconds,
       cron_schedule: job.cron_schedule,
       cron_timezone: job.cron_timezone,
       skills: job.skills,

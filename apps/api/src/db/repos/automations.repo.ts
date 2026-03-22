@@ -20,6 +20,7 @@ export interface AutomationJobRow {
   last_run_at: string | null
   last_run_error: string | null
   next_run_at: string | null
+  action_timeout_seconds: number | null
   consecutive_failures: number | null
   created_at: string
   site_id: string
@@ -41,7 +42,7 @@ export async function findAllJobs(): Promise<AutomationJobRow[]> {
   const { data, error } = await app
     .from("automation_jobs")
     .select(
-      "id, name, description, is_active, status, trigger_type, action_model, action_prompt, action_target_page, cron_schedule, cron_timezone, skills, email_address, last_run_status, last_run_at, last_run_error, next_run_at, consecutive_failures, created_at, site_id",
+      "id, name, description, is_active, status, trigger_type, action_model, action_prompt, action_target_page, action_timeout_seconds, cron_schedule, cron_timezone, skills, email_address, last_run_status, last_run_at, last_run_error, next_run_at, consecutive_failures, created_at, site_id",
     )
     .order("name")
 
@@ -89,6 +90,7 @@ export interface UpdateJobFields {
   action_prompt?: string | null
   action_model?: string | null
   action_target_page?: string | null
+  action_timeout_seconds?: number | null
   cron_schedule?: string | null
   cron_timezone?: string | null
 }

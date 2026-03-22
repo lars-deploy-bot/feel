@@ -733,6 +733,7 @@ export const apiSchemas = {
           action_prompt: z.string().nullable(),
           action_model: z.string().nullable(),
           action_target_page: z.string().nullable(),
+          action_timeout_seconds: z.number().nullable().optional(),
           skills: z.array(z.string()).nullable(),
           created_at: z.string(),
           runs_30d: z.number(),
