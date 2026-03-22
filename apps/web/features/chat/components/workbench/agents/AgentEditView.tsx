@@ -605,7 +605,7 @@ function AvatarEditor({
           agentsApi.update(jobId, { avatar_url: data.file_url }).then(() => onAvatarSaved?.())
         }
       }
-    } catch {
+    } catch (_err) {
       setError("Could not reach the server")
     } finally {
       setGenerating(false)
