@@ -14,30 +14,45 @@ import { validateCronExpression } from "./scheduler.js"
 const SYSTEM_PROMPT = `You convert natural language scheduling descriptions into cron expressions.
 
 Rules:
-- Output ONLY a valid 5-field cron expression (minute hour day-of-month month day-of-week)
+- Line 1: a valid 5-field cron expression (minute hour day-of-month month day-of-week)
+- Line 2: a short human-readable description of what you understood (e.g. "Every weekday at 9:00 AM")
+- Line 3 (optional): IANA timezone if the input implies one (e.g. Europe/Amsterdam)
 - No seconds field, no year field
-- No explanation, no markdown, no quotes — just the cron expression
+- No explanation, no markdown, no quotes
 - Use * for "every", */N for intervals, comma-separated for lists
-- If the input also implies a timezone, output it on a second line (IANA format, e.g. Europe/Amsterdam)
-- If no timezone is mentioned, output only the cron line
 
 Examples:
-"every day at 8am" → 0 8 * * *
-"every 2 hours" → 0 */2 * * *
-"weekdays at 9:30 amsterdam time" → 30 9 * * 1-5
+"every day at 8am" →
+0 8 * * *
+Every day at 8:00 AM
+
+"weekdays at 9:30 amsterdam time" →
+30 9 * * 1-5
+Weekdays at 9:30 AM
 Europe/Amsterdam
-"every monday and friday at noon" → 0 12 * * 1,5
-"every 15 minutes" → */15 * * * *
-"first of every month at midnight" → 0 0 1 * *`
+
+"evveryday10inmorning" →
+0 10 * * *
+Every day at 10:00 AM
+
+"every 15 minutes" →
+*/15 * * * *
+Every 15 minutes
+
+"first of every month at midnight" →
+0 0 1 * *
+1st of every month at midnight`
 
 export interface TextToCronResult {
   cron: string
+  /** What the AI understood from the input, in clean human-readable form */
+  description: string
   timezone: string | null
 }
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const GROQ_MODEL = "llama-3.3-70b-versatile"
-const GROQ_MAX_TOKENS = 50
+const GROQ_MAX_TOKENS = 80
 const GROQ_TIMEOUT_MS = 10_000
 
 function validateTimezone(tz: string | null): string | null {
@@ -98,17 +113,19 @@ export async function textToCron(text: string, groqApiKey: string): Promise<Text
     .map(line => line.trim())
     .filter(line => line.length > 0)
 
-  if (lines.length === 0 || lines.length > 2) {
+  if (lines.length === 0 || lines.length > 3) {
     throw new Error(`Unexpected format: "${raw}"`)
   }
 
   const cron = lines[0]
-  const timezone = validateTimezone(lines[1] ?? null)
+  const description = lines[1] ?? cron
+  // Timezone is on line 3 if present (line 2 is always the description now)
+  const timezone = lines.length === 3 ? validateTimezone(lines[2]) : null
 
   const validation = validateCronExpression(cron, timezone)
   if (!validation.valid) {
     throw new Error(validation.error ?? `Invalid cron: "${cron}"`)
   }
 
-  return { cron, timezone }
+  return { cron, description, timezone }
 }

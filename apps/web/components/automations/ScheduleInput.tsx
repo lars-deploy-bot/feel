@@ -11,21 +11,20 @@
 
 "use client"
 
-import { Check, Clock, Loader2 } from "lucide-react"
+import { Check, Loader2 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { inputClass } from "@/components/automations/form-styles"
-import { describeCron } from "@/lib/automation/cron-description"
 import { SCHEDULE_TEXT_MAX_LENGTH } from "@/lib/automation/form-options"
 
 const PREVIEW_DEBOUNCE_MS = 800
 
 const QUICK_PICKS = [
-  { text: "every 5 minutes", cron: "*/5 * * * *" },
-  { text: "every hour", cron: "0 * * * *" },
-  { text: "every day at 9am", cron: "0 9 * * *" },
-  { text: "weekdays at 9am", cron: "0 9 * * 1-5" },
-  { text: "every Sunday at 9am", cron: "0 9 * * 0" },
-  { text: "1st of every month at 9am", cron: "0 9 1 * *" },
+  { text: "every 5 minutes", cron: "*/5 * * * *", description: "Every 5 minutes" },
+  { text: "every hour", cron: "0 * * * *", description: "Every hour" },
+  { text: "every day at 9am", cron: "0 9 * * *", description: "Every day at 9:00 AM" },
+  { text: "weekdays at 9am", cron: "0 9 * * 1-5", description: "Weekdays at 9:00 AM" },
+  { text: "every Sunday at 9am", cron: "0 9 * * 0", description: "Every Sunday at 9:00 AM" },
+  { text: "1st of every month at 9am", cron: "0 9 1 * *", description: "1st of every month at 9:00 AM" },
 ] as const
 
 interface ScheduleInputProps {
@@ -43,6 +42,8 @@ interface ScheduleInputProps {
 
 interface PreviewState {
   cron: string
+  /** What the AI understood — shown to the user as confirmation */
+  description: string | null
   timezone: string | null
   loading: boolean
   error: string | null
@@ -63,6 +64,7 @@ export function ScheduleInput({
   const [isOneTime, setIsOneTime] = useState(isOneTimeProp ?? false)
   const [preview, setPreview] = useState<PreviewState>({
     cron: "",
+    description: null,
     timezone: null,
     loading: false,
     error: null,
@@ -80,13 +82,19 @@ export function ScheduleInput({
   // Resolve preview when value changes
   useEffect(() => {
     if (!value.trim() || isOneTime) {
-      setPreview({ cron: "", timezone: null, loading: false, error: null })
+      setPreview({ cron: "", description: null, timezone: null, loading: false, error: null })
       return
     }
 
     // Quick picks have known cron — skip API
     if (matchedPick) {
-      setPreview({ cron: matchedPick.cron, timezone: null, loading: false, error: null })
+      setPreview({
+        cron: matchedPick.cron,
+        description: matchedPick.description,
+        timezone: null,
+        loading: false,
+        error: null,
+      })
       return
     }
 
@@ -112,10 +120,17 @@ export function ScheduleInput({
         if (controller.signal.aborted) return
 
         if (data.ok) {
-          setPreview({ cron: data.cron, timezone: data.timezone, loading: false, error: null })
+          setPreview({
+            cron: data.cron,
+            description: data.description ?? null,
+            timezone: data.timezone,
+            loading: false,
+            error: null,
+          })
         } else {
           setPreview({
             cron: "",
+            description: null,
             timezone: null,
             loading: false,
             error: data.message || data.details?.reason || "Could not parse schedule",
@@ -123,7 +138,7 @@ export function ScheduleInput({
         }
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return
-        setPreview({ cron: "", timezone: null, loading: false, error: "Failed to check schedule" })
+        setPreview({ cron: "", description: null, timezone: null, loading: false, error: "Failed to check schedule" })
       }
     }, PREVIEW_DEBOUNCE_MS)
 
@@ -246,21 +261,14 @@ export function ScheduleInput({
             ))}
           </div>
 
-          {/* Preview */}
-          {value.trim() && !preview.loading && preview.cron && (
-            <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-emerald-500/5 dark:bg-emerald-500/5 border border-emerald-500/10 dark:border-emerald-500/10">
-              <Clock size={14} className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm text-black dark:text-white">{describeCron(preview.cron)}</p>
-                <p className="text-[11px] text-black/40 dark:text-white/40 mt-0.5 font-mono">{preview.cron}</p>
-                {preview.timezone && (
-                  <p className="text-[11px] text-black/50 dark:text-white/50 mt-0.5">{preview.timezone}</p>
-                )}
-              </div>
-            </div>
+          {/* Understood / Error */}
+          {value.trim() && !preview.loading && preview.cron && preview.description && (
+            <p className="text-xs text-black/50 dark:text-white/50 px-1 flex items-center gap-1.5">
+              <Check size={12} className="text-emerald-500 shrink-0" />
+              {preview.description}
+            </p>
           )}
 
-          {/* Error */}
           {value.trim() && !preview.loading && preview.error && (
             <p className="text-xs text-red-500 dark:text-red-400 px-1">{preview.error}</p>
           )}

@@ -113,6 +113,7 @@ describe("automationsRoutes", () => {
   it("converts schedule text to cron", async () => {
     vi.mocked(textToCron).mockResolvedValueOnce({
       cron: "0 9 * * 1-5",
+      description: "Weekdays at 9:00 AM",
       timezone: "Europe/Amsterdam",
     })
 

@@ -26,7 +26,7 @@ export const POST = protectedRoute(async ({ req }) => {
 
   try {
     const result = await textToCron(parsed.data.text)
-    return Response.json({ ok: true, cron: result.cron, timezone: result.timezone })
+    return Response.json({ ok: true, cron: result.cron, description: result.description, timezone: result.timezone })
   } catch (err) {
     Sentry.captureException(err)
     return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {

@@ -3,19 +3,17 @@
 import * as Sentry from "@sentry/nextjs"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { getModelDisplayName, isValidClaudeModel } from "@webalive/shared"
-import { ArrowLeft, Calendar, Globe, Mail, Pause, Play, Plus, Trash2, Zap } from "lucide-react"
+import { ArrowLeft, Calendar, Globe, Mail, Pause, Play, Trash2, Zap } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
 import { AutomationRunsView } from "@/components/automations/AutomationRunsView"
-import { type AutomationFormData, AutomationSidePanel } from "@/components/automations/AutomationSidePanel"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { futTime, relTime, trigLabel } from "@/features/automations/display-helpers"
-import { trackAutomationCreated, trackAutomationDeleted, trackAutomationsViewed } from "@/lib/analytics/events"
+import { trackAutomationDeleted, trackAutomationsViewed } from "@/lib/analytics/events"
 import { delly, patchy, postty } from "@/lib/api/api-client"
 import { type AutomationRunStatus, type Res, type TriggerType, validateRequest } from "@/lib/api/schemas"
-import { buildCreatePayload, buildUpdatePayload } from "@/lib/automation/build-payload"
-import { type AutomationJob, useAutomationsQuery, useSitesQuery } from "@/lib/hooks/useSettingsQueries"
+import { type AutomationJob, useAutomationsQuery } from "@/lib/hooks/useSettingsQueries"
 import { useCurrentWorkspace, useSelectedOrgId } from "@/lib/stores/workspaceStore"
 import { type ApiError, queryKeys } from "@/lib/tanstack"
 import { plural } from "../lib/format"
@@ -35,11 +33,10 @@ function StatusDot({ job }: { job: AutomationJob }) {
 
 // ─── Detail tabs ─────────────────────────────────────────────────────
 
-type DetailTab = "overview" | "runs" | "edit"
+type DetailTab = "overview" | "runs"
 const DETAIL_TABS: { id: DetailTab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "runs", label: "Runs" },
-  { id: "edit", label: "Edit" },
 ]
 
 // ─── Main component ──────────────────────────────────────────────────
@@ -48,7 +45,6 @@ export function AutomationsSettings() {
   const queryClient = useQueryClient()
   const currentWorkspace = useCurrentWorkspace()
   const selectedOrgId = useSelectedOrgId()
-  const { data: sitesData } = useSitesQuery()
 
   const [projectOnly, setProjectOnly] = useState(false)
 
@@ -73,7 +69,6 @@ export function AutomationsSettings() {
     }
   }, [rawAutomationsData, projectOnly, currentWorkspace])
 
-  // Sites are only needed for create/edit form — don't block the list view on them
   const loading = automationsLoading
 
   useEffect(() => {
@@ -81,7 +76,6 @@ export function AutomationsSettings() {
   }, [])
 
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
-  const [isCreating, setIsCreating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [detailTab, setDetailTab] = useState<DetailTab>("overview")
 
@@ -112,31 +106,6 @@ export function AutomationsSettings() {
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKeys.automations.list(queryFilter), context.previous)
-    },
-  })
-
-  const saveMutation = useMutation<unknown, ApiError, { formData: AutomationFormData; editingJobId?: string }>({
-    mutationFn: ({ formData, editingJobId }) => {
-      if (editingJobId) {
-        const body = buildUpdatePayload(formData, formData.trigger_type)
-        return patchy("automations/update", body, undefined, `/api/automations/${editingJobId}`)
-      }
-
-      const body = buildCreatePayload(formData)
-      return postty("automations/create", body)
-    },
-    onSuccess: (_data, variables) => {
-      if (!variables.editingJobId) {
-        trackAutomationCreated({ has_prompt: !!variables.formData.action_prompt })
-      }
-      toast.success("Agent saved")
-      queryClient.invalidateQueries({ queryKey: queryKeys.automations.all })
-      setSelectedJobId(null)
-      setIsCreating(false)
-    },
-    onError: (err: ApiError) => {
-      toast(err.message || "Couldn't save automation")
-      Sentry.captureException(err)
     },
   })
 
@@ -183,28 +152,14 @@ export function AutomationsSettings() {
 
   // ─── Callbacks ──────────────────────────────
 
-  const handleCreate = useCallback(() => {
-    setSelectedJobId(null)
-    setIsCreating(true)
-  }, [])
-
   const handleSelectJob = useCallback((job: AutomationJob) => {
     setSelectedJobId(job.id)
-    setIsCreating(false)
     setDetailTab("overview")
   }, [])
 
   const handleBack = useCallback(() => {
     setSelectedJobId(null)
-    setIsCreating(false)
   }, [])
-
-  const handleSave = useCallback(
-    async (formData: AutomationFormData) => {
-      saveMutation.mutate({ formData, editingJobId: selectedJob?.id })
-    },
-    [selectedJob, saveMutation],
-  )
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -246,42 +201,7 @@ export function AutomationsSettings() {
   // After loading/error guards, automations data is guaranteed
   if (!automationsData) return null
   const { automations } = automationsData
-  const sites = sitesData?.sites ?? []
   const activeCount = automations.filter(a => a.is_active).length
-
-  // ─── Create view ──────────────────────────────
-
-  if (isCreating) {
-    return (
-      <SettingsTabLayout
-        title="Agents"
-        description="Create a new agent"
-        className="h-full min-h-0 flex flex-col"
-        contentClassName="flex-1 min-h-0 flex flex-col"
-      >
-        <div className="flex-1 min-h-0 flex flex-col">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="inline-flex items-center gap-1.5 text-sm text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors mb-4 shrink-0"
-          >
-            <ArrowLeft size={16} />
-            Back to agents
-          </button>
-          <div className="max-w-2xl flex-1 min-h-0">
-            <AutomationSidePanel
-              isOpen={true}
-              onClose={handleBack}
-              sites={sites}
-              editingJob={null}
-              onSave={handleSave}
-              saving={saveMutation.isPending}
-            />
-          </div>
-        </div>
-      </SettingsTabLayout>
-    )
-  }
 
   // ─── Detail view ──────────────────────────────
 
@@ -371,18 +291,6 @@ export function AutomationsSettings() {
         <div className="flex-1 min-h-0 overflow-hidden">
           {detailTab === "overview" && <OverviewTab job={selectedJob} />}
           {detailTab === "runs" && <AutomationRunsView job={selectedJob} />}
-          {detailTab === "edit" && (
-            <div className="max-w-2xl h-full">
-              <AutomationSidePanel
-                isOpen={true}
-                onClose={handleBack}
-                sites={sites}
-                editingJob={selectedJob}
-                onSave={handleSave}
-                saving={saveMutation.isPending}
-              />
-            </div>
-          )}
         </div>
       </SettingsTabLayout>
     )
@@ -392,11 +300,7 @@ export function AutomationsSettings() {
 
   if (automations.length === 0) {
     return (
-      <SettingsTabLayout
-        title="Agents"
-        description="Schedule recurring tasks for your websites"
-        action={{ label: "Add Agent", icon: <Plus size={16} />, onClick: handleCreate }}
-      >
+      <SettingsTabLayout title="Agents" description="Schedule recurring tasks for your websites">
         <ProjectFilterToggle
           show={!!currentWorkspace}
           active={projectOnly}
@@ -406,10 +310,9 @@ export function AutomationsSettings() {
           icon={Zap}
           message={
             projectOnly
-              ? "No agents for this project. Agents let you schedule recurring tasks like syncing calendars or running AI prompts."
-              : "No agents yet. Agents let you schedule recurring tasks like syncing calendars or running AI prompts."
+              ? "No agents for this project. Create agents from within a workspace."
+              : "No agents yet. Create agents from within a workspace."
           }
-          action={{ label: "Create Agent", onClick: handleCreate }}
         />
       </SettingsTabLayout>
     )
@@ -419,7 +322,6 @@ export function AutomationsSettings() {
     <SettingsTabLayout
       title="Agents"
       description={`${activeCount} active agent${plural(activeCount)}`}
-      action={{ label: "Add Agent", icon: <Plus size={16} />, onClick: handleCreate }}
       className="h-full min-h-0 flex flex-col"
       contentClassName="flex-1 min-h-0"
     >
