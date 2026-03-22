@@ -51,7 +51,9 @@ export function AgentTemplatePicker({
     <div className="max-w-2xl mx-auto w-full px-5 py-8">
       <div className="text-center mb-8">
         <h2 className="text-[20px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">Your Agents</h2>
-        <p className="text-[14px] text-zinc-400 dark:text-zinc-500">Pick a template to get started</p>
+        <p className="text-[14px] text-zinc-400 dark:text-zinc-500">
+          You don't have any agents yet. Pick a template to get started.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 mb-5">

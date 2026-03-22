@@ -155,11 +155,10 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     )
   }
 
-  // ── Create mode ──
+  // ── Create mode (no header — the edit view IS the full screen) ──
   if (view.kind === "create" && pendingCreate) {
     return (
       <div className="h-full flex flex-col">
-        <AgentListHeader onNewAgent={handleNewAgent} newAgentLoading={!sitesData} />
         <div className="flex-1 overflow-auto">
           <AgentEditView
             job={null}
