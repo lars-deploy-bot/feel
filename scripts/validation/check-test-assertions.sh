@@ -21,7 +21,7 @@ echo "Checking type assertions in test files..."
 
 # Current budget: the number we shipped with.
 # Ratchet this DOWN as files are cleaned up — never UP.
-MAX_AS_TYPE=5         # non-const, non-unknown `as Type` assertions
+MAX_AS_TYPE=0         # non-const, non-unknown `as Type` assertions
 MAX_AS_ANY=0          # `as any` — zero tolerance
 MAX_AS_UNKNOWN=17     # `as unknown as Type` — Supabase partial mocks (to be eliminated)
 
