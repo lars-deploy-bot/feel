@@ -132,7 +132,11 @@ fi
 CHECK=$((CHECK + 1))
 echo "[$CHECK/$TOTAL_CHECKS] Port $PORT..."
 if ss -ltn "( sport = :$PORT )" | grep -q LISTEN; then
-  pass_check "Port $PORT is in use ($SERVICE responding)"
+  if [ "$STATUS" = "active" ] || [ "$STATUS" = "running" ]; then
+    pass_check "Port $PORT is in use ($SERVICE responding)"
+  else
+    fail_check "Port $PORT is already in use by another process ($SERVICE is $STATUS)"
+  fi
 else
   if [ "$STATUS" = "active" ]; then
     fail_check "Service is 'active' but port $PORT is not listening"
@@ -222,18 +226,26 @@ if [ ! -f "$ENV_FILE" ]; then
   fail_check "Environment file missing: $ENV_FILE"
 else
   MISSING_VARS=""
+  BLANK_VARS=""
   # Core vars that every environment MUST have
   for var in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY ANTH_API_SECRET \
              REDIS_URL JWT_SECRET DATABASE_URL DATABASE_PASSWORD \
              ALIVE_PASSCODE IMAGES_SIGNATURE_SECRET LOCKBOX_MASTER_KEY; do
     if ! grep -q "^${var}=" "$ENV_FILE"; then
       MISSING_VARS="$MISSING_VARS $var"
+    else
+      VAL=$(grep "^${var}=" "$ENV_FILE" | cut -d= -f2-)
+      if [ -z "$VAL" ]; then
+        BLANK_VARS="$BLANK_VARS $var"
+      fi
     fi
   done
   if [ -n "$MISSING_VARS" ]; then
     fail_check "Missing required vars in $ENV_FILE:$MISSING_VARS"
+  elif [ -n "$BLANK_VARS" ]; then
+    fail_check "Blank required vars in $ENV_FILE:$BLANK_VARS"
   else
-    pass_check "All required env vars present"
+    pass_check "All required env vars present and non-empty"
   fi
 fi
 
@@ -370,10 +382,23 @@ echo "[$CHECK/$TOTAL_CHECKS] Postgres connectivity..."
 DB_URL_FROM_ENV=$(grep '^DATABASE_URL=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || echo "")
 DB_PW_FROM_ENV=$(grep '^DATABASE_PASSWORD=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || echo "")
 if [ -n "$DB_URL_FROM_ENV" ] && [ -n "$DB_PW_FROM_ENV" ]; then
-  if PGPASSWORD="$DB_PW_FROM_ENV" psql "$DB_URL_FROM_ENV" -c "SELECT 1;" >/dev/null 2>&1; then
+  # Parse DSN components to avoid leaking credentials in argv (ps) or logs
+  DB_PROTO="${DB_URL_FROM_ENV%%://*}"
+  DB_REST="${DB_URL_FROM_ENV#*://}"
+  DB_HOSTPORT="${DB_REST%%/*}"
+  DB_HOSTPORT="${DB_HOSTPORT#*@}"  # strip user:pass@
+  DB_HOST="${DB_HOSTPORT%%:*}"
+  DB_PORT="${DB_HOSTPORT##*:}"
+  DB_NAME="${DB_REST#*/}"
+  DB_NAME="${DB_NAME%%\?*}"  # strip query params
+  DB_USER="${DB_REST%%@*}"
+  DB_USER="${DB_USER%%:*}"   # strip password from user:pass
+  DB_REDACTED="${DB_PROTO}://${DB_USER}:***@${DB_HOSTPORT}/${DB_NAME}"
+
+  if PGPASSWORD="$DB_PW_FROM_ENV" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1; then
     pass_check "Postgres reachable"
   else
-    fail_check "Cannot connect to Postgres at $DB_URL_FROM_ENV"
+    fail_check "Cannot connect to Postgres at $DB_REDACTED"
   fi
 else
   warn_check "DATABASE_URL or DATABASE_PASSWORD not in $ENV_FILE — skipping connectivity check"
