@@ -500,16 +500,7 @@ export async function ensureDevServer(sandbox: Sandbox, expectedPort: number): P
   // 1. Check if the expected port is already listening — fast path
   if (await isPortListening(sandbox, expectedPort)) return expectedPort
 
-  // 2. Check if something else is listening (project ignores PORT, or multiple services)
-  const otherPort = await detectAnyListeningPort(sandbox)
-  if (otherPort) {
-    console.error(
-      `[sandbox-manager] Expected port ${expectedPort} not listening, but found ${otherPort}. Project may ignore PORT env var.`,
-    )
-    return otherPort
-  }
-
-  // 3. Check if there's a dev script to run
+  // 2. Check if there's a dev script to run
   let pkgJson: string
   try {
     pkgJson = await sandbox.files.read(path.join(SANDBOX_WORKSPACE_ROOT, "package.json"))
@@ -526,7 +517,7 @@ export async function ensureDevServer(sandbox: Sandbox, expectedPort: number): P
 
   if (!pkg.scripts?.dev) return null
 
-  // 4. Start dev server with PORT env var — the system owns the port
+  // 3. Start dev server with PORT env var — the system owns the port
   try {
     await sandbox.commands.run("bun run dev", {
       background: true,
@@ -537,13 +528,13 @@ export async function ensureDevServer(sandbox: Sandbox, expectedPort: number): P
     return null
   }
 
-  // 5. Wait for the expected port to bind (poll up to 10s)
+  // 4. Wait for the expected port to bind (poll up to 10s)
   for (let i = 0; i < 10; i++) {
     await new Promise(r => setTimeout(r, 1000))
     if (await isPortListening(sandbox, expectedPort)) return expectedPort
   }
 
-  // 6. Expected port didn't bind — check if project bound to a different port
+  // 5. Expected port didn't bind — check if project bound to a different port
   const fallbackPort = await detectAnyListeningPort(sandbox)
   if (fallbackPort) {
     console.error(`[sandbox-manager] Dev server ignored PORT=${expectedPort}, bound to ${fallbackPort} instead.`)

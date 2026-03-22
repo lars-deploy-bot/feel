@@ -73,10 +73,14 @@ export function createSandboxSessionRegistry(config: SandboxSessionRegistryConfi
     },
 
     async ensureReady(domain: SandboxDomain, hostWorkspacePath?: string): Promise<SandboxSession> {
+      // Track whether we're creating fresh or reusing cached.
+      // Fresh sessions already have dev server ensured by the manager — don't double-start.
+      const wasCached = sessions.has(domain.domain_id)
       const session = await this.acquire(domain, hostWorkspacePath)
 
-      // Always check dev server state, even for cached sessions.
-      // Pass the expected port — the system owns the port, not the sandbox.
+      if (!wasCached) return session
+
+      // For cached sessions, always re-check dev server state (it may have died).
       const actualPort = await ensureDevServer(session.raw, domain.port)
       if (actualPort && actualPort !== domain.port && config.persistence.updatePort) {
         console.error(

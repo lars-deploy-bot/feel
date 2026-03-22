@@ -119,4 +119,3 @@ The Read tool will show you the image content so you can describe, analyze, or a
 
 ${originalMessage}`
 }
-

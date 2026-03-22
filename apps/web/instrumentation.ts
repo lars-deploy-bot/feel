@@ -98,9 +98,17 @@ export async function register() {
         if (port) {
           await new Promise<void>((resolve, reject) => {
             const socket = net.createConnection({ host: "127.0.0.1", port, timeout: 2000 })
-            socket.once("connect", () => { socket.destroy(); resolve() })
-            socket.once("timeout", () => { socket.destroy(); reject(new Error("timeout")) })
-            socket.once("error", (err) => { reject(err) })
+            socket.once("connect", () => {
+              socket.destroy()
+              resolve()
+            })
+            socket.once("timeout", () => {
+              socket.destroy()
+              reject(new Error("timeout"))
+            })
+            socket.once("error", err => {
+              reject(err)
+            })
           })
         }
       }

@@ -49,9 +49,7 @@ async function getCaddyDomains(): Promise<Set<string>> {
 }
 
 /** List all site@* units and their states (1 shell spawn for all domains) */
-async function getSystemdServiceStates(): Promise<
-  Map<string, { exists: boolean; running: boolean }>
-> {
+async function getSystemdServiceStates(): Promise<Map<string, { exists: boolean; running: boolean }>> {
   const states = new Map<string, { exists: boolean; running: boolean }>()
   try {
     const { stdout } = await execAsync(
@@ -192,9 +190,7 @@ function checkViteConfigPort(
     const sitePath = `${PATHS.SITES_ROOT}/${domain}`
     const slug = domain.replace(/[^a-zA-Z0-9]/g, "-")
 
-    const hasSystemdOverride = existsSync(
-      `/etc/systemd/system/site@${slug}.service.d/port-override.conf`,
-    )
+    const hasSystemdOverride = existsSync(`/etc/systemd/system/site@${slug}.service.d/port-override.conf`)
 
     // Try vite.config.ts then .js
     let configContent: string | null = null
@@ -226,10 +222,7 @@ function checkViteConfigPort(
 }
 
 function checkSiteDirectory(domain: string): boolean {
-  return (
-    existsSync(`${PATHS.SITES_ROOT}/${domain}`) ||
-    existsSync(`${PATHS.SITES_ROOT}/${domain.replace(/\./g, "-")}`)
-  )
+  return existsSync(`${PATHS.SITES_ROOT}/${domain}`) || existsSync(`${PATHS.SITES_ROOT}/${domain.replace(/\./g, "-")}`)
 }
 
 export async function GET(req: NextRequest) {

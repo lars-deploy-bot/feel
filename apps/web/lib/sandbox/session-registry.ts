@@ -35,10 +35,7 @@ export function getSessionRegistry(): SandboxSessionRegistry {
       },
       async updatePort(domainId, port) {
         const app = await createAppClient("service")
-        const { error } = await app
-          .from("domains")
-          .update({ port })
-          .eq("domain_id", domainId)
+        const { error } = await app.from("domains").update({ port }).eq("domain_id", domainId)
 
         if (error) {
           throw new Error(`Failed to update port for ${domainId}: ${error.message}`)

@@ -227,10 +227,7 @@ export async function listAutomations() {
     const failureRuns = orgJobs.reduce((s, j) => s + j.failure_runs_30d, 0)
 
     // Derive monthly cost from already-computed weekly cost (avoid re-calling estimateRunsPerMonth)
-    const monthlyCost = orgJobs.reduce(
-      (s, j) => s + (j.estimated_weekly_cost_usd * 30) / 7,
-      0,
-    )
+    const monthlyCost = orgJobs.reduce((s, j) => s + (j.estimated_weekly_cost_usd * 30) / 7, 0)
 
     summaries.push({
       org_id: orgId,

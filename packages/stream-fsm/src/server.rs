@@ -52,7 +52,11 @@ pub enum ServerStreamState {
     },
 
     /// Terminal.
-    Done { outcome: Outcome },
+    Done {
+        outcome: Outcome,
+        input_tokens: u64,
+        output_tokens: u64,
+    },
 
     Error {
         error_code: ErrorCode,
@@ -156,10 +160,7 @@ impl ServerEvent {
 // ---------------------------------------------------------------------------
 
 /// Pure transition function. Every (state, event) pair is handled — adding a
-/// new state variant without match arms is a compile error.  Within each state
-/// block, valid transitions are listed first; everything else falls through to
-/// a per-state wildcard that returns `TransitionError::inapplicable`.
-#[must_use]
+/// new state variant without match arms is a compile error.
 pub fn server_transition(
     state: ServerStreamState,
     event: ServerEvent,
@@ -259,16 +260,24 @@ pub fn server_transition(
         (S::Streaming { .. }, e) => Err(TransitionError::inapplicable("Streaming", e.event_name())),
 
         // ── Cancelling ──────────────────────────────────────────────
-        (S::Cancelling { .. }, E::ReaderDone) => Ok(S::Done { outcome: Outcome::Cancelled }),
-        (S::Cancelling { .. }, E::CleanupDone) => Ok(S::Done { outcome: Outcome::Cancelled }),
-        (S::Cancelling { .. }, E::ErrorOccurred { .. }) => Ok(S::Done { outcome: Outcome::Errored }),
+        (S::Cancelling { input_tokens, output_tokens, .. }, E::ReaderDone) => {
+            Ok(S::Done { outcome: Outcome::Cancelled, input_tokens, output_tokens })
+        }
+        (S::Cancelling { input_tokens, output_tokens, .. }, E::CleanupDone) => {
+            Ok(S::Done { outcome: Outcome::Cancelled, input_tokens, output_tokens })
+        }
+        (S::Cancelling { input_tokens, output_tokens, .. }, E::ErrorOccurred { .. }) => {
+            Ok(S::Done { outcome: Outcome::Errored, input_tokens, output_tokens })
+        }
         (S::Cancelling { .. }, e) => Err(TransitionError::inapplicable("Cancelling", e.event_name())),
 
         // ── Completing ──────────────────────────────────────────────
         (S::Completing { total_messages, input_tokens, output_tokens, .. }, E::CreditsCharged) => {
             Ok(S::Completing { total_messages, input_tokens, output_tokens, credits_charged: true })
         }
-        (S::Completing { .. }, E::CleanupDone) => Ok(S::Done { outcome: Outcome::Completed }),
+        (S::Completing { input_tokens, output_tokens, .. }, E::CleanupDone) => {
+            Ok(S::Done { outcome: Outcome::Completed, input_tokens, output_tokens })
+        }
         (S::Completing { .. }, E::ErrorOccurred { error_code, .. }) => {
             Ok(S::Error { error_code, last_good_seq: 0 })
         }
@@ -278,7 +287,9 @@ pub fn server_transition(
         (S::Done { .. }, e) => Err(TransitionError::terminal("Done", e.event_name())),
 
         // ── Error ───────────────────────────────────────────────────
-        (S::Error { .. }, E::CleanupDone) => Ok(S::Done { outcome: Outcome::Errored }),
+        (S::Error { .. }, E::CleanupDone) => {
+            Ok(S::Done { outcome: Outcome::Errored, input_tokens: 0, output_tokens: 0 })
+        }
         (S::Error { .. }, e) => Err(TransitionError::inapplicable("Error", e.event_name())),
 
         // ── Buffering ───────────────────────────────────────────────
@@ -306,8 +317,8 @@ pub fn server_transition(
                 pending_tools, message_count, buffer_message_count,
             })
         }
-        (S::Buffering { .. }, E::CancelRequested { source }) => {
-            Ok(S::Cancelling { cancel_source: source, input_tokens: 0, output_tokens: 0 })
+        (S::Buffering { input_tokens, output_tokens, .. }, E::CancelRequested { source }) => {
+            Ok(S::Cancelling { cancel_source: source, input_tokens, output_tokens })
         }
         (S::Buffering { .. }, E::BufferFull) => {
             Ok(S::Error { error_code: ErrorCode::BufferOverflow, last_good_seq: 0 })
@@ -321,12 +332,18 @@ pub fn server_transition(
         (S::Buffering { .. }, e) => Err(TransitionError::inapplicable("Buffering", e.event_name())),
 
         // ── BufferedComplete ────────────────────────────────────────
-        (S::BufferedComplete { .. }, E::ClientReconnected) => Ok(S::Done { outcome: Outcome::Completed }),
+        (S::BufferedComplete { .. }, E::ClientReconnected) => {
+            Ok(S::Done { outcome: Outcome::Completed, input_tokens: 0, output_tokens: 0 })
+        }
         (S::BufferedComplete { .. }, e) => Err(TransitionError::inapplicable("BufferedComplete", e.event_name())),
 
         // ── Stale ───────────────────────────────────────────────────
-        (S::Stale { .. }, E::ClientReconnected) => Ok(S::Done { outcome: Outcome::Completed }),
-        (S::Stale { .. }, E::CleanupDone) => Ok(S::Done { outcome: Outcome::Completed }),
+        (S::Stale { .. }, E::ClientReconnected) => {
+            Ok(S::Done { outcome: Outcome::Completed, input_tokens: 0, output_tokens: 0 })
+        }
+        (S::Stale { .. }, E::CleanupDone) => {
+            Ok(S::Done { outcome: Outcome::Completed, input_tokens: 0, output_tokens: 0 })
+        }
         (S::Stale { .. }, e) => Err(TransitionError::inapplicable("Stale", e.event_name())),
     }
 }
@@ -364,7 +381,7 @@ mod tests {
         assert_eq!(s.state_name(), "Completing");
         let s = server_transition(s, ServerEvent::CreditsCharged).unwrap();
         let s = server_transition(s, ServerEvent::CleanupDone).unwrap();
-        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Completed }));
+        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Completed, input_tokens: 500, output_tokens: 200 }));
     }
 
     #[test]
@@ -373,7 +390,16 @@ mod tests {
         let s = server_transition(s, ServerEvent::CancelRequested { source: CancelSource::HttpAbort }).unwrap();
         assert_eq!(s.state_name(), "Cancelling");
         let s = server_transition(s, ServerEvent::ReaderDone).unwrap();
-        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Cancelled }));
+        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Cancelled, .. }));
+    }
+
+    #[test]
+    fn cancel_preserves_tokens() {
+        let s = to_streaming();
+        let s = server_transition(s, ServerEvent::TokensAccumulated { input_tokens: 300, output_tokens: 100 }).unwrap();
+        let s = server_transition(s, ServerEvent::CancelRequested { source: CancelSource::ClientCancel }).unwrap();
+        let s = server_transition(s, ServerEvent::ReaderDone).unwrap();
+        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Cancelled, input_tokens: 300, output_tokens: 100 }));
     }
 
     #[test]
@@ -388,7 +414,7 @@ mod tests {
         let s = to_streaming();
         let s = server_transition(s, ServerEvent::CancelRequested { source: CancelSource::SharedIntent }).unwrap();
         let s = server_transition(s, ServerEvent::ErrorOccurred { error_code: ErrorCode::ProcessCrash, message: "boom".into() }).unwrap();
-        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Errored }));
+        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Errored, .. }));
     }
 
     #[test]
@@ -404,7 +430,7 @@ mod tests {
         let s = server_transition(s, ServerEvent::ErrorOccurred { error_code: ErrorCode::Timeout, message: "".into() }).unwrap();
         assert_eq!(s.state_name(), "Error");
         let s = server_transition(s, ServerEvent::CleanupDone).unwrap();
-        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Errored }));
+        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Errored, .. }));
     }
 
     #[test]
@@ -477,15 +503,19 @@ mod tests {
         let s = server_transition(s, ServerEvent::CompleteReceived { total_messages: 2 }).unwrap();
         assert_eq!(s.state_name(), "BufferedComplete");
         let s = server_transition(s, ServerEvent::ClientReconnected).unwrap();
-        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Completed }));
+        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Completed, .. }));
     }
 
     #[test]
-    fn buffering_cancel() {
+    fn buffering_cancel_preserves_tokens() {
         let s = to_streaming();
+        let s = server_transition(s, ServerEvent::TokensAccumulated { input_tokens: 200, output_tokens: 80 }).unwrap();
         let s = server_transition(s, ServerEvent::ClientDisconnected).unwrap();
         let s = server_transition(s, ServerEvent::CancelRequested { source: CancelSource::SharedIntent }).unwrap();
-        assert_eq!(s.state_name(), "Cancelling");
+        if let ServerStreamState::Cancelling { input_tokens, output_tokens, .. } = &s {
+            assert_eq!(*input_tokens, 200);
+            assert_eq!(*output_tokens, 80);
+        } else { panic!() }
     }
 
     #[test]
@@ -529,7 +559,7 @@ mod tests {
         let s = server_transition(s, ServerEvent::ClientDisconnected).unwrap();
         let s = server_transition(s, ServerEvent::StaleDetected { last_activity_at: 1000, detected_at: 60000 }).unwrap();
         let s = server_transition(s, ServerEvent::ClientReconnected).unwrap();
-        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Completed }));
+        assert!(matches!(s, ServerStreamState::Done { outcome: Outcome::Completed, .. }));
     }
 
     #[test]
@@ -540,7 +570,7 @@ mod tests {
 
     #[test]
     fn done_rejects_all_events() {
-        let done = ServerStreamState::Done { outcome: Outcome::Completed };
+        let done = ServerStreamState::Done { outcome: Outcome::Completed, input_tokens: 0, output_tokens: 0 };
         assert!(server_transition(done.clone(), start_event()).is_err());
         assert!(server_transition(done.clone(), ServerEvent::PingReceived).is_err());
         let err = server_transition(done, ServerEvent::CleanupDone).unwrap_err();
