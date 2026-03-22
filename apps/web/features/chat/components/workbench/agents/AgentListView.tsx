@@ -74,10 +74,15 @@ function AgentCard({
   onChanged: () => void
 }) {
   return (
-    <button
-      type="button"
+    // biome-ignore lint/a11y/useSemanticElements: card contains nested button (Run), can't use <button> wrapper
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onSelect(job)}
-      className="w-full text-left rounded-2xl border border-zinc-100 dark:border-white/[0.04] bg-white dark:bg-white/[0.02] hover:border-zinc-200 dark:hover:border-white/[0.08] hover:shadow-sm transition-all p-4"
+      onKeyDown={e => {
+        if (e.key === "Enter") onSelect(job)
+      }}
+      className="w-full text-left rounded-2xl border border-zinc-100 dark:border-white/[0.04] bg-white dark:bg-white/[0.02] hover:border-zinc-200 dark:hover:border-white/[0.08] hover:shadow-sm transition-all p-4 cursor-pointer"
     >
       {/* Top row: name + streak */}
       <div className="flex items-center justify-between mb-2">
@@ -113,6 +118,6 @@ function AgentCard({
           Run
         </button>
       </div>
-    </button>
+    </div>
   )
 }

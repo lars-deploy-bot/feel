@@ -172,8 +172,8 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
     <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0 flex">
         {/* Left column — settings */}
-        <div className="w-[280px] shrink-0 border-r border-zinc-100 dark:border-white/[0.04] overflow-auto px-5 py-5">
-          <FieldGroup label="Name">
+        <div className="w-[300px] shrink-0 border-r border-zinc-100 dark:border-white/[0.04] overflow-auto px-5 py-5">
+          <FieldGroup label="Name" color="emerald">
             <input
               type="text"
               value={name}
@@ -181,35 +181,39 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
               placeholder="Agent name"
               className={`${INPUT} ${fieldErrors.name ? "border-red-300 dark:border-red-700" : ""}`}
             />
-            {fieldErrors.name && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.name}</p>}
+            {fieldErrors.name && <p className="text-[11px] text-red-500 mt-1.5">{fieldErrors.name}</p>}
           </FieldGroup>
 
-          <FieldGroup label="Trigger" icon={<TrigIcon type={triggerType} size={13} />}>
+          <FieldGroup label="Schedule" color="blue" icon={<TrigIcon type={triggerType} size={13} />}>
             {triggerType === "cron" && (
               <div className="space-y-3">
+                <input
+                  type="text"
+                  value={schedule}
+                  onChange={e => setSchedule(e.target.value)}
+                  placeholder="every day at 9am"
+                  className={INPUT}
+                />
                 <div>
-                  <input
-                    type="text"
-                    value={schedule}
-                    onChange={e => setSchedule(e.target.value)}
-                    placeholder="every day at 9am"
-                    className={`${INPUT} text-[12px]`}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="edit-timeout" className="text-[10px] text-zinc-400 dark:text-zinc-600 block mb-1">
-                    Timeout (minutes)
+                  <label
+                    htmlFor="edit-timeout"
+                    className="text-[12px] font-medium text-zinc-400 dark:text-zinc-600 block mb-2"
+                  >
+                    Timeout: <span className="font-bold text-zinc-900 dark:text-zinc-100">{timeoutMin} min</span>
                   </label>
                   <input
                     id="edit-timeout"
-                    type="number"
+                    type="range"
                     min={1}
                     max={60}
                     value={timeoutMin}
                     onChange={e => setTimeoutMin(e.target.value)}
-                    placeholder="5"
-                    className={`${INPUT} w-24 tabular-nums text-[12px]`}
+                    className="w-full h-2 rounded-full appearance-none bg-zinc-200 dark:bg-zinc-700 accent-emerald-500 cursor-pointer"
                   />
+                  <div className="flex justify-between text-[10px] text-zinc-300 dark:text-zinc-700 mt-1 tabular-nums">
+                    <span>1m</span>
+                    <span>60m</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -220,17 +224,17 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
             {triggerType === "one-time" && <p className="text-[12px] text-zinc-400">Runs once.</p>}
           </FieldGroup>
 
-          <FieldGroup label="Model">
-            <div className="flex flex-wrap gap-1.5">
+          <FieldGroup label="Model" color="violet">
+            <div className="flex flex-wrap gap-2">
               {MODEL_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => setModel(model === opt.value ? "" : (opt.value as ClaudeModel))}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors duration-100 ${
+                  className={`px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all ${
                     model === opt.value
-                      ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                      ? "bg-violet-500 text-white border-b-[3px] border-violet-600 active:translate-y-[2px] active:border-b-0"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-b-[3px] border-zinc-200 dark:border-zinc-700 hover:brightness-95 dark:hover:brightness-110 active:translate-y-[2px] active:border-b-0"
                   }`}
                 >
                   {opt.label}
@@ -244,12 +248,12 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
 
         {/* Right column — prompt */}
         <div className="flex-1 min-w-0 flex flex-col">
-          <div className="shrink-0 px-5 h-10 flex items-center justify-between border-b border-zinc-100 dark:border-white/[0.04]">
-            <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-600 uppercase tracking-wider">
+          <div className="shrink-0 px-5 h-11 flex items-center justify-between border-b border-zinc-100 dark:border-white/[0.04]">
+            <span className="text-[12px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
               Prompt
             </span>
-            <span className="text-[11px] text-zinc-400 dark:text-zinc-600 tabular-nums">
-              {prompt.length.toLocaleString()}
+            <span className="text-[11px] font-medium text-zinc-300 dark:text-zinc-700 tabular-nums">
+              {prompt.length.toLocaleString()} chars
             </span>
           </div>
           {fieldErrors.prompt && (
@@ -263,7 +267,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
               contentEditable
               suppressContentEditableWarning
               onInput={e => setPrompt(e.currentTarget.textContent ?? "")}
-              className="px-5 py-4 text-[13px] text-zinc-900 dark:text-zinc-100 leading-relaxed outline-none min-h-full whitespace-pre-wrap empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-300 dark:empty:before:text-zinc-700"
+              className="px-5 py-4 text-[15px] text-zinc-900 dark:text-zinc-100 leading-[1.7] outline-none min-h-full whitespace-pre-wrap empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-300 dark:empty:before:text-zinc-700"
               data-placeholder="Describe what this agent should do..."
             >
               {prompt}
@@ -273,11 +277,11 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 py-3 px-5 border-t border-zinc-100 dark:border-white/[0.04] flex items-center justify-end gap-2">
+      <div className="shrink-0 py-3 px-5 border-t border-zinc-100 dark:border-white/[0.04] flex items-center justify-end gap-3">
         <button
           type="button"
           onClick={() => onDone()}
-          className="h-8 px-4 rounded-lg text-[13px] font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-100"
+          className="h-9 px-5 rounded-xl text-[13px] font-bold text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
         >
           {isCreate ? "Cancel" : "Back"}
         </button>
@@ -285,7 +289,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
           type="button"
           onClick={handleSave}
           disabled={!hasChanges || saving}
-          className="h-8 px-4 rounded-lg text-[13px] font-medium bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-40 transition-colors duration-100"
+          className="h-9 px-5 rounded-xl text-[13px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 border-b-[3px] border-emerald-600 active:translate-y-[2px] active:border-b-0 disabled:opacity-40 transition-all"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : isCreate ? "Create" : "Save"}
         </button>
@@ -294,14 +298,27 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
   )
 }
 
-function FieldGroup({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
+function FieldGroup({
+  label,
+  icon,
+  color,
+  children,
+}: {
+  label: string
+  icon?: React.ReactNode
+  color: "emerald" | "blue" | "violet"
+  children: React.ReactNode
+}) {
+  const colors = {
+    emerald: "text-emerald-500 dark:text-emerald-400",
+    blue: "text-blue-500 dark:text-blue-400",
+    violet: "text-violet-500 dark:text-violet-400",
+  }
   return (
-    <div className="mb-5">
-      <div className="flex items-center gap-2 mb-1.5">
+    <div className="mb-6">
+      <div className={`flex items-center gap-2 mb-2 ${colors[color]}`}>
         {icon}
-        <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-600 uppercase tracking-wider">
-          {label}
-        </span>
+        <span className="text-[11px] font-bold uppercase tracking-wider">{label}</span>
       </div>
       {children}
     </div>

@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Calendar,
   Check,
-  CheckCircle2,
   ExternalLink,
   Flame,
   Loader2,
@@ -16,7 +15,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { dur, relTime, statusLabel, successRateColor, trigLabel } from "./agents-helpers"
+import { dur, relTime, statusLabel, trigLabel } from "./agents-helpers"
 import type { AgentDetailTab, EnrichedJob, RecentRun } from "./agents-types"
 
 // ── Shared constants ──
@@ -351,14 +350,14 @@ export function AgentListHeader({
   newAgentLoading?: boolean
 }) {
   return (
-    <div className="shrink-0 px-5 pt-5 pb-2 flex items-center justify-between">
+    <div className="shrink-0 pl-5 pr-16 pt-5 pb-2 flex items-center justify-center relative">
       <h2 className="text-[17px] font-bold text-zinc-900 dark:text-zinc-100">Agents</h2>
       <button
         type="button"
         onClick={onNewAgent}
         disabled={newAgentLoading}
         aria-label={newAgentLoading ? "Creating new agent" : "New agent"}
-        className="size-9 flex items-center justify-center rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 border-b-[3px] border-emerald-600 active:translate-y-[2px] active:border-b-0 transition-all disabled:opacity-40"
+        className="absolute right-5 size-9 flex items-center justify-center rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 border-b-[3px] border-emerald-600 active:translate-y-[2px] active:border-b-0 transition-all disabled:opacity-40"
         title="New agent"
       >
         {newAgentLoading ? <Loader2 size={15} className="animate-spin" /> : <Plus size={16} strokeWidth={2.5} />}
@@ -386,32 +385,36 @@ export function AgentDetailNav({
 
   return (
     <div className="shrink-0 px-4 pt-4 pb-2">
-      <div className="flex items-center gap-2 mb-3">
+      {/* Nav row: back button + centered tabs */}
+      <div className="flex items-center justify-center relative mb-3">
         <button
           type="button"
           onClick={onBack}
-          className="size-8 flex items-center justify-center rounded-xl text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-colors"
+          className="absolute left-0 size-8 flex items-center justify-center rounded-xl text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-colors"
         >
           <ArrowLeft size={15} />
         </button>
-        <h3 className="text-[16px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{name}</h3>
+        <div className="flex flex-row items-center gap-1">
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => onTabChange(tab.key)}
+              className={`rounded-xl py-1.5 px-4 text-[13px] font-bold transition-all ${
+                activeTab === tab.key
+                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="flex flex-row items-center gap-1 justify-center">
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => onTabChange(tab.key)}
-            className={`rounded-xl py-1.5 px-4 text-[13px] font-bold transition-all ${
-              activeTab === tab.key
-                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Agent name below tabs (hidden on edit to avoid duplication with name input) */}
+      {activeTab !== "edit" && (
+        <h3 className="text-[16px] font-bold text-zinc-900 dark:text-zinc-100 truncate text-center">{name}</h3>
+      )}
     </div>
   )
 }
