@@ -26,6 +26,44 @@ interface AgentEditViewProps {
   onChanged?: () => void
 }
 
+/** Build the changed-fields object for an edit update */
+function buildEditFields(
+  job: EnrichedJob,
+  state: { name: string; prompt: string; model: string; schedule: string; timeoutMin: string },
+  orig: { model: string; schedule: string; timeoutMin: string },
+): Record<string, unknown> {
+  const fields: Record<string, unknown> = {}
+  if (state.name !== job.name) fields.name = state.name
+  if (state.prompt !== (job.action_prompt ?? "")) fields.action_prompt = state.prompt || null
+  if (state.model !== orig.model) fields.action_model = state.model || null
+  if (state.schedule !== orig.schedule) fields.schedule_text = state.schedule || null
+  if (state.timeoutMin !== orig.timeoutMin)
+    fields.action_timeout_seconds = state.timeoutMin ? Number(state.timeoutMin) * 60 : null
+  return fields
+}
+
+/** Validate changed fields for an edit update */
+function validateEditFields(
+  job: EnrichedJob,
+  state: { name: string; prompt: string; timeoutMin: string },
+  origTimeoutMin: string,
+): AgentFieldErrors | null {
+  const errors: AgentFieldErrors = {}
+  if (state.name !== job.name) {
+    const e = validateAgentField("name", state.name)
+    if (e) errors.name = e
+  }
+  if (state.prompt !== (job.action_prompt ?? "")) {
+    const e = validateAgentField("prompt", state.prompt)
+    if (e) errors.prompt = e
+  }
+  if (state.timeoutMin !== origTimeoutMin) {
+    const e = validateAgentField("timeout", state.timeoutMin ? String(Number(state.timeoutMin) * 60) : "")
+    if (e) errors.timeout = e
+  }
+  return Object.keys(errors).length > 0 ? errors : null
+}
+
 export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditViewProps) {
   const isCreate = !job
 
@@ -42,9 +80,9 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<AgentFieldErrors>({})
-  const autoSaveTimer = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
 
   const promptRef = useRef<HTMLDivElement>(null)
+  const autoSaveTimer = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
 
   // Re-sync when job changes
   useEffect(() => {
@@ -66,10 +104,12 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
     }
   }, [job?.id])
 
-  // ── Change detection ──
+  // ── Derived values ──
   const origModel = job && isValidClaudeModel(job.action_model) ? job.action_model : ""
   const origTimeoutMin = String(timeoutMinutes(job?.action_timeout_seconds))
   const origSchedule = job ? trigLabel(job) : ""
+  const state = { name, prompt, model, schedule, timeoutMin }
+  const orig = { model: origModel, schedule: origSchedule, timeoutMin: origTimeoutMin }
 
   const hasChanges = isCreate
     ? true
@@ -79,151 +119,74 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       schedule !== origSchedule ||
       timeoutMin !== origTimeoutMin
 
-  // ── Save ──
-  const timeoutSeconds = timeoutMin ? String(Number(timeoutMin) * 60) : ""
-
-  const handleSave = useCallback(async () => {
-    if (isCreate) {
-      const errors = validateAgentCreate({ name, prompt, schedule, timeout: timeoutSeconds })
-      if (errors) {
-        setFieldErrors(errors)
-        return
-      }
-    } else {
-      const errors: AgentFieldErrors = {}
-      if (name !== job.name) {
-        const e = validateAgentField("name", name)
-        if (e) errors.name = e
-      }
-      if (prompt !== (job.action_prompt ?? "")) {
-        const e = validateAgentField("prompt", prompt)
-        if (e) errors.prompt = e
-      }
-      if (timeoutMin !== origTimeoutMin) {
-        const e = validateAgentField("timeout", timeoutSeconds)
-        if (e) errors.timeout = e
-      }
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors)
-        return
-      }
-    }
-
-    setFieldErrors({})
-    setSaving(true)
-    setError(null)
-    try {
-      if (isCreate) {
-        const site = createData?.sites?.[0]
-        if (!site) throw new Error("No site available")
-
-        const result: AutomationConfigResult = {
-          siteId: site.id,
-          siteName: site.hostname,
-          name,
-          prompt,
-          model: (model || CLAUDE_MODELS.HAIKU_4_5) as ClaudeModel,
-          scheduleType: "custom",
-          scheduleText: schedule,
-          scheduleTime: "09:00",
-        }
-        const request = buildCreatePayload(configResultToFormData(result))
-        await postty("automations/create", request)
-        onDone(`Agent "${name}" created. Schedule: ${schedule}`)
-      } else {
-        const fields: Record<string, unknown> = {}
-        if (name !== job.name) fields.name = name
-        if (prompt !== (job.action_prompt ?? "")) fields.action_prompt = prompt || null
-        if (model !== origModel) fields.action_model = model || null
-        if (schedule !== origSchedule) fields.schedule_text = schedule || null
-        if (timeoutMin !== origTimeoutMin) fields.action_timeout_seconds = timeoutMin ? Number(timeoutMin) * 60 : null
-
-        await agentsApi.update(job.id, fields)
-        onChanged?.()
-        onDone()
-      }
-    } catch (e) {
-      if (e instanceof ApiError) {
-        setError(e.message)
-      } else {
-        setError(e instanceof Error ? e.message : "Failed to save")
-      }
-    } finally {
-      setSaving(false)
-    }
-  }, [
-    isCreate,
-    createData,
-    job,
-    name,
-    prompt,
-    model,
-    schedule,
-    timeoutMin,
-    timeoutSeconds,
-    origModel,
-    origSchedule,
-    origTimeoutMin,
-    onDone,
-    onChanged,
-  ])
-
-  // ── Auto-save for edit mode (debounced 1.5s) ──
-  const autoSave = useCallback(async () => {
-    if (isCreate || !job || !hasChanges) return
-
-    const errors: AgentFieldErrors = {}
-    if (name !== job.name) {
-      const e = validateAgentField("name", name)
-      if (e) errors.name = e
-    }
-    if (prompt !== (job.action_prompt ?? "")) {
-      const e = validateAgentField("prompt", prompt)
-      if (e) errors.prompt = e
-    }
-    if (Object.keys(errors).length > 0) {
+  // ── Create handler (explicit submit) ──
+  const handleCreate = useCallback(async () => {
+    const errors = validateAgentCreate({
+      name,
+      prompt,
+      schedule,
+      timeout: timeoutMin ? String(Number(timeoutMin) * 60) : "",
+    })
+    if (errors) {
       setFieldErrors(errors)
       return
     }
 
     setFieldErrors({})
     setSaving(true)
-    setSaved(false)
     setError(null)
     try {
-      const fields: Record<string, unknown> = {}
-      if (name !== job.name) fields.name = name
-      if (prompt !== (job.action_prompt ?? "")) fields.action_prompt = prompt || null
-      if (model !== origModel) fields.action_model = model || null
-      if (schedule !== origSchedule) fields.schedule_text = schedule || null
-      if (timeoutMin !== origTimeoutMin) fields.action_timeout_seconds = timeoutMin ? Number(timeoutMin) * 60 : null
+      const site = createData?.sites?.[0]
+      if (!site) throw new Error("No site available")
 
-      if (Object.keys(fields).length > 0) {
-        await agentsApi.update(job.id, fields)
-        onChanged?.()
-        setSaved(true)
-        globalThis.setTimeout(() => setSaved(false), 2000)
+      const result: AutomationConfigResult = {
+        siteId: site.id,
+        siteName: site.hostname,
+        name,
+        prompt,
+        model: (model || CLAUDE_MODELS.HAIKU_4_5) as ClaudeModel,
+        scheduleType: "custom",
+        scheduleText: schedule,
+        scheduleTime: "09:00",
       }
+      const request = buildCreatePayload(configResultToFormData(result))
+      await postty("automations/create", request)
+      onDone(`Agent "${name}" created. Schedule: ${schedule}`)
     } catch (e) {
-      if (e instanceof ApiError) setError(e.message)
-      else setError(e instanceof Error ? e.message : "Failed to save")
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Failed to create")
     } finally {
       setSaving(false)
     }
-  }, [
-    isCreate,
-    job,
-    name,
-    prompt,
-    model,
-    schedule,
-    timeoutMin,
-    origModel,
-    origSchedule,
-    origTimeoutMin,
-    hasChanges,
-    onChanged,
-  ])
+  }, [createData, name, prompt, model, schedule, timeoutMin, onDone])
+
+  // ── Auto-save for edit mode (debounced) ──
+  const autoSave = useCallback(async () => {
+    if (isCreate || !job || !hasChanges) return
+
+    const errors = validateEditFields(job, state, origTimeoutMin)
+    if (errors) {
+      setFieldErrors(errors)
+      return
+    }
+
+    const fields = buildEditFields(job, state, orig)
+    if (Object.keys(fields).length === 0) return
+
+    setFieldErrors({})
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+    try {
+      await agentsApi.update(job.id, fields)
+      onChanged?.()
+      setSaved(true)
+      globalThis.setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Failed to save")
+    } finally {
+      setSaving(false)
+    }
+  }, [isCreate, job, state, orig, origTimeoutMin, hasChanges, onChanged])
 
   // Debounce auto-save on edit
   useEffect(() => {
@@ -363,7 +326,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
               Saved
             </span>
           )}
-          {error && <span className="text-red-500">{error}</span>}
+          {error && !saving && <span className="text-red-500">{error}</span>}
         </div>
         <div className="flex items-center gap-3">
           {isCreate ? (
@@ -377,7 +340,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
               </button>
               <button
                 type="button"
-                onClick={handleSave}
+                onClick={handleCreate}
                 disabled={saving}
                 className="h-9 px-5 rounded-xl text-[13px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 border-b-[3px] border-emerald-600 active:translate-y-[2px] active:border-b-0 disabled:opacity-40 transition-all"
               >
