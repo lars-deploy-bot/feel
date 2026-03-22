@@ -3,14 +3,19 @@ import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
 
-const { getSessionUserMock, setUserEnvKeyMock, listUserEnvKeysMock, deleteUserEnvKeyMock, captureExceptionMock } =
-  vi.hoisted(() => ({
-    getSessionUserMock: vi.fn(),
-    setUserEnvKeyMock: vi.fn(),
-    listUserEnvKeysMock: vi.fn(),
-    deleteUserEnvKeyMock: vi.fn(),
-    captureExceptionMock: vi.fn(),
-  }))
+const {
+  getSessionUserMock,
+  setUserEnvKeyMock,
+  listUserEnvKeysMock,
+  deleteAllUserEnvKeyScopesMock,
+  captureExceptionMock,
+} = vi.hoisted(() => ({
+  getSessionUserMock: vi.fn(),
+  setUserEnvKeyMock: vi.fn(),
+  listUserEnvKeysMock: vi.fn(),
+  deleteAllUserEnvKeyScopesMock: vi.fn(),
+  captureExceptionMock: vi.fn(),
+}))
 
 vi.mock("@/features/auth/lib/auth", () => ({
   getSessionUser: getSessionUserMock,
@@ -20,7 +25,7 @@ vi.mock("@/lib/oauth/oauth-instances", () => ({
   getUserEnvKeysManager: () => ({
     setUserEnvKey: setUserEnvKeyMock,
     listUserEnvKeys: listUserEnvKeysMock,
-    deleteUserEnvKey: deleteUserEnvKeyMock,
+    deleteAllUserEnvKeyScopes: deleteAllUserEnvKeyScopesMock,
   }),
 }))
 
@@ -168,7 +173,7 @@ describe("GET /api/user-env-keys", () => {
 describe("DELETE /api/user-env-keys", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    deleteUserEnvKeyMock.mockResolvedValue(undefined)
+    deleteAllUserEnvKeyScopesMock.mockResolvedValue(undefined)
   })
 
   it("returns 401 when unauthenticated", async () => {
@@ -201,13 +206,13 @@ describe("DELETE /api/user-env-keys", () => {
     expect(response.status).toBe(200)
     expect(json.ok).toBe(true)
     expect(json.keyName).toBe("OPENAI_API_KEY")
-    expect(deleteUserEnvKeyMock).toHaveBeenCalledWith("user-1", "OPENAI_API_KEY", undefined)
+    expect(deleteAllUserEnvKeyScopesMock).toHaveBeenCalledWith("user-1", "OPENAI_API_KEY", undefined)
   })
 
   it("returns 500 when delete fails", async () => {
     getSessionUserMock.mockResolvedValue({ id: "user-1" })
     const error = new Error("delete failed")
-    deleteUserEnvKeyMock.mockRejectedValue(error)
+    deleteAllUserEnvKeyScopesMock.mockRejectedValue(error)
 
     const response = await DELETE(createDeleteRequest({ keyName: "OPENAI_API_KEY" }))
     const json = await response.json()
