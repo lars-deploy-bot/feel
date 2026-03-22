@@ -143,7 +143,7 @@ describe("deploysRoutes", () => {
 
   it("requires auth on the fully wired manager route", async () => {
     process.env.SUPABASE_URL = "https://example.supabase.co"
-    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key"
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-service-role-key"
     process.env.ALIVE_PASSCODE = "test-passcode"
     process.env.NODE_ENV = "development"
     process.env.E2B_API_KEY = "e2b_test_key"
