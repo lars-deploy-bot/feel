@@ -112,9 +112,9 @@ export async function register() {
           })
         }
       }
-    } catch (err) {
+    } catch (_err) {
       const Sentry = await import("@sentry/nextjs")
-      Sentry.captureMessage(`caddy-shell is not reachable — terminal and file watch WebSockets will fail`, "warning")
+      Sentry.captureMessage("caddy-shell is not reachable — terminal and file watch WebSockets will fail", "warning")
     }
 
     console.log("[Instrumentation] Server-side services initialized")

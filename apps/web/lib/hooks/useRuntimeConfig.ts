@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import type { RuntimeConfig } from "@/app/api/config/route"
+
 export type { RuntimeConfig }
 
 // ---------------------------------------------------------------------------
