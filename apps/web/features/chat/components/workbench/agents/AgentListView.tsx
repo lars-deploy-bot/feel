@@ -2,9 +2,9 @@
 
 import { Bot, ChevronDown, Play, RotateCw } from "lucide-react"
 import { useMemo, useState } from "react"
-import { ActionButton, RunDots, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
+import { ActionButton, Dot, RunDots, StatsGrid, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
 import { agentsApi } from "./agents-api"
-import { dur, futTime, healthScore, relTime, trigLabel } from "./agents-helpers"
+import { healthScore, relTime, trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 
 export function AgentListView({
@@ -25,9 +25,9 @@ export function AgentListView({
   const running = jobs.filter(j => j.status === "running").length
 
   return (
-    <>
+    <div className="max-w-2xl mx-auto w-full">
       {/* Stats bar */}
-      <div className="px-4 py-2 flex items-center justify-between text-[11px] tabular-nums border-b border-zinc-50 dark:border-white/[0.02]">
+      <div className="px-6 py-2 flex items-center justify-between text-[11px] tabular-nums border-b border-zinc-50 dark:border-white/[0.02]">
         <span className="text-zinc-500 dark:text-zinc-400">
           {jobs.length} agent{jobs.length !== 1 ? "s" : ""}
         </span>
@@ -35,13 +35,13 @@ export function AgentListView({
           <span className="text-emerald-600 dark:text-emerald-400">{active} active</span>
           {running > 0 && (
             <>
-              <span className="text-zinc-200 dark:text-zinc-800">·</span>
+              <Dot />
               <span className="text-blue-500">{running} running</span>
             </>
           )}
           {failing > 0 && (
             <>
-              <span className="text-zinc-200 dark:text-zinc-800">·</span>
+              <Dot />
               <span className="text-red-500">{failing} failing</span>
             </>
           )}
@@ -60,7 +60,7 @@ export function AgentListView({
         const peeking = peekId === job.id
         return (
           <div key={job.id} className={peeking ? "bg-zinc-50/60 dark:bg-white/[0.015]" : ""}>
-            <div className="flex items-center px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors">
+            <div className="flex items-center px-6 py-2.5 hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors">
               <button
                 type="button"
                 onClick={() => setPeekId(peeking ? null : job.id)}
@@ -87,7 +87,7 @@ export function AgentListView({
                       <TrigIcon type={job.trigger_type} />
                       {trigLabel(job)}
                     </span>
-                    <span className="text-zinc-200 dark:text-zinc-800">·</span>
+                    <Dot />
                     <span className="tabular-nums">{relTime(job.last_run_at)}</span>
                   </div>
                 </div>
@@ -98,31 +98,9 @@ export function AgentListView({
             </div>
 
             {peeking && (
-              <div className="px-4 pb-3 pt-1 border-t border-zinc-100/50 dark:border-white/[0.02]">
-                <div className="flex gap-4 py-1.5 mb-2">
-                  {[
-                    {
-                      label: "Success",
-                      value: `${job.success_rate}%`,
-                      color:
-                        job.success_rate >= 95
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : job.success_rate >= 80
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-red-600 dark:text-red-400",
-                    },
-                    { label: "Avg time", value: dur(job.avg_duration_ms), color: "text-zinc-900 dark:text-zinc-100" },
-                    {
-                      label: "Next",
-                      value: job.is_active ? futTime(job.next_run_at) : "paused",
-                      color: "text-zinc-900 dark:text-zinc-100",
-                    },
-                  ].map(s => (
-                    <div key={s.label}>
-                      <p className={`text-[14px] font-semibold tabular-nums ${s.color}`}>{s.value}</p>
-                      <p className="text-[10px] text-zinc-400 dark:text-zinc-600">{s.label}</p>
-                    </div>
-                  ))}
+              <div className="px-6 pb-3 pt-1 border-t border-zinc-100/50 dark:border-white/[0.02]">
+                <div className="py-1.5 mb-2">
+                  <StatsGrid job={job} nextLabel="Next" fontSize="text-[14px]" />
                 </div>
                 {job.action_prompt && (
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-2 mb-2">
@@ -137,7 +115,7 @@ export function AgentListView({
                     Details
                   </ActionButton>
                   <ActionButton
-                    onClick={() => agentsApi.trigger(job.id).then(() => setTimeout(onChanged, 1500))}
+                    onClick={() => agentsApi.trigger(job.id).then(() => globalThis.setTimeout(onChanged, 1500))}
                     icon={<Play size={11} />}
                   >
                     Run now
@@ -146,10 +124,10 @@ export function AgentListView({
               </div>
             )}
 
-            {!peeking && <div className="mx-4 border-b border-zinc-100 dark:border-white/[0.03]" />}
+            {!peeking && <div className="mx-6 border-b border-zinc-100 dark:border-white/[0.03]" />}
           </div>
         )
       })}
-    </>
+    </div>
   )
 }
