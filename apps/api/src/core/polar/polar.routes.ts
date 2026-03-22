@@ -127,12 +127,6 @@ polarRoutes.route("/", authed)
 // ---------------------------------------------------------------------------
 
 polarRoutes.post("/webhook", async c => {
-  const webhookSecret = env.POLAR_WEBHOOK_SECRET
-  if (!webhookSecret) {
-    console.error("[polar/webhook] POLAR_WEBHOOK_SECRET is not configured")
-    return c.json({ error: "Webhook not configured" }, 500)
-  }
-
   const polar = getPolarClient()
   const body = await c.req.text()
   const headers: Record<string, string> = {}

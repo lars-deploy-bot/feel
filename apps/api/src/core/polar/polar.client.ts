@@ -6,18 +6,14 @@ let polarClient: Polar | null = null
 /**
  * Get the Polar SDK client singleton.
  * Uses sandbox for dev/staging, production for production.
- * Requires separate tokens — sandbox tokens from sandbox.polar.sh,
- * production tokens from polar.sh.
+ *
+ * POLAR_ACCESS_TOKEN is required at startup (validated by env schema).
+ * Sandbox tokens come from sandbox.polar.sh, production from polar.sh.
  */
 export function getPolarClient(): Polar {
   if (polarClient) return polarClient
 
-  const token = env.POLAR_ACCESS_TOKEN
-  if (!token) {
-    throw new Error("POLAR_ACCESS_TOKEN is not configured. Set it to enable billing.")
-  }
-
   const server = env.ALIVE_ENV === "production" ? "production" : "sandbox"
-  polarClient = new Polar({ accessToken: token, server })
+  polarClient = new Polar({ accessToken: env.POLAR_ACCESS_TOKEN, server })
   return polarClient
 }

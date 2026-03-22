@@ -4,6 +4,8 @@ import type { env } from "../../config/env"
  * Each product must have IDs for BOTH environments.
  * This prevents product drift — you can't add a sandbox product
  * without also adding the production counterpart (and vice versa).
+ *
+ * Empty strings are caught at startup by validatePolarProducts().
  */
 interface PolarProduct {
   sandbox: string
@@ -34,18 +36,35 @@ function resolveEnv(aliveEnv: typeof env.ALIVE_ENV): PolarEnv {
 }
 
 /**
+ * Validate all products have non-empty IDs for both environments.
+ * Call at startup — crashes immediately if any product is misconfigured.
+ */
+export function validatePolarProducts(): void {
+  const errors: string[] = []
+
+  for (const [name, product] of Object.entries(PRODUCTS)) {
+    if (!product.sandbox) {
+      errors.push(`${name}: missing sandbox product ID`)
+    }
+    if (!product.production) {
+      errors.push(`${name}: missing production product ID`)
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`[Polar] Product configuration is incomplete:\n  ${errors.join("\n  ")}`)
+  }
+}
+
+/**
  * Get the product ID → credit mapping for the current environment.
- * Builds the map at runtime from the dual-environment product definitions.
  */
 export function getPolarProducts(aliveEnv: typeof env.ALIVE_ENV): Record<string, { credits: number; label: string }> {
   const polarEnv = resolveEnv(aliveEnv)
   const result: Record<string, { credits: number; label: string }> = {}
 
   for (const product of Object.values(PRODUCTS)) {
-    const id = product[polarEnv]
-    if (id) {
-      result[id] = { credits: product.credits, label: product.label }
-    }
+    result[product[polarEnv]] = { credits: product.credits, label: product.label }
   }
 
   return result
@@ -56,12 +75,11 @@ export function getPolarProducts(aliveEnv: typeof env.ALIVE_ENV): Record<string,
  */
 export function getProductId(name: keyof typeof PRODUCTS, aliveEnv: typeof env.ALIVE_ENV): string {
   const polarEnv = resolveEnv(aliveEnv)
-  const id = PRODUCTS[name][polarEnv]
-  if (!id) {
-    throw new Error(`Polar product ${name} has no ${polarEnv} ID configured`)
-  }
-  return id
+  return PRODUCTS[name][polarEnv]
 }
 
 /** 1 USD = 10 credits (matches existing conversion rate) */
 export const USD_TO_CREDITS = 10
+
+// Fail fast at module load — if product IDs are missing, crash immediately
+validatePolarProducts()
