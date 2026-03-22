@@ -64,6 +64,7 @@ import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useDebugVisible, useWorkbench, useWorkbenchFullscreen } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
+import { appendInput, clearInput, getInputValue, setInput } from "@/lib/stores/inputStore"
 import { useLastSeenStreamSeq, useStreamingActions } from "@/lib/stores/streamingStore"
 import { useTabActions, useTabDataStore } from "@/lib/stores/tabStore"
 import { useSelectedOrgId, useWorkspaceActions, useWorkspaceStoreBase } from "@/lib/stores/workspaceStore"
@@ -99,7 +100,6 @@ function resolveOrgForWorkspace(domain: string, queryClient: QueryClient): strin
 }
 
 function ChatPageContent() {
-  const [msg, setMsg] = useState("")
   const {
     ensureTabGroupWithTab,
     addMessage,
@@ -454,7 +454,7 @@ function ChatPageContent() {
     registerElementSelectHandler(element => {
       const shortPath = element.fileName.replace(/^.*\/src\//, "src/")
       const reference = `@${element.displayName} in ${shortPath}:${element.lineNumber}`
-      setMsg(prev => (prev.trim() ? `${prev} ${reference}` : reference))
+      appendInput(reference)
       setTimeout(() => chatInputRef.current?.focus(), 0)
     })
   }, [registerElementSelectHandler])
@@ -616,8 +616,6 @@ function ChatPageContent() {
     tabGroupId,
     isTerminal,
     busy,
-    msg,
-    setMsg,
     addMessage,
     chatInputRef,
     forceScrollToBottom,
@@ -708,8 +706,6 @@ function ChatPageContent() {
     activeTabId: tabId,
     onSwitchTab: switchTab,
     onInitializeTab: initializeTab,
-    currentInput: msg,
-    onInputRestore: setMsg,
   })
 
   // Image upload handler
@@ -757,7 +753,7 @@ function ChatPageContent() {
   }, [urlSearchParams])
 
   const handleSubdomainInitialize = (initialMessage: string, initialWorkspace: string) => {
-    setMsg(initialMessage)
+    setInput(initialMessage)
     if (initialWorkspace) {
       setWorkspace(initialWorkspace)
     }
@@ -803,7 +799,7 @@ function ChatPageContent() {
     if (previousTabId) {
       streamingActions.clearTab(previousTabId)
     }
-    setMsg("")
+    clearInput()
     setTimeout(() => chatInputRef.current?.focus(), 0)
   }, [tabId, streamingActions, startNewTabGroup, tabWorkspace, ensureTabGroupWithTab])
 
@@ -825,7 +821,7 @@ function ChatPageContent() {
       if (tabId) {
         streamingActions.clearTab(tabId)
       }
-      setMsg("")
+      clearInput()
       setTimeout(() => chatInputRef.current?.focus(), 0)
     },
     [queryClient, setSelectedOrg, setWorkspace, createTabGroupWithTab, ensureTabGroupWithTab, tabId, streamingActions],
@@ -844,7 +840,7 @@ function ChatPageContent() {
   }, [workspace, isSuperadminWorkspace])
 
   const handleInsertTemplate = useCallback((prompt: string) => {
-    setMsg(prompt)
+    setInput(prompt)
   }, [])
 
   const handleTabGroupSelect = useCallback(
@@ -870,7 +866,7 @@ function ChatPageContent() {
             initializeTab(tab.id, selectedTabGroupId, conversation.workspace)
             switchTab(tab.id)
             void dexieLoadTabMessages(tab.id)
-            setMsg(tab.inputDraft ?? "")
+            setInput(tab.inputDraft ?? "")
           }
           return
         }
@@ -924,7 +920,7 @@ function ChatPageContent() {
             await ensureTabGroupWithTab(tabWorkspace, created.tabGroupId, created.tabId)
           }
         }
-        setMsg("")
+        clearInput()
       }
     },
     [
@@ -1096,12 +1092,11 @@ function ChatPageContent() {
                       {!isAutomationRun && (
                         <AgentManagerIndicator
                           isEvaluating={isEvaluatingProgress}
-                          message={msg}
                           workspace={workspace}
                           agentManagerAbortRef={agentManagerAbortRef}
                           agentManagerTimeoutRef={agentManagerTimeoutRef}
                           onCancel={() => {
-                            if (msg.startsWith("agentmanager>")) setMsg("")
+                            if (getInputValue().startsWith("agentmanager>")) clearInput()
                             // isEvaluatingProgress is managed by useChatMessaging hook
                           }}
                         />
@@ -1155,8 +1150,6 @@ function ChatPageContent() {
                       ) : tabId ? (
                         <ChatInput
                           ref={chatInputRef}
-                          message={msg}
-                          setMessage={setMsg}
                           busy={busy}
                           isReady={isChatReady && !!workspace}
                           isStopping={isStopping}
@@ -1223,8 +1216,6 @@ function ChatPageContent() {
               ) : tabId ? (
                 <ChatInput
                   ref={chatInputRef}
-                  message={msg}
-                  setMessage={setMsg}
                   busy={busy}
                   isReady={isChatReady && !!workspace}
                   isStopping={isStopping}
