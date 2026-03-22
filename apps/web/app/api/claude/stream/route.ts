@@ -28,7 +28,7 @@ import {
   unlockConversation,
 } from "@/features/auth/lib/sessionStore"
 import { hasSessionCookie } from "@/features/auth/types/guards"
-import { isInputSafeWithDebug } from "@/features/chat/lib/formatMessage"
+import { type InputSafetyResult, isInputSafeWithDebug } from "@/features/chat/lib/formatMessage"
 import {
   BridgeInterruptSource,
   createDoneMessage,
@@ -50,7 +50,8 @@ import {
   STREAM_TYPES,
 } from "@/lib/claude/agent-constants.mjs"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { DOMAIN_RUNTIME_SELECT, resolveDomainRuntimeQuery } from "@/lib/domain/resolve-domain-runtime"
+import { getOrgCreditsByOrgId } from "@/lib/credits/supabase-credits"
+import { fetchFullDomainRecord } from "@/lib/domain/resolve-domain-runtime"
 import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { buildAnalyzeImagePrompt, fetchAndSaveAnalyzeImages } from "@/lib/image-analyze/fetch-and-save"
@@ -69,10 +70,7 @@ import {
   createStreamBuffer,
   errorStreamBuffer,
 } from "@/lib/stream/stream-buffer"
-import { createAppClient } from "@/lib/supabase/app"
-import { createRLSAppClient } from "@/lib/supabase/server-rls"
 import type { TokenSource } from "@/lib/tokens"
-import { getOrgCredits } from "@/lib/tokens"
 import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
 import { BodySchema } from "@/types/guards/api"
 import { logRetryContract } from "./retry-observability"
@@ -163,7 +161,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const jar = await cookies()
+    // Parallelize cookies() and headers() — both are async in Next.js 15+ and independent
+    const [jar, headersList] = await Promise.all([cookies(), headers()])
     logger.log("Checking session cookie...")
 
     if (!hasSessionCookie(jar.get(COOKIE_NAMES.SESSION))) {
@@ -222,23 +221,7 @@ export async function POST(req: NextRequest) {
       logger.log("Using user-selected model:", userModel)
     }
 
-    // Check input safety (skip for superadmins - they should never be interrupted)
-    if (!user.isSuperadmin) {
-      logger.log("Checking input safety...")
-      const safetyCheck = await isInputSafeWithDebug(message)
-      if (safetyCheck.result === "unsafe") {
-        logger.log(`Input flagged as unsafe. Model response: "${safetyCheck.debug.rawContent?.slice(0, 200)}"`)
-        return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-          status: 400,
-          details: { field: "message content", requestId },
-        })
-      }
-      logger.log("Input safety check passed")
-    } else {
-      logger.log("Skipping input safety check (superadmin)")
-    }
-
-    const host = (await headers()).get("host")
+    const host = headersList.get("host")
     if (!host) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
@@ -248,22 +231,137 @@ export async function POST(req: NextRequest) {
     const origin = req.headers.get("origin")
     logger.log("Host:", host)
 
-    let cwd: string
+    // Resolve and validate the requested model early (no network, fast).
+    const requestedModel = userModel ?? env.CLAUDE_MODEL
+    if (!isValidClaudeModel(requestedModel)) {
+      const code = isRetiredModel(requestedModel) ? ErrorCodes.MODEL_NOT_AVAILABLE : ErrorCodes.MODEL_INVALID
+      return structuredErrorResponse(code, {
+        status: 400,
+        details: { requestId, model: requestedModel, retired: isRetiredModel(requestedModel) },
+      })
+    }
+
+    // Step 1: Resolve authentication from trusted sources only (fast, sync check).
+    if (!hasOAuthCredentials()) {
+      logger.log("No OAuth credentials available")
+      return structuredErrorResponse(ErrorCodes.OAUTH_CONFIG_ERROR, {
+        status: 503,
+        details: { provider: "Anthropic", workspace: requestWorkspace, requestId },
+      })
+    }
+
+    // ========================================================================
+    // PHASE 2: Parallel independent network calls
+    // These are all independent after auth+body parsing.
+    // Running them in parallel cuts ~200-300ms of sequential overhead.
+    // ========================================================================
+    const workspaceName = requestWorkspace ?? host
+
+    const SAFE_RESULT: InputSafetyResult = {
+      result: "safe",
+      debug: { fullResponse: null, rawContent: null, error: null, model: "skipped", prompt: "" },
+    }
+    const [inputSafetyResult, workspaceAccessResult, domainRecordResult, oauthTokenResult] = await Promise.allSettled([
+      // Input safety check (calls Groq API — skip for superadmins)
+      user.isSuperadmin ? Promise.resolve(SAFE_RESULT) : isInputSafeWithDebug(message),
+
+      // Verify workspace authorization
+      verifyWorkspaceAccess(user, body, `[Claude Stream ${requestId}]`),
+
+      // Single domain query: runtime fields + org_id (replaces 3 separate queries)
+      fetchFullDomainRecord(workspaceName),
+
+      // Anthropic OAuth token refresh
+      getValidAccessToken(),
+    ])
+    timing("after_parallel_phase")
+
+    // --- Unpack input safety ---
+    if (inputSafetyResult.status === "rejected") {
+      logger.error("Input safety check failed:", inputSafetyResult.reason)
+      // Fail open: don't block if safety service is down
+    } else if (inputSafetyResult.value.result === "unsafe") {
+      const rawContent = inputSafetyResult.value.debug.rawContent?.slice(0, 200) ?? ""
+      logger.log(`Input flagged as unsafe. Model response: "${rawContent}"`)
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: { field: "message content", requestId },
+      })
+    } else if (!user.isSuperadmin) {
+      logger.log("Input safety check passed")
+    }
+
+    // --- Unpack workspace access ---
     let resolvedWorkspaceName: string | null
-    let tokenSource: TokenSource
+    if (workspaceAccessResult.status === "rejected") {
+      logger.error("Workspace access verification failed:", workspaceAccessResult.reason)
+      Sentry.captureException(workspaceAccessResult.reason)
+      return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, {
+        status: 404,
+        details: { host: workspaceName, requestWorkspace, requestFailed: true, requestId },
+      })
+    }
+    resolvedWorkspaceName = workspaceAccessResult.value
+    if (!resolvedWorkspaceName) {
+      return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, { status: 401, details: { requestId } })
+    }
+    logger.log("Workspace authentication verified for:", resolvedWorkspaceName)
+
+    // --- Unpack domain record (single query replaces 3 separate app.domains queries) ---
+    if (domainRecordResult.status === "rejected") {
+      logger.error("Domain record fetch failed:", domainRecordResult.reason)
+      Sentry.captureException(domainRecordResult.reason)
+      return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, {
+        status: 404,
+        details: { host: resolvedWorkspaceName, requestId },
+      })
+    }
+    const domainRecord = domainRecordResult.value
+    if (!domainRecord) {
+      logger.error("Domain not found in database:", resolvedWorkspaceName)
+      return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, {
+        status: 404,
+        details: { host: resolvedWorkspaceName, requestId },
+      })
+    }
+
+    // --- Unpack Anthropic OAuth token ---
     let oauthAccessToken: string | null = null
+    if (oauthTokenResult.status === "rejected") {
+      logger.error("OAuth token refresh failed:", oauthTokenResult.reason)
+      Sentry.captureException(oauthTokenResult.reason)
+      return structuredErrorResponse(ErrorCodes.OAUTH_EXPIRED, {
+        status: 503,
+        details: { workspace: resolvedWorkspaceName, requestId },
+      })
+    }
+    if (!oauthTokenResult.value) {
+      logger.log("OAuth credentials missing or unreadable")
+      return structuredErrorResponse(ErrorCodes.OAUTH_EXPIRED, {
+        status: 503,
+        details: { workspace: resolvedWorkspaceName, requestId },
+      })
+    }
+    if (oauthTokenResult.value.refreshed) {
+      logger.log("OAuth token was expired and has been refreshed")
+    }
+    oauthAccessToken = oauthTokenResult.value.accessToken
+
+    // ========================================================================
+    // PHASE 3: Sequential steps that depend on Phase 2 results
+    // ========================================================================
+
+    let cwd: string
+    let tokenSource: TokenSource
 
     try {
-      // Security: Verify workspace authorization BEFORE resolving paths
-      resolvedWorkspaceName = await verifyWorkspaceAccess(user, body, `[Claude Stream ${requestId}]`)
-
-      if (!resolvedWorkspaceName) {
-        return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, { status: 401, details: { requestId } })
-      }
-      logger.log("Workspace authentication verified for:", resolvedWorkspaceName)
-
-      // Only after authorization, resolve workspace path
-      const workspaceResult = await resolveWorkspace({ ...body, workspace: requestWorkspace }, requestId, origin)
+      // Resolve workspace path using pre-fetched domain record (avoids re-querying app.domains)
+      const workspaceResult = await resolveWorkspace(
+        { ...body, workspace: requestWorkspace },
+        requestId,
+        origin,
+        domainRecord,
+      )
       if (!workspaceResult.success) {
         return workspaceResult.response
       }
@@ -272,56 +370,26 @@ export async function POST(req: NextRequest) {
       // Ensure workspace has required directory structure (.alive/files, etc.)
       await ensureWorkspaceSchema(cwd)
 
-      // Step 1: Resolve authentication from trusted sources only.
-      // Never rely on workspace-local .env files for auth discovery.
-      if (!hasOAuthCredentials()) {
-        logger.log("No OAuth credentials available")
-        return structuredErrorResponse(ErrorCodes.OAUTH_CONFIG_ERROR, {
-          status: 503,
-          details: { provider: "Anthropic", workspace: resolvedWorkspaceName, requestId },
-        })
-      }
+      // Determine billing using org_id from the unified domain query (avoids re-querying app.domains)
+      if (domainRecord.org_id) {
+        const orgCredits = await getOrgCreditsByOrgId(domainRecord.org_id)
+        const COST_ESTIMATE = 1
 
-      // OAuth: refresh if needed, then pass resolved access token explicitly.
-      // Runtime auth must only come from trusted token storage, never request/body keys.
-      logger.log("Using OAuth credentials from secure token store")
-      try {
-        const oauthResult = await getValidAccessToken()
-        if (!oauthResult) {
-          logger.log("OAuth credentials missing or unreadable")
-          return structuredErrorResponse(ErrorCodes.OAUTH_EXPIRED, {
-            status: 503,
-            details: { workspace: resolvedWorkspaceName, requestId },
-          })
-        }
-        if (oauthResult.refreshed) {
-          logger.log("OAuth token was expired and has been refreshed")
-        }
-        oauthAccessToken = oauthResult.accessToken
-      } catch (refreshError) {
-        logger.error("OAuth token refresh failed:", refreshError)
-        Sentry.captureException(refreshError)
-        return structuredErrorResponse(ErrorCodes.OAUTH_EXPIRED, {
-          status: 503,
-          details: { workspace: resolvedWorkspaceName, requestId },
-        })
-      }
-
-      // Step 2: Determine billing (workspace credits vs OAuth/no-credit path)
-      const orgCredits = await getOrgCredits(resolvedWorkspaceName)
-      const COST_ESTIMATE = 1
-
-      if (orgCredits !== null && orgCredits >= COST_ESTIMATE) {
-        tokenSource = "workspace"
-        logger.log(`Billing: workspace credits (${orgCredits} available)`)
-      } else {
-        // Using OAuth - no credit deduction (also handles transient credit lookup failures)
-        tokenSource = "user_provided"
-        if (orgCredits === null) {
-          logger.warn("Credit lookup failed for workspace, falling back to OAuth:", resolvedWorkspaceName)
+        if (orgCredits !== null && orgCredits >= COST_ESTIMATE) {
+          tokenSource = "workspace"
+          logger.log(`Billing: workspace credits (${orgCredits} available)`)
         } else {
-          logger.log(`Billing: OAuth (no credit deduction, workspace has ${orgCredits} credits)`)
+          tokenSource = "user_provided"
+          if (orgCredits === null) {
+            logger.warn("Credit lookup failed for workspace, falling back to OAuth:", resolvedWorkspaceName)
+          } else {
+            logger.log(`Billing: OAuth (no credit deduction, workspace has ${orgCredits} credits)`)
+          }
         }
+      } else {
+        // No org_id means no credit tracking — use OAuth
+        tokenSource = "user_provided"
+        logger.log("Billing: OAuth (no org mapping)")
       }
     } catch (workspaceError) {
       logger.error("Workspace resolution failed:", workspaceError)
@@ -337,14 +405,6 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    if (!oauthAccessToken) {
-      logger.error("OAuth access token resolution failed")
-      return structuredErrorResponse(ErrorCodes.OAUTH_EXPIRED, {
-        status: 503,
-        details: { workspace: resolvedWorkspaceName ?? requestWorkspace ?? host, requestId },
-      })
-    }
-
     logInput({
       timestamp: new Date().toISOString(),
       userId: user.id,
@@ -356,21 +416,6 @@ export async function POST(req: NextRequest) {
       message,
       requestId,
     })
-
-    // Verify domain exists in app.domains
-    const app = user.isSuperadmin ? await createAppClient("service") : await createRLSAppClient()
-    const domainRecord = await resolveDomainRuntimeQuery(
-      resolvedWorkspaceName,
-      app.from("domains").select(DOMAIN_RUNTIME_SELECT).eq("hostname", resolvedWorkspaceName).single(),
-    )
-
-    if (!domainRecord) {
-      logger.error("Domain not found in database:", resolvedWorkspaceName)
-      return structuredErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, {
-        status: 404,
-        details: { host: resolvedWorkspaceName, requestId },
-      })
-    }
 
     // Session key: each tab = one independent Claude session
     sessionKey = tabKey({
@@ -396,12 +441,6 @@ export async function POST(req: NextRequest) {
     logger.log("✅ LOCK ACQUIRED for:", sessionKey)
 
     // === CANCELLATION SETUP - MUST BE IMMEDIATELY AFTER LOCK ===
-    // CRITICAL: Register cancellation callback RIGHT AFTER lock acquisition.
-    // There was a race condition where client could abort during async setup
-    // (OAuth, session lookup, etc.) and cancel endpoint would find nothing,
-    // leaving the lock held forever → 409 on next request.
-    //
-    // By registering immediately, cancel endpoint can always find and release the lock.
     const cancelState: CancelState = { requested: false, reader: null }
     const workerAbortController = new AbortController()
     let resolveCancelComplete: (() => void) | null = null
@@ -410,87 +449,85 @@ export async function POST(req: NextRequest) {
       logger.log("===== CANCEL CALLBACK INVOKED =====")
       logger.log("Cancel callback: lockKey =", sessionKey, "requestId =", requestId)
 
-      // Return Promise that resolves when onStreamComplete is called
-      // CRITICAL: Set resolveCancelComplete BEFORE triggering abort signals,
-      // because reader.cancel() synchronously calls onStreamComplete() which
-      // needs resolveCancelComplete to already be set!
       return new Promise<void>(resolve => {
         resolveCancelComplete = resolve
-
-        // Now safe to trigger abort - onStreamComplete will find resolveCancelComplete
         cancelState.requested = true
-        cancelState.reader?.cancel() // Interrupt blocked read - triggers onStreamComplete
-        workerAbortController.abort() // Signal worker pool to cancel (500ms timeout)
+        cancelState.reader?.cancel()
+        workerAbortController.abort()
         logger.log("Cancel callback: abort signals sent, waiting for cleanup to complete...")
       })
     })
     logger.log("Cancellation registered for requestId:", requestId)
 
-    // Super-early stop race fix:
-    // If cancel endpoint was hit before registration, consume queued intent now
-    // and short-circuit this request before any expensive setup starts.
-    const startupConsumeResults = await Promise.allSettled([
-      consumeCancelIntent(sessionKey, user.id),
-      consumeCancelIntentByRequestId(requestId, user.id),
-    ])
-    const consumedConversationIntent = startupConsumeResults[0].status === "fulfilled" && startupConsumeResults[0].value
-    const consumedRequestIntent = startupConsumeResults[1].status === "fulfilled" && startupConsumeResults[1].value
-    if (startupConsumeResults.some(r => r.status === "rejected")) {
-      logger.warn("Cancel-intent check degraded during startup; continuing with partial results")
-    }
-    if (consumedConversationIntent || consumedRequestIntent) {
-      logger.log("Queued cancel intent detected immediately after registration, short-circuiting stream startup")
-      unregisterCancellation(requestId)
-      unlockConversation(sessionKey)
-      lockAcquired = false
-      return createImmediateInterruptResponse(requestId, tabId)
-    }
-
-    // Create stream buffer for reconnection support
-    // Buffer persists to Redis so users can retrieve missed messages if they disconnect
-    try {
-      await createStreamBuffer(requestId, sessionKey, user.id, tabId)
-      logger.log("Stream buffer created for reconnection support")
-    } catch (bufferError) {
-      // Non-fatal: continue without buffering if Redis unavailable
-      logger.log("Stream buffer creation failed (non-fatal):", bufferError)
-    }
-
-    // Session resume flow:
-    // 1. Look up SDK session ID from our Supabase store (keyed by user+workspace+tab)
-    // 2. Pass it as `resume` to the worker pool → SDK resumes the conversation
-    // 3. SDK loads the session JSONL from CLAUDE_CONFIG_DIR/projects/
-    // 4. If the JSONL file is missing, SDK throws "No conversation found"
-    //    → caught below in SESSION RECOVERY, clears stale ID, retries fresh
+    // ========================================================================
+    // PHASE 4: Post-lock parallel operations
+    // Session lookup, OAuth tokens, env keys, cancel intent, and stream buffer
+    // all run concurrently instead of sequentially.
+    // ========================================================================
     timing("before_session_lookup")
-    logger.log(`[SESSION DEBUG] Looking up session for key: ${sessionKey}`)
+    const [cancelIntentResults, sessionLookupResult, oauthResult, userEnvKeysResult] = await Promise.allSettled([
+      // Cancel intent check (consume queued intents from before registration)
+      Promise.allSettled([
+        consumeCancelIntent(sessionKey, user.id),
+        consumeCancelIntentByRequestId(requestId, user.id),
+      ]),
+
+      // Session resume lookup
+      sessionStore.get(sessionKey),
+
+      // User OAuth tokens for MCP providers (negative-cached for revoked tokens)
+      fetchOAuthTokens(user.id, logger),
+
+      // User environment keys for MCP servers
+      fetchUserEnvKeys(user.id, logger),
+    ])
+
+    // Fire-and-forget: stream buffer creation (non-fatal, don't block)
+    createStreamBuffer(requestId, sessionKey, user.id, tabId).catch(bufferError => {
+      logger.log("Stream buffer creation failed (non-fatal):", bufferError)
+      Sentry.captureException(bufferError, { level: "warning", tags: { component: "stream-buffer" } })
+    })
+
+    timing("after_session_lookup")
+
+    // --- Unpack cancel intent ---
+    if (cancelIntentResults.status === "fulfilled") {
+      const startupConsumeResults = cancelIntentResults.value
+      const consumedConversationIntent =
+        startupConsumeResults[0].status === "fulfilled" && startupConsumeResults[0].value
+      const consumedRequestIntent = startupConsumeResults[1].status === "fulfilled" && startupConsumeResults[1].value
+      if (startupConsumeResults.some(r => r.status === "rejected")) {
+        logger.warn("Cancel-intent check degraded during startup; continuing with partial results")
+      }
+      if (consumedConversationIntent || consumedRequestIntent) {
+        logger.log("Queued cancel intent detected immediately after registration, short-circuiting stream startup")
+        unregisterCancellation(requestId)
+        unlockConversation(sessionKey)
+        lockAcquired = false
+        return createImmediateInterruptResponse(requestId, tabId)
+      }
+    }
+
+    // --- Unpack session lookup ---
     let existingSessionId: string | null
-    try {
-      existingSessionId = await sessionStore.get(sessionKey)
-    } catch (sessionLookupError) {
-      logger.error("[SESSION DEBUG] Session lookup failed:", sessionLookupError)
+    if (sessionLookupResult.status === "rejected") {
+      logger.error("[SESSION DEBUG] Session lookup failed:", sessionLookupResult.reason)
+      // Preserve AuthenticationError so the outer handler returns 401 (not 500)
+      if (sessionLookupResult.reason instanceof AuthenticationError) {
+        throw sessionLookupResult.reason
+      }
       throw new Error(
         `[SESSION LOOKUP FAILED] ${
-          sessionLookupError instanceof Error ? sessionLookupError.message : String(sessionLookupError)
+          sessionLookupResult.reason instanceof Error
+            ? sessionLookupResult.reason.message
+            : String(sessionLookupResult.reason)
         }`,
       )
     }
-    timing("after_session_lookup")
+    existingSessionId = sessionLookupResult.value
     logger.log(`[SESSION DEBUG] Existing session: ${existingSessionId ? `found (${existingSessionId})` : "none"}`)
 
     logger.log("Working directory:", cwd)
-
-    // Resolve and validate the requested model.
-    // Admins can use any valid model. Other users on org credits need explicit access.
-    const requestedModel = userModel ?? env.CLAUDE_MODEL
-    if (!isValidClaudeModel(requestedModel)) {
-      const code = isRetiredModel(requestedModel) ? ErrorCodes.MODEL_NOT_AVAILABLE : ErrorCodes.MODEL_INVALID
-      return structuredErrorResponse(code, {
-        status: 400,
-        details: { requestId, model: requestedModel, retired: isRetiredModel(requestedModel) },
-      })
-    }
-
     logger.log("Claude model:", requestedModel)
     logger.log("User isAdmin:", user.isAdmin)
     logger.log("User isSuperadmin:", user.isSuperadmin)
@@ -506,14 +543,16 @@ export async function POST(req: NextRequest) {
 
     logger.log("Max turns limit:", maxTurns, user.isAdmin ? "(admin 2x)" : "")
 
-    // Fetch OAuth tokens and user env keys in parallel for performance
-    const [oauthResult, userEnvKeysResult] = await Promise.all([
-      fetchOAuthTokens(user.id, logger),
-      fetchUserEnvKeys(user.id, logger),
-    ])
+    // Unpack OAuth tokens and user env keys (already resolved from Phase 4)
+    // Fallback to empty on rejection — these are non-fatal, MCP integrations just won't be available
+    const oauthFetchResult =
+      oauthResult.status === "fulfilled"
+        ? oauthResult.value
+        : { tokens: {} satisfies Record<string, never>, warnings: [] satisfies never[] }
+    const oauthTokens = oauthFetchResult.tokens
+    const oauthWarnings = oauthFetchResult.warnings
+    const userEnvKeys = userEnvKeysResult.status === "fulfilled" ? userEnvKeysResult.value.envKeys : {}
 
-    const { tokens: oauthTokens, warnings: oauthWarnings } = oauthResult
-    const { envKeys: userEnvKeys } = userEnvKeysResult
     const hasStripeConnection = !!oauthTokens.stripe
     const hasGmailConnection = !!oauthTokens.gmail
     const hasOutlookConnection = !!oauthTokens.outlook

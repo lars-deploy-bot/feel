@@ -19,13 +19,12 @@ const getSafeSessionCookieMock = vi.fn()
 const sessionStoreGetMock = vi.fn()
 const fetchOAuthTokensMock = vi.fn()
 const fetchUserEnvKeysMock = vi.fn()
+const fetchFullDomainRecordMock = vi.fn()
+const getOrgCreditsByOrgIdMock = vi.fn()
 const resolveWorkspaceMock = vi.fn()
 const getValidAccessTokenMock = vi.fn()
-const getOrgCreditsMock = vi.fn()
 const createStreamBufferMock = vi.fn()
 const errorStreamBufferMock = vi.fn()
-const createRLSAppClientMock = vi.fn()
-const createAppClientMock = vi.fn()
 const createRequestLoggerMock = vi.fn()
 const addCorsHeadersMock = vi.fn()
 
@@ -200,16 +199,12 @@ vi.mock("@/lib/stream/stream-buffer", () => ({
   errorStreamBuffer: (...args: unknown[]) => errorStreamBufferMock(...args),
 }))
 
-vi.mock("@/lib/supabase/app", () => ({
-  createAppClient: (...args: unknown[]) => createAppClientMock(...args),
+vi.mock("@/lib/domain/resolve-domain-runtime", () => ({
+  fetchFullDomainRecord: (...args: unknown[]) => fetchFullDomainRecordMock(...args),
 }))
 
-vi.mock("@/lib/supabase/server-rls", () => ({
-  createRLSAppClient: (...args: unknown[]) => createRLSAppClientMock(...args),
-}))
-
-vi.mock("@/lib/tokens", () => ({
-  getOrgCredits: (...args: unknown[]) => getOrgCreditsMock(...args),
+vi.mock("@/lib/credits/supabase-credits", () => ({
+  getOrgCreditsByOrgId: (...args: unknown[]) => getOrgCreditsByOrgIdMock(...args),
 }))
 
 vi.mock("@/lib/workspace-execution/agent-child-runner", () => ({
@@ -273,20 +268,6 @@ function createRequest(message = "test message"): NextRequest {
   })
 }
 
-function createMockDomainClient() {
-  return {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(async () => ({
-            data: { domain_id: "domain-1", hostname: WORKSPACE, port: 3777 },
-          })),
-        })),
-      })),
-    })),
-  }
-}
-
 async function readErrorPayload(
   response: Response,
 ): Promise<{ error: string | undefined; message: string | undefined }> {
@@ -321,16 +302,24 @@ describe("POST /api/claude/stream cleanup integration", () => {
 
     resolveWorkspaceMock.mockResolvedValue({ success: true, workspace: "/tmp/demo-workspace" })
     getValidAccessTokenMock.mockResolvedValue({ accessToken: "oauth-token", refreshed: false })
-    getOrgCreditsMock.mockResolvedValue(10)
+    fetchFullDomainRecordMock.mockResolvedValue({
+      domain_id: "domain-1",
+      hostname: WORKSPACE,
+      port: 3777,
+      is_test_env: null,
+      test_run_id: null,
+      execution_mode: "systemd",
+      sandbox_id: null,
+      sandbox_status: null,
+      org_id: "org-1",
+    })
+    getOrgCreditsByOrgIdMock.mockResolvedValue(10)
 
     createStreamBufferMock.mockResolvedValue(undefined)
     errorStreamBufferMock.mockResolvedValue(undefined)
 
     fetchOAuthTokensMock.mockResolvedValue({ tokens: {}, warnings: [] })
     fetchUserEnvKeysMock.mockResolvedValue({ envKeys: {} })
-
-    createRLSAppClientMock.mockResolvedValue(createMockDomainClient())
-    createAppClientMock.mockResolvedValue(createMockDomainClient())
 
     createRequestLoggerMock.mockReturnValue({
       log: vi.fn(),
@@ -371,8 +360,8 @@ describe("POST /api/claude/stream cleanup integration", () => {
     expect(isConversationLocked(sessionKey)).toBe(false)
     expect(getRegistrySize()).toBe(0)
 
-    sessionStoreGetMock.mockResolvedValueOnce(null)
-    fetchOAuthTokensMock.mockRejectedValueOnce(new AuthenticationError("Authentication required"))
+    // AuthenticationError from session store is preserved and triggers 401 handler
+    sessionStoreGetMock.mockRejectedValueOnce(new AuthenticationError("Authentication required"))
 
     const res = await POST(createRequest())
     const payload = await readErrorPayload(res)

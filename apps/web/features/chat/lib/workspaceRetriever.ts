@@ -8,13 +8,15 @@ import { NextResponse } from "next/server"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { resolveWorktreePath, WorktreeError } from "@/features/worktrees/lib/worktrees"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
+import { type DomainRuntime, resolveDomainRuntime } from "@/lib/domain/resolve-domain-runtime"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 import { getE2bScratchUserDir } from "@/lib/sandbox/e2b-workspace"
 
 export interface GetWorkspaceParams {
   body: WorkspaceRequestBody
   requestId: string
+  /** Pre-fetched domain record to avoid redundant app.domains query */
+  prefetchedDomainRuntime?: DomainRuntime | null
 }
 
 export type WorkspaceResult =
@@ -67,7 +69,11 @@ function mapWorktreeError(error: WorktreeError): { code: ErrorCode; status: numb
  * - Auth layer MUST verify superadmin status before this is called
  * - This function does NOT verify permissions (that's done in verifyWorkspaceAccess)
  */
-export async function getWorkspace({ body, requestId }: GetWorkspaceParams): Promise<WorkspaceResult> {
+export async function getWorkspace({
+  body,
+  requestId,
+  prefetchedDomainRuntime,
+}: GetWorkspaceParams): Promise<WorkspaceResult> {
   // Special case: alive workspace
   // SECURITY NOTE: This only resolves the path - auth layer (verifyWorkspaceAccess)
   // MUST verify the user is a superadmin before this function is called.
@@ -90,10 +96,14 @@ export async function getWorkspace({ body, requestId }: GetWorkspaceParams): Pro
   }
 
   // Always terminal mode - resolve workspace from request body
-  return await getTerminalWorkspace(body, requestId)
+  return await getTerminalWorkspace(body, requestId, prefetchedDomainRuntime)
 }
 
-async function getTerminalWorkspace(body: WorkspaceRequestBody, requestId: string): Promise<WorkspaceResult> {
+async function getTerminalWorkspace(
+  body: WorkspaceRequestBody,
+  requestId: string,
+  prefetchedDomainRuntime?: DomainRuntime | null,
+): Promise<WorkspaceResult> {
   const customWorkspace = body?.workspace
 
   if (!customWorkspace || typeof customWorkspace !== "string") {
@@ -175,12 +185,15 @@ async function getTerminalWorkspace(body: WorkspaceRequestBody, requestId: strin
   // Normalize domain name to handle protocols, www, uppercase, etc.
   const normalizedDomain = normalizeDomain(customWorkspace)
 
-  let domainRuntime: Awaited<ReturnType<typeof resolveDomainRuntime>> = null
-  try {
-    domainRuntime = await resolveDomainRuntime(normalizedDomain)
-  } catch (error) {
-    console.error(`[Workspace ${requestId}] Failed to resolve domain runtime for ${normalizedDomain}:`, error)
-    Sentry.captureException(error, { extra: { requestId, normalizedDomain } })
+  // Use pre-fetched domain record if available, otherwise query (fallback for non-stream callers)
+  let domainRuntime: DomainRuntime | null = prefetchedDomainRuntime ?? null
+  if (prefetchedDomainRuntime === undefined) {
+    try {
+      domainRuntime = await resolveDomainRuntime(normalizedDomain)
+    } catch (error) {
+      console.error(`[Workspace ${requestId}] Failed to resolve domain runtime for ${normalizedDomain}:`, error)
+      Sentry.captureException(error, { extra: { requestId, normalizedDomain } })
+    }
   }
 
   if (domainRuntime?.execution_mode === "e2b") {

@@ -3,6 +3,10 @@
  *
  * Fetches all OAuth tokens for MCP providers in parallel.
  * Uses the registry from @webalive/shared as the single source of truth.
+ *
+ * Includes a negative cache: revoked/expired tokens are not re-attempted
+ * for 5 minutes per user+provider, avoiding wasted round-trips to Google OAuth
+ * servers on every chat request.
  */
 
 import {
@@ -20,29 +24,88 @@ interface Logger {
 }
 
 /**
+ * Negative cache for failed OAuth token refreshes.
+ * Key: `${userId}:${providerKey}`, Value: { expiresAt, warning }
+ *
+ * Prevents retrying revoked tokens on every request.
+ * Cache clears when user re-authenticates (different code path).
+ */
+interface NegativeCacheEntry {
+  expiresAt: number
+  warning: OAuthWarning
+}
+
+const oauthNegativeCache = new Map<string, NegativeCacheEntry>()
+const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const NEGATIVE_CACHE_MAX_SIZE = 200
+
+function getNegativeCacheKey(userId: string, providerKey: string): string {
+  return `${userId}:${providerKey}`
+}
+
+/**
+ * Clear the negative cache for a specific user+provider.
+ * Call this when a user successfully re-authenticates a provider.
+ */
+export function clearOAuthNegativeCache(userId: string, providerKey?: string): void {
+  if (providerKey) {
+    oauthNegativeCache.delete(getNegativeCacheKey(userId, providerKey))
+  } else {
+    // Clear all entries for this user
+    for (const key of oauthNegativeCache.keys()) {
+      if (key.startsWith(`${userId}:`)) {
+        oauthNegativeCache.delete(key)
+      }
+    }
+  }
+}
+
+/** Evict expired entries when cache exceeds max size. */
+function pruneNegativeCache(now: number): void {
+  if (oauthNegativeCache.size <= NEGATIVE_CACHE_MAX_SIZE) return
+  for (const [key, entry] of oauthNegativeCache) {
+    if (entry.expiresAt <= now) oauthNegativeCache.delete(key)
+  }
+  while (oauthNegativeCache.size > NEGATIVE_CACHE_MAX_SIZE) {
+    const firstKey = oauthNegativeCache.keys().next().value
+    if (firstKey !== undefined) oauthNegativeCache.delete(firstKey)
+  }
+}
+
+/**
  * Fetches OAuth tokens for all registered MCP providers.
  * Only returns tokens for providers where the user has an active connection.
  * Also returns warnings for providers that need reconnection.
  *
+ * Revoked/expired tokens are cached negatively for 5 minutes to avoid
+ * retrying round-trips to OAuth servers on every request.
+ *
  * @param userId - The user ID to fetch tokens for
  * @param logger - Optional logger for debugging
  * @returns Object with tokens and warnings
- *
- * @example
- * ```typescript
- * const { tokens, warnings } = await fetchOAuthTokens(user.id, logger)
- * // tokens: { stripe: "sk_...", linear: "lin_..." } - only connected providers
- * // warnings: [{ provider: "linear", message: "...", needsReauth: true }]
- * ```
  */
 export async function fetchOAuthTokens(userId: string, logger?: Logger): Promise<OAuthFetchResult> {
   const tokens: ProviderTokenMap = {}
   const warnings: OAuthWarning[] = []
+  const now = Date.now()
 
   // Fetch all tokens in parallel for performance
   const results = await Promise.allSettled(
     Object.entries(OAUTH_MCP_PROVIDERS).map(async ([key, config]) => {
       const providerKey = key as OAuthMcpProviderKey
+
+      // Check negative cache first — skip providers with known-bad tokens
+      const cacheKey = getNegativeCacheKey(userId, providerKey)
+      const cached = oauthNegativeCache.get(cacheKey)
+      if (cached) {
+        if (cached.expiresAt > now) {
+          // Still in negative cache — return cached warning without network call
+          return { providerKey, token: null, warning: cached.warning }
+        }
+        // Cache expired — remove and retry
+        oauthNegativeCache.delete(cacheKey)
+      }
+
       try {
         const oauth = getOAuthInstance(config.oauthKey)
         const token = await oauth.getAccessToken(userId, config.oauthKey)
@@ -87,6 +150,15 @@ export async function fetchOAuthTokens(userId: string, logger?: Logger): Promise
         } else {
           // Log unexpected errors for debugging
           logger?.log(`${providerKey} OAuth fetch failed: ${errorMessage}`)
+        }
+
+        // Cache the failure so we don't retry on the next request
+        if (warning?.needsReauth) {
+          pruneNegativeCache(now)
+          oauthNegativeCache.set(cacheKey, {
+            expiresAt: now + NEGATIVE_CACHE_TTL_MS,
+            warning,
+          })
         }
 
         return { providerKey, token: null, warning }

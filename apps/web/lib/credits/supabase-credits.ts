@@ -153,7 +153,18 @@ export async function getOrgCredits(domain: string): Promise<number | null> {
     return null
   }
 
-  // Step 2: Get credits from org
+  return getOrgCreditsByOrgId(orgId)
+}
+
+/**
+ * Get organization's credit balance directly from org_id.
+ * Use this when org_id is already known (e.g., from a unified domain query)
+ * to avoid a redundant app.domains lookup.
+ *
+ * @param orgId - Organization ID
+ * @returns Current credit balance, or null if org not found
+ */
+export async function getOrgCreditsByOrgId(orgId: string): Promise<number | null> {
   const iam = getIamClient()
   const { data, error } = await iam.from("orgs").select("credits").eq("org_id", orgId).single()
 
