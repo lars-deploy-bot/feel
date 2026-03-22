@@ -445,7 +445,7 @@ export function parseWorkspaceStorageValue(raw: string | null): WorkspaceStorage
  *
  * PostMessage types used for communication between preview iframes
  * and the Workbench component. Used by:
- * - Go preview-proxy script injection (apps/preview-proxy)
+ * - Shell-server-go preview handler script injection (apps/shell-server-go/internal/preview)
  * - Vite plugin in site template (templates/site-template)
  * - Workbench components (apps/web/features/chat/components)
  */

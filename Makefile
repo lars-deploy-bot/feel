@@ -10,7 +10,7 @@
 #
 # =============================================================================
 
-.PHONY: all clean test help ship ship-fast staging staging-fast production production-fast deploy-status smoke-deploy-entrypoint dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy services api manager deployer
+.PHONY: all clean test help ship ship-fast staging staging-fast production production-fast deploy-status smoke-deploy-entrypoint dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go services api manager deployer
 
 all: help
 
@@ -70,7 +70,6 @@ help:
 	@echo "$(GREEN)Other:$(NC)"
 	@echo "  make rollback        Interactive rollback to previous build"
 	@echo "  make shell           Build and deploy shell-server-go"
-	@echo "  make preview-proxy   Build and deploy preview-proxy (Go)"
 	@echo ""
 
 .DEFAULT_GOAL := help
@@ -145,7 +144,7 @@ status:
 	@systemctl is-active alive-dev >/dev/null 2>&1 && echo "  Dev (8997):        $(GREEN)running$(NC)" || echo "  Dev (8997):        $(RED)stopped$(NC)"
 	@./scripts/deployment/show-runtime-status.sh staging
 	@./scripts/deployment/show-runtime-status.sh production
-	@systemctl is-active preview-proxy >/dev/null 2>&1 && echo "  Preview proxy (5055): $(GREEN)running$(NC)" || echo "  Preview proxy (5055): $(RED)stopped$(NC)"
+	@systemctl is-active shell-server-go >/dev/null 2>&1 && echo "  Shell server (3888): $(GREEN)running$(NC)" || echo "  Shell server (3888): $(RED)stopped$(NC)"
 	@echo ""
 	@echo "$(GREEN)Deployment Lock:$(NC)"
 	@./scripts/deployment/ship.sh --status || true
@@ -178,13 +177,6 @@ shell:
 
 deploy-go:
 	@./scripts/deployment/deploy-go-server.sh
-
-# =============================================================================
-# Preview Proxy (Go)
-# =============================================================================
-
-preview-proxy:
-	@./scripts/deployment/deploy-preview-proxy.sh
 
 # =============================================================================
 # Standalone Services (API + Manager)

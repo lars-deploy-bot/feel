@@ -67,14 +67,14 @@ describe("generateCaddyInternal", () => {
       ["blank.alive.best", 3594],
     ])
 
-    const output = generateCaddyInternal(sites, [], 5055, TEST_BASE_DOMAIN, TEST_PATHS)
+    const output = generateCaddyInternal(sites, [], 3888, TEST_BASE_DOMAIN, TEST_PATHS)
 
     expect(output).toContain(":8444 {")
     expect(output).toContain("map {host} {site_upstream}")
     expect(output).toContain('blank.alive.best "localhost:3594"')
     expect(output).toContain('larry.alive.best "localhost:3356"')
-    expect(output).toContain(`*.${TEST_BASE_DOMAIN} "localhost:5055"`)
-    expect(output).toContain('default "localhost:5055"')
+    expect(output).toContain(`*.${TEST_BASE_DOMAIN} "localhost:3888"`)
+    expect(output).toContain('default "localhost:3888"')
     expect(output).toContain("reverse_proxy {site_upstream}")
     expect(output).toContain("handle_path /_images/*")
     expect(output).toContain("handle_path /files/*")
@@ -87,7 +87,7 @@ describe("generateCaddyInternal", () => {
       ["middle.alive.best", 3003],
     ])
 
-    const output = generateCaddyInternal(sites, [], 5055, TEST_BASE_DOMAIN, TEST_PATHS)
+    const output = generateCaddyInternal(sites, [], 3888, TEST_BASE_DOMAIN, TEST_PATHS)
     const lines = output.split("\n")
     const siteLines = lines.filter(l => l.includes(".alive.best") && l.includes('"localhost:300'))
     expect(siteLines[0]).toContain("alpha.alive.best")
@@ -102,7 +102,7 @@ describe("generateCaddyInternal", () => {
     ])
     const skipped: string[] = []
 
-    const output = generateCaddyInternal(sites, [], 5055, TEST_BASE_DOMAIN, TEST_PATHS, h => skipped.push(h))
+    const output = generateCaddyInternal(sites, [], 3888, TEST_BASE_DOMAIN, TEST_PATHS, h => skipped.push(h))
     expect(output).toContain("good.alive.best")
     expect(output).not.toContain("evil")
     expect(skipped).toEqual(['evil"; drop table'])
@@ -115,20 +115,20 @@ describe("generateCaddyInternal", () => {
   })
 
   it("handles empty sites map", () => {
-    const output = generateCaddyInternal(new Map(), [], 5055, TEST_BASE_DOMAIN, TEST_PATHS)
+    const output = generateCaddyInternal(new Map(), [], 3888, TEST_BASE_DOMAIN, TEST_PATHS)
     expect(output).toContain(":8444 {")
-    expect(output).toContain(`*.${TEST_BASE_DOMAIN} "localhost:5055"`)
-    expect(output).toContain('default "localhost:5055"')
+    expect(output).toContain(`*.${TEST_BASE_DOMAIN} "localhost:3888"`)
+    expect(output).toContain('default "localhost:3888"')
   })
 
   it("includes AUTO-GENERATED header", () => {
-    const output = generateCaddyInternal(new Map(), [], 5055, TEST_BASE_DOMAIN, TEST_PATHS)
+    const output = generateCaddyInternal(new Map(), [], 3888, TEST_BASE_DOMAIN, TEST_PATHS)
     expect(output).toContain("AUTO-GENERATED")
     expect(output).toContain("DO NOT EDIT MANUALLY")
   })
 
   it("includes direct infra services in map for wildcard fallback", () => {
-    const output = generateCaddyInternal(new Map(), TEST_INFRA, 5055, TEST_BASE_DOMAIN, TEST_PATHS)
+    const output = generateCaddyInternal(new Map(), TEST_INFRA, 3888, TEST_BASE_DOMAIN, TEST_PATHS)
     // Direct service gets a map entry
     expect(output).toContain('widget.alive.best "localhost:5050"')
     // Caddy-routed service does NOT get a map entry (it goes through :8444 already)
@@ -136,20 +136,20 @@ describe("generateCaddyInternal", () => {
   })
 
   it("includes image serving with immutable cache header", () => {
-    const output = generateCaddyInternal(new Map(), [], 5055, TEST_BASE_DOMAIN, TEST_PATHS)
+    const output = generateCaddyInternal(new Map(), [], 3888, TEST_BASE_DOMAIN, TEST_PATHS)
     expect(output).toContain(TEST_PATHS.imagesStorage)
     expect(output).toContain("immutable")
   })
 
   it("includes per-site file serving", () => {
-    const output = generateCaddyInternal(new Map(), [], 5055, TEST_BASE_DOMAIN, TEST_PATHS)
+    const output = generateCaddyInternal(new Map(), [], 3888, TEST_BASE_DOMAIN, TEST_PATHS)
     expect(output).toContain(`${TEST_PATHS.sitesRoot}/{host}/user/.alive/files`)
     expect(output).toContain("no-cache")
   })
 
   it("uses baseDomain for wildcard entry (not hardcoded)", () => {
-    const output = generateCaddyInternal(new Map(), [], 5055, "sonno.tech", TEST_PATHS)
-    expect(output).toContain('*.sonno.tech "localhost:5055"')
+    const output = generateCaddyInternal(new Map(), [], 3888, "sonno.tech", TEST_PATHS)
+    expect(output).toContain('*.sonno.tech "localhost:3888"')
     expect(output).not.toContain("alive.best")
   })
 })

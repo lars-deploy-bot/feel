@@ -2,7 +2,7 @@
  * Generates nav_script_gen.go from @webalive/shared PREVIEW_MESSAGES constants.
  *
  * This is the single source of truth for postMessage types used in the
- * navigation sync script injected by the Go preview-proxy. Without this,
+ * navigation sync script injected by shell-server-go's preview handler. Without this,
  * the Go string constant can silently drift from the TypeScript constants,
  * causing the preview loading overlay to never dismiss.
  *
