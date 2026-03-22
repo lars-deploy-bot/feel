@@ -3,6 +3,10 @@
 import { useQuery } from "@tanstack/react-query"
 import { ExternalLink } from "lucide-react"
 import { Component, type ErrorInfo, type ReactNode, useEffect, useState } from "react"
+import toast from "react-hot-toast"
+import { getty, postty } from "@/lib/api/api-client"
+import type { Res } from "@/lib/api/schemas"
+import { validateRequest } from "@/lib/api/schemas"
 import { useCredits, useCreditsError, useCreditsLoading, useUserActions } from "@/lib/providers/UserStoreProvider"
 import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
 import { smallButton, text } from "../styles"
@@ -30,32 +34,6 @@ class BillingErrorBoundary extends Component<{ children: ReactNode }, { hasError
     }
     return this.props.children
   }
-}
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface PolarBillingResponse {
-  subscription: {
-    id: string
-    status: string
-    productId: string
-    currentPeriodEnd: string | null
-  } | null
-  products: Array<{
-    id: string
-    name: string
-    description: string | null
-    isRecurring: boolean
-    prices: Array<{
-      id: string
-      amountType: string
-      priceAmount: number | null
-      priceCurrency: string | null
-    }>
-  }>
-  portalUrl: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -89,13 +67,9 @@ function BillingContent() {
     data: billing,
     isLoading: billingLoading,
     isError: billingError,
-  } = useQuery<PolarBillingResponse>({
+  } = useQuery<Res<"polar/billing">>({
     queryKey: ["polar-billing"],
-    queryFn: async () => {
-      const res = await fetch("/api/polar/billing")
-      if (!res.ok) throw new Error(`Billing fetch failed: ${res.status}`)
-      return res.json()
-    },
+    queryFn: () => getty("polar/billing"),
     staleTime: 60_000,
     retry: 1,
   })
@@ -112,21 +86,13 @@ function BillingContent() {
   const handleCheckout = async (productId: string) => {
     setIsCheckingOut(true)
     try {
-      const res = await fetch("/api/polar/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
-      })
-      if (!res.ok) {
-        console.error("Checkout failed:", res.status)
-        return
-      }
-      const data: { url: string } = await res.json()
+      const validated = validateRequest("polar/checkout", { productId })
+      const data = await postty("polar/checkout", validated)
       if (data.url) {
         window.location.href = data.url
       }
-    } catch (err) {
-      console.error("Checkout failed:", err)
+    } catch {
+      toast.error("Checkout failed — please try again")
     } finally {
       setIsCheckingOut(false)
     }
