@@ -1,7 +1,6 @@
 package preview
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -81,7 +80,7 @@ func MustHaveEnv() {
 	}
 	for _, key := range []string{"JWT_SECRET", "PORT_MAP_PATH", "IMAGES_STORAGE", "FRAME_ANCESTORS"} {
 		if os.Getenv(key) == "" {
-			log.Fatalf(fmt.Sprintf("FATAL: %s is required when PREVIEW_BASE is set", key))
+			log.Fatalf("FATAL: %s is required when PREVIEW_BASE is set", key)
 		}
 	}
 }

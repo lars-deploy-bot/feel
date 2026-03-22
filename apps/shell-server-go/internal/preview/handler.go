@@ -10,6 +10,7 @@ import (
 	"html"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -55,7 +56,10 @@ func NewHandler(cfg *Config) *Handler {
 		sandboxTransport: &http.Transport{
 			ForceAttemptHTTP2:  false,
 			DisableCompression: true,
-			TLSClientConfig:    &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // E2B internal certs
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true, //nolint:gosec // E2B internal certs
+				MinVersion:         tls.VersionTLS13,
+			},
 		},
 	}
 }
@@ -156,8 +160,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ModifyResponse: func(resp *http.Response) error {
 			resp.Header.Del("X-Frame-Options")
 			if len(h.cfg.FrameAncestors) > 0 {
-				resp.Header.Set("Content-Security-Policy",
-					fmt.Sprintf("frame-ancestors %s", strings.Join(h.cfg.FrameAncestors, " ")))
+				frameAncestors := fmt.Sprintf("frame-ancestors %s", strings.Join(h.cfg.FrameAncestors, " "))
+				existing := resp.Header.Get("Content-Security-Policy")
+				switch {
+				case existing == "":
+					resp.Header.Set("Content-Security-Policy", frameAncestors)
+				case strings.Contains(strings.ToLower(existing), "frame-ancestors"):
+					// keep upstream directive as source of truth
+				default:
+					resp.Header.Set("Content-Security-Policy", existing+"; "+frameAncestors)
+				}
 			}
 			ct := resp.Header.Get("Content-Type")
 			if strings.Contains(ct, "text/html") {
@@ -178,6 +190,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // extractHostname converts "preview--notion-alive-best.alive.best" → "notion.alive.best"
 func (h *Handler) extractHostname(host string) (string, error) {
+	// Strip port if present (X-Forwarded-Host can include :port)
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+
 	if !strings.HasPrefix(host, previewPrefix) {
 		return "", fmt.Errorf("missing preview prefix")
 	}
@@ -211,7 +228,13 @@ func (h *Handler) serveImage(w http.ResponseWriter, r *http.Request) {
 
 	fullPath := filepath.Join(h.cfg.ImagesStorage, cleanPath)
 	absPath, err := filepath.Abs(fullPath)
-	if err != nil || !strings.HasPrefix(absPath, h.cfg.ImagesStorage) {
+	baseAbs, baseErr := filepath.Abs(h.cfg.ImagesStorage)
+	if err != nil || baseErr != nil {
+		writeHTTPError(w, http.StatusBadRequest, "Invalid path", "failed to resolve image path")
+		return
+	}
+	rel, relErr := filepath.Rel(baseAbs, absPath)
+	if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		writeHTTPError(w, http.StatusBadRequest, "Invalid path", "invalid absolute image path")
 		return
 	}
@@ -233,6 +256,16 @@ func (h *Handler) verifyToken(tokenStr string) bool {
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
+		return false
+	}
+
+	// Require explicit expiry — jwt v5 treats exp as optional by default
+	expRaw, hasExp := claims["exp"]
+	if !hasExp {
+		return false
+	}
+	expFloat, ok := expRaw.(float64)
+	if !ok || time.Now().Unix() >= int64(expFloat) {
 		return false
 	}
 
