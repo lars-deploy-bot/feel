@@ -8,7 +8,7 @@ import {
   validateAgentCreate,
   validateAgentField,
 } from "@webalive/shared"
-import { Loader2 } from "lucide-react"
+import { Check, Loader2 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { AutomationConfigData, AutomationConfigResult } from "@/components/ai/AutomationConfig"
 import { ApiError, postty } from "@/lib/api/api-client"
@@ -39,8 +39,10 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
   const [schedule, setSchedule] = useState(job ? trigLabel(job) : "every day at 9am")
   const [timeoutMin, setTimeoutMin] = useState(String(timeoutMinutes(job?.action_timeout_seconds)))
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<AgentFieldErrors>({})
+  const autoSaveTimer = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
 
   const promptRef = useRef<HTMLDivElement>(null)
 
@@ -166,6 +168,73 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
     onChanged,
   ])
 
+  // ── Auto-save for edit mode (debounced 1.5s) ──
+  const autoSave = useCallback(async () => {
+    if (isCreate || !job || !hasChanges) return
+
+    const errors: AgentFieldErrors = {}
+    if (name !== job.name) {
+      const e = validateAgentField("name", name)
+      if (e) errors.name = e
+    }
+    if (prompt !== (job.action_prompt ?? "")) {
+      const e = validateAgentField("prompt", prompt)
+      if (e) errors.prompt = e
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      return
+    }
+
+    setFieldErrors({})
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+    try {
+      const fields: Record<string, unknown> = {}
+      if (name !== job.name) fields.name = name
+      if (prompt !== (job.action_prompt ?? "")) fields.action_prompt = prompt || null
+      if (model !== origModel) fields.action_model = model || null
+      if (schedule !== origSchedule) fields.schedule_text = schedule || null
+      if (timeoutMin !== origTimeoutMin) fields.action_timeout_seconds = timeoutMin ? Number(timeoutMin) * 60 : null
+
+      if (Object.keys(fields).length > 0) {
+        await agentsApi.update(job.id, fields)
+        onChanged?.()
+        setSaved(true)
+        globalThis.setTimeout(() => setSaved(false), 2000)
+      }
+    } catch (e) {
+      if (e instanceof ApiError) setError(e.message)
+      else setError(e instanceof Error ? e.message : "Failed to save")
+    } finally {
+      setSaving(false)
+    }
+  }, [
+    isCreate,
+    job,
+    name,
+    prompt,
+    model,
+    schedule,
+    timeoutMin,
+    origModel,
+    origSchedule,
+    origTimeoutMin,
+    hasChanges,
+    onChanged,
+  ])
+
+  // Debounce auto-save on edit
+  useEffect(() => {
+    if (isCreate || !hasChanges) return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = globalThis.setTimeout(autoSave, 1500)
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    }
+  }, [isCreate, hasChanges, autoSave])
+
   const triggerType = job?.trigger_type ?? "cron"
 
   return (
@@ -280,22 +349,51 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 py-3 px-5 border-t border-zinc-100 dark:border-white/[0.04] flex items-center justify-end gap-3">
-        <button
-          type="button"
-          onClick={() => onDone()}
-          className="h-9 px-5 rounded-xl text-[13px] font-bold text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-        >
-          {isCreate ? "Cancel" : "Back"}
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={!hasChanges || saving}
-          className="h-9 px-5 rounded-xl text-[13px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 border-b-[3px] border-emerald-600 active:translate-y-[2px] active:border-b-0 disabled:opacity-40 transition-all"
-        >
-          {saving ? <Loader2 size={14} className="animate-spin" /> : isCreate ? "Create" : "Save"}
-        </button>
+      <div className="shrink-0 py-3 px-5 border-t border-zinc-100 dark:border-white/[0.04] flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[12px]">
+          {saving && (
+            <span className="flex items-center gap-1.5 text-zinc-400">
+              <Loader2 size={12} className="animate-spin" />
+              Saving...
+            </span>
+          )}
+          {saved && !saving && (
+            <span className="flex items-center gap-1.5 text-emerald-500 font-medium">
+              <Check size={12} />
+              Saved
+            </span>
+          )}
+          {error && <span className="text-red-500">{error}</span>}
+        </div>
+        <div className="flex items-center gap-3">
+          {isCreate ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onDone()}
+                className="h-9 px-5 rounded-xl text-[13px] font-bold text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="h-9 px-5 rounded-xl text-[13px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 border-b-[3px] border-emerald-600 active:translate-y-[2px] active:border-b-0 disabled:opacity-40 transition-all"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : "Create"}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onDone()}
+              className="h-9 px-5 rounded-xl text-[13px] font-bold text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Done
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
