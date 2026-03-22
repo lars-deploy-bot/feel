@@ -8,7 +8,7 @@ import { ScheduleInput } from "@/components/automations/ScheduleInput"
 import { getInitialSiteSelection, SiteCombobox } from "@/components/automations/SiteCombobox"
 import { ApiError, postty } from "@/lib/api/api-client"
 import { buildCreatePayload, configResultToFormData } from "@/lib/automation/build-payload"
-import { DEFAULT_TIMEZONE, MODEL_OPTIONS } from "@/lib/automation/form-options"
+import { MODEL_OPTIONS } from "@/lib/automation/form-options"
 
 // ── Styles ──────────────────────────────────────────────────────────────────────
 
@@ -42,7 +42,6 @@ export function AgentCreateView({
     return tomorrow.toISOString().split("T")[0]
   })
   const [scheduleTime, setScheduleTime] = useState("09:00")
-  const [timezone] = useState<string>(DEFAULT_TIMEZONE)
 
   const [status, setStatus] = useState<"idle" | "submitting">("idle")
   const [error, setError] = useState<string | null>(null)
@@ -76,16 +75,13 @@ export function AgentCreateView({
       scheduleText: isOneTime ? "" : scheduleText,
       scheduleTime,
       scheduleDate: isOneTime ? scheduleDate : undefined,
-      timezone,
     }
 
     try {
       const request = buildCreatePayload(configResultToFormData(result))
       await postty("automations/create", request)
 
-      const schedule = isOneTime
-        ? `Once on ${scheduleDate} at ${scheduleTime}`
-        : `${scheduleText} (${timezone.split("/")[1] ?? timezone})`
+      const schedule = isOneTime ? `Once on ${scheduleDate} at ${scheduleTime}` : scheduleText
 
       onCreated(`Automation "${name}" created for ${resolvedSite.hostname}. Schedule: ${schedule}`)
     } catch (e) {
@@ -107,7 +103,6 @@ export function AgentCreateView({
     scheduleText,
     scheduleTime,
     scheduleDate,
-    timezone,
     onCreated,
   ])
 

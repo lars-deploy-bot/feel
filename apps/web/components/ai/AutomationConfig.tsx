@@ -43,7 +43,7 @@ export interface AutomationConfigResult {
   scheduleText: string
   scheduleTime: string // HH:MM format
   scheduleDate?: string // YYYY-MM-DD for one-time
-  timezone: string
+  timezone?: string
 }
 
 interface AutomationConfigProps {

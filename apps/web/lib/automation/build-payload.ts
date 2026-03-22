@@ -112,7 +112,7 @@ export function configResultToFormData(result: AutomationConfigResult): Automati
     trigger_type: "cron",
     schedule_text: result.scheduleText || "",
     cron_schedule: "",
-    cron_timezone: result.timezone,
+    cron_timezone: result.timezone ?? "",
     run_at: "",
     action_type: "prompt",
     action_prompt: result.prompt,
