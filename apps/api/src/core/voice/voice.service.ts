@@ -9,7 +9,7 @@
  * - Structured error classification
  */
 
-import { type TranscribeResult, retryAsync } from "@webalive/shared"
+import { retryAsync, type TranscribeResult } from "@webalive/shared"
 import { env } from "../../config/env"
 import { logger } from "../../infra/logger"
 
