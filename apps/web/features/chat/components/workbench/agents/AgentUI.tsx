@@ -112,6 +112,7 @@ export function AgentNav({ view, hasSelected, onNavigate, onNewAgent, newAgentLo
   const tabs: { kind: AgentView["kind"]; label: string; enabled: boolean }[] = [
     { kind: "list", label: "Overview", enabled: true },
     { kind: "detail", label: "Detail", enabled: hasSelected },
+    { kind: "edit", label: "Edit", enabled: hasSelected },
   ]
 
   return (

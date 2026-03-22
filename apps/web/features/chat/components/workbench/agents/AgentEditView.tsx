@@ -1,8 +1,11 @@
 "use client"
 
-import { type ClaudeModel, isValidClaudeModel } from "@webalive/shared"
+import { CLAUDE_MODELS, type ClaudeModel, isValidClaudeModel } from "@webalive/shared"
 import { Loader2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
+import type { AutomationConfigData, AutomationConfigResult } from "@/components/ai/AutomationConfig"
+import { ApiError, postty } from "@/lib/api/api-client"
+import { buildCreatePayload, configResultToFormData } from "@/lib/automation/build-payload"
 import { agentsApi } from "./agents-api"
 import type { EnrichedJob } from "./agents-types"
 import { OverviewSection } from "./edit/OverviewSection"
@@ -11,64 +14,103 @@ import { TriggerSection } from "./edit/TriggerSection"
 
 type EditSection = "overview" | "prompt" | "trigger"
 
-export function AgentEditView({
-  job,
-  onBack,
-  onChanged,
-}: {
-  job: EnrichedJob
-  onBack: () => void
-  onChanged: () => void
-}) {
+/** Shared props for both create and edit modes */
+interface AgentEditViewProps {
+  /** Existing job to edit. Null = create mode. */
+  job: EnrichedJob | null
+  /** Create-mode data (sites, defaults from chat). Only used when job is null. */
+  createData?: AutomationConfigData | null
+  onDone: (message?: string) => void
+  onChanged?: () => void
+}
+
+export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditViewProps) {
+  const isCreate = !job
+
   const [section, setSection] = useState<EditSection>("overview")
-  const [name, setName] = useState(job.name)
-  const [prompt, setPrompt] = useState(job.action_prompt ?? "")
-  const [model, setModel] = useState<ClaudeModel | "">(isValidClaudeModel(job.action_model) ? job.action_model : "")
-  const [schedule, setSchedule] = useState(job.cron_schedule ?? "")
-  const [timeout, setTimeout] = useState(job.action_timeout_seconds ? String(job.action_timeout_seconds) : "")
+  const [name, setName] = useState(job?.name ?? createData?.defaultName ?? "")
+  const [prompt, setPrompt] = useState(job?.action_prompt ?? createData?.defaultPrompt ?? "")
+  const [model, setModel] = useState<ClaudeModel | "">(
+    job && isValidClaudeModel(job.action_model)
+      ? job.action_model
+      : (createData?.defaultModel ?? CLAUDE_MODELS.HAIKU_4_5),
+  )
+  const [schedule, setSchedule] = useState(job?.cron_schedule ?? "every day at 9am")
+  const [timeout, setTimeout] = useState(job?.action_timeout_seconds ? String(job.action_timeout_seconds) : "")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Re-sync when job changes (navigating between agents)
   useEffect(() => {
-    setName(job.name)
-    setPrompt(job.action_prompt ?? "")
-    setModel(isValidClaudeModel(job.action_model) ? job.action_model : "")
-    setSchedule(job.cron_schedule ?? "")
-    setTimeout(job.action_timeout_seconds ? String(job.action_timeout_seconds) : "")
+    if (job) {
+      setName(job.name)
+      setPrompt(job.action_prompt ?? "")
+      setModel(isValidClaudeModel(job.action_model) ? job.action_model : "")
+      setSchedule(job.cron_schedule ?? "")
+      setTimeout(job.action_timeout_seconds ? String(job.action_timeout_seconds) : "")
+    }
     setError(null)
     setSection("overview")
-  }, [job.id])
+  }, [job?.id])
 
-  const origModel = isValidClaudeModel(job.action_model) ? job.action_model : ""
-  const origTimeout = job.action_timeout_seconds ? String(job.action_timeout_seconds) : ""
+  // ── Change detection (edit mode only) ──
+  const origModel = job && isValidClaudeModel(job.action_model) ? job.action_model : ""
+  const origTimeout = job?.action_timeout_seconds ? String(job.action_timeout_seconds) : ""
 
-  const hasChanges =
-    name !== job.name ||
-    prompt !== (job.action_prompt ?? "") ||
-    model !== origModel ||
-    schedule !== (job.cron_schedule ?? "") ||
-    timeout !== origTimeout
+  const hasChanges = isCreate
+    ? name.trim().length >= 3 && prompt.trim().length >= 10
+    : name !== job.name ||
+      prompt !== (job.action_prompt ?? "") ||
+      model !== origModel ||
+      schedule !== (job.cron_schedule ?? "") ||
+      timeout !== origTimeout
 
+  // ── Save ──
   const handleSave = useCallback(async () => {
     setSaving(true)
     setError(null)
     try {
-      const fields: Record<string, unknown> = {}
-      if (name !== job.name) fields.name = name
-      if (prompt !== (job.action_prompt ?? "")) fields.action_prompt = prompt || null
-      if (model !== origModel) fields.action_model = model || null
-      if (schedule !== (job.cron_schedule ?? "")) fields.cron_schedule = schedule || null
-      if (timeout !== origTimeout) fields.action_timeout_seconds = timeout ? Number(timeout) : null
+      if (isCreate) {
+        // Create mode
+        const site = createData?.sites?.[0]
+        if (!site) throw new Error("No site available")
 
-      await agentsApi.update(job.id, fields)
-      onChanged()
-      onBack()
+        const result: AutomationConfigResult = {
+          siteId: site.id,
+          siteName: site.hostname,
+          name,
+          prompt,
+          model: (model || CLAUDE_MODELS.HAIKU_4_5) as ClaudeModel,
+          scheduleType: "custom",
+          scheduleText: schedule,
+          scheduleTime: "09:00",
+        }
+        const request = buildCreatePayload(configResultToFormData(result))
+        await postty("automations/create", request)
+        onDone(`Agent "${name}" created. Schedule: ${schedule}`)
+      } else {
+        // Edit mode
+        const fields: Record<string, unknown> = {}
+        if (name !== job.name) fields.name = name
+        if (prompt !== (job.action_prompt ?? "")) fields.action_prompt = prompt || null
+        if (model !== origModel) fields.action_model = model || null
+        if (schedule !== (job.cron_schedule ?? "")) fields.cron_schedule = schedule || null
+        if (timeout !== origTimeout) fields.action_timeout_seconds = timeout ? Number(timeout) : null
+
+        await agentsApi.update(job.id, fields)
+        onChanged?.()
+        onDone()
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save")
+      if (e instanceof ApiError) {
+        setError(e.message)
+      } else {
+        setError(e instanceof Error ? e.message : "Failed to save")
+      }
     } finally {
       setSaving(false)
     }
-  }, [job, name, prompt, model, schedule, timeout, origModel, origTimeout, onChanged, onBack])
+  }, [isCreate, createData, job, name, prompt, model, schedule, timeout, origModel, origTimeout, onDone, onChanged])
 
   // ── Drill-in sections ──
   if (section === "prompt") {
@@ -99,6 +141,7 @@ export function AgentEditView({
           prompt={prompt}
           model={model}
           onModelChange={setModel}
+          schedule={schedule}
           timeout={timeout}
           onPromptDrillIn={() => setSection("prompt")}
           onTriggerDrillIn={() => setSection("trigger")}
@@ -109,10 +152,10 @@ export function AgentEditView({
       <div className="shrink-0 px-4 py-3 border-t border-zinc-100 dark:border-white/[0.04] flex items-center justify-between">
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => onDone()}
           className="h-8 px-4 rounded-lg text-[13px] font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-100"
         >
-          Back
+          {isCreate ? "Cancel" : "Back"}
         </button>
         <button
           type="button"
@@ -120,7 +163,7 @@ export function AgentEditView({
           disabled={!hasChanges || saving}
           className="h-8 px-4 rounded-lg text-[13px] font-medium bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-40 transition-colors duration-100"
         >
-          {saving ? <Loader2 size={14} className="animate-spin" /> : "Save"}
+          {saving ? <Loader2 size={14} className="animate-spin" /> : isCreate ? "Create" : "Save"}
         </button>
       </div>
     </div>

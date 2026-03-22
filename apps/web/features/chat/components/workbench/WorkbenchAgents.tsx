@@ -1,25 +1,21 @@
 "use client"
 
 import { Bot, Loader2, Plus, RotateCw, TriangleAlert } from "lucide-react"
-import dynamic from "next/dynamic"
 import { useCallback, useEffect, useState } from "react"
 import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { useSitesQuery } from "@/lib/hooks/useSettingsQueries"
 import { useAgentCreateStore, usePendingCreate } from "@/lib/stores/agentCreateStore"
 import { AgentDetailView } from "./agents/AgentDetailView"
+import { AgentEditView } from "./agents/AgentEditView"
 import { AgentListView } from "./agents/AgentListView"
 import { AgentNav } from "./agents/AgentUI"
 import type { AgentView } from "./agents/agents-types"
 import { useAgents } from "./agents/useAgents"
 
-const AgentCreateView = dynamic(() => import("./agents/AgentCreateView").then(m => ({ default: m.AgentCreateView })), {
-  ssr: false,
-})
-
 export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
   const { jobs, loading, error, refresh } = useAgents(workspace)
   const [view, setView] = useState<AgentView>({ kind: "list" })
-  const { onOpenConversation, onOpenSettings } = useWorkbenchContext()
+  const { onOpenConversation } = useWorkbenchContext()
   const { data: sitesData } = useSitesQuery()
 
   const pendingCreate = usePendingCreate()
@@ -29,13 +25,12 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
   const [newError, setNewError] = useState<string | null>(null)
 
   // When pending create data arrives (from chat OR button), switch to create view.
-  // When it's cleared, go back to list.
   useEffect(() => {
     if (pendingCreate) setView({ kind: "create" })
     else setView(prev => (prev.kind === "create" ? { kind: "list" } : prev))
   }, [pendingCreate])
 
-  const selectedId = view.kind === "detail" ? view.jobId : null
+  const selectedId = view.kind === "detail" || view.kind === "edit" ? view.jobId : null
   const selectedJob = selectedId ? jobs.find(j => j.id === selectedId) : null
 
   // If selected job was deleted, go back to list
@@ -106,10 +101,21 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     )
   }
 
+  // ── Create mode — uses the same AgentEditView with job=null ──
   if (view.kind === "create" && pendingCreate) {
-    return <AgentCreateView data={pendingCreate} onCreated={handleCreateDone} onCancel={handleCreateCancel} />
+    return (
+      <AgentEditView
+        job={null}
+        createData={pendingCreate}
+        onDone={msg => {
+          if (msg) handleCreateDone(msg)
+          else handleCreateCancel()
+        }}
+      />
+    )
   }
 
+  // ── Empty state ──
   if (jobs.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center px-6">
@@ -135,11 +141,12 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     )
   }
 
+  // ── Main views ──
   return (
     <div className="h-full flex flex-col">
       <AgentNav
         view={view}
-        hasSelected={selectedJob !== null && selectedJob !== undefined}
+        hasSelected={!!selectedJob}
         onNavigate={handleNavigate}
         onNewAgent={handleNewAgent}
         newAgentLoading={!sitesData}
@@ -163,9 +170,16 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
         {view.kind === "detail" && selectedJob && (
           <AgentDetailView
             job={selectedJob}
-            onEdit={() => onOpenSettings?.("automations")}
+            onEdit={() => setView({ kind: "edit", jobId: selectedJob.id })}
             onChanged={refresh}
             onOpenConversation={onOpenConversation}
+          />
+        )}
+        {view.kind === "edit" && selectedJob && (
+          <AgentEditView
+            job={selectedJob}
+            onDone={() => setView({ kind: "detail", jobId: selectedJob.id })}
+            onChanged={refresh}
           />
         )}
       </div>

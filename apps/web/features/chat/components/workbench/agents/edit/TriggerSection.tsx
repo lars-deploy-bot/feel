@@ -15,13 +15,14 @@ export function TriggerSection({
   onTimeoutChange,
   onBack,
 }: {
-  job: EnrichedJob
+  job: EnrichedJob | null
   schedule: string
   onScheduleChange: (v: string) => void
   timeout: string
   onTimeoutChange: (v: string) => void
   onBack: () => void
 }) {
+  const triggerType = job?.trigger_type ?? "cron"
   return (
     <div className="h-full flex flex-col">
       <div className="shrink-0 px-4 h-10 flex items-center gap-2 border-b border-zinc-100 dark:border-white/[0.04]">
@@ -37,13 +38,13 @@ export function TriggerSection({
 
       <div className="flex-1 overflow-auto px-4 py-4">
         <div className="flex items-center gap-2 mb-5">
-          <TriggerIcon type={job.trigger_type} />
+          <TriggerIcon type={triggerType} />
           <span className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 capitalize">
-            {job.trigger_type === "one-time" ? "One-time" : job.trigger_type}
+            {triggerType === "one-time" ? "One-time" : triggerType}
           </span>
         </div>
 
-        {job.trigger_type === "cron" && (
+        {triggerType === "cron" && (
           <div className="space-y-4">
             <div>
               <label
@@ -60,10 +61,10 @@ export function TriggerSection({
                 placeholder="0 9 * * *"
                 className={`${INPUT} font-mono`}
               />
-              {job.cron_schedule && (
+              {job?.cron_schedule && (
                 <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1.5">
                   {trigLabel(job)}
-                  {job.cron_timezone ? ` (${job.cron_timezone.replace(/^.*\//, "")})` : ""}
+                  {job?.cron_timezone ? ` (${job?.cron_timezone.replace(/^.*\//, "")})` : ""}
                 </p>
               )}
             </div>
@@ -92,20 +93,20 @@ export function TriggerSection({
           </div>
         )}
 
-        {job.trigger_type === "email" && job.email_address && (
+        {triggerType === "email" && job?.email_address && (
           <div>
             <p className="text-[11px] font-medium text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-1.5">
               Email address
             </p>
-            <p className="text-[13px] text-zinc-600 dark:text-zinc-400 font-mono">{job.email_address}</p>
+            <p className="text-[13px] text-zinc-600 dark:text-zinc-400 font-mono">{job?.email_address}</p>
           </div>
         )}
 
-        {job.trigger_type === "webhook" && (
+        {triggerType === "webhook" && (
           <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Triggered via webhook POST request.</p>
         )}
 
-        {job.trigger_type === "one-time" && (
+        {triggerType === "one-time" && (
           <p className="text-[13px] text-zinc-500 dark:text-zinc-400">This agent runs once and is then complete.</p>
         )}
       </div>

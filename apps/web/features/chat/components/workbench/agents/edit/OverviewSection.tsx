@@ -14,17 +14,19 @@ export function OverviewSection({
   prompt,
   model,
   onModelChange,
+  schedule,
   timeout,
   onPromptDrillIn,
   onTriggerDrillIn,
   error,
 }: {
-  job: EnrichedJob
+  job: EnrichedJob | null
   name: string
   onNameChange: (v: string) => void
   prompt: string
   model: ClaudeModel | ""
   onModelChange: (v: ClaudeModel | "") => void
+  schedule: string
   timeout: string
   onPromptDrillIn: () => void
   onTriggerDrillIn: () => void
@@ -78,8 +80,10 @@ export function OverviewSection({
           />
         </div>
         <div className="flex items-center gap-2 mt-1.5">
-          <TriggerIcon type={job.trigger_type} />
-          <span className="text-[13px] text-zinc-600 dark:text-zinc-400">{trigLabel(job)}</span>
+          <TriggerIcon type={job?.trigger_type ?? "cron"} />
+          <span className="text-[13px] text-zinc-600 dark:text-zinc-400">
+            {job ? trigLabel(job) : schedule || "Not set"}
+          </span>
           {timeout && (
             <>
               <span className="text-zinc-200 dark:text-zinc-800">·</span>
@@ -116,7 +120,7 @@ export function OverviewSection({
       </div>
 
       {/* Skills */}
-      {job.skills && job.skills.length > 0 && (
+      {job?.skills && job.skills.length > 0 && (
         <div className="mt-5">
           <p className="text-[11px] font-medium text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-1.5">
             Skills

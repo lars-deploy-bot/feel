@@ -12,4 +12,8 @@ export interface EnrichedJob extends EnrichedJobRaw {
 /** Recent run from enriched response */
 export type RecentRun = EnrichedJobRaw["recent_runs"][number]
 
-export type AgentView = { kind: "list" } | { kind: "create" } | { kind: "detail"; jobId: string }
+export type AgentView =
+  | { kind: "list" }
+  | { kind: "create" }
+  | { kind: "detail"; jobId: string }
+  | { kind: "edit"; jobId: string }
