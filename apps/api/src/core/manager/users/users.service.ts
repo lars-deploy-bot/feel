@@ -20,9 +20,7 @@ interface MembershipWithOrg {
 }
 
 async function fetchMembershipsGrouped(userId?: string): Promise<Record<string, ManagerUserOrg[]>> {
-  let query = iam
-    .from("org_memberships")
-    .select(`
+  let query = iam.from("org_memberships").select(`
       user_id,
       role,
       orgs:org_id (

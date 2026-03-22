@@ -393,19 +393,19 @@ export const DOMAINS = {
 
 /** Ensure a host:port string has an http:// scheme for fetch() */
 function ensureHttpScheme(value: string): string {
-	if (!value) return ""
-	return value.includes("://") ? value : `http://${value}`
+  if (!value) return ""
+  return value.includes("://") ? value : `http://${value}`
 }
 
 export const SHELL = {
-	/** Internal shell-server upstream URL (scheme-normalized for fetch) */
-	UPSTREAM: ensureHttpScheme(serverConfig.shell?.upstream ?? ""),
+  /** Internal shell-server upstream URL (scheme-normalized for fetch) */
+  UPSTREAM: ensureHttpScheme(serverConfig.shell?.upstream ?? ""),
 
-	/** Internal E2B terminal bridge upstream URL (scheme-normalized for fetch) */
-	E2B_UPSTREAM: ensureHttpScheme(serverConfig.shell?.e2bUpstream ?? ""),
+  /** Internal E2B terminal bridge upstream URL (scheme-normalized for fetch) */
+  E2B_UPSTREAM: ensureHttpScheme(serverConfig.shell?.e2bUpstream ?? ""),
 
-	/** caddy-shell listen address (e.g. ":8443") — used for reachability checks */
-	LISTEN: serverConfig.shell?.listen ?? "",
+  /** caddy-shell listen address (e.g. ":8443") — used for reachability checks */
+  LISTEN: serverConfig.shell?.listen ?? "",
 } as const
 
 // =============================================================================
