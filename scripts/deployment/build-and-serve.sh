@@ -298,7 +298,7 @@ fi
 
 # Check required support services
 _SERVICES_DOWN=()
-for _svc in e2b-terminal shell-server-go caddy-shell preview-proxy; do
+for _svc in e2b-terminal shell-server-go caddy-shell; do
     if systemctl list-unit-files "${_svc}.service" >/dev/null 2>&1 \
        && ! systemctl is-active --quiet "$_svc"; then
         _SERVICES_DOWN+=("$_svc")
@@ -552,11 +552,8 @@ log_step "Superadmin skills read directly from repo at $PROJECT_ROOT/.claude/ski
 phase_end ok "Skills ready"
 
 # =============================================================================
-# Build & Deploy Go Preview Proxy (if configured)
+# Preview proxy is now integrated into shell-server-go (no separate deploy)
 # =============================================================================
-if [ -f "$SCRIPT_DIR/deploy-preview-proxy.sh" ]; then
-    "$SCRIPT_DIR/deploy-preview-proxy.sh" || log_warn "Preview proxy deploy skipped"
-fi
 
 # =============================================================================
 # Deploy & Health Check

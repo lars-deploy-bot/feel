@@ -138,8 +138,7 @@ Alive is a **multi-tenant development platform** — Claude AI assists with webs
 | `web` | 8997/9000 | Next.js monolith: Chat UI, Claude API, file ops, auth, deployments |
 | `api` | 5080 | Hono on Bun. Standalone API — gradually taking over routes from `web` |
 | `manager` | 5090 | React + Vite admin dashboard. Frontend for `api` |
-| `shell-server-go` | 3888 | Go shell-server for `go.alive.best` |
-| `preview-proxy` | 5055 | Go preview proxy for workspace preview subdomains |
+| `shell-server-go` | 3888 | Go shell-server (`go.alive.best`) + preview proxy (host-based dispatch on `preview--*`) |
 | `worker` | 5070 | Automation scheduler + executor (standalone Bun, survives web deploys) |
 | `deployer-rs` | 5095 | Rust deploy worker: builds, releases, deployments. Health API on localhost |
 | `image-processor` | 5012 | Python/FastAPI image manipulation service (Docker, not systemd) |

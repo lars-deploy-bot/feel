@@ -2,6 +2,7 @@
   "name": "@webalive/shell-server-go",
   "private": true,
   "scripts": {
+    "generate": "bun generate-nav-script.ts",
     "build:local": "make build",
     "dev": "make dev",
     "start": "make run",

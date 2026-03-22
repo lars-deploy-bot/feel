@@ -242,16 +242,7 @@ fi
 # =============================================================================
 
 phase_start "Deploying services"
-PREVIEW_PROXY_LOG="$(mktemp /tmp/alive-preview-proxy.XXXXXX.log)"
-if "$SCRIPT_DIR/deploy-preview-proxy.sh" >"$PREVIEW_PROXY_LOG" 2>&1; then
-    tail -n 5 "$PREVIEW_PROXY_LOG" || true
-else
-    tail -n 50 "$PREVIEW_PROXY_LOG" || true
-    rm -f "$PREVIEW_PROXY_LOG"
-    phase_end error "Preview proxy deploy failed"
-    exit 1
-fi
-rm -f "$PREVIEW_PROXY_LOG"
+# Preview proxy is now integrated into shell-server-go (no separate deploy)
 phase_end ok "Services deployed"
 
 # =============================================================================

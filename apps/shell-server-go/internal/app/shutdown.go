@@ -47,6 +47,18 @@ func (a *ServerApp) Run() error {
 		}
 	}()
 
+	// SIGHUP triggers immediate port-map reload for preview proxy
+	sighup := make(chan os.Signal, 1)
+	signal.Notify(sighup, syscall.SIGHUP)
+	go func() {
+		for range sighup {
+			a.Logger.Info("SIGHUP received — reloading preview maps")
+			if a.PreviewHandler != nil {
+				a.PreviewHandler.Reload()
+			}
+		}
+	}()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
