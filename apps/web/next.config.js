@@ -42,7 +42,7 @@ const buildTime = process.env.ALIVE_BUILD_TIME
 // In local/test environments, explicit env vars can provide the browser-safe values.
 let sentryConfig = null
 let contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL
-let previewProxyPort = 5055
+let previewProxyPort
 const SENTRY_HOSTNAME_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i
 
 function readRequiredString(obj, key, context) {
@@ -90,6 +90,10 @@ function normalizeSentryConfig(rawSentry) {
   }
 }
 
+if (!previewProxyPort) {
+  throw new Error("FATAL: previewProxy.port is not set. Must be configured in server-config.json (SERVER_CONFIG_PATH).")
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Separate distDir for test server to avoid conflicts with dev server
@@ -107,7 +111,7 @@ const nextConfig = {
     "sonno.tech",
   ],
   skipTrailingSlashRedirect: true,
-  // Rewrite /_images/* to the Go preview-proxy which serves from /srv/webalive/storage.
+  // Rewrite /_images/* to the shell-server-go which serves from /srv/webalive/storage.
   // Works regardless of infrastructure (tunnel, Caddy, open source clones).
   async rewrites() {
     return [

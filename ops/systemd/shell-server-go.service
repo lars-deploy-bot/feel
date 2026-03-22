@@ -1,5 +1,5 @@
 [Unit]
-Description=Shell Terminal Server (Go - WebSocket PTY)
+Description=Shell Terminal Server (Go - WebSocket PTY + Preview Proxy)
 After=network.target
 Wants=network-online.target
 
@@ -8,9 +8,11 @@ Type=simple
 User=root
 WorkingDirectory=__ALIVE_ROOT__/apps/shell-server-go
 EnvironmentFile=__ALIVE_ROOT__/apps/shell-server-go/.env.production
+EnvironmentFile=-__ALIVE_ROOT__/.env.local
 
 # Binary name matches module name in go.mod (shell-server-go)
 # Built by: cd apps/shell-server-go && make build
+Environment="NODE_ENV=production"
 ExecStart=__ALIVE_ROOT__/apps/shell-server-go/shell-server-go
 
 # Automatic restart on failure

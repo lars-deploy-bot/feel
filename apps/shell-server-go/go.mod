@@ -8,6 +8,7 @@ require (
 	github.com/creack/pty v1.1.21
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/getsentry/sentry-go v0.35.3
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/websocket v1.5.3
 )
 

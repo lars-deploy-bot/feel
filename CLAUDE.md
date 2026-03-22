@@ -138,8 +138,7 @@ Alive is a **multi-tenant development platform** — Claude AI assists with webs
 | `web` | 8997/9000 | Next.js monolith: Chat UI, Claude API, file ops, auth, deployments |
 | `api` | 5080 | Hono on Bun. Standalone API — gradually taking over routes from `web` |
 | `manager` | 5090 | React + Vite admin dashboard. Frontend for `api` |
-| `shell-server-go` | 3888 | Go shell-server for `go.alive.best` |
-| `preview-proxy` | 5055 | Go preview proxy for workspace preview subdomains |
+| `shell-server-go` | 3888 | Go shell-server (`go.alive.best`) + preview proxy (host-based dispatch on `preview--*`) |
 | `worker` | 5070 | Automation scheduler + executor (standalone Bun, survives web deploys) |
 | `deployer-rs` | 5095 | Rust deploy worker: builds, releases, deployments. Health API on localhost |
 | `image-processor` | 5012 | Python/FastAPI image manipulation service (Docker, not systemd) |
@@ -304,7 +303,7 @@ systemctl reload caddy
 systemctl status caddy
 ```
 
-**Auto-sync architecture**: Main `/etc/caddy/Caddyfile` imports four files directly: `Caddyfile.custom` (Let's Encrypt domains), `Caddyfile.internal` (generated site routing on `:8444`), `Caddyfile.prod` (app/mg/widget), `Caddyfile.staging` (staging/dev). The internal config uses a `map` directive to route `{host}` to site upstreams, with unmatched hosts falling through to the Go preview proxy on port 5055.
+**Auto-sync architecture**: Main `/etc/caddy/Caddyfile` imports four files directly: `Caddyfile.custom` (Let's Encrypt domains), `Caddyfile.internal` (generated site routing on `:8444`), `Caddyfile.prod` (app/mg/widget), `Caddyfile.staging` (staging/dev). The internal config uses a `map` directive to route `{host}` to site upstreams, with unmatched hosts falling through to shell-server-go on port 3888 (which handles preview routing).
 
 **⚠️ CRITICAL: `tls force_automate`** — Every explicit `*.sonno.tech` domain block MUST include `tls force_automate`. Without it, Caddy v2.10.x silently fails to obtain certs due to a bug with `on_demand_tls` ([#6996](https://github.com/caddyserver/caddy/issues/6996)). The routing generator template already includes this — see `ops/caddy/README.md` for details.
 

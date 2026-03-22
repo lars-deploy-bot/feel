@@ -43,7 +43,7 @@ function makeConfig(overrides?: Partial<RenderShellInput["shell"]>): RenderShell
     },
     contactEmail: "ops@example.com",
     previewProxy: {
-      port: 5055,
+      port: 3888,
     },
     generated: {
       dir: "/var/lib/alive/generated",

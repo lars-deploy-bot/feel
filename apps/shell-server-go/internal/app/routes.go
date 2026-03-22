@@ -8,6 +8,7 @@ import (
 
 	httpxmiddleware "shell-server-go/internal/httpx/middleware"
 	"shell-server-go/internal/httpx/response"
+	"shell-server-go/internal/preview"
 )
 
 // Router builds the full HTTP routing tree.
@@ -58,7 +59,29 @@ func (a *ServerApp) Router() (http.Handler, error) {
 	mux.Handle("PUT /api/templates/{id}", authAPIMiddleware(http.HandlerFunc(a.TemplateHandler.SaveTemplate)))
 
 	mux.Handle("/", createSPAHandler(a.ClientFS))
+
+	// If preview proxy is enabled, wrap the mux with host-based dispatch:
+	// requests with Host: preview--*.{base} go to the preview handler.
+	if a.PreviewHandler != nil {
+		return hostDispatch(a.PreviewHandler, mux), nil
+	}
 	return mux, nil
+}
+
+// hostDispatch routes preview--* hosts to the preview handler,
+// everything else to the shell server mux.
+func hostDispatch(previewHandler http.Handler, shellHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := r.Header.Get("X-Forwarded-Host")
+		if host == "" {
+			host = r.Host
+		}
+		if preview.IsPreviewHost(host) {
+			previewHandler.ServeHTTP(w, r)
+			return
+		}
+		shellHandler.ServeHTTP(w, r)
+	})
 }
 
 func createSPAHandler(clientFS fs.FS) http.Handler {

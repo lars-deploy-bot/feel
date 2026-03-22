@@ -26,7 +26,7 @@ const PORT_MAP_FILENAME = "port-map.json"
 /** Default dev server port inside E2B sandboxes (Vite default). Must match E2B_DEFAULT_PORT in @webalive/sandbox. */
 const E2B_DEFAULT_PORT = 5173
 const SANDBOX_MAP_FILENAME = "sandbox-map.json"
-const PREVIEW_PROXY_SERVICE = "preview-proxy.service"
+const PREVIEW_PROXY_SERVICE = "shell-server-go.service"
 const TEMPLATE_ENV_DIR = "/etc/templates"
 
 function getOutputPath(): string {
@@ -48,7 +48,7 @@ function getCanonicalSupabaseClient() {
 }
 
 /**
- * Send SIGHUP to the preview-proxy so it reloads the port-map immediately.
+ * Send SIGHUP to shell-server-go so it reloads the port-map immediately.
  * Throws if the signal fails — a stale proxy is a broken preview.
  */
 function signalPreviewProxy(): void {

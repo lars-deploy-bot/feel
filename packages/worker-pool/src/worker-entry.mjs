@@ -18,7 +18,7 @@
 
 import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, readdirSync, statSync } from "node:fs"
 import { createConnection } from "node:net"
-import { tmpdir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
 import process from "node:process"
 
@@ -431,8 +431,7 @@ function dropPrivileges() {
   //   4. Verify session files exist:
   //      find /root/.claude/projects/ -name "*.jsonl" -ls
   //
-  const originalHome = process.env.HOME
-  if (!originalHome) throw new Error("HOME environment variable is required")
+  const originalHome = homedir()
   const workspaceKey = process.env.WORKER_WORKSPACE_KEY
 
   // CLAUDE_CONFIG_DIR must point to a directory with valid SDK credentials.
@@ -502,7 +501,7 @@ function dropPrivileges() {
   // the Claude CLI subprocess still reads CLAUDE_CONFIG_DIR. If these files
   // are 0o600 (owner-only), the subprocess silently exits with 0 messages.
   // See: docs/postmortems/2026-02-26-claude-code-settings-permissions.md
-  for (const configFile of ["settings.json", ".claude.json"]) {
+  for (const configFile of ["settings.json", ".claude.json", ".credentials.json"]) {
     const filePath = join(claudeConfigDir, configFile)
     try {
       if (existsSync(filePath)) {
@@ -584,7 +583,6 @@ function dropPrivileges() {
   }
 
   // Ensure temp directory is writable by the workspace user
-  if (!process.env.HOME) throw new Error("HOME environment variable is required")
   const tempDir = join(process.env.HOME, "tmp")
   try {
     if (!existsSync(tempDir)) {

@@ -12,6 +12,7 @@ import (
 	"shell-server-go/internal/editor"
 	"shell-server-go/internal/files"
 	"shell-server-go/internal/logger"
+	"shell-server-go/internal/preview"
 	"shell-server-go/internal/ratelimit"
 	"shell-server-go/internal/sentryx"
 	"shell-server-go/internal/session"
@@ -32,6 +33,7 @@ type ServerApp struct {
 	WatchManager    *watcher.Manager
 	WatchHandler    *watcher.WatchHandler
 	TemplateHandler *templates.Handler
+	PreviewHandler  *preview.Handler // nil when PREVIEW_BASE is not set
 	ClientFS        fs.FS
 	Logger          *logger.Logger
 	WorkingDir      string
@@ -102,6 +104,7 @@ func New(clientFS fs.FS, configPath string) (*ServerApp, error) {
 		WatchManager:    watchMgr,
 		WatchHandler:    watcher.NewWatchHandler(cfg, watchMgr),
 		TemplateHandler: templates.NewHandler(cfg, sessions),
+		PreviewHandler:  preview.NewHandler(preview.LoadConfig()),
 		ClientFS:        clientFS,
 		Logger:          log,
 		WorkingDir:      cwd,

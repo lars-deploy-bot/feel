@@ -170,7 +170,7 @@ function runTeardown(options: { killMode: "term-succeeds" | "stubborn" }) {
     },
     contactEmail: "ops@example.com",
     previewProxy: {
-      port: 5055,
+      port: 3888,
     },
     generated: {
       dir: "/tmp/generated",

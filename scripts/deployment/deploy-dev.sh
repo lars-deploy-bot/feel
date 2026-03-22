@@ -93,12 +93,3 @@ curl -f -s "http://localhost:$DEV_PORT/api/health" > /dev/null 2>&1 && \
 systemctl status "$DEV_SERVICE" --no-pager | head -15
 
 # shell-server-go is built separately via `make shell`
-
-# Rebuild and restart preview-proxy (if configured)
-echo ""
-echo "🔄 Rebuilding preview-proxy..."
-if "$SCRIPT_DIR/deploy-preview-proxy.sh"; then
-    echo "✅ Preview proxy deployed"
-else
-    echo "⚠️  Preview proxy deploy failed"
-fi

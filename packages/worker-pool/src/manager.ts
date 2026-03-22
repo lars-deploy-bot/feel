@@ -8,7 +8,7 @@
 import { type ChildProcess, execFile, spawn } from "node:child_process"
 import { EventEmitter } from "node:events"
 import { chmod, mkdir, readFile, stat } from "node:fs/promises"
-import { cpus, loadavg, platform } from "node:os"
+import { cpus, homedir, loadavg, platform } from "node:os"
 import * as path from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { promisify } from "node:util"
@@ -1033,9 +1033,7 @@ export class WorkerPoolManager extends EventEmitter {
     if (configured?.startsWith("/")) {
       return configured
     }
-    const home = process.env.HOME
-    if (!home) throw new Error("HOME environment variable is required")
-    return path.join(home, ".claude")
+    return path.join(homedir(), ".claude")
   }
 
   private getCredentialsPath(): string {
