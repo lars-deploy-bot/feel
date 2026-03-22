@@ -28,7 +28,7 @@ async function getListeningPorts(): Promise<Set<number>> {
       if (match) ports.add(Number.parseInt(match[1], 10))
     }
     return ports
-  } catch {
+  } catch (_err) {
     return new Set()
   }
 }
@@ -43,7 +43,7 @@ async function getCaddyDomains(): Promise<Set<string>> {
       if (match) domains.add(match[1])
     }
     return domains
-  } catch {
+  } catch (_err) {
     return new Set()
   }
 }
@@ -174,7 +174,7 @@ function checkServeMode(domain: string): "dev" | "build" | "unknown" {
       const content = require("node:fs").readFileSync(`${serviceDir}/${file}`, "utf-8")
       if (content.includes("preview") || content.includes("bun run start")) return "build"
       if (content.includes("bun run dev")) return "dev"
-    } catch {
+    } catch (_err) {
       // File doesn't exist, try next
     }
   }
@@ -199,7 +199,7 @@ function checkViteConfigPort(
       try {
         configContent = require("node:fs").readFileSync(configPath, "utf-8")
         break
-      } catch {
+      } catch (_err) {
         // Try next extension
       }
     }
