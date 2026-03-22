@@ -44,6 +44,9 @@ func LoadConfig() *Config {
 			}
 		}
 	}
+	if len(ancestors) == 0 {
+		log.Fatalf("FATAL: FRAME_ANCESTORS must contain at least one origin when PREVIEW_BASE is set")
+	}
 
 	return &Config{
 		PreviewBase:        previewBase,
