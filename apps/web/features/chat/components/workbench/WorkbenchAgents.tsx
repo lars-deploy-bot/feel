@@ -51,6 +51,7 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     setNewError(null)
     try {
       const data = await getty("sites")
+      if (!data || !Array.isArray(data.sites)) throw new Error("Failed to load sites")
       const sites = data.sites.map(s => ({ id: s.id, hostname: s.hostname }))
       if (sites.length === 0) throw new Error("No websites available. Create a website first.")
       startCreate({ sites }, () => {})

@@ -100,19 +100,15 @@ export function ActionButton({
   )
 }
 
-export function AgentNav({
-  view,
-  hasSelected,
-  onNavigate,
-  onNewAgent,
-  newAgentLoading,
-}: {
+interface AgentNavProps {
   view: AgentView
   hasSelected: boolean
   onNavigate: (kind: AgentView["kind"]) => void
   onNewAgent?: () => void
   newAgentLoading?: boolean
-}) {
+}
+
+export function AgentNav({ view, hasSelected, onNavigate, onNewAgent, newAgentLoading }: AgentNavProps) {
   const tabs: { kind: AgentView["kind"]; label: string; enabled: boolean }[] = [
     { kind: "list", label: "Overview", enabled: true },
     { kind: "detail", label: "Detail", enabled: hasSelected },
