@@ -155,13 +155,18 @@ try {
     execSync("go vet ./...", { cwd: import.meta.dir, stdio: "pipe" })
     console.log("[generate-nav-script] go vet passed")
   } catch (e: unknown) {
-    const error = e as { stderr?: Buffer }
-    throw new Error(`[generate-nav-script] FATAL: Generated Go file fails 'go vet': ${error.stderr?.toString()}`)
+    const stderr =
+      e instanceof Error
+        ? e.message
+        : e && typeof e === "object" && "stderr" in e && e.stderr instanceof Buffer
+          ? e.stderr.toString()
+          : String(e)
+    throw new Error(`[generate-nav-script] FATAL: Generated Go file fails 'go vet': ${stderr}`)
   }
 } catch (e: unknown) {
   // Check if Go is simply not installed vs go vet failed
-  const error = e as { message?: string }
-  if (error.message?.includes("go vet")) {
+  const message = e instanceof Error ? e.message : String(e)
+  if (message.includes("go vet")) {
     throw e
   }
   console.log("[generate-nav-script] Go not installed, skipping go vet")
