@@ -173,7 +173,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       <div className="flex-1 min-h-0 flex">
         {/* Left column — settings */}
         <div className="w-[300px] shrink-0 border-r border-zinc-100 dark:border-white/[0.04] overflow-auto px-5 py-5">
-          <FieldGroup label="Name" color="emerald">
+          <FieldGroup label="Agent's name" color="emerald">
             <input
               type="text"
               value={name}
