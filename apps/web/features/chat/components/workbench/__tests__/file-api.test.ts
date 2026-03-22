@@ -103,7 +103,9 @@ describe("file-api client", () => {
         body: expect.any(FormData),
       })
 
-      const formData = mockFetch.mock.calls[0][1].body as FormData
+      expect(mockFetch.mock.calls[0][1].body).toBeInstanceOf(FormData)
+      const formData =
+        mockFetch.mock.calls[0][1].body instanceof FormData ? mockFetch.mock.calls[0][1].body : new FormData()
       expect(formData.get("workspace")).toBe("my-site.alive.best")
       expect(formData.get("file")).toBe(file)
     })
@@ -122,7 +124,9 @@ describe("file-api client", () => {
       const file = new File(["content"], "test.png", { type: "image/png" })
       await uploadFile("my-site.alive.best", file, "feature-branch")
 
-      const formData = mockFetch.mock.calls[0][1].body as FormData
+      expect(mockFetch.mock.calls[0][1].body).toBeInstanceOf(FormData)
+      const formData =
+        mockFetch.mock.calls[0][1].body instanceof FormData ? mockFetch.mock.calls[0][1].body : new FormData()
       expect(formData.get("worktree")).toBe("feature-branch")
     })
 
@@ -140,7 +144,9 @@ describe("file-api client", () => {
       const file = new File(["content"], "test.png", { type: "image/png" })
       await uploadFile("my-site.alive.best", file, null)
 
-      const formData = mockFetch.mock.calls[0][1].body as FormData
+      expect(mockFetch.mock.calls[0][1].body).toBeInstanceOf(FormData)
+      const formData =
+        mockFetch.mock.calls[0][1].body instanceof FormData ? mockFetch.mock.calls[0][1].body : new FormData()
       expect(formData.get("worktree")).toBeNull()
     })
 
