@@ -219,7 +219,6 @@ export function ScheduleInput({
       {/* Recurring: text input + quick picks + preview */}
       {!isOneTime && (
         <>
-          {/* Text input */}
           <div className="relative">
             <input
               type="text"
@@ -243,25 +242,6 @@ export function ScheduleInput({
             )}
           </div>
 
-          {/* Quick picks */}
-          <div className="flex flex-wrap gap-1.5">
-            {QUICK_PICKS.map(pick => (
-              <button
-                key={pick.text}
-                type="button"
-                onClick={() => onChange(pick.text)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
-                  value === pick.text
-                    ? "bg-black dark:bg-white text-white dark:text-black"
-                    : "bg-black/[0.05] dark:bg-white/[0.07] text-black/60 dark:text-white/60 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"
-                }`}
-              >
-                {pick.text}
-              </button>
-            ))}
-          </div>
-
-          {/* Understood / Error */}
           {value.trim() && !preview.loading && preview.cron && preview.description && (
             <p className="text-xs text-black/50 dark:text-white/50 px-1 flex items-center gap-1.5">
               <Check size={12} className="text-emerald-500 shrink-0" />

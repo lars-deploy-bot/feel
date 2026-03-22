@@ -8,7 +8,7 @@ import { ScheduleInput } from "@/components/automations/ScheduleInput"
 import { getInitialSiteSelection, SiteCombobox } from "@/components/automations/SiteCombobox"
 import { ApiError, postty } from "@/lib/api/api-client"
 import { buildCreatePayload, configResultToFormData } from "@/lib/automation/build-payload"
-import { DEFAULT_TIMEZONE, MODEL_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/automation/form-options"
+import { DEFAULT_TIMEZONE, MODEL_OPTIONS } from "@/lib/automation/form-options"
 
 // ── Styles ──────────────────────────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ export function AgentCreateView({
     return tomorrow.toISOString().split("T")[0]
   })
   const [scheduleTime, setScheduleTime] = useState("09:00")
-  const [timezone, setTimezone] = useState<string>(DEFAULT_TIMEZONE)
+  const [timezone] = useState<string>(DEFAULT_TIMEZONE)
 
   const [status, setStatus] = useState<"idle" | "submitting">("idle")
   const [error, setError] = useState<string | null>(null)
@@ -215,24 +215,6 @@ export function AgentCreateView({
               onOneTimeDateChange={setScheduleDate}
               onOneTimeTimeChange={setScheduleTime}
             />
-
-            <div>
-              <label htmlFor="agent-timezone" className={LABEL}>
-                Timezone
-              </label>
-              <select
-                id="agent-timezone"
-                value={timezone}
-                onChange={e => setTimezone(e.target.value)}
-                className={SELECT}
-              >
-                {TIMEZONE_OPTIONS.map(tz => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
       </div>
