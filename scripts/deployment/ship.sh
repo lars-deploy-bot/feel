@@ -27,6 +27,7 @@ cd "$PROJECT_ROOT"
 # Load libraries
 source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/lock.sh"
+source "$SCRIPT_DIR/lib/deploy-contract.sh"
 
 # =============================================================================
 # Configuration
@@ -34,7 +35,7 @@ source "$SCRIPT_DIR/lib/lock.sh"
 DEPLOY_STAGING=true
 DEPLOY_PRODUCTION=true
 SKIP_E2E=false
-DEPLOYER_HEALTH_URL="http://127.0.0.1:5095/health"
+DEPLOYER_HEALTH_URL="$DEPLOY_DEPLOYER_URL$DEPLOY_HEALTH_PATH"
 
 deployer_busy_summary() {
     local health_json build_id deployment_id
@@ -44,8 +45,8 @@ deployer_busy_summary() {
         return 1
     fi
 
-    build_id=$(printf '%s' "$health_json" | jq -r '.worker.current_build_id // empty' 2>/dev/null || true)
-    deployment_id=$(printf '%s' "$health_json" | jq -r '.worker.current_deployment_id // empty' 2>/dev/null || true)
+    build_id=$(printf '%s' "$health_json" | jq -r "$DEPLOYER_JQ_WORKER_BUILD_ID // empty" 2>/dev/null || true)
+    deployment_id=$(printf '%s' "$health_json" | jq -r "$DEPLOYER_JQ_WORKER_DEPLOY_ID // empty" 2>/dev/null || true)
 
     if [[ -n "$build_id" || -n "$deployment_id" ]]; then
         printf 'deployer busy (build=%s deployment=%s)\n' "$build_id" "$deployment_id"
@@ -205,17 +206,17 @@ echo ""
 
 echo -e "${BOLD}Health check:${NC}"
 if [ "$DEPLOY_STAGING" = true ]; then
-    if health_check "http://localhost:8998/" 1 1; then
-        echo -e "  Staging (8998):    ${GREEN}✓${NC}"
+    if health_check "http://localhost:${DEPLOY_PORT_STAGING}/" 1 1; then
+        echo -e "  Staging (${DEPLOY_PORT_STAGING}):    ${GREEN}✓${NC}"
     else
-        echo -e "  Staging (8998):    ${RED}✗${NC}"
+        echo -e "  Staging (${DEPLOY_PORT_STAGING}):    ${RED}✗${NC}"
     fi
 fi
 if [ "$DEPLOY_PRODUCTION" = true ]; then
-    if health_check "http://localhost:9000/" 1 1; then
-        echo -e "  Production (9000): ${GREEN}✓${NC}"
+    if health_check "http://localhost:${DEPLOY_PORT_PRODUCTION}/" 1 1; then
+        echo -e "  Production (${DEPLOY_PORT_PRODUCTION}): ${GREEN}✓${NC}"
     else
-        echo -e "  Production (9000): ${RED}✗${NC}"
+        echo -e "  Production (${DEPLOY_PORT_PRODUCTION}): ${RED}✗${NC}"
     fi
 fi
 echo ""

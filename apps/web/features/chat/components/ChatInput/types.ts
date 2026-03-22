@@ -186,8 +186,6 @@ export interface ChatInputContextValue extends ChatInputState, ChatInputActions 
 }
 
 export interface ChatInputProps extends ChatInputActions {
-  message: string
-  setMessage: (msg: string) => void
   busy: boolean
   isStopping?: boolean
   /** Whether submitting is currently allowed (defaults to true) */

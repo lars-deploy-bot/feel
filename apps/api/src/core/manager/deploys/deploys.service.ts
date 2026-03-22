@@ -8,7 +8,7 @@ import {
   DEPLOY_ENVIRONMENT_STAGING,
   type DeployDeploymentAction,
 } from "@webalive/database"
-import { getServerId } from "@webalive/shared"
+import { getServerId, PORTS } from "@webalive/shared"
 import { deployRepo } from "../../../db/repos"
 import type { DeployBuildInsert } from "../../../db/repos/deploy.repo"
 import { ConflictError, NotFoundError } from "../../../infra/errors"
@@ -21,7 +21,7 @@ import type {
 } from "./deploys.types"
 
 const DEPLOYER_DATA_DIR = "/var/lib/alive/deployer"
-const DEPLOYER_URL = "http://127.0.0.1:5095"
+const DEPLOYER_URL = `http://127.0.0.1:${PORTS.DEPLOYER}`
 const LOG_TAIL_LINES = 400
 
 /** Notify deployer-rs to check for pending work immediately. Best-effort — never throws. */

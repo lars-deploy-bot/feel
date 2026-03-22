@@ -66,6 +66,8 @@ export interface StreamEvent {
   requestId: string
   messageId?: string
   streamSeq?: number
+  /** Tab ID echoed by the server for cross-tab routing validation */
+  tabId?: string
   timestamp: string
   data:
     | StartEventData

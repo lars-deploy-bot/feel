@@ -8,7 +8,7 @@ import { ClientError, ClientRequest, useDevTerminal } from "@/features/chat/lib/
 import { type AgentManagerContent, parseStreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
-import { type BridgeWarningContent, isQueuedMessage, isWarningMessage } from "@/features/chat/lib/streaming/ndjson"
+import { isQueuedMessage, isWarningMessage } from "@/features/chat/lib/streaming/ndjson"
 import { isCompleteEvent, isDoneEvent, isErrorEvent, isInterruptEvent } from "@/features/chat/types/stream"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { buildPromptWithAttachmentsEx, type PromptBuildResult } from "@/features/chat/utils/prompt-builder"
@@ -23,6 +23,7 @@ import { useAttachmentStore } from "@/lib/stores/attachmentStore"
 import { authStore } from "@/lib/stores/authStore"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useBuilding, useGoal, useTargetUsers } from "@/lib/stores/goalStore"
+import { clearInput, getInputValue, setInput } from "@/lib/stores/inputStore"
 import { useLLMActions, useModel, useVoiceLanguage } from "@/lib/stores/llmStore"
 import { clearAbortController, setAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 import { getPlanModeState, getStreamModeState } from "@/lib/stores/streamModeStore"
@@ -76,8 +77,6 @@ interface UseChatMessagingOptions {
   tabGroupId: string | null
   isTerminal: boolean
   busy: boolean
-  msg: string
-  setMsg: (msg: string) => void
   addMessage: (message: UIMessage, targetTabId: string) => void
   chatInputRef: React.RefObject<ChatInputHandle | null>
   /** Force scroll to bottom when user sends a message */
@@ -101,8 +100,6 @@ export function useChatMessaging({
   tabGroupId,
   isTerminal,
   busy,
-  msg,
-  setMsg,
   addMessage,
   chatInputRef,
   forceScrollToBottom,
@@ -267,12 +264,12 @@ export function useChatMessaging({
                 }
                 // CRITICAL: Pass targetTabId to prevent cross-tab leakage
                 addMessage(stopMessage, targetTabId)
-                setMsg("")
+                clearInput()
                 return
               }
 
               const agentMessage = `agentmanager> ${data.nextAction}`
-              setMsg(agentMessage)
+              setInput(agentMessage)
               agentManagerTimeoutRef.current = setTimeout(() => {
                 agentManagerTimeoutRef.current = null
                 // Note: sendMessage will be called via the returned function
@@ -293,7 +290,7 @@ export function useChatMessaging({
           })
       }
     },
-    [agentSupervisorEnabled, prGoal, workspace, building, targetUsers, userModel, addMessage, setMsg],
+    [agentSupervisorEnabled, prGoal, workspace, building, targetUsers, userModel, addMessage],
   )
 
   const ACK_DEBOUNCE_MS = 1000
@@ -598,7 +595,7 @@ export function useChatMessaging({
                 }
 
                 // Idempotency check: skip duplicate messages
-                const messageId = (eventData as { messageId?: string }).messageId
+                const messageId = eventData.messageId
                 if (messageId) {
                   if (seenMessageIds.has(messageId)) {
                     console.log(`[Chat] Duplicate messageId ${messageId}, skipping`)
@@ -609,7 +606,7 @@ export function useChatMessaging({
 
                 // Validate tabId matches what we sent
                 // If server sends a tabId that doesn't match, this message is for a different tab
-                const responseTabId = (eventData as { tabId?: string }).tabId
+                const responseTabId = eventData.tabId
                 if (expectedTabId && responseTabId && responseTabId !== expectedTabId) {
                   console.warn(
                     `[Chat] TabId mismatch: expected ${expectedTabId}, got ${responseTabId}. Skipping message.`,
@@ -618,7 +615,7 @@ export function useChatMessaging({
                 }
 
                 // Track stream sequence for cursor-based replay (per-tab)
-                const streamSeq = (eventData as { streamSeq?: number }).streamSeq
+                const streamSeq = eventData.streamSeq
                 if (typeof streamSeq === "number") {
                   const ackStateForSeq = getAckState(targetTabId)
                   if (streamSeq > ackStateForSeq.lastSeenSeq) {
@@ -634,7 +631,7 @@ export function useChatMessaging({
 
                 if (isWarningMessage(eventData)) {
                   markStreamAlive()
-                  const warning = eventData.data.content as BridgeWarningContent
+                  const warning = eventData.data.content
                   console.log("[Chat] OAuth warning received:", warning.provider, warning.message)
                   continue
                 }
@@ -868,7 +865,7 @@ export function useChatMessaging({
 
   const sendMessage = useCallback(
     async (overrideMessage?: string) => {
-      const messageToSend = overrideMessage ?? msg
+      const messageToSend = overrideMessage ?? getInputValue()
       // Use the active session tabId (single source of truth)
       const targetTabId = tabId
       const isTabSubmitting = targetTabId ? (isSubmittingByTab.current.get(targetTabId) ?? false) : false
@@ -901,7 +898,7 @@ export function useChatMessaging({
           attachments: attachments.length > 0 ? attachments : undefined,
         }
         await addMessage(userMessage, targetTabId)
-        setMsg("")
+        clearInput()
         useAttachmentStore.getState().clear(targetTabId)
         forceScrollToBottom()
         // Re-focus the textarea after sending so user can keep typing
@@ -916,7 +913,7 @@ export function useChatMessaging({
         isSubmittingByTab.current.set(targetTabId, false)
       }
     },
-    [msg, busy, tabId, streamingActions, chatInputRef, addMessage, setMsg, forceScrollToBottom, sendStreaming],
+    [busy, tabId, streamingActions, chatInputRef, addMessage, forceScrollToBottom, sendStreaming],
   )
 
   return {
