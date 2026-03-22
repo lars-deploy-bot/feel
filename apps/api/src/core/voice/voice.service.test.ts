@@ -45,6 +45,15 @@ function groqNullText(): Response {
   return Response.json({ duration: 1.0, language: "en" })
 }
 
+/** Extract FormData from a mock fetch call's init.body, with runtime type check */
+function getFormDataBody(call: (typeof fetchMock.mock.calls)[number]): FormData {
+  const body: unknown = call[1]?.body
+  if (!(body instanceof FormData)) {
+    throw new Error(`Expected FormData but got ${typeof body}`)
+  }
+  return body
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -220,8 +229,7 @@ describe("voice.service", () => {
       expect(init?.headers).toEqual({ Authorization: "Bearer test-groq-key" })
 
       // Verify FormData contents
-      expect(init?.body).toBeInstanceOf(FormData)
-      const body = init?.body instanceof FormData ? init.body : new FormData()
+      const body = getFormDataBody(fetchMock.mock.calls[0])
       expect(body.get("model")).toBe("whisper-large-v3-turbo")
       expect(body.get("response_format")).toBe("verbose_json")
     })
@@ -232,9 +240,7 @@ describe("voice.service", () => {
 
       await transcribe({ file, language: "es" })
 
-      expect(fetchMock.mock.calls[0][1]?.body).toBeInstanceOf(FormData)
-      const body =
-        fetchMock.mock.calls[0][1]?.body instanceof FormData ? fetchMock.mock.calls[0][1].body : new FormData()
+      const body = getFormDataBody(fetchMock.mock.calls[0])
       expect(body.get("language")).toBe("es")
     })
 
@@ -244,9 +250,7 @@ describe("voice.service", () => {
 
       await transcribe({ file })
 
-      expect(fetchMock.mock.calls[0][1]?.body).toBeInstanceOf(FormData)
-      const body =
-        fetchMock.mock.calls[0][1]?.body instanceof FormData ? fetchMock.mock.calls[0][1].body : new FormData()
+      const body = getFormDataBody(fetchMock.mock.calls[0])
       expect(body.get("language")).toBeNull()
     })
 

@@ -14,7 +14,7 @@ import { gotoChatFast } from "./helpers/assertions"
 
 // Override testFeatureFlags to enable WORKTREES
 const test = baseTest.extend({
-  // biome-ignore lint/correctness/noEmptyPattern: Playwright fixture override requires destructured first arg
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright requires object destructuring
   testFeatureFlags: async ({}, use) => {
     await use({ WORKTREES: true })
   },
