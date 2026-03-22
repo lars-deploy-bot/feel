@@ -150,8 +150,8 @@ describe("GET /api/user-env-keys", () => {
     expect(response.status).toBe(200)
     expect(json.ok).toBe(true)
     expect(json.keys).toEqual([
-      { name: "OPENAI_API_KEY", hasValue: true, workspace: "", environment: "" },
-      { name: "GITHUB_TOKEN", hasValue: true, workspace: "", environment: "" },
+      { name: "OPENAI_API_KEY", hasValue: true, workspace: "", environments: [] },
+      { name: "GITHUB_TOKEN", hasValue: true, workspace: "", environments: [] },
     ])
     expect(listUserEnvKeysMock).toHaveBeenCalledWith("user-1")
   })
