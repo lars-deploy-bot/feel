@@ -319,6 +319,17 @@ export class WorkerPoolManager extends EventEmitter {
   constructor(config?: Partial<WorkerPoolConfig>) {
     super()
     this.config = createConfig(config)
+
+    // Fail fast: HOME is required to locate Claude credentials.
+    // Without it, every query silently fails with 0 messages.
+    // Typically missing when systemd services don't set Environment="HOME=/root".
+    if (!process.env.CLAUDE_CONFIG_DIR?.startsWith("/") && !process.env.HOME) {
+      throw new Error(
+        "FATAL: Neither HOME nor CLAUDE_CONFIG_DIR is set. " +
+          "Worker pool cannot locate Claude credentials. " +
+          'Add Environment="HOME=/root" to the systemd service.',
+      )
+    }
   }
 
   // ==========================================================================
