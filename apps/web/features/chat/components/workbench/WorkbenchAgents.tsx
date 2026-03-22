@@ -4,7 +4,7 @@ import { Bot, Loader2, Plus, RotateCw, TriangleAlert } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useCallback, useEffect, useState } from "react"
 import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
-import { getty } from "@/lib/api/api-client"
+import { useSitesQuery } from "@/lib/hooks/useSettingsQueries"
 import { useAgentCreateStore, usePendingCreate } from "@/lib/stores/agentCreateStore"
 import { AgentDetailView } from "./agents/AgentDetailView"
 import { AgentListView } from "./agents/AgentListView"
@@ -20,13 +20,12 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
   const { jobs, loading, error, refresh } = useAgents(workspace)
   const [view, setView] = useState<AgentView>({ kind: "list" })
   const { onOpenConversation, onOpenSettings } = useWorkbenchContext()
+  const { data: sitesData } = useSitesQuery()
 
   const pendingCreate = usePendingCreate()
   const onComplete = useAgentCreateStore(s => s.onComplete)
   const { startCreate, clearCreate } = useAgentCreateStore(s => s.actions)
 
-  // Button-specific fetch state (loading spinner + error)
-  const [newLoading, setNewLoading] = useState(false)
   const [newError, setNewError] = useState<string | null>(null)
 
   // When pending create data arrives (from chat OR button), switch to create view.
@@ -44,22 +43,21 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     if (selectedId && jobs.length > 0 && !selectedJob) setView({ kind: "list" })
   }, [selectedId, selectedJob, jobs.length])
 
-  /** Fetch the current workspace's site and open create form */
-  const handleNewAgent = useCallback(async () => {
-    setNewLoading(true)
+  /** Open create form using cached site data */
+  const handleNewAgent = useCallback(() => {
     setNewError(null)
-    try {
-      const data = await getty("sites")
-      if (!data || !Array.isArray(data.sites)) throw new Error("Failed to load sites")
-      const site = data.sites.find(s => s.hostname === workspace)
-      if (!site) throw new Error(`Site "${workspace}" not found`)
-      startCreate({ sites: [{ id: site.id, hostname: site.hostname }], defaultSiteId: site.id }, () => {})
-    } catch (e) {
-      setNewError(e instanceof Error ? e.message : "Failed to load sites")
-    } finally {
-      setNewLoading(false)
+    const sites = sitesData?.sites
+    if (!sites || sites.length === 0) {
+      setNewError("No websites available. Create a website first.")
+      return
     }
-  }, [startCreate, workspace])
+    const match = sites.find(s => s.hostname === workspace)
+    if (!match) {
+      setNewError(`Site "${workspace}" not found`)
+      return
+    }
+    startCreate({ sites: [{ id: match.id, hostname: match.hostname }], defaultSiteId: match.id }, () => {})
+  }, [startCreate, workspace, sitesData])
 
   const handleNavigate = (kind: AgentView["kind"]) => {
     if (kind === "list") setView({ kind: "list" })
@@ -128,10 +126,9 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
         <button
           type="button"
           onClick={handleNewAgent}
-          disabled={newLoading}
           className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg text-[12px] font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 disabled:opacity-40 transition-colors"
         >
-          {newLoading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+          <Plus size={12} />
           New agent
         </button>
       </div>
@@ -145,7 +142,7 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
         hasSelected={selectedJob !== null && selectedJob !== undefined}
         onNavigate={handleNavigate}
         onNewAgent={handleNewAgent}
-        newAgentLoading={newLoading}
+        newAgentLoading={!sitesData}
       />
       {newError && (
         <div className="px-3 py-1.5">
