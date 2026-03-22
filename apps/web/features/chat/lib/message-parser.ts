@@ -29,7 +29,7 @@ import {
   isPingEvent,
   isStartEvent,
 } from "@/features/chat/types/stream"
-import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import type { StreamingStoreState } from "@/lib/stores/streamingStore"
 
 export type StartEventData = BridgeStartMessage["data"]
@@ -145,7 +145,7 @@ type AssistantErrorResultMessage = {
   type: "result"
   is_error: true
   result: string
-  error_code: "API_BILLING_ERROR"
+  error_code: typeof ErrorCodes.API_BILLING_ERROR
 }
 
 /**
@@ -162,7 +162,7 @@ export function getAssistantErrorResultMessage(
     type: "result",
     is_error: true,
     result: `${SDK_BILLING_ERROR_MESSAGE}\n\n_Error Type: billing_error_`,
-    error_code: "API_BILLING_ERROR",
+    error_code: ErrorCodes.API_BILLING_ERROR,
   }
 }
 
@@ -332,8 +332,6 @@ export function parseStreamEvent(
     if (helpText) {
       fullMessage += `\n\n${helpText}`
     }
-    // Show error ID for log correlation (not full details - those stay in backend logs)
-    fullMessage += `\n\n_Error ID: ${event.requestId}_`
 
     return {
       id: `${event.requestId}-error`,

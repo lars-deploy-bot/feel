@@ -39,9 +39,15 @@ export function AgentOverviewView({
       : "—"
     : "paused"
 
+  const skills = job.skills ?? []
+
   return (
-    <div className="px-6 py-5 max-w-2xl mx-auto w-full">
+    <div className="px-6 max-w-2xl mx-auto w-full min-h-full flex flex-col">
+      <div className="flex-[3]" />
+
+      {/* Agent name + status */}
       <div className="mb-6">
+        <h3 className="text-[20px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">{job.name}</h3>
         <StatusLine job={job} />
       </div>
 
@@ -64,6 +70,37 @@ export function AgentOverviewView({
           </div>
         </div>
       </div>
+
+      {/* Instructions preview — click to edit */}
+      {job.action_prompt && (
+        <button type="button" onClick={onGoToEdit} className="w-full text-left mb-6 group">
+          <p className="text-[11px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-2">
+            Instructions
+          </p>
+          <div className="px-4 py-3 rounded-2xl bg-zinc-50/50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] group-hover:border-violet-200 dark:group-hover:border-violet-500/20 transition-colors">
+            <p className="text-[13px] text-zinc-600 dark:text-zinc-400 leading-relaxed line-clamp-4">
+              {job.action_prompt}
+            </p>
+          </div>
+        </button>
+      )}
+
+      {/* Skills */}
+      {skills.length > 0 && (
+        <div className="mb-6">
+          <p className="text-[11px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-2">Skills</p>
+          <div className="flex flex-wrap gap-1.5">
+            {skills.map(skill => (
+              <span
+                key={skill}
+                className="px-2.5 py-1 text-[12px] font-medium rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {job.last_run_error && (
         <div className="mb-6">
@@ -108,6 +145,8 @@ export function AgentOverviewView({
         <div className="flex-1" />
         <DeleteConfirm onDelete={() => act(() => agentsApi.delete(job.id), setDeleting)} deleting={deleting} />
       </div>
+
+      <div className="flex-[5]" />
     </div>
   )
 }

@@ -3,6 +3,7 @@
  *
  * Manages user-defined environment keys stored in the lockbox.
  * These keys can be used by MCP servers for custom API integrations.
+ * Keys can be scoped to a specific workspace and/or environment.
  *
  * POST - Create/update an env key
  * GET - List env key names (without values for security)
@@ -17,6 +18,22 @@ import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getUserEnvKeysManager } from "@/lib/oauth/oauth-instances"
 
+/** Convert empty-string scope fields to opts for OAuthManager methods */
+function toScopeOpts(workspace: string, environment: string) {
+  if (!workspace && !environment) return undefined
+  return {
+    ...(workspace ? { workspace } : {}),
+    ...(environment ? { environment } : {}),
+  }
+}
+
+function scopeLabel(workspace: string, environment: string): string {
+  const parts: string[] = []
+  if (workspace) parts.push(`workspace: ${workspace}`)
+  if (environment) parts.push(`env: ${environment}`)
+  return parts.length > 0 ? ` (${parts.join(", ")})` : " (global)"
+}
+
 /**
  * POST - Create or update an environment key
  */
@@ -30,11 +47,11 @@ export async function POST(req: NextRequest) {
     const parsed = await handleBody("user-env-keys/create", req)
     if (isHandleBodyError(parsed)) return parsed
 
-    const { keyName, keyValue } = parsed
+    const { keyName, keyValue, workspace, environment } = parsed
 
-    await getUserEnvKeysManager().setUserEnvKey(user.id, keyName, keyValue)
+    await getUserEnvKeysManager().setUserEnvKey(user.id, keyName, keyValue, toScopeOpts(workspace, environment))
 
-    console.log(`[User Env Keys] User ${user.id} set key: ${keyName}`)
+    console.log(`[User Env Keys] User ${user.id} set key: ${keyName}${scopeLabel(workspace, environment)}`)
 
     return alrighty("user-env-keys/create", {
       message: `Environment key '${keyName}' saved successfully`,
@@ -62,12 +79,14 @@ export async function GET() {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const keyNames = await getUserEnvKeysManager().listUserEnvKeyNames(user.id)
+    const keys = await getUserEnvKeysManager().listUserEnvKeys(user.id)
 
     return alrighty("user-env-keys", {
-      keys: keyNames.map(name => ({
-        name,
+      keys: keys.map(k => ({
+        name: k.name,
         hasValue: true as const,
+        workspace: k.workspace ?? "",
+        environment: k.environment ?? "",
       })),
     })
   } catch (error) {
@@ -95,11 +114,11 @@ export async function DELETE(req: NextRequest) {
     const parsed = await handleBody("user-env-keys/delete", req)
     if (isHandleBodyError(parsed)) return parsed
 
-    const { keyName } = parsed
+    const { keyName, workspace, environment } = parsed
 
-    await getUserEnvKeysManager().deleteUserEnvKey(user.id, keyName)
+    await getUserEnvKeysManager().deleteUserEnvKey(user.id, keyName, toScopeOpts(workspace, environment))
 
-    console.log(`[User Env Keys] User ${user.id} deleted key: ${keyName}`)
+    console.log(`[User Env Keys] User ${user.id} deleted key: ${keyName}${scopeLabel(workspace, environment)}`)
 
     return alrighty("user-env-keys/delete", {
       message: `Environment key '${keyName}' deleted successfully`,

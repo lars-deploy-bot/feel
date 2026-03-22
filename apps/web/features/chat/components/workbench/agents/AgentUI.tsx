@@ -422,8 +422,8 @@ export function AgentDetailNav({
           ))}
         </div>
       </div>
-      {/* Agent name below tabs (hidden on edit to avoid duplication with name input) */}
-      {activeTab !== "edit" && (
+      {/* Agent name below tabs (only on runs — overview and edit handle their own) */}
+      {activeTab === "runs" && (
         <h3 className="text-[16px] font-bold text-zinc-900 dark:text-zinc-100 truncate text-center">{name}</h3>
       )}
     </div>

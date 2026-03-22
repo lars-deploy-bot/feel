@@ -18,6 +18,8 @@ const envSchema = z.object({
   POLAR_WEBHOOK_SECRET: z.string().min(1),
   // JWT — REQUIRED for verifying user session cookies from the web app
   JWT_SECRET: z.string().min(1),
+  // Redis — REQUIRED for rate limiting
+  REDIS_URL: z.string().min(1),
 })
 
 export type EnvConfig = z.infer<typeof envSchema>

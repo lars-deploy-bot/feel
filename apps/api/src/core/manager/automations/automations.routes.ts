@@ -5,6 +5,7 @@ import { validate } from "../../../shared/validation"
 import type { AppBindings } from "../../../types/hono"
 import { deleteJob, listAutomations, toggleJobActive, updateJob } from "./automations.service"
 import { textToCron } from "./text-to-cron"
+import { checkTextToCronLimit } from "./text-to-cron-limiter"
 
 export const automationsRoutes = new Hono<AppBindings>()
 
@@ -30,6 +31,7 @@ const updateJobSchema = z
 const textToCronSchema = z
   .object({
     text: z.string().trim().min(1).max(200),
+    user_id: z.string().min(1),
   })
   .strict()
 
@@ -66,6 +68,7 @@ automationsRoutes.patch("/:id", async c => {
 // POST /api/manager/automations/text-to-cron - convert natural language to cron
 automationsRoutes.post("/text-to-cron", async c => {
   const body = validate(textToCronSchema, await readJson(c))
+  await checkTextToCronLimit(body.user_id)
   const result = await textToCron(body.text)
   return c.json({ ok: true, data: result })
 })

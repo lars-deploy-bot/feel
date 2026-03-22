@@ -44,3 +44,12 @@ export {
 } from "./stream.machine"
 export type { TransitionResult } from "./types"
 export { err, ok } from "./types"
+export {
+  type ToggleAction,
+  toggleAction,
+  type VoiceEvent,
+  type VoiceState,
+  type VoiceStateTag,
+  voiceIdle,
+  voiceTransition,
+} from "./voice.machine"

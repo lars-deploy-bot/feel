@@ -14,7 +14,15 @@ import {
 import { isRefreshable, isRevocable, isUserInfoProvider } from "./providers/base"
 import { getProvider } from "./providers/index"
 import { createRefreshLockManager, type IRefreshLockManager } from "./refresh-lock"
-import { LockboxAdapter, type LockboxAdapterConfig } from "./storage"
+import {
+  environmentScope,
+  GLOBAL_SCOPE,
+  LockboxAdapter,
+  type LockboxAdapterConfig,
+  type LockboxScope,
+  workspaceEnvironmentScope,
+  workspaceScope,
+} from "./storage"
 import {
   OAUTH_TOKENS_NAMESPACE,
   type OAuthManagerConfig,
@@ -56,6 +64,14 @@ export class OAuthMissingRequiredScopesError extends Error {
     this.name = "OAuthMissingRequiredScopesError"
     this.missingScopes = missingScopes
   }
+}
+
+/** Build a lockbox scope from optional workspace + environment */
+function buildEnvKeyScope(workspace?: string, environment?: string): LockboxScope {
+  if (workspace && environment) return workspaceEnvironmentScope(workspace, environment)
+  if (workspace) return workspaceScope(workspace)
+  if (environment) return environmentScope(environment)
+  return GLOBAL_SCOPE
 }
 
 export class OAuthManager {
@@ -738,6 +754,11 @@ export class OAuthManager {
 
   // ------------------------------------------------------------------
   // USER ENVIRONMENT KEYS
+  // Scope convention:
+  //   {} = global (all workspaces, all environments)
+  //   { environment: "prod" } = environment-only
+  //   { workspace: "example.alive.best" } = workspace-only
+  //   { environment: "prod", workspace: "example.alive.best" } = both
   // ------------------------------------------------------------------
 
   /**
@@ -751,7 +772,12 @@ export class OAuthManager {
    * @example
    * await oauth.setUserEnvKey('user-123', 'OPENAI_API_KEY', 'sk-...');
    */
-  async setUserEnvKey(userId: string, keyName: string, keyValue: string): Promise<void> {
+  async setUserEnvKey(
+    userId: string,
+    keyName: string,
+    keyValue: string,
+    opts?: { workspace?: string; environment?: string },
+  ): Promise<void> {
     // Validate key name format (alphanumeric + underscores, must start with letter)
     if (!/^[A-Z][A-Z0-9_]{0,127}$/.test(keyName)) {
       throw new Error(
@@ -759,7 +785,8 @@ export class OAuthManager {
       )
     }
 
-    await this.storage.save(userId, USER_ENV_KEYS_NAMESPACE, keyName, keyValue)
+    const scope = buildEnvKeyScope(opts?.workspace, opts?.environment)
+    await this.storage.save(userId, USER_ENV_KEYS_NAMESPACE, keyName, keyValue, scope)
   }
 
   /**
@@ -769,8 +796,13 @@ export class OAuthManager {
    * @param keyName - Key name (e.g., "OPENAI_API_KEY")
    * @returns The key value or null if not found
    */
-  async getUserEnvKey(userId: string, keyName: string): Promise<string | null> {
-    return this.storage.get(userId, USER_ENV_KEYS_NAMESPACE, keyName)
+  async getUserEnvKey(
+    userId: string,
+    keyName: string,
+    opts?: { workspace?: string; environment?: string },
+  ): Promise<string | null> {
+    const scope = buildEnvKeyScope(opts?.workspace, opts?.environment)
+    return this.storage.get(userId, USER_ENV_KEYS_NAMESPACE, keyName, scope)
   }
 
   /**
@@ -779,15 +811,35 @@ export class OAuthManager {
    * @param userId - User ID
    * @returns Map of key names to values
    */
-  async getAllUserEnvKeys(userId: string): Promise<Record<string, string>> {
-    const secrets = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
+  /**
+   * Gets all environment keys for a user, merged by precedence.
+   * Precedence (highest wins): workspace+environment > workspace-only > environment-only > global.
+   */
+  async getAllUserEnvKeys(
+    userId: string,
+    opts?: { workspace?: string; environment?: string },
+  ): Promise<Record<string, string>> {
+    const { workspace, environment } = opts ?? {}
+
+    // Build list of scopes to fetch, in precedence order (lowest first)
+    const scopes: LockboxScope[] = [GLOBAL_SCOPE]
+    if (environment) scopes.push(environmentScope(environment))
+    if (workspace) scopes.push(workspaceScope(workspace))
+    if (workspace && environment) scopes.push(workspaceEnvironmentScope(workspace, environment))
+
+    // Fetch all scopes in parallel
+    const scopeSecrets = await Promise.all(
+      scopes.map(scope => this.storage.list(userId, USER_ENV_KEYS_NAMESPACE, scope)),
+    )
+
     const result: Record<string, string> = {}
 
-    // Fetch and decrypt each key value
-    for (const secret of secrets) {
-      const value = await this.storage.get(userId, USER_ENV_KEYS_NAMESPACE, secret.name)
-      if (value) {
-        result[secret.name] = value
+    // Merge in precedence order — later scopes overwrite earlier
+    for (let i = 0; i < scopes.length; i++) {
+      const scope = scopes[i]
+      for (const secret of scopeSecrets[i]) {
+        const value = await this.storage.get(userId, USER_ENV_KEYS_NAMESPACE, secret.name, scope)
+        if (value) result[secret.name] = value
       }
     }
 
@@ -800,6 +852,23 @@ export class OAuthManager {
    * @param userId - User ID
    * @returns Array of key names
    */
+  /**
+   * Lists environment key metadata for a user (without values).
+   * Returns all keys across all scopes so the UI can display scope badges.
+   */
+  async listUserEnvKeys(userId: string): Promise<Array<{ name: string; workspace: string; environment: string }>> {
+    const secrets = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
+    return secrets.map(s => {
+      const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
+      return {
+        name: s.name,
+        workspace: scope?.workspace ?? "",
+        environment: scope?.environment ?? "",
+      }
+    })
+  }
+
+  /** @deprecated Use listUserEnvKeys() instead — returns scope info */
   async listUserEnvKeyNames(userId: string): Promise<string[]> {
     const secrets = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
     return secrets.map(s => s.name)
@@ -811,8 +880,13 @@ export class OAuthManager {
    * @param userId - User ID
    * @param keyName - Key name to delete
    */
-  async deleteUserEnvKey(userId: string, keyName: string): Promise<void> {
-    await this.storage.delete(userId, USER_ENV_KEYS_NAMESPACE, keyName)
+  async deleteUserEnvKey(
+    userId: string,
+    keyName: string,
+    opts?: { workspace?: string; environment?: string },
+  ): Promise<void> {
+    const scope = buildEnvKeyScope(opts?.workspace, opts?.environment)
+    await this.storage.delete(userId, USER_ENV_KEYS_NAMESPACE, keyName, scope)
   }
 
   /**
@@ -822,8 +896,13 @@ export class OAuthManager {
    * @param keyName - Key name
    * @returns true if the key exists
    */
-  async hasUserEnvKey(userId: string, keyName: string): Promise<boolean> {
-    return this.storage.exists(userId, USER_ENV_KEYS_NAMESPACE, keyName)
+  async hasUserEnvKey(
+    userId: string,
+    keyName: string,
+    opts?: { workspace?: string; environment?: string },
+  ): Promise<boolean> {
+    const scope = buildEnvKeyScope(opts?.workspace, opts?.environment)
+    return this.storage.exists(userId, USER_ENV_KEYS_NAMESPACE, keyName, scope)
   }
 
   // ------------------------------------------------------------------
@@ -979,7 +1058,15 @@ export {
 } from "./refresh-lock"
 export type { EncryptedPayloadV2 } from "./security"
 export { Security } from "./security"
-export { LockboxAdapter, type LockboxAdapterConfig } from "./storage"
+export {
+  environmentScope,
+  GLOBAL_SCOPE,
+  LockboxAdapter,
+  type LockboxAdapterConfig,
+  type LockboxScope,
+  workspaceEnvironmentScope,
+  workspaceScope,
+} from "./storage"
 // Re-export types and utilities
 // Extended types
 export type {

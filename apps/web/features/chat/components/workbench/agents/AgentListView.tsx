@@ -2,10 +2,28 @@
 
 import { Play, RotateCw } from "lucide-react"
 import { useMemo } from "react"
-import { Dot, RunDots, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
+import { Dot, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
 import { agentsApi } from "./agents-api"
-import { healthScore, relTime, TRIGGER_REFRESH_DELAY, trigLabel } from "./agents-helpers"
+import { healthScore, relTime, successRateColor, TRIGGER_REFRESH_DELAY, trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
+
+/** Deterministic avatar for an agent based on its ID */
+const AGENT_AVATARS = [
+  "/images/agent-avatars/agent-1.png",
+  "/images/agent-avatars/agent-2.png",
+  "/images/agent-avatars/agent-3.png",
+  "/images/agent-avatars/agent-4.png",
+  "/images/agent-avatars/agent-5.png",
+  "/images/agent-avatars/agent-6.png",
+] as const
+
+function agentAvatar(id: string): string {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0
+  }
+  return AGENT_AVATARS[Math.abs(hash) % AGENT_AVATARS.length]
+}
 
 export function AgentListView({
   jobs,
@@ -24,9 +42,9 @@ export function AgentListView({
   const running = jobs.filter(j => j.status === "running").length
 
   return (
-    <div className="max-w-2xl mx-auto w-full px-4">
+    <div className="w-full px-4">
       {/* Summary bar */}
-      <div className="px-2 py-2.5 flex items-center justify-between text-[11px] tabular-nums">
+      <div className="px-1 py-2.5 flex items-center justify-between text-[12px] tabular-nums">
         <span className="text-zinc-500 dark:text-zinc-400 font-medium">
           {jobs.length} agent{jobs.length !== 1 ? "s" : ""}
         </span>
@@ -54,8 +72,8 @@ export function AgentListView({
         </div>
       </div>
 
-      {/* Agent cards */}
-      <div className="flex flex-col gap-2 pb-4">
+      {/* Agent grid — 2 columns */}
+      <div className="grid grid-cols-2 gap-3 pb-4">
         {sorted.map(job => (
           <AgentCard key={job.id} job={job} onSelect={onSelect} onChanged={onChanged} />
         ))}
@@ -73,6 +91,8 @@ function AgentCard({
   onSelect: (job: EnrichedJob) => void
   onChanged: () => void
 }) {
+  const isRunning = job.status === "running"
+
   return (
     // biome-ignore lint/a11y/useSemanticElements: card contains nested button (Run), can't use <button> wrapper
     <div
@@ -82,37 +102,60 @@ function AgentCard({
       onKeyDown={e => {
         if (e.key === "Enter") onSelect(job)
       }}
-      className="w-full text-left rounded-2xl border border-zinc-100 dark:border-white/[0.04] bg-white dark:bg-white/[0.02] hover:border-zinc-200 dark:hover:border-white/[0.08] hover:shadow-sm transition-all p-4 cursor-pointer"
+      className={`text-left rounded-2xl border bg-white dark:bg-white/[0.02] hover:shadow-md transition-all cursor-pointer overflow-hidden ${
+        isRunning
+          ? "border-blue-200 dark:border-blue-500/20"
+          : "border-zinc-100 dark:border-white/[0.04] hover:border-zinc-200 dark:hover:border-white/[0.08]"
+      }`}
     >
-      {/* Top row: name + streak */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <StatusDot job={job} />
-          <span className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{job.name}</span>
+      {/* Avatar + status badge */}
+      <div className="relative px-4 pt-4 pb-2 flex justify-center">
+        <div className="relative">
+          <img src={agentAvatar(job.id)} alt="" className="size-16 rounded-2xl object-cover" />
+          {/* Status indicator overlaid on avatar */}
+          <div className="absolute -bottom-1 -right-1">
+            <StatusDot job={job} />
+          </div>
         </div>
-        <StreakBadge streak={job.streak} />
       </div>
 
-      {/* Middle row: trigger + last run */}
-      <div className="flex items-center gap-2 text-[12px] text-zinc-400 dark:text-zinc-500 mb-3">
-        <span className="inline-flex items-center gap-1">
-          <TrigIcon type={job.trigger_type} />
-          {trigLabel(job)}
-        </span>
+      {/* Name */}
+      <div className="px-4 pb-1 text-center">
+        <span className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100 line-clamp-1">{job.name}</span>
+      </div>
+
+      {/* Schedule + last seen */}
+      <div className="px-4 pb-2 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+        <TrigIcon type={job.trigger_type} size={10} />
+        <span className="truncate">{trigLabel(job)}</span>
         <Dot />
-        <span className="tabular-nums">{relTime(job.last_run_at)}</span>
+        <span className="tabular-nums shrink-0">{relTime(job.last_run_at)}</span>
       </div>
 
-      {/* Bottom row: run dots + quick action */}
-      <div className="flex items-center justify-between">
-        <RunDots runs={job.recent_runs} />
+      {/* Prompt snippet */}
+      {job.action_prompt && (
+        <div className="px-4 pb-3">
+          <p className="text-[12px] text-zinc-400 dark:text-zinc-500 leading-relaxed line-clamp-2 text-center">
+            {job.action_prompt}
+          </p>
+        </div>
+      )}
+
+      {/* Footer: stats + run */}
+      <div className="px-4 py-3 border-t border-zinc-50 dark:border-white/[0.03] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className={`text-[13px] font-bold tabular-nums ${successRateColor(job.success_rate)}`}>
+            {job.success_rate}%
+          </span>
+          <StreakBadge streak={job.streak} />
+        </div>
         <button
           type="button"
           onClick={e => {
             e.stopPropagation()
             agentsApi.trigger(job.id).then(() => globalThis.setTimeout(onChanged, TRIGGER_REFRESH_DELAY))
           }}
-          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/15 border-b-2 border-emerald-200 dark:border-emerald-600/30 active:translate-y-[1px] active:border-b-0 transition-all"
+          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-xl text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/15 border-b-2 border-emerald-200 dark:border-emerald-600/30 active:translate-y-[1px] active:border-b-0 transition-all"
         >
           <Play size={10} />
           Run

@@ -57,9 +57,10 @@ export function VoiceButton({
   }, [])
 
   const handlePointerDown = useCallback(() => {
-    if (state !== "idle") return
     pointerDownAt.current = Date.now()
     isHolding.current = false
+
+    if (state !== "idle") return // only idle can start hold-to-speak
 
     // After threshold, start recording (hold-to-speak)
     if (holdTimerRef.current) clearTimeout(holdTimerRef.current)
@@ -82,12 +83,16 @@ export function VoiceButton({
       onStopRecording()
       isHolding.current = false
     } else if (state === "recording") {
-      // Tap to stop — pointerDown was blocked so use state directly
+      // Tap to stop
       onStopRecording()
-    } else if (Date.now() - pointerDownAt.current < HOLD_THRESHOLD_MS) {
-      // Quick tap — toggle (start recording, cancel transcription, dismiss error)
+    } else if (state === "transcribing" || state === "error") {
+      // Tap to cancel transcription or dismiss error
+      onToggle()
+    } else if (state === "idle" && Date.now() - pointerDownAt.current < HOLD_THRESHOLD_MS) {
+      // Quick tap to start recording
       onToggle()
     }
+    // "stopping" → ignore, let MediaRecorder finish
   }, [state, onToggle, onStopRecording])
 
   const handlePointerLeave = useCallback(() => {

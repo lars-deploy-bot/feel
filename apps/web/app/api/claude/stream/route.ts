@@ -58,6 +58,7 @@ import { buildAnalyzeImagePrompt, fetchAndSaveAnalyzeImages } from "@/lib/image-
 import { logInput } from "@/lib/input-logger"
 import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
 import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
+import { getUserEnvKeysEnvironment } from "@/lib/oauth/oauth-instances"
 import { getRequestId } from "@/lib/request-id"
 import { createRequestLogger } from "@/lib/request-logger"
 import { getRuntimeAccessDecision } from "@/lib/runtime/authorization"
@@ -478,8 +479,8 @@ export async function POST(req: NextRequest) {
       // User OAuth tokens for MCP providers (negative-cached for revoked tokens)
       fetchOAuthTokens(user.id, logger),
 
-      // User environment keys for MCP servers
-      fetchUserEnvKeys(user.id, logger),
+      // User environment keys for MCP servers (merged: global < env < workspace < workspace+env)
+      fetchUserEnvKeys(user.id, logger, resolvedWorkspaceName, getUserEnvKeysEnvironment()),
     ])
 
     // Fire-and-forget: stream buffer creation (non-fatal, don't block)

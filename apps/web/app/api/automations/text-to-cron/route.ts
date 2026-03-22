@@ -3,6 +3,7 @@
  *
  * Convert natural language schedule text to a cron expression.
  * Used by the UI for live preview before saving.
+ * Proxies to apps/api which handles rate limiting and caching.
  */
 
 import * as Sentry from "@sentry/nextjs"
@@ -17,7 +18,7 @@ const bodySchema = z.object({
   text: z.string().trim().min(1).max(AGENT_CONSTRAINTS.SCHEDULE_TEXT_MAX),
 })
 
-export const POST = protectedRoute(async ({ req }) => {
+export const POST = protectedRoute(async ({ user, req }) => {
   const raw = await req.json()
   const parsed = bodySchema.safeParse(raw)
   if (!parsed.success) {
@@ -25,7 +26,7 @@ export const POST = protectedRoute(async ({ req }) => {
   }
 
   try {
-    const result = await textToCron(parsed.data.text)
+    const result = await textToCron(parsed.data.text, user.id)
     return Response.json({ ok: true, cron: result.cron, description: result.description, timezone: result.timezone })
   } catch (err) {
     Sentry.captureException(err)

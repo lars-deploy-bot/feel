@@ -1072,6 +1072,10 @@ export const apiSchemas = {
         z.object({
           name: z.string(),
           hasValue: z.literal(true),
+          /** "" = all workspaces (global), non-empty = workspace-scoped */
+          workspace: z.string(),
+          /** "" = all environments (global), non-empty = environment-scoped (e.g. "prod", "staging") */
+          environment: z.string(),
         }),
       ),
     }),
@@ -1097,6 +1101,10 @@ export const apiSchemas = {
             message: "This is a reserved key name and cannot be set by users",
           }),
         keyValue: z.string().min(1, "Key value is required").max(10000, "Key value too long"),
+        /** "" or omit = all workspaces, non-empty = workspace-scoped */
+        workspace: z.string().optional().default(""),
+        /** "" or omit = all environments, non-empty = environment-scoped (e.g. "prod", "staging", "local") */
+        environment: z.string().optional().default(""),
       })
       .brand<"UserEnvKeysCreateRequest">(),
     res: z.object({
@@ -1115,6 +1123,10 @@ export const apiSchemas = {
     req: z
       .object({
         keyName: z.string().min(1, "Key name is required"),
+        /** Must match the scope of the key being deleted */
+        workspace: z.string().optional().default(""),
+        /** Must match the scope of the key being deleted */
+        environment: z.string().optional().default(""),
       })
       .brand<"UserEnvKeysDeleteRequest">(),
     res: z.object({

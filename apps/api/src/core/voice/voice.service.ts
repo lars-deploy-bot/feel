@@ -54,6 +54,7 @@ export class TranscribeError extends Error {
 
 const ALLOWED_AUDIO_TYPES = new Set([
   "audio/webm",
+  "video/webm", // Bun infers video/webm from .webm extension even for audio-only recordings
   "audio/mp4",
   "audio/mpeg",
   "audio/ogg",

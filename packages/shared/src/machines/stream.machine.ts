@@ -12,13 +12,18 @@
  *                                      │
  *                                      ├─ CompleteReceived → draining → closed
  *                                      ├─ CancelRequested → cancelling → closed
- *                                      ├─ ErrorOccurred → error
+ *                                      ├─ ErrorOccurred → error  (endStream fires immediately — Stop button disappears)
  *                                      └─ PingReceived → streaming (no-op)
  *
  * "queued" is optional — only entered when worker pool has no available workers.
  * "fetching" = fetch() called, waiting for HTTP response headers.
  * "reading" = headers received, waiting for first NDJSON line from child.
  * "streaming" = messages flowing. Carries tokens for billing.
+ *
+ * UI effect: On CompleteReceived, DoneReceived, ErrorOccurred, or InterruptReceived,
+ * endStream() is called IMMEDIATELY (not deferred to reader unwind). This ensures
+ * the Stop button disappears as soon as the terminal event arrives — no race window
+ * where the user can click Stop on an already-dead stream.
  *
  * Note: "session-received" from the Rust model is NOT a state here.
  * In reality, the session event is a side-effect (stored in Supabase)

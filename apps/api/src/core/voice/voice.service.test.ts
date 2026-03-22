@@ -153,6 +153,12 @@ describe("voice.service", () => {
       expect(result.text).toBe("webm opus")
     })
 
+    it("accepts video/webm (Bun infers this from .webm extension)", async () => {
+      fetchMock.mockResolvedValueOnce(groqOk("webm video type"))
+      const file = makeAudioFile(5000, "video/webm", "voice.webm")
+      await expect(transcribe({ file })).resolves.toBeDefined()
+    })
+
     it("accepts audio/mp4", async () => {
       fetchMock.mockResolvedValueOnce(groqOk("mp4 audio"))
       const file = makeAudioFile(5000, "audio/mp4")

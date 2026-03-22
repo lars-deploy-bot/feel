@@ -84,6 +84,7 @@ describe("LockboxAdapter", () => {
       p_instance_id: "google:prod",
       p_namespace: "oauth_connections",
       p_name: "google",
+      p_scope: {},
     })
   })
 
@@ -155,6 +156,7 @@ describe("LockboxAdapter", () => {
       p_instance_id: "google:prod",
       p_namespace: "oauth_connections",
       p_name: "google",
+      p_scope: {},
     })
   })
 
@@ -188,6 +190,7 @@ describe("LockboxAdapter", () => {
       p_instance_id: "google:prod",
       p_namespace: "oauth_connections",
       p_name: "google",
+      p_scope: {},
     })
   })
 
@@ -269,6 +272,7 @@ describe("LockboxAdapter", () => {
       p_instance_id: "default",
       p_namespace: "oauth_connections",
       p_name: "google",
+      p_scope: {},
     })
   })
 

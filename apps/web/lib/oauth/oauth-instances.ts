@@ -150,8 +150,10 @@ export const getStripeOAuth = () => getOAuthInstance("stripe")
 export const getGoogleOAuth = () => getOAuthInstance("google")
 
 /**
- * Get OAuth manager for user environment keys operations
- * (not provider-specific, used for storing custom API keys)
+ * Get OAuth manager for user environment keys operations.
+ * Uses a single instance_id ("user-env-keys") across all deployments —
+ * environment scoping is handled via scope.environment in the lockbox,
+ * not via instance_id.
  */
 let userEnvKeysInstance: ReturnType<typeof createOAuthManager> | null = null
 
@@ -160,7 +162,7 @@ export function getUserEnvKeysManager(): ReturnType<typeof createOAuthManager> {
     const environment = getCurrentEnvironment()
     const config: OAuthManagerConfig = {
       provider: "user-env-keys",
-      instanceId: buildInstanceId("user-env-keys", environment),
+      instanceId: "user-env-keys",
       namespace: "user_env_keys",
       environment,
       defaultTtlSeconds: undefined, // No TTL for user keys
@@ -168,6 +170,11 @@ export function getUserEnvKeysManager(): ReturnType<typeof createOAuthManager> {
     userEnvKeysInstance = createOAuthManager(config)
   }
   return userEnvKeysInstance
+}
+
+/** The current deployment environment, for filtering scoped keys at runtime */
+export function getUserEnvKeysEnvironment(): string {
+  return getCurrentEnvironment()
 }
 
 export type { OAuthProvider } from "./providers"

@@ -1,6 +1,6 @@
 "use client"
 
-import { Loader2, Plus, RotateCw, TriangleAlert } from "lucide-react"
+import { Loader2, RotateCw, TriangleAlert } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { useSitesQuery } from "@/lib/hooks/useSettingsQueries"

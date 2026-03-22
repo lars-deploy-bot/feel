@@ -2,18 +2,28 @@
  * User Environment Keys Settings Component
  *
  * Allows users to manage custom environment keys stored in the lockbox.
+ * Keys can be scoped to a workspace and/or environment.
  * These keys are available to MCP servers for custom API integrations.
  */
 
 "use client"
 
-import { AlertCircle, Eye, EyeOff, Key, Loader2, Plus, Trash2 } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Globe, Key, Loader2, Plus, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { ApiError, delly, getty, postty } from "@/lib/api/api-client"
 import { type Res, validateRequest } from "@/lib/api/schemas"
 
 type EnvKey = Res<"user-env-keys">["keys"][number]
+
+const ENVIRONMENTS = ["prod", "staging", "local"] as const
+type Environment = (typeof ENVIRONMENTS)[number]
+
+const ENV_LABELS: Record<Environment, string> = {
+  prod: "Production",
+  staging: "Staging",
+  local: "Local",
+}
 
 interface UseUserEnvKeysResult {
   keys: EnvKey[]
@@ -22,9 +32,6 @@ interface UseUserEnvKeysResult {
   refetch: () => Promise<void>
 }
 
-/**
- * Hook to fetch user env keys
- */
 function useUserEnvKeys(): UseUserEnvKeysResult {
   const [keys, setKeys] = useState<EnvKey[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,16 +60,15 @@ function useUserEnvKeys(): UseUserEnvKeysResult {
 }
 
 interface AddKeyFormProps {
-  onAdd: (keyName: string, keyValue: string) => Promise<void>
+  onAdd: (keyName: string, keyValue: string, workspace: string, environment: string) => Promise<void>
   disabled?: boolean
 }
 
-/**
- * Form for adding a new environment key
- */
 function AddKeyForm({ onAdd, disabled }: AddKeyFormProps) {
   const [keyName, setKeyName] = useState("")
   const [keyValue, setKeyValue] = useState("")
+  const [workspace, setWorkspace] = useState("")
+  const [environment, setEnvironment] = useState<string>("")
   const [showValue, setShowValue] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -92,9 +98,11 @@ function AddKeyForm({ onAdd, disabled }: AddKeyFormProps) {
     try {
       setSaving(true)
       setError(null)
-      await onAdd(keyName, keyValue)
+      await onAdd(keyName, keyValue, workspace, environment)
       setKeyName("")
       setKeyValue("")
+      setWorkspace("")
+      setEnvironment("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save key")
     } finally {
@@ -154,6 +162,52 @@ function AddKeyForm({ onAdd, disabled }: AddKeyFormProps) {
         </div>
       </div>
 
+      {/* Scope Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Environment Selector */}
+        <div>
+          <label
+            htmlFor="env-key-environment"
+            className="block text-xs font-medium text-black/70 dark:text-white/70 mb-1"
+          >
+            Environment
+          </label>
+          <select
+            id="env-key-environment"
+            value={environment}
+            onChange={e => setEnvironment(e.target.value)}
+            disabled={disabled || saving}
+            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors disabled:opacity-50"
+          >
+            <option value="">All environments</option>
+            {ENVIRONMENTS.map(env => (
+              <option key={env} value={env}>
+                {ENV_LABELS[env]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Workspace Input */}
+        <div>
+          <label
+            htmlFor="env-key-workspace"
+            className="block text-xs font-medium text-black/70 dark:text-white/70 mb-1"
+          >
+            Workspace <span className="text-black/40 dark:text-white/40">(optional)</span>
+          </label>
+          <input
+            id="env-key-workspace"
+            type="text"
+            value={workspace}
+            onChange={e => setWorkspace(e.target.value.toLowerCase())}
+            placeholder="example.alive.best"
+            disabled={disabled || saving}
+            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none focus:border-black dark:focus:border-white transition-colors disabled:opacity-50 font-mono"
+          />
+        </div>
+      </div>
+
       {/* Error Message */}
       {error && (
         <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
@@ -184,21 +238,44 @@ function AddKeyForm({ onAdd, disabled }: AddKeyFormProps) {
   )
 }
 
-interface EnvKeyRowProps {
-  envKey: EnvKey
-  onDelete: (keyName: string) => Promise<void>
+function ScopeBadge({ workspace, environment }: { workspace: string; environment: string }) {
+  if (!workspace && !environment) {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/5 dark:bg-white/10 text-black/50 dark:text-white/50">
+        <Globe size={10} />
+        Global
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 flex-wrap">
+      {environment && (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+          {ENV_LABELS[environment as Environment] ?? environment}
+        </span>
+      )}
+      {workspace && (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-mono">
+          {workspace}
+        </span>
+      )}
+    </span>
+  )
 }
 
-/**
- * Single row for an environment key
- */
+interface EnvKeyRowProps {
+  envKey: EnvKey
+  onDelete: (keyName: string, workspace: string, environment: string) => Promise<void>
+}
+
 function EnvKeyRow({ envKey, onDelete }: EnvKeyRowProps) {
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
     try {
       setDeleting(true)
-      await onDelete(envKey.name)
+      await onDelete(envKey.name, envKey.workspace, envKey.environment)
     } finally {
       setDeleting(false)
     }
@@ -211,7 +288,10 @@ function EnvKeyRow({ envKey, onDelete }: EnvKeyRowProps) {
           <Key size={14} className="text-green-600 dark:text-green-400" />
         </div>
         <div className="min-w-0">
-          <span className="text-sm font-medium font-mono text-black dark:text-white truncate block">{envKey.name}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium font-mono text-black dark:text-white truncate">{envKey.name}</span>
+            <ScopeBadge workspace={envKey.workspace} environment={envKey.environment} />
+          </div>
           <span className="text-xs text-black/50 dark:text-white/50">Encrypted and stored securely</span>
         </div>
       </div>
@@ -235,17 +315,17 @@ function EnvKeyRow({ envKey, onDelete }: EnvKeyRowProps) {
 export function UserEnvKeysSettings() {
   const { keys, loading, error, refetch } = useUserEnvKeys()
 
-  const handleAddKey = async (keyName: string, keyValue: string) => {
-    const validated = validateRequest("user-env-keys/create", { keyName, keyValue })
+  const handleAddKey = async (keyName: string, keyValue: string, workspace: string, environment: string) => {
+    const validated = validateRequest("user-env-keys/create", { keyName, keyValue, workspace, environment })
     await postty("user-env-keys/create", validated)
 
     toast(`${keyName} saved`)
     await refetch()
   }
 
-  const handleDeleteKey = async (keyName: string) => {
+  const handleDeleteKey = async (keyName: string, workspace: string, environment: string) => {
     try {
-      const validated = validateRequest("user-env-keys/delete", { keyName })
+      const validated = validateRequest("user-env-keys/delete", { keyName, workspace, environment })
       await delly("user-env-keys/delete", validated)
       toast(`${keyName} deleted`)
       await refetch()
@@ -300,7 +380,11 @@ export function UserEnvKeysSettings() {
         ) : (
           <div className="space-y-2">
             {keys.map(key => (
-              <EnvKeyRow key={key.name} envKey={key} onDelete={handleDeleteKey} />
+              <EnvKeyRow
+                key={`${key.name}:${key.environment ?? ""}:${key.workspace ?? ""}`}
+                envKey={key}
+                onDelete={handleDeleteKey}
+              />
             ))}
           </div>
         )}
@@ -310,7 +394,8 @@ export function UserEnvKeysSettings() {
       <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800/50">
         <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
           <strong>Secure storage:</strong> Your keys are encrypted with AES-256-GCM before storage. They can be used by
-          MCP integrations (like custom AI services) to authenticate on your behalf.
+          MCP integrations (like custom AI services) to authenticate on your behalf. Scope keys to a specific
+          environment or workspace, or leave as global to use everywhere.
         </p>
       </div>
     </div>

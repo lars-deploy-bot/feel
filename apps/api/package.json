@@ -24,6 +24,7 @@
     "@webalive/automation": "workspace:*",
     "@webalive/database": "workspace:*",
     "@webalive/env": "workspace:*",
+    "@webalive/redis": "workspace:*",
     "@webalive/shared": "workspace:*",
     "hono": "^4.12.8",
     "jsonwebtoken": "^9.0.3",

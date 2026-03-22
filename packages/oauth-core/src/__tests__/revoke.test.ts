@@ -113,6 +113,7 @@ describe("OAuthManager.revoke", () => {
       p_instance_id: "stripe:test",
       p_namespace: "oauth_connections",
       p_name: "stripe",
+      p_scope: {},
     })
   })
 })

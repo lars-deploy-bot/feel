@@ -135,6 +135,15 @@ export {
   wrapExternalContent,
 } from "./external-content.js"
 export { INFRASTRUCTURE_SERVICES, type InfraRouteVia, type InfrastructureService } from "./infrastructure-services.js"
+export {
+  type ToggleAction,
+  toggleAction,
+  type VoiceEvent,
+  type VoiceState,
+  type VoiceStateTag,
+  voiceIdle,
+  voiceTransition,
+} from "./machines/voice.machine.js"
 // invite-code.ts uses node:crypto — import via "@webalive/shared/invite-code" (server-only)
 export type {
   ManagerPasswordResetToken,

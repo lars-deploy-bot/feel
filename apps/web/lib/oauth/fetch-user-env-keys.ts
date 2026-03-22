@@ -23,23 +23,19 @@ export interface UserEnvKeysFetchResult {
 }
 
 /**
- * Fetches all environment keys for a user.
+ * Fetches all environment keys for a user, scoped to workspace and environment.
+ * Merges keys with precedence: global < env-only < workspace-only < workspace+env.
  * Values are decrypted from the lockbox.
- *
- * @param userId - The user ID to fetch keys for
- * @param logger - Optional logger for debugging
- * @returns Object with env keys map and count
- *
- * @example
- * ```typescript
- * const { envKeys, count } = await fetchUserEnvKeys(user.id, logger)
- * // envKeys: { OPENAI_API_KEY: "sk-...", MY_SERVICE_TOKEN: "..." }
- * // count: 2
- * ```
  */
-export async function fetchUserEnvKeys(userId: string, logger?: Logger): Promise<UserEnvKeysFetchResult> {
+export async function fetchUserEnvKeys(
+  userId: string,
+  logger?: Logger,
+  workspace?: string,
+  environment?: string,
+): Promise<UserEnvKeysFetchResult> {
   try {
-    const rawEnvKeys = await getUserEnvKeysManager().getAllUserEnvKeys(userId)
+    const opts = workspace || environment ? { workspace, environment } : undefined
+    const rawEnvKeys = await getUserEnvKeysManager().getAllUserEnvKeys(userId, opts)
     const reservedKeySet = new Set<string>(RESERVED_USER_ENV_KEYS)
     const envKeys: Record<string, string> = {}
     let blockedCount = 0

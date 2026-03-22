@@ -23,6 +23,7 @@
  *     ├─ CancelRequestTimeout → verifying  (HTTP timeout, poll needed)
  *     ├─ StreamCompleted ─────→ confirmed {wasComplete}
  *     ├─ StreamErrorReceived ─→ confirmed {wasError}
+ *     ├─ StreamAlreadyDead ───→ confirmed {wasError}  (stream errored before Stop was pressed)
  *     └─ (no NetworkLost — cancel always resolves or times out)
  *
  *   verifying ──VerifyConfirmed──→ confirmed
@@ -60,6 +61,7 @@ export type CancelEvent =
   | { type: "CancelRequestTimeout" }
   | { type: "StreamCompleted" }
   | { type: "StreamErrorReceived" }
+  | { type: "StreamAlreadyDead" }
   | { type: "VerifyConfirmed" }
   | { type: "VerifyStillStreaming"; activeRequestId?: string }
   | { type: "VerifyUnknown" }
@@ -80,6 +82,7 @@ export function cancelTransition(state: CancelState, event: CancelEvent): Transi
       if (t === "CancelTimedOut") return ok({ tag: "confirmed", timedOut: true })
       if (t === "StreamCompleted") return ok({ tag: "confirmed", wasComplete: true })
       if (t === "StreamErrorReceived") return ok({ tag: "confirmed", wasError: true })
+      if (t === "StreamAlreadyDead") return ok({ tag: "confirmed", wasError: true })
       if (t === "CancelQueued" || t === "CancelFailed" || t === "CancelRequestTimeout")
         return ok({
           tag: "verifying",
