@@ -19,31 +19,41 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
 source "$SCRIPT_DIR/lib/common.sh"
+source "$SCRIPT_DIR/lib/deploy-contract.sh"
 
 ENVIRONMENT="${1:?Usage: deploy-via-deployer.sh <staging|production>}"
 SKIP_E2E="${SKIP_E2E:-0}"
 
-if [[ "$ENVIRONMENT" != "staging" && "$ENVIRONMENT" != "production" ]]; then
-    log_error "Invalid environment: $ENVIRONMENT (must be staging or production)"
+if [[ "$ENVIRONMENT" != "$DEPLOY_ENV_STAGING" && "$ENVIRONMENT" != "$DEPLOY_ENV_PRODUCTION" ]]; then
+    log_error "Invalid environment: $ENVIRONMENT (must be $DEPLOY_ENV_STAGING or $DEPLOY_ENV_PRODUCTION)"
     exit 1
 fi
 
+# Port for the target environment (used for post-deploy smoke checks)
+case "$ENVIRONMENT" in
+    "$DEPLOY_ENV_STAGING")    PORT=$DEPLOY_PORT_STAGING ;;
+    "$DEPLOY_ENV_PRODUCTION") PORT=$DEPLOY_PORT_PRODUCTION ;;
+esac
+
 # Load credentials for the deploy control plane database.
-# The deployer-rs service is the source of truth — its EnvironmentFile (including
-# any systemd overrides) points at the correct database for deploy.* tables.
-# On Server 1 that's .env.production (cloud Supabase), on Server 2 it's .env.staging
-# (self-hosted Supabase) via /etc/systemd/system/alive-deployer.service.d/override.conf.
-DEPLOYER_ENV_FILE=$(systemctl show alive-deployer -p EnvironmentFiles --value 2>/dev/null | sed 's/ (ignore_errors=.*//')
-if [[ -z "$DEPLOYER_ENV_FILE" || ! -f "$DEPLOYER_ENV_FILE" ]]; then
+# Source ALL EnvironmentFile entries from the deployer service in order, matching
+# systemd's loading semantics where later files override earlier ones.
+# This ensures this script's psql uses the exact same DATABASE_URL as the deployer-rs.
+DEPLOYER_ENV_FILES=()
+while IFS= read -r line; do
+    # Strip systemd's "(ignore_errors=yes/no)" suffix
+    local_file=$(printf '%s' "$line" | sed 's/ (ignore_errors=.*//')
+    [[ -n "$local_file" && -f "$local_file" ]] && DEPLOYER_ENV_FILES+=("$local_file")
+done < <(systemctl show alive-deployer -p EnvironmentFiles --value 2>/dev/null)
+
+if [[ ${#DEPLOYER_ENV_FILES[@]} -eq 0 ]]; then
     # Fallback: production is the default (matches alive-deployer.service template)
-    DEPLOYER_ENV_FILE="$PROJECT_ROOT/apps/web/.env.production"
+    DEPLOYER_ENV_FILES=("$PROJECT_ROOT/apps/web/.env.production")
 fi
-ENV_FILE="$DEPLOYER_ENV_FILE"
-if [[ ! -f "$ENV_FILE" ]]; then
-    log_error "Environment file not found: $ENV_FILE"
-    exit 1
-fi
-source "$ENV_FILE"
+
+for ENV_FILE in "${DEPLOYER_ENV_FILES[@]}"; do
+    source "$ENV_FILE"
+done
 export PGPASSWORD="${DATABASE_PASSWORD:?DATABASE_PASSWORD must be set in $ENV_FILE}"
 DB_URL="${DATABASE_URL:?DATABASE_URL must be set in $ENV_FILE}"
 SERVER_CONFIG_PATH="${SERVER_CONFIG_PATH:-/var/lib/alive/server-config.json}"
@@ -59,8 +69,8 @@ if [[ -z "$CURRENT_SERVER_ID" ]]; then
     exit 1
 fi
 
-API_URL="http://127.0.0.1:5080"
-DEPLOYER_HEALTH="http://127.0.0.1:5095"
+API_URL="$DEPLOY_API_URL"
+DEPLOYER_HEALTH="$DEPLOY_DEPLOYER_URL"
 GIT_REF="$(git rev-parse --abbrev-ref HEAD)"
 GIT_SHA="$(git rev-parse HEAD)"
 COMMIT_MSG="$(git log -1 --format=%s)"
@@ -123,10 +133,36 @@ if [[ "$SKIP_E2E" != "1" ]]; then
     fi
 fi
 
-HEALTH_OK=$(curl -sf "$DEPLOYER_HEALTH/health" 2>/dev/null | jq -r '.ok // false' 2>/dev/null || echo "false")
+HEALTH_OK=$(curl -sf "$DEPLOYER_HEALTH$DEPLOY_HEALTH_PATH" 2>/dev/null | jq -r "$DEPLOYER_JQ_OK // false" 2>/dev/null || echo "false")
 if [[ "$HEALTH_OK" != "true" ]]; then
-    phase_end error "deployer-rs is not healthy ($DEPLOYER_HEALTH/health)"
+    phase_end error "deployer-rs is not healthy ($DEPLOYER_HEALTH$DEPLOY_HEALTH_PATH)"
     exit 1
+fi
+
+# Verify the API (Supabase PostgREST) and deployer-rs (direct Postgres) point to the same
+# Supabase instance. If they diverge, the API inserts builds into one DB and the deployer
+# polls another — builds silently never get picked up.
+# Strategy: read the API's SUPABASE_URL from its env file, then query deploy.applications
+# via PostgREST and compare with our psql result.
+API_ENV_FILE=$(systemctl show alive-api -p EnvironmentFiles --value 2>/dev/null | head -1 | sed 's/ (ignore_errors=.*//')
+if [[ -n "$API_ENV_FILE" && -f "$API_ENV_FILE" ]]; then
+    API_SUPABASE_URL=$(grep -m1 '^SUPABASE_URL=' "$API_ENV_FILE" | cut -d= -f2-)
+    API_SERVICE_KEY=$(grep -m1 '^SUPABASE_SERVICE_ROLE_KEY=' "$API_ENV_FILE" | cut -d= -f2-)
+    if [[ -n "$API_SUPABASE_URL" && -n "$API_SERVICE_KEY" ]]; then
+        API_APP_ID=$(curl -sf \
+            -H "apikey: $API_SERVICE_KEY" \
+            -H "Authorization: Bearer $API_SERVICE_KEY" \
+            -H "Accept-Profile: deploy" \
+            "$API_SUPABASE_URL/rest/v1/applications?slug=eq.alive&select=application_id&limit=1" 2>/dev/null \
+            | jq -r '.[0].application_id // empty' 2>/dev/null || echo "")
+        if [[ -n "$API_APP_ID" && "$API_APP_ID" != "$APPLICATION_ID" ]]; then
+            phase_end error "Database mismatch: API Supabase ($API_SUPABASE_URL) has application '$API_APP_ID' but deployer DATABASE_URL ($DB_URL) has '$APPLICATION_ID'. Both must point to the same Supabase. Check /etc/alive-deployer-local.env."
+            exit 1
+        fi
+        if [[ -z "$API_APP_ID" ]]; then
+            log_step "Warning: could not verify API Supabase — deploy.applications query returned empty"
+        fi
+    fi
 fi
 
 if ! SERVER_CONFIG_PATH="$SERVER_CONFIG_PATH" bun -e "
@@ -148,8 +184,8 @@ if [[ -z "$ENVIRONMENT_ID" ]]; then
     exit 1
 fi
 
-ACTIVE_BUILD_ID=$(db_query "SELECT build_id FROM deploy.builds WHERE application_id = '$APPLICATION_ID' AND server_id = '$CURRENT_SERVER_ID' AND status IN ('pending', 'running') LIMIT 1;")
-ACTIVE_DEPLOYMENT_ID=$(db_query "SELECT deployment_id FROM deploy.deployments WHERE environment_id = '$ENVIRONMENT_ID' AND status IN ('pending', 'running') LIMIT 1;")
+ACTIVE_BUILD_ID=$(db_query "SELECT build_id FROM deploy.builds WHERE application_id = '$APPLICATION_ID' AND server_id = '$CURRENT_SERVER_ID' AND status IN ('$DEPLOY_STATUS_PENDING', '$DEPLOY_STATUS_RUNNING') LIMIT 1;")
+ACTIVE_DEPLOYMENT_ID=$(db_query "SELECT deployment_id FROM deploy.deployments WHERE environment_id = '$ENVIRONMENT_ID' AND status IN ('$DEPLOY_STATUS_PENDING', '$DEPLOY_STATUS_RUNNING') LIMIT 1;")
 if [[ -n "$ACTIVE_BUILD_ID" || -n "$ACTIVE_DEPLOYMENT_ID" ]]; then
     phase_end error "Another deployment is already in progress (build=$ACTIVE_BUILD_ID deployment=$ACTIVE_DEPLOYMENT_ID)"
     exit 1
@@ -168,7 +204,7 @@ SELECT r.git_sha
 FROM deploy.deployments d
 JOIN deploy.releases r ON r.release_id = d.release_id
 WHERE d.environment_id = '$ENVIRONMENT_ID'
-  AND d.status = 'succeeded'
+  AND d.status = '$DEPLOY_STATUS_SUCCEEDED'
 ORDER BY d.created_at DESC
 LIMIT 1;
 ")
@@ -222,11 +258,11 @@ phase_end ok "Services deployed"
 # 5-6. Build + Resolve release
 # =============================================================================
 
-if [[ "$ENVIRONMENT" == "production" ]]; then
+if [[ "$ENVIRONMENT" == "$DEPLOY_ENV_PRODUCTION" ]]; then
     # Production: promote the latest successful staging release (no fresh build)
     phase_start "Resolving staging release for promotion"
 
-    STAGING_ENV_ID=$(db_query "SELECT environment_id FROM deploy.environments WHERE application_id = '$APPLICATION_ID' AND name = 'staging' AND server_id = '$CURRENT_SERVER_ID' LIMIT 1;")
+    STAGING_ENV_ID=$(db_query "SELECT environment_id FROM deploy.environments WHERE application_id = '$APPLICATION_ID' AND name = '$DEPLOY_ENV_STAGING' AND server_id = '$CURRENT_SERVER_ID' LIMIT 1;")
     if [[ -z "$STAGING_ENV_ID" ]]; then
         phase_end error "No staging environment found for promotion"
         exit 1
@@ -236,7 +272,7 @@ if [[ "$ENVIRONMENT" == "production" ]]; then
     SELECT d.release_id
     FROM deploy.deployments d
     WHERE d.environment_id = '$STAGING_ENV_ID'
-      AND d.status = 'succeeded'
+      AND d.status = '$DEPLOY_STATUS_SUCCEEDED'
     ORDER BY d.created_at DESC
     LIMIT 1;
     ")
@@ -270,17 +306,17 @@ else
     while [[ $ELAPSED -lt $BUILD_TIMEOUT_SECONDS ]]; do
         BUILD_STATUS=$(db_query "SELECT status FROM deploy.builds WHERE build_id = '$BUILD_ID';")
         case "$BUILD_STATUS" in
-            succeeded)
+            "$DEPLOY_STATUS_SUCCEEDED")
                 ARTIFACT_REF=$(db_query "SELECT artifact_ref FROM deploy.builds WHERE build_id = '$BUILD_ID';")
                 phase_end ok "Build succeeded ($ARTIFACT_REF)"
                 break
                 ;;
-            failed)
+            "$DEPLOY_STATUS_FAILED")
                 ERROR=$(db_query "SELECT error_message FROM deploy.builds WHERE build_id = '$BUILD_ID';")
                 phase_end error "Build failed: $ERROR"
                 exit 1
                 ;;
-            pending|running)
+            "$DEPLOY_STATUS_PENDING"|"$DEPLOY_STATUS_RUNNING")
                 sleep "$STATUS_POLL_INTERVAL_SECONDS"
                 ELAPSED=$((ELAPSED + STATUS_POLL_INTERVAL_SECONDS))
                 ;;
@@ -331,18 +367,18 @@ LAST_STAGE=""
 while [[ $ELAPSED -lt $DEPLOY_TIMEOUT_SECONDS ]]; do
     DEPLOY_STATUS=$(db_query "SELECT status FROM deploy.deployments WHERE deployment_id = '$DEPLOYMENT_ID';")
     case "$DEPLOY_STATUS" in
-        succeeded)
+        "$DEPLOY_STATUS_SUCCEEDED")
             HC_STATUS=$(db_query "SELECT healthcheck_status FROM deploy.deployments WHERE deployment_id = '$DEPLOYMENT_ID';")
             phase_end ok "Deployed (health: $HC_STATUS)"
             break
             ;;
-        failed)
+        "$DEPLOY_STATUS_FAILED")
             ERROR=$(db_query "SELECT error_message FROM deploy.deployments WHERE deployment_id = '$DEPLOYMENT_ID';")
             phase_end error "Deployment failed: $ERROR"
             exit 1
             ;;
-        pending|running)
-            CURRENT_STAGE=$(curl -sf "$DEPLOYER_HEALTH/health/details" 2>/dev/null | jq -r '.current_deployment.current_stage // empty' 2>/dev/null || echo "")
+        "$DEPLOY_STATUS_PENDING"|"$DEPLOY_STATUS_RUNNING")
+            CURRENT_STAGE=$(curl -sf "$DEPLOYER_HEALTH$DEPLOY_HEALTH_DETAILS_PATH" 2>/dev/null | jq -r "$DEPLOYER_JQ_CURRENT_STAGE // empty" 2>/dev/null || echo "")
             if [[ -n "$CURRENT_STAGE" && "$CURRENT_STAGE" != "$LAST_STAGE" ]]; then
                 log_step "$CURRENT_STAGE"
                 LAST_STAGE="$CURRENT_STAGE"
@@ -367,6 +403,43 @@ fi
 # =============================================================================
 
 phase_start "Post-deploy checks"
+
+# Post-deploy smoke checks — always run, even with SKIP_E2E.
+# These are fast (<5s) and catch silent deploy failures.
+SMOKE_ISSUES=0
+
+# 1. Health endpoint responds
+SMOKE_HEALTH=$(curl -sf "http://localhost:$PORT/api/health" 2>/dev/null || echo "")
+if [[ -z "$SMOKE_HEALTH" ]]; then
+    log_step "SMOKE FAIL: health endpoint not responding on port $PORT"
+    SMOKE_ISSUES=$((SMOKE_ISSUES + 1))
+fi
+
+# 2. SSR pages render (catch missing env vars, broken imports)
+for SMOKE_PATH in "/" "/chat"; do
+    SMOKE_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "http://localhost:$PORT$SMOKE_PATH" 2>/dev/null || echo "000")
+    if [[ "$SMOKE_STATUS" != "200" && "$SMOKE_STATUS" != "302" && "$SMOKE_STATUS" != "307" ]]; then
+        log_step "SMOKE FAIL: $SMOKE_PATH returned HTTP $SMOKE_STATUS"
+        SMOKE_ISSUES=$((SMOKE_ISSUES + 1))
+    fi
+done
+
+# 3. Process is still alive (catch immediate crash-loops)
+if ! systemctl is-active "alive-$ENVIRONMENT" >/dev/null 2>&1; then
+    log_step "SMOKE FAIL: alive-$ENVIRONMENT crashed after deploy"
+    SMOKE_ISSUES=$((SMOKE_ISSUES + 1))
+fi
+
+# 4. No crash in journal (catch startup errors that don't kill the process)
+RECENT_ERRORS=$(journalctl -u "alive-$ENVIRONMENT" --since "30 seconds ago" --no-pager 2>/dev/null | grep -ci "error\|fatal\|unhandled\|EADDRINUSE" || true)
+if [[ "$RECENT_ERRORS" -gt 3 ]]; then
+    log_step "SMOKE WARN: $RECENT_ERRORS error lines in journal since deploy"
+fi
+
+if [[ $SMOKE_ISSUES -gt 0 ]]; then
+    phase_end error "Post-deploy smoke checks failed ($SMOKE_ISSUES issues)"
+    exit 1
+fi
 
 if [[ "$SKIP_E2E" == "1" ]]; then
     log_step "Skipping E2E tests"

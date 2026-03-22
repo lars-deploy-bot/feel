@@ -16,7 +16,7 @@
 import { DOMAINS, getDeploymentTemplateById, getTemplateHostname } from "@webalive/shared"
 import jwt from "jsonwebtoken"
 import { expect, test } from "./fixtures"
-import { isLocalTestServer } from "./lib/test-env"
+import { hasLocalTemplates, isLocalTestServer } from "./lib/test-env"
 
 const PREVIEW_BASE = process.env.NEXT_PUBLIC_PREVIEW_BASE
 if (!PREVIEW_BASE) {
@@ -40,8 +40,8 @@ function previewUrl(domain: string, path = "/"): string {
   return `https://preview--${label}.${PREVIEW_BASE}${path}`
 }
 
-// Skip all preview proxy tests on local — no Go proxy running
-const describeProxy = isLocalTestServer ? test.describe.skip : test.describe
+// Skip all preview proxy tests on local (no Go proxy) or when templates aren't running on this server
+const describeProxy = isLocalTestServer || !hasLocalTemplates ? test.describe.skip : test.describe
 
 const blankTemplate = getDeploymentTemplateById("tmpl_blank")
 if (!blankTemplate) {

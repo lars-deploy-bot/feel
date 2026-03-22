@@ -48,12 +48,12 @@ describe("worker Docker module resolution", () => {
 
   it("uses explicit .js extension for generated deploy imports", async () => {
     const repoRoot = fileURLToPath(new URL("../../..", import.meta.url))
-    const source = await readFile(join(repoRoot, "packages/database/src/deploy-enums.ts"), "utf8")
-    const lines = source.split("\n").slice(0, 2)
+    const source = await readFile(join(repoRoot, "packages/database/src/deploy-contract.ts"), "utf8")
 
-    expect(lines).toEqual([
-      'import type { Database as DeployDatabase } from "./deploy.generated.js"',
-      'import { Constants as DeployConstants } from "./deploy.generated.js"',
-    ])
+    // deploy-contract.ts must import from deploy.generated.js with explicit .js extension
+    // Both the type import and runtime import must use .js
+    expect(source).not.toContain('from "./deploy.generated.ts"')
+    expect(source).toMatch(/import type\s+\{[^}]+\}\s+from "\.\/deploy\.generated\.js"/)
+    expect(source).toMatch(/import\s+\{[^}]+\}\s+from "\.\/deploy\.generated\.js"/)
   })
 })

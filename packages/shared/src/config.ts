@@ -434,6 +434,18 @@ export const PORTS = {
 
   /** Staging environment (systemd) */
   STAGING: 8998,
+
+  /** Production environment (systemd) */
+  PRODUCTION: 9000,
+
+  /** Hono API service (alive-api) */
+  API: 5080,
+
+  /** Deploy worker (alive-deployer / deployer-rs) */
+  DEPLOYER: 5095,
+
+  /** Automation worker */
+  WORKER: 5070,
 } as const
 
 // =============================================================================

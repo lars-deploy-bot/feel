@@ -1,6 +1,6 @@
 const entrypoints = [
   "../dist/index.js",
-  "../dist/deploy-enums.js",
+  "../dist/deploy-contract.js",
   "../dist/drizzle-client.js",
   "../dist/schema/index.js",
 ]

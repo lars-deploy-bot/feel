@@ -105,6 +105,16 @@ export const TEST_ENV = getTestEnv()
  */
 export const isLocalTestServer = TEST_ENV === "local"
 
+/** Server 2 (sonno.tech) IP — has no local template sites */
+const SERVER_2_IP = "95.217.89.48"
+
+/**
+ * Whether template sites run on this server.
+ * Templates only run on Server 1 (alive.best). Server 2 (sonno.tech) has no
+ * local template sites, so preview proxy tests that hit templates must be skipped.
+ */
+export const hasLocalTemplates = process.env.NEXT_PUBLIC_SERVER_IP !== SERVER_2_IP
+
 /**
  * Remote environments (preview + staging).
  */

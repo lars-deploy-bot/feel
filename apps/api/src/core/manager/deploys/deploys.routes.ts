@@ -1,108 +1,25 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 import {
-  DEPLOY_ARTIFACT_KINDS,
+  ApplicationZ,
+  BuildZ,
+  CreateBuildBodyZ,
+  CreateDeploymentBodyZ,
   DEPLOY_DEPLOYMENT_ACTION_DEPLOY,
-  DEPLOY_DEPLOYMENT_ACTIONS,
-  DEPLOY_ENVIRONMENT_NAMES,
-  DEPLOY_EXECUTOR_BACKENDS,
-  DEPLOY_TASK_STATUSES,
+  DeploymentZ,
 } from "@webalive/database"
 import type { AppBindings } from "../../../types/hono"
 import { listDeployApplications, queueBuild, queueDeployment, readBuildLog, readDeploymentLog } from "./deploys.service"
 
 // =============================================================================
-// Shared Zod schemas (reused across routes and emitted into the OpenAPI spec)
+// Shared schemas — imported from @webalive/database/deploy-contract
 // =============================================================================
+// Shapes come from the deploy contract (plain Zod). This file wraps them
+// with .openapi() metadata for the generated spec but MUST NOT redefine
+// the schema fields — that would create drift.
 
-const TaskStatusSchema = z.enum(DEPLOY_TASK_STATUSES).openapi("TaskStatus")
-const ArtifactKindSchema = z.enum(DEPLOY_ARTIFACT_KINDS).openapi("ArtifactKind")
-const DeploymentActionSchema = z.enum(DEPLOY_DEPLOYMENT_ACTIONS).openapi("DeploymentAction")
-const EnvironmentNameSchema = z.enum(DEPLOY_ENVIRONMENT_NAMES).openapi("EnvironmentName")
-const ExecutorBackendSchema = z.enum(DEPLOY_EXECUTOR_BACKENDS).openapi("ExecutorBackend")
-
-const BuildSchema = z
-  .object({
-    build_id: z.string(),
-    application_id: z.string(),
-    status: TaskStatusSchema,
-    git_ref: z.string(),
-    git_sha: z.string().nullable(),
-    commit_message: z.string().nullable(),
-    artifact_kind: ArtifactKindSchema,
-    artifact_ref: z.string().nullable(),
-    artifact_digest: z.string().nullable(),
-    build_log_path: z.string().nullable(),
-    error_message: z.string().nullable(),
-    started_at: z.string().nullable(),
-    finished_at: z.string().nullable(),
-    created_at: z.string(),
-  })
-  .openapi("Build")
-
-const ReleaseSchema = z
-  .object({
-    release_id: z.string(),
-    application_id: z.string(),
-    build_id: z.string(),
-    git_sha: z.string(),
-    commit_message: z.string().nullable(),
-    artifact_kind: ArtifactKindSchema,
-    artifact_ref: z.string(),
-    artifact_digest: z.string(),
-    created_at: z.string(),
-    staging_status: TaskStatusSchema.nullable(),
-    production_status: TaskStatusSchema.nullable(),
-  })
-  .openapi("Release")
-
-const DeploymentSchema = z
-  .object({
-    deployment_id: z.string(),
-    environment_id: z.string(),
-    environment_name: EnvironmentNameSchema,
-    environment_hostname: z.string(),
-    environment_port: z.number().nullable(),
-    release_id: z.string(),
-    action: DeploymentActionSchema,
-    status: TaskStatusSchema,
-    deployment_log_path: z.string().nullable(),
-    error_message: z.string().nullable(),
-    healthcheck_status: z.number().nullable(),
-    started_at: z.string().nullable(),
-    finished_at: z.string().nullable(),
-    created_at: z.string(),
-  })
-  .openapi("Deployment")
-
-const EnvironmentSchema = z
-  .object({
-    environment_id: z.string(),
-    application_id: z.string(),
-    name: EnvironmentNameSchema,
-    hostname: z.string(),
-    port: z.number().nullable(),
-    executor: ExecutorBackendSchema,
-    healthcheck_path: z.string(),
-    allow_email: z.boolean(),
-    current_deployment: DeploymentSchema.nullable(),
-  })
-  .openapi("Environment")
-
-const ApplicationSchema = z
-  .object({
-    application_id: z.string(),
-    slug: z.string(),
-    display_name: z.string(),
-    repo_owner: z.string(),
-    repo_name: z.string(),
-    default_branch: z.string(),
-    config_path: z.string(),
-    environments: z.array(EnvironmentSchema),
-    recent_builds: z.array(BuildSchema),
-    recent_releases: z.array(ReleaseSchema),
-    recent_deployments: z.array(DeploymentSchema),
-  })
-  .openapi("Application")
+const BuildSchema = z.object(BuildZ.shape).openapi("Build")
+const DeploymentSchema = z.object(DeploymentZ.shape).openapi("Deployment")
+const ApplicationSchema = z.object(ApplicationZ.shape).openapi("Application")
 
 const ErrorSchema = z
   .object({
@@ -140,30 +57,7 @@ const createBuildRoute = createRoute({
       required: true,
       content: {
         "application/json": {
-          schema: z
-            .object({
-              application_id: z.string().trim().min(1).openapi({
-                description: "The application to build",
-                example: "dep_app_bd57129d0218c50d",
-              }),
-              server_id: z.string().trim().min(1).openapi({
-                description: "Server to build on (from server-config.json serverId)",
-                example: "srv_alive_dot_best_138_201_56_93",
-              }),
-              git_ref: z.string().trim().min(1).openapi({
-                description: "Git ref (branch name or SHA)",
-                example: "main",
-              }),
-              git_sha: z.string().trim().min(1).openapi({
-                description: "Resolved git commit SHA",
-                example: "7f92e71a...",
-              }),
-              commit_message: z.string().trim().min(1).openapi({
-                description: "Commit message for the build",
-                example: "feat: add systemd runtime adapter",
-              }),
-            })
-            .strict(),
+          schema: z.object(CreateBuildBodyZ.shape).strict().openapi("CreateBuildBody"),
         },
       },
     },
@@ -192,23 +86,7 @@ const createDeploymentRoute = createRoute({
       required: true,
       content: {
         "application/json": {
-          schema: z
-            .object({
-              environment_id: z
-                .string()
-                .trim()
-                .min(1)
-                .openapi({ description: "Target environment", example: "dep_env_staging_abc123" }),
-              release_id: z
-                .string()
-                .trim()
-                .min(1)
-                .openapi({ description: "Release to deploy", example: "dep_rel_def456" }),
-              action: DeploymentActionSchema.optional().default(DEPLOY_DEPLOYMENT_ACTION_DEPLOY).openapi({
-                description: "deploy = fresh deploy, promote = promote from staging, rollback = revert to previous",
-              }),
-            })
-            .strict(),
+          schema: z.object(CreateDeploymentBodyZ.shape).strict().openapi("CreateDeploymentBody"),
         },
       },
     },
