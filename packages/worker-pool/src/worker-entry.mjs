@@ -431,8 +431,7 @@ function dropPrivileges() {
   //   4. Verify session files exist:
   //      find /root/.claude/projects/ -name "*.jsonl" -ls
   //
-  // homedir() reads /etc/passwd when HOME is unset — works in systemd without Environment="HOME=..."
-  const originalHome = process.env.HOME || homedir()
+  const originalHome = homedir()
   const workspaceKey = process.env.WORKER_WORKSPACE_KEY
 
   // CLAUDE_CONFIG_DIR must point to a directory with valid SDK credentials.
@@ -584,8 +583,7 @@ function dropPrivileges() {
   }
 
   // Ensure temp directory is writable by the workspace user
-  const workerHomeDir = process.env.HOME || homedir()
-  const tempDir = join(workerHomeDir, "tmp")
+  const tempDir = join(process.env.HOME, "tmp")
   try {
     if (!existsSync(tempDir)) {
       mkdirSync(tempDir, { recursive: true, mode: 0o700 })

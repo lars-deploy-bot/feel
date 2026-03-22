@@ -1033,7 +1033,6 @@ export class WorkerPoolManager extends EventEmitter {
     if (configured?.startsWith("/")) {
       return configured
     }
-    // homedir() reads /etc/passwd when HOME is unset — works in systemd without Environment="HOME=..."
     return path.join(homedir(), ".claude")
   }
 

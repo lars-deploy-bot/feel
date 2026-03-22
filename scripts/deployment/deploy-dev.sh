@@ -93,4 +93,3 @@ curl -f -s "http://localhost:$DEV_PORT/api/health" > /dev/null 2>&1 && \
 systemctl status "$DEV_SERVICE" --no-pager | head -15
 
 # shell-server-go is built separately via `make shell`
-# Preview proxy is now integrated into shell-server-go (no separate deploy)

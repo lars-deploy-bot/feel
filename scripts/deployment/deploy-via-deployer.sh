@@ -242,7 +242,6 @@ fi
 # =============================================================================
 
 phase_start "Deploying services"
-# Preview proxy is now integrated into shell-server-go (no separate deploy)
 phase_end ok "Services deployed"
 
 # =============================================================================

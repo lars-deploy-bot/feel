@@ -552,10 +552,6 @@ log_step "Superadmin skills read directly from repo at $PROJECT_ROOT/.claude/ski
 phase_end ok "Skills ready"
 
 # =============================================================================
-# Preview proxy is now integrated into shell-server-go (no separate deploy)
-# =============================================================================
-
-# =============================================================================
 # Deploy & Health Check
 # =============================================================================
 phase_start "Deploying"

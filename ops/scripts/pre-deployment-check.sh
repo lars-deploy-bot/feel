@@ -370,32 +370,16 @@ echo "[$CHECK/$TOTAL_CHECKS] Deploy lock..."
 LOCK_FILE="/tmp/alive-deploy.lock"
 if [ -f "$LOCK_FILE" ]; then
   LOCK_PID=$(cut -d'|' -f1 "$LOCK_FILE" 2>/dev/null)
-  # Check if the lock owner is an ancestor of this script (we're called from the deploy pipeline)
-  _is_ancestor=false
-  _lock_pid_valid=false
-  _lock_pid_live=false
-  if printf '%s' "$LOCK_PID" | grep -Eq '^[0-9]+$'; then
-    _lock_pid_valid=true
-    if printf '%s\n' "$SELF_PIDS" | tr '|' '\n' | grep -Fqx -- "$LOCK_PID"; then
-      _is_ancestor=true
-    elif ps -p "$LOCK_PID" >/dev/null 2>&1; then
-      _lock_pid_live=true
-    fi
-  fi
-  if [ "$_is_ancestor" = true ]; then
+  LOCK_AGE_SEC=$(( $(date +%s) - $(stat -c %Y "$LOCK_FILE") ))
+  LOCK_AGE_MIN=$(( LOCK_AGE_SEC / 60 ))
+
+  # Our own pipeline? ship.sh acquires the lock before calling this script.
+  if echo "$SELF_PIDS" | tr '|' '\n' | grep -qx "$LOCK_PID" 2>/dev/null; then
     pass_check "Deploy lock held by parent pipeline (PID $LOCK_PID)"
+  elif ps -p "$LOCK_PID" >/dev/null 2>&1; then
+    fail_check "Deploy lock held (${LOCK_AGE_MIN} min old) — process $LOCK_PID is still running"
   else
-    LOCK_AGE_SEC=$(( $(date +%s) - $(stat -c %Y "$LOCK_FILE") ))
-    LOCK_AGE_MIN=$(( LOCK_AGE_SEC / 60 ))
-    if [ "$_lock_pid_live" = true ]; then
-      fail_check "Deploy lock held (${LOCK_AGE_MIN} min old) — process $LOCK_PID is still running"
-    elif [ "$_lock_pid_valid" = true ] && ! ps -p "$LOCK_PID" >/dev/null 2>&1; then
-      fail_check "Stale deploy lock (${LOCK_AGE_MIN} min old) — owner PID ${LOCK_PID} is not running. Remove: rm $LOCK_FILE"
-    elif [ "$LOCK_AGE_SEC" -gt 1800 ]; then
-      fail_check "Stale deploy lock (${LOCK_AGE_MIN} min old) — likely orphaned. Remove: rm $LOCK_FILE"
-    else
-      fail_check "Deploy lock held (${LOCK_AGE_MIN} min old) — another deploy may be running"
-    fi
+    fail_check "Stale deploy lock (${LOCK_AGE_MIN} min old) — owner PID ${LOCK_PID} is dead. Remove: rm $LOCK_FILE"
   fi
 else
   pass_check "No deploy lock"
