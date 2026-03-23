@@ -858,6 +858,7 @@ export const apiSchemas = {
           .optional(),
         skills: z.array(z.string()).optional(),
         is_active: z.boolean().optional(),
+        avatar_url: z.string().url().nullable().optional(),
       })
       .brand<"AutomationsUpdateRequest">(),
     res: z.object({

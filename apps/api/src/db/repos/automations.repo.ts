@@ -94,6 +94,9 @@ export interface UpdateJobFields {
   action_timeout_seconds?: number | null
   cron_schedule?: string | null
   cron_timezone?: string | null
+  schedule_text?: string | null
+  skills?: string[]
+  avatar_url?: string | null
 }
 
 export async function updateJob(jobId: string, fields: UpdateJobFields): Promise<void> {

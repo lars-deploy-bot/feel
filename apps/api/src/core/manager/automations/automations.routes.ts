@@ -20,8 +20,12 @@ const updateJobSchema = z
     action_prompt: z.string().trim().min(1).nullable().optional(),
     action_model: z.string().trim().min(1).nullable().optional(),
     action_target_page: z.string().trim().min(1).nullable().optional(),
+    action_timeout_seconds: z.number().int().positive().nullable().optional(),
     cron_schedule: z.string().trim().min(1).nullable().optional(),
     cron_timezone: z.string().trim().min(1).nullable().optional(),
+    schedule_text: z.string().trim().min(1).nullable().optional(),
+    skills: z.array(z.string()).optional(),
+    avatar_url: z.string().url().nullable().optional(),
   })
   .strict()
   .refine(fields => Object.keys(fields).length > 0, {

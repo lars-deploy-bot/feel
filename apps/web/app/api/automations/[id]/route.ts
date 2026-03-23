@@ -158,6 +158,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       "action_timeout_seconds",
       "skills",
       "is_active",
+      "avatar_url",
     ] as const
 
     for (const field of fieldKeys) {
