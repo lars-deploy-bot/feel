@@ -33,7 +33,7 @@
  *   skipped — Redis unavailable, no buffer created
  */
 
-import { err, ok, type TransitionResult } from "./types"
+import { err, ok, type TransitionResult } from "./types.js"
 
 // ---------------------------------------------------------------------------
 // States — matches Redis StreamBufferEntry.state + lifecycle

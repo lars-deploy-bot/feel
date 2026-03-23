@@ -30,7 +30,7 @@
  * processed during streaming — it doesn't change the stream's lifecycle.
  */
 
-import { err, ok, type TransitionResult } from "./types"
+import { err, ok, type TransitionResult } from "./types.js"
 
 // ---------------------------------------------------------------------------
 // States
