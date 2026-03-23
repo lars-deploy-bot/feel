@@ -10,12 +10,6 @@ vi.mock("@webalive/env/server", () => ({
 
 import { ErrorCodes } from "@/lib/error-codes"
 
-// Force in-memory fallback so tests don't hang waiting for Redis
-vi.mock("@webalive/env/server", () => ({
-  getRedisUrl: () => null,
-  env: {},
-}))
-
 const requireSessionUserMock = vi.fn()
 const verifyWorkspaceAccessMock = vi.fn()
 const getSafeSessionCookieMock = vi.fn()
@@ -36,12 +30,6 @@ const USER_ID = "user-1"
 const WORKSPACE = "demo.test.example"
 const TAB_GROUP_ID = "tab-group-1"
 const TAB_ID = "tab-1"
-
-// Force cancel-intent-registry to use in-memory fallback (no Redis in tests)
-vi.mock("@webalive/env/server", () => ({
-  getRedisUrl: () => null,
-  env: {},
-}))
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),

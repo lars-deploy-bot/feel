@@ -19,7 +19,15 @@ DROP FUNCTION IF EXISTS public.lockbox_delete(text, text, text, text);
 DROP FUNCTION IF EXISTS public.lockbox_exists(text, text, text, text);
 DROP FUNCTION IF EXISTS public.lockbox_list(text, text, text);
 
--- Step 2: Migrate user-env-keys data from old environment-suffixed instance_id
+-- Step 2: Backfill scope from old environment-suffixed instance_id
+-- Extract the environment suffix and store it in scope before collapsing instance_id
+UPDATE lockbox.user_secrets
+SET scope = jsonb_build_object('environment', substring(instance_id from 'user-env-keys:(.+)$'))
+WHERE namespace = 'user_env_keys'
+  AND instance_id LIKE 'user-env-keys:%'
+  AND (scope IS NULL OR scope = '{}');
+
+-- Step 3: Migrate user-env-keys data from old environment-suffixed instance_id
 -- to canonical "user-env-keys" (environment scoping now lives in scope jsonb)
 UPDATE lockbox.user_secrets
 SET instance_id = 'user-env-keys'

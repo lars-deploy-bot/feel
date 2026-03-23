@@ -97,8 +97,8 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
   const promptRef = useRef<HTMLDivElement>(null)
   const charCountRef = useRef<HTMLSpanElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
-  /** Last failed save payload — prevents retrying the exact same failing fields */
-  const lastFailedPayloadRef = useRef("")
+  /** Last failed save payload — prevents retrying the exact same failing fields until user changes something */
+  const lastFailedPayloadRef = useRef<{ fingerprint: string; jobId: string } | null>(null)
 
   /** Read prompt from DOM — single source of truth */
   const getPrompt = useCallback(() => promptRef.current?.textContent ?? "", [])
@@ -212,9 +212,10 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
     const fields = buildEditFields(job, state, orig)
     if (Object.keys(fields).length === 0) return
 
-    // Dedup: don't retry the exact same payload that just failed
+    // Dedup: don't retry the exact same payload that just failed for the same job
     const fingerprint = JSON.stringify(fields)
-    if (fingerprint === lastFailedPayloadRef.current) return
+    const lastFailed = lastFailedPayloadRef.current
+    if (lastFailed && lastFailed.fingerprint === fingerprint && lastFailed.jobId === job.id) return
 
     setFieldErrors({})
     setSaving(true)
@@ -222,12 +223,12 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
     setError(null)
     try {
       await agentsApi.update(job.id, fields)
-      lastFailedPayloadRef.current = ""
+      lastFailedPayloadRef.current = null
       onChanged?.()
       setSaved(true)
       globalThis.setTimeout(() => setSaved(false), SAVED_BADGE_DURATION)
     } catch (e) {
-      lastFailedPayloadRef.current = fingerprint
+      lastFailedPayloadRef.current = { fingerprint, jobId: job.id }
       setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Failed to save")
     } finally {
       setSaving(false)
@@ -288,7 +289,7 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       <div className="flex-1 min-h-0 flex">
         {/* Left column — settings */}
         <div className="w-[300px] shrink-0 border-r border-zinc-100 dark:border-white/[0.04] overflow-auto px-5 py-5">
-          <AvatarEditor jobId={job?.id ?? name} savedAvatarUrl={job?.avatar_url ?? null} onAvatarSaved={onChanged} />
+          <AvatarEditor jobId={job?.id ?? null} savedAvatarUrl={job?.avatar_url ?? null} onAvatarSaved={onChanged} />
 
           <FieldGroup label="Agent's name" color="emerald">
             <input
@@ -567,7 +568,7 @@ function AvatarEditor({
   savedAvatarUrl,
   onAvatarSaved,
 }: {
-  jobId: string
+  jobId: string | null
   savedAvatarUrl: string | null
   onAvatarSaved?: () => void
 }) {
@@ -577,7 +578,7 @@ function AvatarEditor({
   const [customUrl, setCustomUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const src = customUrl ?? savedAvatarUrl ?? agentAvatar(jobId)
+  const src = customUrl ?? savedAvatarUrl ?? agentAvatar(jobId ?? "new-agent")
 
   const generate = async () => {
     if (!description.trim() || generating) return
@@ -593,7 +594,7 @@ function AvatarEditor({
       })
       const data = await res.json()
       if (!res.ok) {
-        const msg = data.error ?? "Generation failed"
+        const msg = typeof data.message === "string" ? data.message : (data.error ?? "Generation failed")
         setError(msg.includes("Too many") ? "Rate limited — try again in a few minutes" : msg)
         return
       }
@@ -601,7 +602,7 @@ function AvatarEditor({
         setCustomUrl(data.file_url)
         setDescription("")
         // Save avatar_url to the job in DB, then refresh parent
-        if (jobId && !jobId.includes(" ")) {
+        if (jobId) {
           await agentsApi.update(jobId, { avatar_url: data.file_url })
           onAvatarSaved?.()
         }

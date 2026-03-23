@@ -248,22 +248,23 @@ describe("voice.machine", () => {
     it("cancel during transcription: idle → recording → stopping → transcribing → idle", () => {
       let state: VoiceState = voiceIdle()
 
-      state = voiceTransition(state, { type: "TapStart" }).ok
-        ? (voiceTransition(state, { type: "TapStart" }) as { ok: true; state: VoiceState }).state
-        : state
+      let r = voiceTransition(state, { type: "TapStart" })
+      expect(r.ok).toBe(true)
+      if (r.ok) state = r.state
+      expect(state.tag).toBe("recording")
 
-      state = voiceTransition(state, { type: "TapStop" }).ok
-        ? (voiceTransition(state, { type: "TapStop" }) as { ok: true; state: VoiceState }).state
-        : state
+      r = voiceTransition(state, { type: "TapStop" })
+      expect(r.ok).toBe(true)
+      if (r.ok) state = r.state
       expect(state.tag).toBe("stopping")
 
-      state = voiceTransition(state, { type: "BlobReady" }).ok
-        ? (voiceTransition(state, { type: "BlobReady" }) as { ok: true; state: VoiceState }).state
-        : state
+      r = voiceTransition(state, { type: "BlobReady" })
+      expect(r.ok).toBe(true)
+      if (r.ok) state = r.state
       expect(state.tag).toBe("transcribing")
 
       // Cancel via toggle
-      const r = voiceTransition(state, { type: "Toggle" })
+      r = voiceTransition(state, { type: "Toggle" })
       expect(r.ok).toBe(true)
       if (r.ok) state = r.state
       expect(state.tag).toBe("idle")

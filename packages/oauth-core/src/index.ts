@@ -66,11 +66,20 @@ export class OAuthMissingRequiredScopesError extends Error {
   }
 }
 
+/** Parse a scope value from storage (may be string JSON or object) */
+function parseEnvKeyScope(scope: unknown): LockboxScope {
+  if (typeof scope === "string") return JSON.parse(scope)
+  if (scope && typeof scope === "object") return scope as LockboxScope
+  return GLOBAL_SCOPE
+}
+
 /** Build a lockbox scope from optional workspace + environment */
 function buildEnvKeyScope(workspace?: string, environment?: string): LockboxScope {
-  if (workspace && environment) return workspaceEnvironmentScope(workspace, environment)
-  if (workspace) return workspaceScope(workspace)
-  if (environment) return environmentScope(environment)
+  const w = workspace?.trim().toLowerCase()
+  const e = environment?.trim()
+  if (w && e) return workspaceEnvironmentScope(w, e)
+  if (w) return workspaceScope(w)
+  if (e) return environmentScope(e)
   return GLOBAL_SCOPE
 }
 
@@ -839,7 +848,7 @@ export class OAuthManager {
       const scope = scopes[i]
       for (const secret of scopeSecrets[i]) {
         const value = await this.storage.get(userId, USER_ENV_KEYS_NAMESPACE, secret.name, scope)
-        if (value) result[secret.name] = value
+        if (value !== null) result[secret.name] = value
       }
     }
 
@@ -859,7 +868,7 @@ export class OAuthManager {
   async listUserEnvKeys(userId: string): Promise<Array<{ name: string; workspace: string; environment: string }>> {
     const secrets = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
     return secrets.map(s => {
-      const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
+      const scope = parseEnvKeyScope(s.scope)
       return {
         name: s.name,
         workspace: scope?.workspace ?? "",
@@ -871,7 +880,7 @@ export class OAuthManager {
   /** @deprecated Use listUserEnvKeys() instead — returns scope info */
   async listUserEnvKeyNames(userId: string): Promise<string[]> {
     const secrets = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
-    return secrets.map(s => s.name)
+    return Array.from(new Set(secrets.map(s => s.name)))
   }
 
   /**
@@ -937,7 +946,7 @@ export class OAuthManager {
     const allKeys = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
     const currentRows = allKeys.filter(s => {
       if (s.name !== keyName) return false
-      const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
+      const scope = parseEnvKeyScope(s.scope)
       return (scope?.workspace ?? "") === (workspace ?? "")
     })
 
@@ -947,7 +956,7 @@ export class OAuthManager {
 
     // Read the decrypted value from the first available row
     const firstRow = currentRows[0]
-    const firstScope = typeof firstRow.scope === "string" ? JSON.parse(firstRow.scope) : firstRow.scope
+    const firstScope = parseEnvKeyScope(firstRow.scope)
     const value = await this.storage.get(
       userId,
       USER_ENV_KEYS_NAMESPACE,
@@ -961,8 +970,8 @@ export class OAuthManager {
     // Determine current environments
     const currentEnvs = new Set(
       currentRows.map(s => {
-        const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
-        return (scope?.environment as string) ?? ""
+        const scope = parseEnvKeyScope(s.scope)
+        return String(scope?.environment ?? "")
       }),
     )
     const desiredEnvs = new Set(desired)
@@ -997,13 +1006,13 @@ export class OAuthManager {
     const allKeys = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
     const toDelete = allKeys.filter(s => {
       if (s.name !== keyName) return false
-      const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
+      const scope = parseEnvKeyScope(s.scope)
       return (scope?.workspace ?? "") === (workspace ?? "")
     })
 
     await Promise.all(
       toDelete.map(s => {
-        const scope = typeof s.scope === "string" ? JSON.parse(s.scope) : s.scope
+        const scope = parseEnvKeyScope(s.scope)
         return this.storage.delete(
           userId,
           USER_ENV_KEYS_NAMESPACE,

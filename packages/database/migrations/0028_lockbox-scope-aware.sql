@@ -278,4 +278,11 @@ BEGIN
 END;
 $function$;
 
+-- Step 9: Grant execute to service_role for all new function signatures
+GRANT EXECUTE ON FUNCTION public.lockbox_save(text, text, text, text, bytea, bytea, bytea, timestamptz, jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION public.lockbox_get(text, text, text, text, jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION public.lockbox_delete(text, text, text, text, jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION public.lockbox_exists(text, text, text, text, jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION public.lockbox_list(text, text, text, jsonb) TO service_role;
+
 COMMIT;

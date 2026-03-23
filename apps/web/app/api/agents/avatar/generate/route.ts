@@ -1,17 +1,21 @@
 import * as Sentry from "@sentry/nextjs"
 import { requireEnv } from "@webalive/shared"
-import { requireSessionUser } from "@/features/auth/lib/auth"
+import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 
 const BASE_PROMPT =
   "Full body portrait of an adult {description}. Standing on pure white background, no shadows, no ground shadow. Disney Pixar 3D animation style. Full body visible from head to shoes. Clean flat studio render, even lighting, no shadows."
 
+const FETCH_TIMEOUT_MS = 30_000
+
 export async function POST(req: Request) {
   try {
     await requireSessionUser()
 
-    const { description } = (await req.json()) as { description?: string }
+    const body = await req.json()
+    const description: unknown =
+      typeof body === "object" && body !== null && "description" in body ? body.description : undefined
     if (!description || typeof description !== "string" || description.trim().length === 0) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
@@ -40,6 +44,7 @@ export async function POST(req: Request) {
         aspect_ratio: "9:16",
         store: true,
       }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     })
 
     if (!res.ok) {
@@ -63,6 +68,7 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ data: data.image, extension: "png" }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       })
       if (storeRes.ok) {
         const storeData = await storeRes.json()
@@ -81,6 +87,9 @@ export async function POST(req: Request) {
 
     return Response.json({ ok: true, file_url: fileUrl, prompt })
   } catch (err) {
+    if (err instanceof AuthenticationError) {
+      return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
+    }
     console.error("[Avatar Generate] Unexpected error:", err)
     Sentry.captureException(err)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })

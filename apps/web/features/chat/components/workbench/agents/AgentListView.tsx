@@ -128,9 +128,14 @@ function AgentCard({
         {/* Run button */}
         <button
           type="button"
-          onClick={e => {
+          onClick={async e => {
             e.stopPropagation()
-            agentsApi.trigger(job.id).then(() => globalThis.setTimeout(onChanged, TRIGGER_REFRESH_DELAY))
+            try {
+              await agentsApi.trigger(job.id)
+              globalThis.setTimeout(onChanged, TRIGGER_REFRESH_DELAY)
+            } catch {
+              // trigger failure is non-critical — UI will show stale state until next refresh
+            }
           }}
           className="w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-xl text-[12px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-b-[3px] border-emerald-200 dark:border-emerald-600/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/15 active:translate-y-[2px] active:border-b-0 transition-all"
         >

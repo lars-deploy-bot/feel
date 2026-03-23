@@ -39,11 +39,6 @@ export async function POST(req: NextRequest) {
       environments,
     })
 
-    const envLabel = environments.length > 0 ? environments.join(", ") : "global"
-    console.log(
-      `[User Env Keys] User ${user.id} set key: ${keyName} [${envLabel}]${workspace ? ` ws:${workspace}` : ""}`,
-    )
-
     return alrighty("user-env-keys/create", {
       message: `Environment key '${keyName}' saved successfully`,
       keyName,
@@ -128,11 +123,6 @@ export async function PUT(req: NextRequest) {
       environments,
     })
 
-    const envLabel = environments.length > 0 ? environments.join(", ") : "global"
-    console.log(
-      `[User Env Keys] User ${user.id} updated envs for ${keyName}: [${envLabel}]${workspace ? ` ws:${workspace}` : ""}`,
-    )
-
     return alrighty("user-env-keys/update", {
       message: `Environment key '${keyName}' updated successfully`,
       keyName,
@@ -165,8 +155,6 @@ export async function DELETE(req: NextRequest) {
     const { keyName, workspace } = parsed
 
     await getUserEnvKeysManager().deleteAllUserEnvKeyScopes(user.id, keyName, workspace || undefined)
-
-    console.log(`[User Env Keys] User ${user.id} deleted key: ${keyName}${workspace ? ` ws:${workspace}` : ""}`)
 
     return alrighty("user-env-keys/delete", {
       message: `Environment key '${keyName}' deleted successfully`,

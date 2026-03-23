@@ -5,6 +5,7 @@
  * Uses Redis sorted sets for atomic, restart-safe counting.
  */
 
+import { randomUUID } from "node:crypto"
 import { createRedisClient } from "@webalive/redis"
 import { env } from "../../../config/env"
 import { RateLimitError } from "../../../infra/errors"
@@ -34,6 +35,7 @@ export async function checkTextToCronLimit(userId: string): Promise<void> {
 
   const key = `${KEY_PREFIX}${userId}`
   const now = Date.now()
+  const member = `${now}:${randomUUID()}`
   const windowStart = now - WINDOW_MS
 
   // Atomic pipeline: clean old entries, count, add new entry, set TTL
@@ -41,7 +43,7 @@ export async function checkTextToCronLimit(userId: string): Promise<void> {
     .multi()
     .zremrangebyscore(key, 0, windowStart)
     .zcard(key)
-    .zadd(key, now, `${now}`)
+    .zadd(key, now, member)
     .expire(key, Math.ceil(WINDOW_MS / 1000))
     .exec()
 
@@ -50,12 +52,13 @@ export async function checkTextToCronLimit(userId: string): Promise<void> {
   }
 
   // results[1] is the ZCARD result: [error, count]
-  const [cardErr, count] = results[1] as [Error | null, number]
-  if (cardErr) throw cardErr
+  const cardResult = results[1]
+  if (!cardResult || cardResult[0]) throw cardResult?.[0] ?? new Error("ZCARD failed")
+  const count = cardResult[1] as number
 
   if (count >= MAX_REQUESTS) {
     // Undo the ZADD we just did — user is over limit
-    await client.zrem(key, `${now}`)
+    await client.zrem(key, member)
     throw new RateLimitError()
   }
 }

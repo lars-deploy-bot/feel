@@ -31,6 +31,18 @@ const ENV_COLORS: Record<Environment, string> = {
   local: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
 }
 
+function isEnvironment(value: string): value is Environment {
+  return (ENVIRONMENTS as readonly string[]).includes(value)
+}
+
+function getEnvLabel(env: string): string {
+  return isEnvironment(env) ? ENV_LABELS[env] : env
+}
+
+function getEnvColor(env: string): string {
+  return isEnvironment(env) ? ENV_COLORS[env] : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+}
+
 interface UseUserEnvKeysResult {
   keys: EnvKey[]
   loading: boolean
@@ -220,7 +232,7 @@ function AddKeyForm({ onAdd, disabled }: AddKeyFormProps) {
           <p className="text-[10px] text-black/40 dark:text-white/40 mt-1">
             {environments.length === 0
               ? "Available in all environments"
-              : `Available in: ${environments.map(e => ENV_LABELS[e as Environment] ?? e).join(", ")}`}
+              : `Available in: ${environments.map(e => getEnvLabel(e)).join(", ")}`}
           </p>
         </div>
 
@@ -287,9 +299,9 @@ function ScopeBadges({ workspace, environments }: { workspace: string; environme
         environments.map(env => (
           <span
             key={env}
-            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${ENV_COLORS[env as Environment] ?? "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${getEnvColor(env)}`}
           >
-            {ENV_LABELS[env as Environment] ?? env}
+            {getEnvLabel(env)}
           </span>
         ))
       )}
@@ -376,7 +388,7 @@ function EnvKeyRow({ envKey, onDelete, onUpdateEnvironments }: EnvKeyRowProps) {
           <button
             type="button"
             onClick={handleDelete}
-            disabled={deleting}
+            disabled={deleting || saving}
             className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
             title="Delete key"
           >
@@ -393,7 +405,7 @@ function EnvKeyRow({ envKey, onDelete, onUpdateEnvironments }: EnvKeyRowProps) {
             <button
               type="button"
               onClick={handleSaveEnvs}
-              disabled={saving}
+              disabled={saving || deleting}
               className="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
               title="Save"
             >
@@ -402,7 +414,7 @@ function EnvKeyRow({ envKey, onDelete, onUpdateEnvironments }: EnvKeyRowProps) {
             <button
               type="button"
               onClick={handleCancelEdit}
-              disabled={saving}
+              disabled={saving || deleting}
               className="p-1.5 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
               title="Cancel"
             >
@@ -444,8 +456,7 @@ export function UserEnvKeysSettings() {
     try {
       const validated = validateRequest("user-env-keys/update", { keyName, workspace, environments })
       await putty("user-env-keys/update", validated)
-      const envLabel =
-        environments.length > 0 ? environments.map(e => ENV_LABELS[e as Environment] ?? e).join(", ") : "all"
+      const envLabel = environments.length > 0 ? environments.map(e => getEnvLabel(e)).join(", ") : "all"
       toast(`${keyName} updated to ${envLabel}`)
       await refetch()
     } catch (err) {

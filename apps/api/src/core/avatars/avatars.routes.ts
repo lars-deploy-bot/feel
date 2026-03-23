@@ -126,6 +126,9 @@ avatarsRoutes.post("/generate", async c => {
 
   let prompt: string
   if (body.preset) {
+    if (!PRESETS[body.preset]) {
+      return c.json({ error: `Unknown preset: ${body.preset}` }, 400)
+    }
     prompt = buildPrompt(body.preset, body.description)
   } else if (body.gender && body.description) {
     prompt = BASE_PROMPT.replace("{gender}", body.gender).replace("{description}", body.description)
@@ -145,6 +148,10 @@ avatarsRoutes.post("/generate", async c => {
       store: true,
     }),
   })
+
+  if (!res.ok) {
+    return c.json({ error: "Avatar generation failed" }, 502)
+  }
 
   const raw = await res.json()
   const fileUrl = typeof raw === "object" && raw !== null && "file_url" in raw ? String(raw.file_url) : null
