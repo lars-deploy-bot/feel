@@ -32,6 +32,7 @@
         "@webalive/automation": "workspace:*",
         "@webalive/database": "workspace:*",
         "@webalive/env": "workspace:*",
+        "@webalive/redis": "workspace:*",
         "@webalive/shared": "workspace:*",
         "hono": "^4.12.8",
         "jsonwebtoken": "^9.0.3",
@@ -165,9 +166,6 @@
         "typescript": "^5.9.3",
         "vitest": "4.1.0",
       },
-    },
-    "apps/preview-proxy": {
-      "name": "@webalive/preview-proxy",
     },
     "apps/shell-server-go": {
       "name": "@webalive/shell-server-go",
@@ -1352,8 +1350,6 @@
     "@webalive/oauth-core": ["@webalive/oauth-core@workspace:packages/oauth-core"],
 
     "@webalive/org": ["@webalive/org@workspace:packages/org"],
-
-    "@webalive/preview-proxy": ["@webalive/preview-proxy@workspace:apps/preview-proxy"],
 
     "@webalive/redis": ["@webalive/redis@workspace:packages/redis"],
 
