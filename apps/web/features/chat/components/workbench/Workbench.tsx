@@ -209,7 +209,7 @@ export function Workbench() {
       </div>
 
       {/* Divider */}
-      <div className="h-px bg-black/[0.06] dark:bg-white/[0.06] shrink-0" />
+      <div className="h-[3px] bg-black/[0.06] dark:bg-white/[0.06] shrink-0" />
 
       {/* Content */}
       <div data-panel-role="workbench-content" className="flex-1 overflow-hidden relative">

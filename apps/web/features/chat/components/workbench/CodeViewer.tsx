@@ -299,7 +299,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
 
       {/* Search bar */}
       {searchOpen && (
-        <div className="h-9 px-3 flex items-center gap-2 border-b border-black/[0.06] dark:border-white/[0.04] bg-black/[0.015] dark:bg-white/[0.02] shrink-0">
+        <div className="h-9 px-3 flex items-center gap-2 border-b border-b-[3px] border-black/[0.06] dark:border-white/[0.04] bg-black/[0.015] dark:bg-white/[0.02] shrink-0">
           <Search size={14} strokeWidth={1.5} className="text-black/30 dark:text-white/25 shrink-0" />
           <input
             ref={searchInputRef}

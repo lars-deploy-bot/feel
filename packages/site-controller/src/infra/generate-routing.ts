@@ -418,30 +418,34 @@ export function renderCaddyShell(cfg: ServerConfig): string {
 /**
  * Render the full Caddyfile.internal for tunnel-backed *.alive.best domains.
  *
- * Cloudflare tunnel routes *.alive.best → :8444, where Caddy uses a map
- * to resolve {host} → localhost:{port}. Without an explicit entry, sites
- * fall through to the default (preview proxy on 5055), which requires auth
- * tokens and returns 404 for direct site access.
+ * Cloudflare tunnel routes *.alive.best → :8444. Infrastructure services
+ * (e.g. mg.alive.best) get explicit map entries. Everything else falls
+ * through to shell-server-go, which handles:
+ *   - preview--* hosts (JWT auth + nav script injection)
+ *   - known sites (port-map.json lookup → direct reverse proxy)
+ *   - shell connections (fallback)
  *
- * This replaces the manually-maintained /etc/caddy/Caddyfile.internal.
+ * Site routing is dynamic: shell-server-go refreshes port-map.json every 30s,
+ * so new sites become reachable without a Caddy reload.
  */
-function renderCaddyInternal(cfg: ServerConfig, domains: DomainRow[]): string {
+function renderCaddyInternal(cfg: ServerConfig): string {
   const header = [
     "# GENERATED FILE - DO NOT EDIT",
     `# Generated: ${new Date().toISOString()}`,
     `# serverId: ${cfg.serverId}`,
     "# Cloudflare tunnel routes *.alive.best site traffic here on :8444",
+    "# Site routing: shell-server-go dispatches via port-map.json (no per-site map entries needed)",
     "",
   ].join("\n")
 
-  // Infrastructure services from server-config (e.g. mg.alive.best → 5090)
+  // Only infrastructure services need explicit map entries (e.g. mg.alive.best → 5090).
+  // All site traffic falls through to shell-server-go which does port-map lookup.
   const serviceEntries = Object.entries(cfg.services ?? {}).map(([host, port]) => `        ${host} "localhost:${port}"`)
-  const mapEntries = [...serviceEntries, ...domains.map(d => `        ${d.hostname} "localhost:${d.port}"`)]
 
   const block = [
     ":8444 {",
     "    map {host} {site_upstream} {",
-    ...mapEntries,
+    ...serviceEntries,
     `        default "localhost:${cfg.previewProxy.port}"`,
     "    }",
     "",
@@ -459,9 +463,10 @@ function renderCaddyInternal(cfg: ServerConfig, domains: DomainRow[]): string {
     "        file_server",
     "    }",
     "",
-    "    # Everything else goes to the site's dev server",
+    "    # Everything else: services via map, sites via shell-server-go port-map",
     "    reverse_proxy {site_upstream} {",
     "        header_up X-Forwarded-Proto https",
+    "        header_up X-Forwarded-Host {host}",
     "    }",
     "}",
     "",
@@ -564,7 +569,7 @@ async function run() {
   // Internal Caddy config for tunnel-backed *.alive.best domains.
   // Every environment generates this — all sites need tunnel routing.
   // Writes to both generated dir and /etc/caddy/Caddyfile.internal.
-  const caddyInternalContent = renderCaddyInternal(cfg, domains)
+  const caddyInternalContent = renderCaddyInternal(cfg)
   const generatedInternalPath = path.join(cfg.generated.dir, "Caddyfile.internal")
   await atomicWrite(generatedInternalPath, caddyInternalContent)
   console.log(`  ${generatedInternalPath}`)

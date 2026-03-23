@@ -2,13 +2,18 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 
 	httpxmiddleware "shell-server-go/internal/httpx/middleware"
 	"shell-server-go/internal/httpx/response"
 	"shell-server-go/internal/preview"
+	"shell-server-go/internal/sentryx"
 )
 
 // Router builds the full HTTP routing tree.
@@ -68,18 +73,56 @@ func (a *ServerApp) Router() (http.Handler, error) {
 	return mux, nil
 }
 
-// hostDispatch routes preview--* hosts to the preview handler,
-// everything else to the shell server mux.
-func hostDispatch(previewHandler http.Handler, shellHandler http.Handler) http.Handler {
+// hostDispatch routes requests based on the Host header:
+//  1. preview--* hosts → preview handler (with JWT auth, nav script injection)
+//  2. Known site in port-map → direct reverse proxy (no auth, public site)
+//  3. Everything else → shell server mux
+func hostDispatch(ph *preview.Handler, shellHandler http.Handler) http.Handler {
+	siteTransport := &http.Transport{
+		ForceAttemptHTTP2:  false,
+		DisableCompression: true,
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host := r.Header.Get("X-Forwarded-Host")
 		if host == "" {
 			host = r.Host
 		}
+
+		// 1. Preview hosts → preview handler (with auth, injection)
 		if preview.IsPreviewHost(host) {
-			previewHandler.ServeHTTP(w, r)
+			ph.ServeHTTP(w, r)
 			return
 		}
+
+		// 2. Known site in port-map → direct reverse proxy (public, no auth)
+		if port, ok := ph.LookupSitePort(host); ok {
+			hostname := host
+			if h, _, err := net.SplitHostPort(host); err == nil {
+				hostname = h
+			}
+			target := &url.URL{
+				Scheme: "http",
+				Host:   fmt.Sprintf("localhost:%d", port),
+			}
+			proxy := &httputil.ReverseProxy{
+				Rewrite: func(pr *httputil.ProxyRequest) {
+					pr.SetURL(target)
+					pr.Out.Host = hostname
+					pr.Out.Header.Set("X-Forwarded-Host", hostname)
+					pr.Out.Header.Set("X-Forwarded-Proto", "https")
+				},
+				Transport: siteTransport,
+				ErrorHandler: func(rw http.ResponseWriter, req *http.Request, err error) {
+					sentryx.CaptureError(err, "site proxy error host=%s target=%s", hostname, target.String())
+					http.Error(rw, "Bad gateway", http.StatusBadGateway)
+				},
+			}
+			proxy.ServeHTTP(w, r)
+			return
+		}
+
+		// 3. Everything else → shell server mux
 		shellHandler.ServeHTTP(w, r)
 	})
 }

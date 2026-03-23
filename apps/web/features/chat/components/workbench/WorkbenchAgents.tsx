@@ -134,7 +134,6 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     return (
       <div className="h-full flex flex-col">
         <AgentDetailNav
-          name={selectedJob.name}
           activeTab={view.tab}
           onBack={() => setView({ kind: "list" })}
           onTabChange={tab => setView({ kind: "detail", jobId: selectedJob.id, tab })}
@@ -148,7 +147,9 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
               onChanged={refresh}
             />
           )}
-          {view.tab === "runs" && <AgentRunsView job={selectedJob} onOpenConversation={onOpenConversation} />}
+          {view.tab === "runs" && (
+            <AgentRunsView job={selectedJob} onOpenConversation={onOpenConversation} onChanged={refresh} />
+          )}
           {view.tab === "edit" && (
             <AgentEditView
               job={selectedJob}

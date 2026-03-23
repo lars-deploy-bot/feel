@@ -78,6 +78,19 @@ func IsPreviewHost(host string) bool {
 	return strings.HasPrefix(host, previewPrefix)
 }
 
+// LookupSitePort checks the port-map for a hostname and returns the port if found.
+// Used by hostDispatch for direct site routing (no preview auth required).
+// Strips any :port suffix from the host before lookup.
+func (h *Handler) LookupSitePort(host string) (int, bool) {
+	if h == nil {
+		return 0, false
+	}
+	if hostname, _, err := net.SplitHostPort(host); err == nil {
+		host = hostname
+	}
+	return h.ports.lookup(host)
+}
+
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/health" {
 		w.Header().Set("Content-Type", "application/json")

@@ -86,25 +86,25 @@ function AgentCard({
       onKeyDown={e => {
         if (e.key === "Enter") onSelect(job)
       }}
-      className={`group text-left rounded-2xl cursor-pointer transition-all duration-200 flex overflow-hidden ${
+      className={`group text-left rounded-2xl border border-b-[3px] cursor-pointer transition-all hover:shadow-md active:translate-y-[1px] active:border-b flex overflow-hidden ${
         isInactive
-          ? "bg-zinc-50/80 dark:bg-white/[0.01] ring-1 ring-zinc-100 dark:ring-white/[0.04] opacity-55 hover:opacity-75"
+          ? "bg-zinc-50/80 dark:bg-white/[0.01] border-zinc-100 dark:border-white/[0.04] opacity-55 hover:opacity-75"
           : isRunning
-            ? "bg-gradient-to-r from-blue-50 to-white dark:from-blue-500/5 dark:to-white/[0.02] ring-1 ring-blue-200/60 dark:ring-blue-500/20 shadow-sm"
-            : "bg-white dark:bg-white/[0.02] ring-1 ring-zinc-100 dark:ring-white/[0.05] hover:ring-zinc-200 dark:hover:ring-white/[0.1] hover:shadow-md"
+            ? "bg-gradient-to-r from-blue-50 to-white dark:from-blue-500/5 dark:to-white/[0.02] border-blue-200 dark:border-blue-500/20 shadow-sm"
+            : "bg-white dark:bg-white/[0.02] border-zinc-200 dark:border-white/[0.06] hover:border-zinc-300 dark:hover:border-white/[0.1]"
       }`}
     >
       {/* Character image — left side */}
-      <div className="w-32 shrink-0 p-2.5">
+      <div className="w-36 shrink-0 bg-zinc-50 dark:bg-white/[0.02]">
         <img
           src={job.avatar_url ?? agentAvatar(job.id)}
           alt=""
-          className={`w-full h-full object-cover object-top rounded-lg transition-transform duration-200 group-hover:scale-[1.03] ${isInactive ? "grayscale" : ""}`}
+          className={`w-full h-full object-cover object-top ${isInactive ? "grayscale" : ""}`}
         />
       </div>
 
       {/* Content — right side */}
-      <div className="flex-1 pr-4 py-3 flex flex-col min-w-0">
+      <div className="flex-1 px-4 py-3 flex flex-col min-w-0">
         {/* Header: name + status */}
         <div className="flex items-start justify-between gap-2 mb-1">
           <span className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-1">
@@ -153,13 +153,13 @@ function AgentCard({
             e.stopPropagation()
             agentsApi.setActive(job.id, !job.is_active).then(onChanged)
           }}
-          className={`w-full inline-flex items-center justify-center gap-1.5 h-7 rounded-lg text-[11px] font-bold transition-all active:scale-[0.97] ${
+          className={`w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-xl text-[12px] font-bold border-b-[3px] active:translate-y-[2px] active:border-b-0 transition-all ${
             job.is_active
-              ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/15"
-              : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/15"
+              ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-600/30 hover:bg-amber-100 dark:hover:bg-amber-500/15"
+              : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-600/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/15"
           }`}
         >
-          {job.is_active ? <Pause size={10} /> : <Play size={10} />}
+          {job.is_active ? <Pause size={11} /> : <Play size={11} />}
           {job.is_active ? "Pause" : "Resume"}
         </button>
       </div>
