@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { env } from "../../config/env"
 
 const BASE_PROMPT =
-  "Full body portrait of an adult {gender} standing on pure white background, no shadows, no ground shadow. Disney Pixar 3D animation style. {description}. Full body visible from head to shoes. Clean flat studio render, even lighting, no shadows."
+  "Full body portrait of an adult {gender} standing on pure white background, no shadows, no ground shadow. Disney Pixar 3D animation style. Big expressive eyes, soft rounded features, warm expression. Like a character from Inside Out or Soul. {description}. Full body visible from head to shoes. Clean flat studio render, even lighting, no shadows."
 
 const PRESETS: Record<string, { gender: "man" | "woman"; description: string }> = {
   // Male presets

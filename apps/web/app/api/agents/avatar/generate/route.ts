@@ -5,7 +5,7 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 
 const BASE_PROMPT =
-  "Full body portrait of an adult {description}. Standing on pure white background, no shadows, no ground shadow. Disney Pixar 3D animation style. Full body visible from head to shoes. Clean flat studio render, even lighting, no shadows."
+  "Full body portrait of an adult {description}. Standing on pure white background, no shadows, no ground shadow. Disney Pixar 3D animation style. Big expressive eyes, soft rounded features, warm expression. Like a character from Inside Out or Soul. Full body visible from head to shoes. Clean flat studio render, even lighting, no shadows."
 
 const FETCH_TIMEOUT_MS = 30_000
 
