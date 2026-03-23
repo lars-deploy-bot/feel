@@ -25,7 +25,7 @@ const updateJobSchema = z
     cron_timezone: z.string().trim().min(1).nullable().optional(),
     schedule_text: z.string().trim().min(1).nullable().optional(),
     skills: z.array(z.string()).optional(),
-    avatar_url: z.string().url().nullable().optional(),
+    avatar_url: z.string().nullable().optional(),
   })
   .strict()
   .refine(fields => Object.keys(fields).length > 0, {
