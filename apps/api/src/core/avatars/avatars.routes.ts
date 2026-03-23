@@ -1,8 +1,14 @@
 import { Hono } from "hono"
 import { env } from "../../config/env"
 
-const BASE_PROMPT =
-  "Full body portrait of an adult {gender} standing on pure white background, no shadows, no ground shadow. Disney Pixar 3D animation style. Big expressive eyes, soft rounded features, warm expression. Like a character from Inside Out or Soul. {description}. Full body visible from head to shoes. Clean flat studio render, even lighting, no shadows."
+const BASE_PROMPT = [
+  "BACKGROUND: Pure solid #FFFFFF white, completely flat, no shadows, no ground shadow, no gradient, no floor reflection. Just white.",
+  "CHARACTER: Full body chunky cartoon game character. Big oversized head, small stubby legs, thick rounded body. Bold cel-shaded 3D render like Clash Royale, Brawl Stars, or Overwatch chibi. Colorful, vibrant, saturated colors. Thick dark outlines on everything.",
+  "ROLE: This character is a {gender} {description}.",
+  "THE FUNNY PART: Their outfit, armor, weapons, and accessories are literally made from objects of their job. Be creative and humorous. The funnier and more literal the connection between job and gear, the better.",
+  "FACE: Friendly, determined, slightly goofy smile. Big expressive eyes. This character WANTS to do the work.",
+  "RENDER: Clean studio lighting, even from all sides. No dramatic shadows. Product photography quality. Collectible vinyl toy aesthetic.",
+].join(" ")
 
 const PRESETS: Record<string, { gender: "man" | "woman"; description: string }> = {
   // Male presets

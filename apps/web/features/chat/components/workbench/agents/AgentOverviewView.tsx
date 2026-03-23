@@ -46,24 +46,21 @@ export function AgentOverviewView({
     <div className="px-6 max-w-2xl mx-auto w-full min-h-full flex flex-col">
       <div className="flex-[3]" />
 
-      {/* Agent name + avatar + status */}
-      <div className="flex items-center gap-4 mb-6">
+      {/* Agent hero — avatar + name */}
+      <div className="flex flex-col items-center text-center mb-8">
         <img
           src={job.avatar_url ?? agentAvatar(job.id)}
           alt=""
-          className="w-16 h-20 object-cover object-top rounded-xl shrink-0"
+          className="w-40 h-52 object-cover object-top rounded-lg mb-4"
         />
-        <div>
-          <h3 className="text-[20px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">{job.name}</h3>
-          <StatusLine job={job} />
-        </div>
+        <h3 className="text-[22px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">{job.name}</h3>
+        <StatusLine job={job} />
       </div>
 
       {/* Hero stats — success ring + key metrics */}
       <div className="flex items-center gap-6 p-5 rounded-2xl bg-zinc-50/50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] mb-6">
         <SuccessRing rate={job.success_rate} size={72} />
-        <div className="flex-1 grid grid-cols-3 gap-4">
-          <StatBlock label="Avg time" value={dur(job.avg_duration_ms)} />
+        <div className="flex-1 grid grid-cols-2 gap-4">
           <StatBlock label="Next run" value={nextRun} />
           <div className="flex flex-col items-start">
             <div className="flex items-center">

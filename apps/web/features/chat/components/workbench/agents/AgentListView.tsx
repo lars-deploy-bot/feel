@@ -5,7 +5,7 @@ import { useMemo } from "react"
 import { Dot, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
 import { agentAvatar } from "./agent-avatars"
 import { agentsApi } from "./agents-api"
-import { healthScore, successRateColor, TRIGGER_REFRESH_DELAY, trigLabel } from "./agents-helpers"
+import { healthScore, successRateColor, timeUntil, trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 
 export function AgentListView({
@@ -86,25 +86,25 @@ function AgentCard({
       onKeyDown={e => {
         if (e.key === "Enter") onSelect(job)
       }}
-      className={`group text-left rounded-2xl border border-b-[3px] cursor-pointer transition-all hover:shadow-md active:translate-y-[1px] active:border-b flex overflow-hidden ${
+      className={`group text-left rounded-2xl cursor-pointer transition-all duration-200 flex overflow-hidden ${
         isInactive
-          ? "bg-zinc-50 dark:bg-white/[0.01] border-zinc-200 dark:border-white/[0.04] opacity-60"
+          ? "bg-zinc-50/80 dark:bg-white/[0.01] ring-1 ring-zinc-100 dark:ring-white/[0.04] opacity-55 hover:opacity-75"
           : isRunning
-            ? "bg-blue-50 dark:bg-blue-500/5 border-blue-200 dark:border-blue-500/20"
-            : "bg-white dark:bg-white/[0.02] border-zinc-200 dark:border-white/[0.06] hover:border-zinc-300 dark:hover:border-white/[0.1]"
+            ? "bg-gradient-to-r from-blue-50 to-white dark:from-blue-500/5 dark:to-white/[0.02] ring-1 ring-blue-200/60 dark:ring-blue-500/20 shadow-sm"
+            : "bg-white dark:bg-white/[0.02] ring-1 ring-zinc-100 dark:ring-white/[0.05] hover:ring-zinc-200 dark:hover:ring-white/[0.1] hover:shadow-md"
       }`}
     >
       {/* Character image — left side */}
-      <div className="w-24 shrink-0 bg-zinc-50 dark:bg-white/[0.02]">
+      <div className="w-32 shrink-0 p-2.5">
         <img
           src={job.avatar_url ?? agentAvatar(job.id)}
           alt=""
-          className={`w-full h-full object-cover object-top ${isInactive ? "grayscale" : ""}`}
+          className={`w-full h-full object-cover object-top rounded-lg transition-transform duration-200 group-hover:scale-[1.03] ${isInactive ? "grayscale" : ""}`}
         />
       </div>
 
       {/* Content — right side */}
-      <div className="flex-1 px-4 py-3 flex flex-col min-w-0">
+      <div className="flex-1 pr-4 py-3 flex flex-col min-w-0">
         {/* Header: name + status */}
         <div className="flex items-start justify-between gap-2 mb-1">
           <span className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-1">
@@ -127,11 +127,19 @@ function AgentCard({
         )}
 
         {/* Stats + schedule */}
-        <div className="flex items-center gap-2 text-[10px] mb-2 mt-auto">
-          <span className={`text-[13px] font-bold tabular-nums ${successRateColor(job.success_rate)}`}>
-            {job.success_rate}%
-          </span>
-          <StreakBadge streak={job.streak} />
+        <div className="flex items-center gap-2 text-[10px] mb-3 mt-auto">
+          {job.recent_runs.length > 0 ? (
+            <>
+              <span className={`text-[13px] font-bold tabular-nums ${successRateColor(job.success_rate)}`}>
+                {job.success_rate}%
+              </span>
+              <StreakBadge streak={job.streak} />
+            </>
+          ) : (
+            <span className="text-[11px] text-zinc-300 dark:text-zinc-600">
+              {timeUntil(job.next_run_at) ? `Next run ${timeUntil(job.next_run_at)}` : "Enable to start"}
+            </span>
+          )}
           <span className="ml-auto flex items-center gap-1 text-zinc-400 dark:text-zinc-500">
             <TrigIcon type={job.trigger_type} size={9} />
             <span className="truncate">{trigLabel(job)}</span>
@@ -143,24 +151,15 @@ function AgentCard({
           type="button"
           onClick={async e => {
             e.stopPropagation()
-<<<<<<< HEAD
-            try {
-              await agentsApi.trigger(job.id)
-              globalThis.setTimeout(onChanged, TRIGGER_REFRESH_DELAY)
-            } catch {
-              // trigger failure is non-critical — UI will show stale state until next refresh
-            }
-=======
             agentsApi.setActive(job.id, !job.is_active).then(onChanged)
->>>>>>> f2e3ce1e (fix: remove .url() from avatar_url schema, add pause/resume to agent cards)
           }}
-          className={`w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-xl text-[12px] font-bold border-b-[3px] active:translate-y-[2px] active:border-b-0 transition-all ${
+          className={`w-full inline-flex items-center justify-center gap-1.5 h-7 rounded-lg text-[11px] font-bold transition-all active:scale-[0.97] ${
             job.is_active
-              ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-600/30 hover:bg-amber-100 dark:hover:bg-amber-500/15"
-              : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-600/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/15"
+              ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/15"
+              : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/15"
           }`}
         >
-          {job.is_active ? <Pause size={11} /> : <Play size={11} />}
+          {job.is_active ? <Pause size={10} /> : <Play size={10} />}
           {job.is_active ? "Pause" : "Resume"}
         </button>
       </div>

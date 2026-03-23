@@ -61,6 +61,21 @@ export function isStreakWarm(streak: number): boolean {
   return streak >= STREAK_WARM
 }
 
+/** Format a future ISO date as "in Xm", "in Xh", "tomorrow", etc. */
+export function timeUntil(d: string | null): string | null {
+  if (!d) return null
+  const ms = new Date(d).getTime() - Date.now()
+  if (ms < 0) return null
+  const m = Math.floor(ms / 60000)
+  if (m < 1) return "in <1m"
+  if (m < 60) return `in ${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `in ${h}h`
+  if (h < 48) return "tomorrow"
+  const days = Math.floor(h / 24)
+  return `in ${days}d`
+}
+
 /** Convert minutes string to seconds string for validation/API */
 export function minutesToSeconds(min: string): string {
   return min ? String(Number(min) * SECONDS_PER_MINUTE) : ""

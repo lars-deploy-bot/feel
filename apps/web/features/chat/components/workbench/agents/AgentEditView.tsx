@@ -289,7 +289,11 @@ export function AgentEditView({ job, createData, onDone, onChanged }: AgentEditV
       <div className="flex-1 min-h-0 flex">
         {/* Left column — settings */}
         <div className="w-[300px] shrink-0 border-r border-zinc-100 dark:border-white/[0.04] overflow-auto px-5 py-5">
-          <AvatarEditor jobId={job?.id ?? null} savedAvatarUrl={job?.avatar_url ?? null} onAvatarSaved={onChanged} />
+          <AvatarEditor
+            jobId={job?.id ?? name}
+            savedAvatarUrl={job?.avatar_url ?? createData?.defaultAvatarUrl ?? null}
+            onAvatarSaved={onChanged}
+          />
 
           <FieldGroup label="Agent's name" color="emerald">
             <input
@@ -618,7 +622,7 @@ function AvatarEditor({
 
   return (
     <div className="mb-6 flex flex-col items-center">
-      <img src={src} alt="" className="w-20 h-28 object-cover object-top rounded-xl mb-3" />
+      <img src={src} alt="" className="w-36 h-48 object-cover object-top rounded-lg mb-4" />
       <div className="flex gap-1 mb-2">
         {(["man", "woman"] as const).map(g => (
           <button
@@ -646,7 +650,7 @@ function AvatarEditor({
           onKeyDown={e => {
             if (e.key === "Enter") generate()
           }}
-          placeholder="Describe your agent's look..."
+          placeholder="e.g. SEO specialist, email writer..."
           className={`flex-1 min-w-0 px-3 py-1.5 rounded-xl border bg-transparent text-[12px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 outline-none transition-colors ${
             error
               ? "border-red-300 dark:border-red-700"

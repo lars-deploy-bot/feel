@@ -30,6 +30,7 @@ export interface AutomationConfigData {
   defaultName?: string
   defaultPrompt?: string
   defaultModel?: ClaudeModel
+  defaultAvatarUrl?: string
 }
 
 export interface AutomationConfigResult {

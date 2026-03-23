@@ -4,8 +4,14 @@ import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/aut
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 
-const BASE_PROMPT =
-  "Full body portrait of an adult {description}. Standing on pure white background, no shadows, no ground shadow. Disney Pixar 3D animation style. Big expressive eyes, soft rounded features, warm expression. Like a character from Inside Out or Soul. Full body visible from head to shoes. Clean flat studio render, even lighting, no shadows."
+const BASE_PROMPT = [
+  "BACKGROUND: Pure solid #FFFFFF white, completely flat, no shadows, no ground shadow, no gradient, no floor reflection. Just white.",
+  "CHARACTER: Full body chunky cartoon game character. Big oversized head, small stubby legs, thick rounded body. Bold cel-shaded 3D render like Clash Royale, Brawl Stars, or Overwatch chibi. Colorful, vibrant, saturated colors. Thick dark outlines on everything.",
+  "ROLE: This character is a {description}.",
+  "THE FUNNY PART: Their outfit, armor, weapons, and accessories are literally made from objects of their job. Be creative and humorous — an email worker wears armor made of sealed envelopes with stamp shoulder pads, a coder has keyboard-key chainmail, a designer carries potion bottles filled with hex colors, a DevOps engineer has steampunk pipes labeled DEPLOY. The funnier and more literal the connection between job and gear, the better.",
+  "FACE: Friendly, determined, slightly goofy smile. Big expressive eyes. This character WANTS to do the work.",
+  "RENDER: Clean studio lighting, even from all sides. No dramatic shadows. Product photography quality. The character should look like a collectible vinyl toy you want on your desk.",
+].join(" ")
 
 const FETCH_TIMEOUT_MS = 30_000
 
@@ -55,34 +61,24 @@ export async function POST(req: Request) {
 
     const data = await res.json()
 
-    // Reve API returns either { file_url } (when store:true works) or { image } (base64)
+    // Reve API returns { file_url } (store:true) or { image } (base64)
+    // Sometimes returns a blank 1x1 PNG when rate limited — reject those
     let fileUrl: string | null = null
+
     if (typeof data.file_url === "string") {
-      fileUrl = data.file_url
-    } else if (typeof data.image === "string") {
-      // Store the base64 image via the files endpoint
-      const storeRes = await fetch("https://services.alive.best/tools/files/store", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ data: data.image, extension: "png" }),
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      })
-      if (storeRes.ok) {
-        const storeData = await storeRes.json()
-        if (typeof storeData.url === "string") fileUrl = storeData.url
-      }
-      // If store fails, return the image as a data URL so the frontend can still show it
-      if (!fileUrl) {
-        fileUrl = `data:image/png;base64,${data.image}`
+      const headRes = await fetch(data.file_url, { method: "HEAD" })
+      const size = Number(headRes.headers.get("content-length") ?? "0")
+      if (size > 500) {
+        fileUrl = data.file_url
       }
     }
 
+    if (!fileUrl && typeof data.image === "string" && data.image.length > 1000) {
+      fileUrl = `data:image/png;base64,${data.image}`
+    }
+
     if (!fileUrl) {
-      console.error("[Avatar Generate] No file_url or image in Reve response:", Object.keys(data))
-      return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 502 })
+      return structuredErrorResponse(ErrorCodes.IMAGE_PROCESSING_FAILED, { status: 429 })
     }
 
     return Response.json({ ok: true, file_url: fileUrl, prompt })

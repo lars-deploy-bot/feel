@@ -14,4 +14,8 @@ export type RecentRun = EnrichedJobRaw["recent_runs"][number]
 
 export type AgentDetailTab = "overview" | "runs" | "edit"
 
-export type AgentView = { kind: "list" } | { kind: "create" } | { kind: "detail"; jobId: string; tab: AgentDetailTab }
+export type AgentView =
+  | { kind: "list" }
+  | { kind: "templates" }
+  | { kind: "create" }
+  | { kind: "detail"; jobId: string; tab: AgentDetailTab }
