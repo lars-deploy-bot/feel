@@ -49,7 +49,37 @@ export async function POST(req: Request) {
     }
 
     const data = await res.json()
-    return Response.json({ ok: true, file_url: data.file_url, prompt })
+
+    // Reve API returns either { file_url } (when store:true works) or { image } (base64)
+    let fileUrl: string | null = null
+    if (typeof data.file_url === "string") {
+      fileUrl = data.file_url
+    } else if (typeof data.image === "string") {
+      // Store the base64 image via the files endpoint
+      const storeRes = await fetch("https://services.alive.best/tools/files/store", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ data: data.image, extension: "png" }),
+      })
+      if (storeRes.ok) {
+        const storeData = await storeRes.json()
+        if (typeof storeData.url === "string") fileUrl = storeData.url
+      }
+      // If store fails, return the image as a data URL so the frontend can still show it
+      if (!fileUrl) {
+        fileUrl = `data:image/png;base64,${data.image}`
+      }
+    }
+
+    if (!fileUrl) {
+      console.error("[Avatar Generate] No file_url or image in Reve response:", Object.keys(data))
+      return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 502 })
+    }
+
+    return Response.json({ ok: true, file_url: fileUrl, prompt })
   } catch (err) {
     console.error("[Avatar Generate] Unexpected error:", err)
     Sentry.captureException(err)

@@ -600,10 +600,13 @@ function AvatarEditor({
       if (data.file_url) {
         setCustomUrl(data.file_url)
         setDescription("")
-        // Save avatar_url to the job in DB
+        // Save avatar_url to the job in DB, then refresh parent
         if (jobId && !jobId.includes(" ")) {
-          agentsApi.update(jobId, { avatar_url: data.file_url }).then(() => onAvatarSaved?.())
+          await agentsApi.update(jobId, { avatar_url: data.file_url })
+          onAvatarSaved?.()
         }
+      } else {
+        setError("Generation returned no image")
       }
     } catch (_err) {
       setError("Could not reach the server")
