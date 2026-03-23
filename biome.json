@@ -148,6 +148,16 @@
       "linter": {
         "enabled": false
       }
+    },
+    {
+      "includes": ["**/app/layout.tsx"],
+      "linter": {
+        "rules": {
+          "security": {
+            "noDangerouslySetInnerHtml": "off"
+          }
+        }
+      }
     }
   ]
 }

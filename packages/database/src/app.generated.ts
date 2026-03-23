@@ -20,6 +20,7 @@ export type Database = {
           action_thinking: string | null
           action_timeout_seconds: number | null
           action_type: Database["app"]["Enums"]["automation_action_type"]
+          avatar_url: string | null
           claimed_by: string | null
           consecutive_failures: number | null
           created_at: string
@@ -57,6 +58,7 @@ export type Database = {
           action_thinking?: string | null
           action_timeout_seconds?: number | null
           action_type: Database["app"]["Enums"]["automation_action_type"]
+          avatar_url?: string | null
           claimed_by?: string | null
           consecutive_failures?: number | null
           created_at?: string
@@ -94,6 +96,7 @@ export type Database = {
           action_thinking?: string | null
           action_timeout_seconds?: number | null
           action_type?: Database["app"]["Enums"]["automation_action_type"]
+          avatar_url?: string | null
           claimed_by?: string | null
           consecutive_failures?: number | null
           created_at?: string
@@ -740,6 +743,7 @@ export type Database = {
           action_thinking: string | null
           action_timeout_seconds: number | null
           action_type: Database["app"]["Enums"]["automation_action_type"]
+          avatar_url: string | null
           claimed_by: string | null
           consecutive_failures: number | null
           created_at: string

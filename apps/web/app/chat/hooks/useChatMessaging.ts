@@ -658,6 +658,8 @@ export function useChatMessaging({
                   ) {
                     receivedAnyMessage = true
                     isSubmittingByTab.current.set(targetTabId, false)
+                    // End stream immediately so Stop button disappears before reader unwinds
+                    streamingActions.endStream(targetTabId)
                     void flushAck(targetTabId)
                     if (
                       (isCompleteEvent(eventData) || isDoneEvent(eventData)) &&

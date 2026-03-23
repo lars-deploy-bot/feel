@@ -1,10 +1,11 @@
 "use client"
 
-import { Play, RotateCw } from "lucide-react"
+import { Pause, Play, RotateCw } from "lucide-react"
 import { useMemo } from "react"
-import { Dot, RunDots, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
+import { Dot, StatusDot, StreakBadge, TrigIcon } from "./AgentUI"
+import { agentAvatar } from "./agent-avatars"
 import { agentsApi } from "./agents-api"
-import { healthScore, relTime, TRIGGER_REFRESH_DELAY, trigLabel } from "./agents-helpers"
+import { healthScore, successRateColor, timeUntil, trigLabel } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 
 export function AgentListView({
@@ -24,9 +25,9 @@ export function AgentListView({
   const running = jobs.filter(j => j.status === "running").length
 
   return (
-    <div className="max-w-2xl mx-auto w-full px-4">
+    <div className="w-full px-4">
       {/* Summary bar */}
-      <div className="px-2 py-2.5 flex items-center justify-between text-[11px] tabular-nums">
+      <div className="px-1 py-2.5 flex items-center justify-between text-[12px] tabular-nums">
         <span className="text-zinc-500 dark:text-zinc-400 font-medium">
           {jobs.length} agent{jobs.length !== 1 ? "s" : ""}
         </span>
@@ -54,8 +55,8 @@ export function AgentListView({
         </div>
       </div>
 
-      {/* Agent cards */}
-      <div className="flex flex-col gap-2 pb-4">
+      {/* Agent grid */}
+      <div className="grid grid-cols-2 gap-3 pb-4">
         {sorted.map(job => (
           <AgentCard key={job.id} job={job} onSelect={onSelect} onChanged={onChanged} />
         ))}
@@ -73,6 +74,9 @@ function AgentCard({
   onSelect: (job: EnrichedJob) => void
   onChanged: () => void
 }) {
+  const isRunning = job.status === "running"
+  const isInactive = !job.is_active
+
   return (
     // biome-ignore lint/a11y/useSemanticElements: card contains nested button (Run), can't use <button> wrapper
     <div
@@ -82,40 +86,81 @@ function AgentCard({
       onKeyDown={e => {
         if (e.key === "Enter") onSelect(job)
       }}
-      className="w-full text-left rounded-2xl border border-zinc-100 dark:border-white/[0.04] bg-white dark:bg-white/[0.02] hover:border-zinc-200 dark:hover:border-white/[0.08] hover:shadow-sm transition-all p-4 cursor-pointer"
+      className={`group text-left rounded-2xl border border-b-[3px] cursor-pointer transition-all hover:shadow-md active:translate-y-[1px] active:border-b flex overflow-hidden ${
+        isInactive
+          ? "bg-zinc-50/80 dark:bg-white/[0.01] border-zinc-100 dark:border-white/[0.04] opacity-55 hover:opacity-75"
+          : isRunning
+            ? "bg-gradient-to-r from-blue-50 to-white dark:from-blue-500/5 dark:to-white/[0.02] border-blue-200 dark:border-blue-500/20 shadow-sm"
+            : "bg-white dark:bg-white/[0.02] border-zinc-200 dark:border-white/[0.06] hover:border-zinc-300 dark:hover:border-white/[0.1]"
+      }`}
     >
-      {/* Top row: name + streak */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <StatusDot job={job} />
-          <span className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{job.name}</span>
+      {/* Character image — left side */}
+      <div className="w-36 shrink-0 bg-zinc-50 dark:bg-white/[0.02]">
+        <img
+          src={job.avatar_url ?? agentAvatar(job.id)}
+          alt=""
+          className={`w-full h-full object-cover object-top ${isInactive ? "grayscale" : ""}`}
+        />
+      </div>
+
+      {/* Content — right side */}
+      <div className="flex-1 px-4 py-3 flex flex-col min-w-0">
+        {/* Header: name + status */}
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <span className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-1">
+            {job.name}
+          </span>
+          {isInactive ? (
+            <span className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800">
+              Paused
+            </span>
+          ) : (
+            <StatusDot job={job} />
+          )}
         </div>
-        <StreakBadge streak={job.streak} />
-      </div>
 
-      {/* Middle row: trigger + last run */}
-      <div className="flex items-center gap-2 text-[12px] text-zinc-400 dark:text-zinc-500 mb-3">
-        <span className="inline-flex items-center gap-1">
-          <TrigIcon type={job.trigger_type} />
-          {trigLabel(job)}
-        </span>
-        <Dot />
-        <span className="tabular-nums">{relTime(job.last_run_at)}</span>
-      </div>
+        {/* Prompt snippet */}
+        {job.action_prompt && (
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500 leading-relaxed line-clamp-2 mb-2">
+            {job.action_prompt}
+          </p>
+        )}
 
-      {/* Bottom row: run dots + quick action */}
-      <div className="flex items-center justify-between">
-        <RunDots runs={job.recent_runs} />
+        {/* Stats + schedule */}
+        <div className="flex items-center gap-2 text-[10px] mb-3 mt-auto">
+          {job.recent_runs.length > 0 ? (
+            <>
+              <span className={`text-[13px] font-bold tabular-nums ${successRateColor(job.success_rate)}`}>
+                {job.success_rate}%
+              </span>
+              <StreakBadge streak={job.streak} />
+            </>
+          ) : (
+            <span className="text-[11px] text-zinc-300 dark:text-zinc-600">
+              {timeUntil(job.next_run_at) ? `Next run ${timeUntil(job.next_run_at)}` : "Enable to start"}
+            </span>
+          )}
+          <span className="ml-auto flex items-center gap-1 text-zinc-400 dark:text-zinc-500">
+            <TrigIcon type={job.trigger_type} size={9} />
+            <span className="truncate">{trigLabel(job)}</span>
+          </span>
+        </div>
+
+        {/* Toggle active */}
         <button
           type="button"
-          onClick={e => {
+          onClick={async e => {
             e.stopPropagation()
-            agentsApi.trigger(job.id).then(() => globalThis.setTimeout(onChanged, TRIGGER_REFRESH_DELAY))
+            agentsApi.setActive(job.id, !job.is_active).then(onChanged)
           }}
-          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/15 border-b-2 border-emerald-200 dark:border-emerald-600/30 active:translate-y-[1px] active:border-b-0 transition-all"
+          className={`w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-xl text-[12px] font-bold border-b-[3px] active:translate-y-[2px] active:border-b-0 transition-all ${
+            job.is_active
+              ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-600/30 hover:bg-amber-100 dark:hover:bg-amber-500/15"
+              : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-600/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/15"
+          }`}
         >
-          <Play size={10} />
-          Run
+          {job.is_active ? <Pause size={11} /> : <Play size={11} />}
+          {job.is_active ? "Pause" : "Resume"}
         </button>
       </div>
     </div>

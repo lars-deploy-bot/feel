@@ -3,8 +3,9 @@
 import { ClipboardList, Pause, Pencil, Play } from "lucide-react"
 import { useState } from "react"
 import { ActionButton, DeleteConfirm, ErrorAlert, RunDots, StatusLine, StreakBadge, SuccessRing } from "./AgentUI"
+import { agentAvatar } from "./agent-avatars"
 import { agentsApi } from "./agents-api"
-import { dur, isStreakHot, isStreakWarm, TRIGGER_REFRESH_DELAY } from "./agents-helpers"
+import { isStreakHot, isStreakWarm, TRIGGER_REFRESH_DELAY } from "./agents-helpers"
 import type { EnrichedJob } from "./agents-types"
 
 export function AgentOverviewView({
@@ -39,31 +40,82 @@ export function AgentOverviewView({
       : "—"
     : "paused"
 
+  const skills = job.skills ?? []
+
   return (
-    <div className="px-6 py-5 max-w-2xl mx-auto w-full">
-      <div className="mb-6">
+    <div className="px-6 max-w-2xl mx-auto w-full min-h-full flex flex-col">
+      <div className="flex-[3]" />
+
+      {/* Agent hero — avatar + name */}
+      <div className="flex flex-col items-center text-center mb-8">
+        <img
+          src={job.avatar_url ?? agentAvatar(job.id)}
+          alt=""
+          className="w-40 h-52 object-cover object-top rounded-lg mb-4"
+        />
+        <h3 className="text-[22px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">{job.name}</h3>
         <StatusLine job={job} />
       </div>
 
-      {/* Hero stats — success ring + key metrics */}
-      <div className="flex items-center gap-6 p-5 rounded-2xl bg-zinc-50/50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] mb-6">
-        <SuccessRing rate={job.success_rate} size={72} />
-        <div className="flex-1 grid grid-cols-3 gap-4">
-          <StatBlock label="Avg time" value={dur(job.avg_duration_ms)} />
-          <StatBlock label="Next run" value={nextRun} />
-          <div className="flex flex-col items-start">
-            <div className="flex items-center">
-              <span
-                className={`text-[20px] font-bold tabular-nums ${isStreakHot(job.streak) ? "text-orange-500" : isStreakWarm(job.streak) ? "text-amber-500" : "text-zinc-900 dark:text-zinc-100"}`}
-              >
-                {job.streak}
-              </span>
-              <StreakBadge streak={job.streak} />
+      {/* Hero stats — success ring + key metrics (hidden when no runs) */}
+      {job.runs_30d > 0 ? (
+        <div className="flex items-center gap-6 p-5 rounded-2xl bg-zinc-50/50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] mb-6">
+          <SuccessRing rate={job.success_rate} size={72} />
+          <div className="flex-1 grid grid-cols-2 gap-4">
+            <StatBlock label="Next run" value={nextRun} />
+            <div className="flex flex-col items-start">
+              <div className="flex items-center">
+                <span
+                  className={`text-[20px] font-bold tabular-nums ${isStreakHot(job.streak) ? "text-orange-500" : isStreakWarm(job.streak) ? "text-amber-500" : "text-zinc-900 dark:text-zinc-100"}`}
+                >
+                  {job.streak}
+                </span>
+                <StreakBadge streak={job.streak} />
+              </div>
+              <p className="text-[11px] text-zinc-400 dark:text-zinc-600">Streak</p>
             </div>
-            <p className="text-[11px] text-zinc-400 dark:text-zinc-600">Streak</p>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="p-5 rounded-2xl bg-zinc-50/50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] mb-6 text-center">
+          <p className="text-[13px] text-zinc-500 dark:text-zinc-400">
+            {job.is_active
+              ? `Scheduled ${nextRun === "—" ? "soon" : `at ${nextRun}`}`
+              : "Paused — resume to start running"}
+          </p>
+        </div>
+      )}
+
+      {/* Instructions preview — click to edit */}
+      {job.action_prompt && (
+        <button type="button" onClick={onGoToEdit} className="w-full text-left mb-6 group">
+          <p className="text-[11px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-2">
+            Instructions
+          </p>
+          <div className="px-4 py-3 rounded-2xl bg-zinc-50/50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] group-hover:border-violet-200 dark:group-hover:border-violet-500/20 transition-colors">
+            <p className="text-[13px] text-zinc-600 dark:text-zinc-400 leading-relaxed line-clamp-4">
+              {job.action_prompt}
+            </p>
+          </div>
+        </button>
+      )}
+
+      {/* Skills */}
+      {skills.length > 0 && (
+        <div className="mb-6">
+          <p className="text-[11px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-2">Skills</p>
+          <div className="flex flex-wrap gap-1.5">
+            {skills.map(skill => (
+              <span
+                key={skill}
+                className="px-2.5 py-1 text-[12px] font-medium rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {job.last_run_error && (
         <div className="mb-6">
@@ -108,6 +160,8 @@ export function AgentOverviewView({
         <div className="flex-1" />
         <DeleteConfirm onDelete={() => act(() => agentsApi.delete(job.id), setDeleting)} deleting={deleting} />
       </div>
+
+      <div className="flex-[5]" />
     </div>
   )
 }

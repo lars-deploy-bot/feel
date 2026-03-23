@@ -4,10 +4,8 @@ import { ErrorCodes, getErrorHelp, getErrorMessage, isWorkspaceError } from "@/l
 describe("Error Code Registry", () => {
   describe("getErrorMessage", () => {
     it("should return a message for every ErrorCode", () => {
-      // Get all error codes
       const allErrorCodes = Object.values(ErrorCodes)
 
-      // Test each error code has a non-empty message
       for (const code of allErrorCodes) {
         const message = getErrorMessage(code)
         expect(message, `ErrorCode ${code} should have a message`).toBeTruthy()
@@ -15,10 +13,9 @@ describe("Error Code Registry", () => {
       }
     })
 
-    it("should return user-friendly messages from Claude's perspective", () => {
+    it("should return concise user-friendly messages", () => {
       const message = getErrorMessage(ErrorCodes.FILE_READ_ERROR)
-      // Should use "I" perspective (Claude speaking)
-      expect(message).toMatch(/I cannot|I can't|I couldn't/)
+      expect(message).toMatch(/can't read/i)
     })
 
     it("should support dynamic details in messages", () => {
@@ -30,7 +27,6 @@ describe("Error Code Registry", () => {
     })
 
     it("should handle missing details gracefully", () => {
-      // Should not throw when details are expected but not provided
       expect(() => getErrorMessage(ErrorCodes.WORKSPACE_NOT_FOUND)).not.toThrow()
       expect(() => getErrorMessage(ErrorCodes.INVALID_REQUEST)).not.toThrow()
     })
@@ -38,12 +34,12 @@ describe("Error Code Registry", () => {
     it("should return fallback for unknown error codes", () => {
       // @ts-expect-error — intentionally passing an invalid error code to test fallback behavior
       const message = getErrorMessage("UNKNOWN_CODE_XYZ")
-      expect(message).toContain("unexpected")
+      expect(message).toMatch(/something went wrong/i)
     })
   })
 
   describe("getErrorHelp", () => {
-    it("should return help text for critical user-facing errors", () => {
+    it("should return null — error messages are self-contained", () => {
       const criticalErrors = [
         ErrorCodes.WORKSPACE_NOT_FOUND,
         ErrorCodes.PATH_OUTSIDE_WORKSPACE,
@@ -55,23 +51,8 @@ describe("Error Code Registry", () => {
       ]
 
       for (const code of criticalErrors) {
-        const help = getErrorHelp(code)
-        expect(help, `Critical error ${code} should have help text`).toBeTruthy()
-        if (help) {
-          expect(help.length, `Help text for ${code} should be non-empty`).toBeGreaterThan(0)
-        }
+        expect(getErrorHelp(code)).toBeNull()
       }
-    })
-
-    it("should return null for errors that don't need help", () => {
-      const help = getErrorHelp(ErrorCodes.INTERNAL_ERROR)
-      const helpType = help === null ? "null" : typeof help
-      expect(["null", "string"]).toContain(helpType)
-    })
-
-    it("should provide actionable guidance in help text", () => {
-      const help = getErrorHelp(ErrorCodes.ERROR_MAX_TURNS)
-      expect(help).toMatch(/new conversation|start fresh/i)
     })
   })
 
@@ -105,15 +86,10 @@ describe("Error Code Registry", () => {
     })
 
     it("should group errors logically by prefix", () => {
-      // Workspace errors should start with WORKSPACE_
       expect(ErrorCodes.WORKSPACE_NOT_FOUND).toMatch(/^WORKSPACE_/)
       expect(ErrorCodes.WORKSPACE_INVALID).toMatch(/^WORKSPACE_/)
-
-      // File errors should start with FILE_
       expect(ErrorCodes.FILE_READ_ERROR).toMatch(/^FILE_/)
       expect(ErrorCodes.FILE_WRITE_ERROR).toMatch(/^FILE_/)
-
-      // Image errors should start with IMAGE_
       expect(ErrorCodes.IMAGE_UPLOAD_FAILED).toMatch(/^IMAGE_/)
       expect(ErrorCodes.IMAGE_DELETE_FAILED).toMatch(/^IMAGE_/)
     })
@@ -131,17 +107,16 @@ describe("Error Code Registry", () => {
       for (const code of securityErrors) {
         const message = getErrorMessage(code)
         expect(message).toBeTruthy()
-        // Security errors should not leak sensitive info
         expect(message).not.toMatch(/password|token|key|secret/i)
       }
     })
 
     it("should explain security boundaries clearly", () => {
       const message = getErrorMessage(ErrorCodes.PATH_OUTSIDE_WORKSPACE)
-      expect(message).toMatch(/workspace|allowed|access/i)
+      expect(message).toMatch(/outside|workspace|allowed/i)
 
       const toolMessage = getErrorMessage(ErrorCodes.TOOL_NOT_ALLOWED)
-      expect(toolMessage).toMatch(/security|cannot use/i)
+      expect(toolMessage).toMatch(/not allowed/i)
     })
   })
 })

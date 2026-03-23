@@ -7,6 +7,7 @@ import type {
   SDKTaskNotificationMessage,
   SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk"
+import type { ErrorCode } from "@/lib/error-codes"
 
 // Type guard for the specific system init message (the only SDKSystemMessage type)
 export function isSDKSystemMessage(msg: SDKMessage): msg is SDKSystemMessage {
@@ -54,7 +55,9 @@ export function isSDKResultMessage(msg: SDKMessage): msg is SDKResultMessage {
 }
 
 // Type guard for error result messages (client-side errors without duration_ms)
-export function isErrorResultMessage(msg: unknown): msg is { type: "result"; is_error: true; result: string } {
+export function isErrorResultMessage(
+  msg: unknown,
+): msg is { type: "result"; is_error: true; result: string; error_code?: ErrorCode } {
   if (!msg || typeof msg !== "object") return false
   const m = msg as Record<string, unknown>
   return m.type === "result" && m.is_error === true && typeof m.result === "string"

@@ -124,14 +124,14 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.FORBIDDEN, { status: 403 })
     }
 
-    // Resolve schedule_text → cron if provided
+    // Resolve schedule_text → cron if provided (calls apps/api which handles rate limiting + caching)
     let resolvedCron: string | undefined
     let resolvedTimezone: string | undefined
     if ("schedule_text" in parsed && parsed.schedule_text && existingRow.trigger_type === "cron") {
       try {
         const { resolveScheduleText } = await import("@/lib/automation/text-to-cron")
         const userTz = ("cron_timezone" in parsed ? parsed.cron_timezone : undefined) ?? null
-        const result = await resolveScheduleText(parsed.schedule_text, userTz)
+        const result = await resolveScheduleText(parsed.schedule_text, userTz, user.id)
         resolvedCron = result.cron
         resolvedTimezone = result.timezone ?? undefined
       } catch (error) {
@@ -158,6 +158,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       "action_timeout_seconds",
       "skills",
       "is_active",
+      "avatar_url",
     ] as const
 
     for (const field of fieldKeys) {

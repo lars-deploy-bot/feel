@@ -43,7 +43,7 @@
  *     └─ ErrorOccurred → error
  */
 
-import { err, ok, type TransitionResult } from "./types"
+import { err, ok, type TransitionResult } from "./types.js"
 
 // ---------------------------------------------------------------------------
 // States

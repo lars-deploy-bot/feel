@@ -42,5 +42,14 @@ export {
   streamTransition,
   type TokenSource,
 } from "./stream.machine"
-export type { TransitionResult } from "./types"
-export { err, ok } from "./types"
+export type { TransitionResult } from "./types.js"
+export { err, ok } from "./types.js"
+export {
+  type ToggleAction,
+  toggleAction,
+  type VoiceEvent,
+  type VoiceState,
+  type VoiceStateTag,
+  voiceIdle,
+  voiceTransition,
+} from "./voice.machine"

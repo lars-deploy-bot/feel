@@ -8,6 +8,8 @@ export interface AgentTemplate {
   schedule: string
   icon: "search" | "trending-up" | "mail" | "shield" | "bar-chart" | "zap"
   color: "blue" | "emerald" | "violet" | "amber" | "rose" | "cyan"
+  image: string
+  enabled: boolean
 }
 
 export const AGENT_TEMPLATES: AgentTemplate[] = [
@@ -26,6 +28,8 @@ Write your findings as a structured list in the website's content.`,
     schedule: DEFAULT_SCHEDULE,
     icon: "search",
     color: "blue",
+    image: "/images/agent-templates/lead-finder.png",
+    enabled: true,
   },
   {
     id: "seo-optimizer",
@@ -43,6 +47,8 @@ Apply changes directly to the site files. Write a brief summary of what you chan
     schedule: "every monday at 9am",
     icon: "trending-up",
     color: "emerald",
+    image: "/images/agent-templates/seo-optimizer.png",
+    enabled: true,
   },
   {
     id: "content-writer",
@@ -60,6 +66,8 @@ Focus on providing genuine value to readers — no fluff, no filler.`,
     schedule: "every wednesday at 10am",
     icon: "zap",
     color: "violet",
+    image: "/images/agent-templates/content-writer.png",
+    enabled: true,
   },
   {
     id: "security-monitor",
@@ -77,6 +85,8 @@ Fix simple issues directly. For complex issues, document them clearly with sever
     schedule: "every day at 6am",
     icon: "shield",
     color: "rose",
+    image: "/images/agent-templates/security-monitor.png",
+    enabled: true,
   },
   {
     id: "analytics-reporter",
@@ -94,5 +104,26 @@ Keep reports actionable — focus on what to do next, not just what happened.`,
     schedule: "every day at 8am",
     icon: "bar-chart",
     color: "cyan",
+    image: "/images/agent-templates/analytics-reporter.png",
+    enabled: true,
+  },
+  {
+    id: "error-checker",
+    name: "Error Checker",
+    description: "Scans your site for broken links, console errors, and visual bugs",
+    prompt: `You are an error checking agent. Your job is to find and fix issues on this website.
+
+1. Check all pages for broken links and missing images
+2. Look for JavaScript console errors and warnings
+3. Verify forms, buttons, and interactive elements work correctly
+4. Check for layout issues, overflow, or broken responsive design
+5. Fix simple issues directly. Log complex ones with clear reproduction steps.
+
+Run through the site systematically. Report what you found and what you fixed.`,
+    schedule: "every day at 7am",
+    icon: "shield",
+    color: "rose",
+    image: "/images/agent-templates/error-checker.png",
+    enabled: true,
   },
 ]

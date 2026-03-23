@@ -2,10 +2,16 @@
 
 import { useMutation } from "@tanstack/react-query"
 import type { VoiceLanguage } from "@webalive/shared"
+import {
+  type VoiceState as MachineState,
+  type VoiceEvent,
+  type VoiceStateTag,
+  voiceIdle,
+  voiceTransition,
+} from "@webalive/shared"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { TranscribeResult } from "@/lib/api/types"
 import { TranscribeApiError, transcribeAudio } from "@/lib/api/voice"
-import type { VoiceState } from "../types/voice"
 
 // ---------------------------------------------------------------------------
 // Config
@@ -45,7 +51,7 @@ interface UseVoiceInputOptions {
 }
 
 export interface VoiceInputResult {
-  state: VoiceState
+  state: VoiceStateTag
   /** Normalized audio level 0–1 for visualization, updated ~16x/sec */
   audioLevel: number
   /** How long the current recording has been running (ms) */
@@ -92,26 +98,23 @@ const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 // ---------------------------------------------------------------------------
 
 /**
- * Robust voice input: record → auto-stop on silence → transcribe → callback.
+ * Voice input driven by a state machine (voice.machine.ts).
  *
- * - Real-time audio level for UI visualization
- * - Adaptive silence threshold (calibrates from ambient noise)
- * - Auto-stop after silence, max duration, and manual stop
- * - Minimum blob size check (won't send silence to Groq)
- * - Retry on transient server errors
- * - AbortController for cancelling in-flight transcription
- * - Elapsed time tracking
- * - Error state with auto-clear
+ * The machine is the single source of truth for what state we're in
+ * and what transitions are valid. Side effects (MediaRecorder, AudioContext,
+ * transcription fetch) are triggered after successful machine transitions.
  */
 export function useVoiceInput({ onTranscript, onError, language }: UseVoiceInputOptions): VoiceInputResult {
-  // -- Render state --
-  const [voiceState, setVoiceState] = useState<VoiceState>("idle")
+  // -- Machine state --
+  const [machine, setMachine] = useState<MachineState>(voiceIdle)
+  const machineRef = useRef(machine)
+  machineRef.current = machine
+
+  // -- Render state (not owned by machine) --
   const [audioLevel, setAudioLevel] = useState(0)
   const [elapsed, setElapsed] = useState(0)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // -- Refs (source of truth, no stale closures) --
-  const recordingRef = useRef(false)
+  // -- Refs (imperative side-effect handles) --
   const lockRef = useRef(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -130,40 +133,36 @@ export function useVoiceInput({ onTranscript, onError, language }: UseVoiceInput
   const cbRef = useRef({ onTranscript, onError, language })
   cbRef.current = { onTranscript, onError, language }
 
-  // -- Transition helpers --
-  const goIdle = useCallback(() => {
-    setVoiceState("idle")
-    setAudioLevel(0)
-    setElapsed(0)
-    setErrorMessage(null)
+  // -- Machine transition --
+  const send = useCallback((event: VoiceEvent): MachineState | null => {
+    const result = voiceTransition(machineRef.current, event)
+    if (!result.ok) return null
+    machineRef.current = result.state
+    setMachine(result.state)
+    return result.state
   }, [])
 
-  const goError = useCallback(
+  // -- Side effects: error timer --
+  const startErrorTimer = useCallback(
     (msg: string) => {
-      setVoiceState("error")
-      setErrorMessage(msg)
-      setAudioLevel(0)
       cbRef.current.onError(msg)
-
-      // Auto-clear error after delay
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
       errorTimerRef.current = setTimeout(() => {
         errorTimerRef.current = null
-        goIdle()
+        send({ type: "ErrorTimeout" })
       }, ERROR_DISPLAY_MS)
     },
-    [goIdle],
+    [send],
   )
 
-  const clearError = useCallback(() => {
+  const clearErrorTimer = useCallback(() => {
     if (errorTimerRef.current) {
       clearTimeout(errorTimerRef.current)
       errorTimerRef.current = null
     }
-    goIdle()
-  }, [goIdle])
+  }, [])
 
-  // -- Cleanup --
+  // -- Side effects: audio cleanup --
   const stopTimers = useCallback(() => {
     if (levelTimerRef.current) {
       clearInterval(levelTimerRef.current)
@@ -195,11 +194,11 @@ export function useVoiceInput({ onTranscript, onError, language }: UseVoiceInput
     return () => {
       releaseAudio()
       if (abortRef.current) abortRef.current.abort()
-      if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
+      clearErrorTimer()
     }
-  }, [releaseAudio])
+  }, [releaseAudio, clearErrorTimer])
 
-  // -- Transcription with retry --
+  // -- Side effects: transcription --
   const transcribeWithRetry = useCallback(async (blob: Blob, signal: AbortSignal) => {
     let lastError: Error | null = null
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -217,7 +216,6 @@ export function useVoiceInput({ onTranscript, onError, language }: UseVoiceInput
     throw lastError
   }, [])
 
-  // -- Transcription mutation --
   const mutation = useMutation<TranscribeResult, Error, Blob>({
     mutationFn: (blob: Blob) => {
       abortRef.current = new AbortController()
@@ -228,15 +226,17 @@ export function useVoiceInput({ onTranscript, onError, language }: UseVoiceInput
       const text = data.text.trim()
       if (text) {
         cbRef.current.onTranscript(text)
-        goIdle()
+        send({ type: "TranscribeSuccess" })
       } else {
-        goError("No speech detected — try speaking louder")
+        const msg = "No speech detected — try speaking louder"
+        const next = send({ type: "TranscribeEmpty", message: msg })
+        if (next?.tag === "error") startErrorTimer(msg)
       }
     },
     onError: err => {
       abortRef.current = null
       if (err instanceof DOMException && err.name === "AbortError") {
-        goIdle()
+        // CancelTranscription already transitioned to idle
         return
       }
       const msg =
@@ -247,209 +247,261 @@ export function useVoiceInput({ onTranscript, onError, language }: UseVoiceInput
               ? "Transcription service unavailable — try again"
               : err.message
           : "Couldn't transcribe audio — try again"
-      goError(msg)
+      const next = send({ type: "TranscribeFailed", message: msg })
+      if (next?.tag === "error") startErrorTimer(msg)
     },
   })
 
-  const cancelTranscription = useCallback(() => {
-    if (abortRef.current) {
-      abortRef.current.abort()
-      abortRef.current = null
-    }
-  }, [])
-
-  // -- Stop recording --
-  const stopRecording = useCallback(() => {
-    if (!recordingRef.current) return
-    recordingRef.current = false
-    setVoiceState("stopping")
+  // -- Side effects: stop MediaRecorder --
+  const performStop = useCallback(() => {
     stopTimers()
     setAudioLevel(0)
 
     try {
       if (recorderRef.current?.state === "recording") {
-        recorderRef.current.stop() // triggers onstop → sends blob
+        recorderRef.current.stop() // triggers onstop async
       } else {
         releaseAudio()
-        goIdle()
+        send({ type: "RecorderError", message: "" }) // stopping → idle fallback
       }
     } catch {
       releaseAudio()
-      goIdle()
+      send({ type: "RecorderError", message: "" })
     }
-    lockRef.current = false
-  }, [stopTimers, releaseAudio, goIdle])
+  }, [stopTimers, releaseAudio, send])
 
-  // -- Start recording --
-  const startRecording = useCallback(async () => {
-    if (recordingRef.current || lockRef.current || mutation.isPending) return
-    lockRef.current = true
+  // -- Side effects: start recording --
+  const acquireAndRecord = useCallback(
+    async (holdMode: boolean) => {
+      if (lockRef.current || mutation.isPending) return
+      lockRef.current = true
+      clearErrorTimer()
 
-    // Clear any existing error
-    if (errorTimerRef.current) {
-      clearTimeout(errorTimerRef.current)
-      errorTimerRef.current = null
-    }
-
-    // Acquire microphone
-    let stream: MediaStream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-      })
-    } catch {
-      lockRef.current = false
-      goError("Microphone access denied")
-      return
-    }
-
-    streamRef.current = stream
-    recordingRef.current = true
-    hadSpeechRef.current = false
-    silentSinceRef.current = null
-    silenceThresholdRef.current = DEFAULT_SILENCE_THRESHOLD
-    startTimeRef.current = Date.now()
-
-    // Set up MediaRecorder
-    const mime = pickMimeType()
-    const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
-    recorderRef.current = recorder
-    chunksRef.current = []
-
-    recorder.ondataavailable = e => {
-      if (e.data.size > 0) chunksRef.current.push(e.data)
-    }
-
-    recorder.onerror = () => {
-      releaseAudio()
-      recordingRef.current = false
-      lockRef.current = false
-      goError("Recording failed — microphone may be in use")
-    }
-
-    recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
-      releaseAudio()
-
-      if (blob.size < MIN_BLOB_BYTES) {
-        goError("Recording too short — hold longer or speak louder")
+      // Acquire microphone
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true },
+        })
+      } catch {
+        lockRef.current = false
+        const msg = "Microphone access denied"
+        const next = send({ type: "MicDenied", message: msg })
+        if (next?.tag === "error") startErrorTimer(msg)
         return
       }
 
-      setVoiceState("transcribing")
-      mutation.mutate(blob)
-    }
-
-    recorder.start(250) // timeslice: get data every 250ms for smoother onstop
-
-    setVoiceState("recording")
-    setElapsed(0)
-    lockRef.current = false
-
-    // Elapsed timer
-    elapsedTimerRef.current = setInterval(() => {
-      const ms = Date.now() - startTimeRef.current
-      setElapsed(ms)
-
-      // Hard max duration
-      if (ms >= MAX_RECORDING_MS) {
-        stopRecording()
+      // Mic acquired — transition machine
+      const next = send(holdMode ? { type: "HoldStart" } : { type: "TapStart" })
+      if (!next || next.tag !== "recording") {
+        // Machine rejected (e.g. state changed while acquiring mic)
+        for (const track of stream.getTracks()) track.stop()
+        lockRef.current = false
+        return
       }
-    }, 200)
 
-    // Set up Web Audio API for level monitoring + silence detection
-    try {
-      const audioCtx = new AudioContext()
-      audioCtxRef.current = audioCtx
-      const source = audioCtx.createMediaStreamSource(stream)
-      const analyser = audioCtx.createAnalyser()
-      analyser.fftSize = 1024
-      analyser.smoothingTimeConstant = 0.3
-      source.connect(analyser)
-      analyserRef.current = analyser
+      streamRef.current = stream
+      hadSpeechRef.current = false
+      silentSinceRef.current = null
+      silenceThresholdRef.current = DEFAULT_SILENCE_THRESHOLD
+      startTimeRef.current = Date.now()
 
-      const dataArray = new Uint8Array(analyser.fftSize)
-      let calibrationSamples: number[] = []
-      let calibrated = false
+      // Set up MediaRecorder
+      const mime = pickMimeType()
+      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      recorderRef.current = recorder
+      chunksRef.current = []
 
-      levelTimerRef.current = setInterval(() => {
-        if (!recordingRef.current || !analyserRef.current) return
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
 
-        analyserRef.current.getByteTimeDomainData(dataArray)
-        const rms = computeRms(dataArray)
+      recorder.onerror = () => {
+        releaseAudio()
+        lockRef.current = false
+        const msg = "Recording failed — microphone may be in use"
+        const errNext = send({ type: "RecorderError", message: msg })
+        if (errNext?.tag === "error") startErrorTimer(msg)
+      }
 
-        // Normalize to 0–1 (RMS range in practice is ~0–50 for speech)
-        const normalizedLevel = Math.min(1, rms / 40)
-        setAudioLevel(normalizedLevel)
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
+        releaseAudio()
 
-        const now = Date.now()
-        const elapsedMs = now - startTimeRef.current
-
-        // Phase 1: Calibrate noise floor from first N ms
-        if (!calibrated && elapsedMs < CALIBRATION_MS) {
-          calibrationSamples.push(rms)
+        if (blob.size < MIN_BLOB_BYTES) {
+          const msg = "Recording too short — hold longer or speak louder"
+          const errNext = send({ type: "BlobTooSmall", message: msg })
+          if (errNext?.tag === "error") startErrorTimer(msg)
           return
         }
 
-        if (!calibrated) {
-          calibrated = true
-          if (calibrationSamples.length > 0) {
-            const avg = calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length
-            // Threshold = noise floor * multiplier, but at least DEFAULT
-            silenceThresholdRef.current = Math.max(DEFAULT_SILENCE_THRESHOLD, avg * NOISE_FLOOR_MULTIPLIER)
-          }
-          calibrationSamples = [] // free memory
+        const transcribeNext = send({ type: "BlobReady" })
+        if (transcribeNext?.tag === "transcribing") {
+          mutation.mutate(blob)
         }
+      }
 
-        // Phase 2: Detect speech / silence
-        const threshold = silenceThresholdRef.current
+      recorder.start(250) // timeslice: get data every 250ms for smoother onstop
+      setElapsed(0)
+      lockRef.current = false
 
-        if (rms > threshold) {
-          hadSpeechRef.current = true
-          silentSinceRef.current = null
-        } else {
-          if (silentSinceRef.current === null) silentSinceRef.current = now
+      // Elapsed timer
+      elapsedTimerRef.current = setInterval(() => {
+        const ms = Date.now() - startTimeRef.current
+        setElapsed(ms)
 
-          // Auto-stop: past minimum recording, had speech, silence long enough
-          if (
-            elapsedMs > MIN_RECORDING_MS &&
-            hadSpeechRef.current &&
-            now - silentSinceRef.current >= SILENCE_DURATION_MS
-          ) {
-            stopRecording()
-          }
+        if (ms >= MAX_RECORDING_MS) {
+          const maxNext = send({ type: "MaxDuration" })
+          if (maxNext?.tag === "stopping") performStop()
         }
-      }, LEVEL_CHECK_INTERVAL_MS)
-    } catch {
-      // AudioContext not available — recording works, just no auto-stop / level
+      }, 200)
+
+      // Set up Web Audio API for level monitoring + silence detection
+      try {
+        const audioCtx = new AudioContext()
+        audioCtxRef.current = audioCtx
+        const source = audioCtx.createMediaStreamSource(stream)
+        const analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 1024
+        analyser.smoothingTimeConstant = 0.3
+        source.connect(analyser)
+        analyserRef.current = analyser
+
+        const dataArray = new Uint8Array(analyser.fftSize)
+        let calibrationSamples: number[] = []
+        let calibrated = false
+
+        levelTimerRef.current = setInterval(() => {
+          if (machineRef.current.tag !== "recording" || !analyserRef.current) return
+
+          analyserRef.current.getByteTimeDomainData(dataArray)
+          const rms = computeRms(dataArray)
+
+          // Normalize to 0–1 (RMS range in practice is ~0–50 for speech)
+          const normalizedLevel = Math.min(1, rms / 40)
+          setAudioLevel(normalizedLevel)
+
+          const now = Date.now()
+          const elapsedMs = now - startTimeRef.current
+
+          // Phase 1: Calibrate noise floor from first N ms
+          if (!calibrated && elapsedMs < CALIBRATION_MS) {
+            calibrationSamples.push(rms)
+            return
+          }
+
+          if (!calibrated) {
+            calibrated = true
+            if (calibrationSamples.length > 0) {
+              const avg = calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length
+              silenceThresholdRef.current = Math.max(DEFAULT_SILENCE_THRESHOLD, avg * NOISE_FLOOR_MULTIPLIER)
+            }
+            calibrationSamples = [] // free memory
+          }
+
+          // Phase 2: Detect speech / silence
+          const threshold = silenceThresholdRef.current
+
+          if (rms > threshold) {
+            hadSpeechRef.current = true
+            silentSinceRef.current = null
+          } else {
+            if (silentSinceRef.current === null) silentSinceRef.current = now
+
+            if (
+              elapsedMs > MIN_RECORDING_MS &&
+              hadSpeechRef.current &&
+              now - silentSinceRef.current >= SILENCE_DURATION_MS
+            ) {
+              const silenceNext = send({ type: "SilenceDetected" })
+              if (silenceNext?.tag === "stopping") performStop()
+            }
+          }
+        }, LEVEL_CHECK_INTERVAL_MS)
+      } catch {
+        // AudioContext not available — recording works, just no auto-stop / level
+      }
+    },
+    [mutation, releaseAudio, send, startErrorTimer, clearErrorTimer, performStop],
+  )
+
+  // -- Public API --
+
+  const _startRecording = useCallback(async () => {
+    if (machineRef.current.tag !== "idle") return
+    await acquireAndRecord(false)
+  }, [acquireAndRecord])
+
+  const _stopRecording = useCallback(() => {
+    if (machineRef.current.tag !== "recording") return
+    const next = send({ type: "TapStop" })
+    if (next?.tag === "stopping") performStop()
+  }, [send, performStop])
+
+  const cancelTranscription = useCallback(() => {
+    if (machineRef.current.tag !== "transcribing") return
+    send({ type: "CancelTranscription" })
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
     }
-  }, [mutation, releaseAudio, goError, stopRecording])
+  }, [send])
 
-  // -- Toggle --
+  const clearError = useCallback(() => {
+    if (machineRef.current.tag !== "error") return
+    clearErrorTimer()
+    send({ type: "DismissError" })
+  }, [send, clearErrorTimer])
+
   const toggle = useCallback(async () => {
-    if (voiceState === "error") {
-      clearError()
-      return
+    const current = machineRef.current
+
+    switch (current.tag) {
+      case "idle":
+        await acquireAndRecord(false)
+        break
+      case "recording": {
+        const next = send({ type: "Toggle" })
+        if (next?.tag === "stopping") performStop()
+        break
+      }
+      case "stopping":
+        // No-op — machine rejects, wait for MediaRecorder
+        break
+      case "transcribing":
+        send({ type: "Toggle" })
+        if (abortRef.current) {
+          abortRef.current.abort()
+          abortRef.current = null
+        }
+        break
+      case "error":
+        clearErrorTimer()
+        send({ type: "Toggle" })
+        break
     }
-    if (voiceState === "transcribing") {
-      cancelTranscription()
-      return
-    }
-    if (recordingRef.current) {
-      stopRecording()
-    } else {
-      await startRecording()
-    }
-  }, [voiceState, startRecording, stopRecording, clearError, cancelTranscription])
+  }, [send, acquireAndRecord, performStop, clearErrorTimer])
+
+  // -- Hold-to-speak support --
+  const holdStart = useCallback(async () => {
+    if (machineRef.current.tag !== "idle") return
+    await acquireAndRecord(true)
+  }, [acquireAndRecord])
+
+  const holdRelease = useCallback(() => {
+    if (machineRef.current.tag !== "recording") return
+    const next = send({ type: "HoldRelease" })
+    if (next?.tag === "stopping") performStop()
+  }, [send, performStop])
 
   return {
-    state: voiceState,
+    state: machine.tag,
     audioLevel,
     elapsed,
-    errorMessage,
+    errorMessage: machine.tag === "error" ? machine.message : null,
     toggle,
-    startRecording,
-    stopRecording,
+    startRecording: holdStart, // VoiceButton uses this for hold-to-speak
+    stopRecording: holdRelease, // VoiceButton uses this for hold release
     clearError,
     cancelTranscription,
   }

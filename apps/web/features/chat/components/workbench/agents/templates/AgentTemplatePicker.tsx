@@ -1,44 +1,8 @@
 "use client"
 
-import { BarChart3, Mail, Plus, Search, Shield, TrendingUp, Zap } from "lucide-react"
+import { Plus } from "lucide-react"
 import type { AgentTemplate } from "./agent-templates"
 import { AGENT_TEMPLATES } from "./agent-templates"
-
-const ICONS: Record<AgentTemplate["icon"], typeof Search> = {
-  search: Search,
-  "trending-up": TrendingUp,
-  mail: Mail,
-  shield: Shield,
-  "bar-chart": BarChart3,
-  zap: Zap,
-}
-
-const COLORS: Record<AgentTemplate["color"], { card: string; icon: string }> = {
-  blue: {
-    card: "border-blue-100 dark:border-blue-500/10 hover:bg-blue-50 dark:hover:bg-blue-500/5",
-    icon: "bg-blue-100 dark:bg-blue-500/15 text-blue-500",
-  },
-  emerald: {
-    card: "border-emerald-100 dark:border-emerald-500/10 hover:bg-emerald-50 dark:hover:bg-emerald-500/5",
-    icon: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-500",
-  },
-  violet: {
-    card: "border-violet-100 dark:border-violet-500/10 hover:bg-violet-50 dark:hover:bg-violet-500/5",
-    icon: "bg-violet-100 dark:bg-violet-500/15 text-violet-500",
-  },
-  amber: {
-    card: "border-amber-100 dark:border-amber-500/10 hover:bg-amber-50 dark:hover:bg-amber-500/5",
-    icon: "bg-amber-100 dark:bg-amber-500/15 text-amber-500",
-  },
-  rose: {
-    card: "border-rose-100 dark:border-rose-500/10 hover:bg-rose-50 dark:hover:bg-rose-500/5",
-    icon: "bg-rose-100 dark:bg-rose-500/15 text-rose-500",
-  },
-  cyan: {
-    card: "border-cyan-100 dark:border-cyan-500/10 hover:bg-cyan-50 dark:hover:bg-cyan-500/5",
-    icon: "bg-cyan-100 dark:bg-cyan-500/15 text-cyan-500",
-  },
-}
 
 export function AgentTemplatePicker({
   onSelect,
@@ -52,38 +16,39 @@ export function AgentTemplatePicker({
       <div className="text-center mb-8">
         <h2 className="text-[20px] font-bold text-zinc-900 dark:text-zinc-100 mb-2">Your Agents</h2>
         <p className="text-[14px] text-zinc-400 dark:text-zinc-500">
-          You don't have any agents yet. Pick a template to get started.
+          Pick a template to get started, or create your own.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 mb-5">
-        {AGENT_TEMPLATES.map(template => {
-          const Icon = ICONS[template.icon]
-          const colors = COLORS[template.color]
-          return (
-            <button
-              key={template.id}
-              type="button"
-              onClick={() => onSelect(template)}
-              className={`flex items-center gap-4 p-4 rounded-2xl border border-b-[3px] text-left active:translate-y-[2px] active:border-b transition-all ${colors.card}`}
-            >
-              <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${colors.icon}`}>
-                <Icon size={20} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100">{template.name}</p>
-                <p className="text-[12px] text-zinc-400 dark:text-zinc-500 mt-0.5">{template.description}</p>
-              </div>
-            </button>
-          )
-        })}
+      <div className="grid grid-cols-1 gap-2 mb-5">
+        {AGENT_TEMPLATES.filter(t => t.enabled).map(template => (
+          <button
+            key={template.id}
+            type="button"
+            onClick={() => onSelect(template)}
+            className="group flex items-center gap-4 px-3 py-3 rounded-2xl text-left transition-all hover:bg-zinc-50 dark:hover:bg-white/[0.03] active:scale-[0.98]"
+          >
+            <img
+              src={template.image}
+              alt=""
+              className="w-20 h-20 object-contain shrink-0 transition-transform duration-200 group-hover:scale-105"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-bold text-zinc-900 dark:text-zinc-100">{template.name}</p>
+              <p className="text-[12px] text-zinc-400 dark:text-zinc-500 mt-0.5">{template.description}</p>
+            </div>
+            <span className="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity">
+              Get started
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Start from scratch */}
       <button
         type="button"
         onClick={onBlank}
-        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-zinc-400 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-white/[0.03] hover:text-zinc-600 dark:hover:text-zinc-400 transition-all"
       >
         <Plus size={16} />
         <span className="text-[14px] font-bold">Start from scratch</span>

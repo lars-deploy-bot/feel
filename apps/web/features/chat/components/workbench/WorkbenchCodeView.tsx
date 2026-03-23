@@ -188,7 +188,7 @@ export function WorkbenchCodeView({ workspace, worktree }: WorkbenchViewProps) {
           <input ref={uploadInputRef} type="file" multiple className="hidden" onChange={handleUploadChange} />
 
           {/* Search input — always visible */}
-          <div className="px-2.5 py-2 border-b border-black/[0.06] dark:border-white/[0.04]">
+          <div className="px-2.5 py-2 border-b border-b-[3px] border-black/[0.06] dark:border-white/[0.04]">
             <div className="flex items-center gap-2 h-8 px-2.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.04] focus-within:border-black/[0.1] dark:focus-within:border-white/[0.1] transition-colors">
               <Search size={14} strokeWidth={1.5} className="text-black/30 dark:text-white/25 shrink-0" />
               <input

@@ -1,34 +1,43 @@
 /**
- * Re-export from @webalive/automation — SINGLE SOURCE OF TRUTH.
+ * Text-to-cron via apps/api.
  *
- * This thin wrapper provides the Groq API key from the environment.
- * The actual text-to-cron logic lives in packages/automation.
+ * All Groq calls, caching, and rate limiting live in apps/api.
+ * This is a thin proxy that calls the API endpoint.
  */
 
-import { type TextToCronResult, textToCron as textToCronBase } from "@webalive/automation"
+import { apiClient } from "@/lib/api-client"
 
-export type { TextToCronResult }
+interface TextToCronResponse {
+  ok: true
+  data: { cron: string; description: string; timezone: string | null }
+}
 
-export async function textToCron(text: string): Promise<TextToCronResult> {
-  const apiKey = process.env.GROQ_API_SECRET
-  if (!apiKey) {
-    throw new Error("GROQ_API_SECRET environment variable is required")
-  }
-  return textToCronBase(text, apiKey)
+export interface TextToCronResult {
+  cron: string
+  description: string
+  timezone: string | null
+}
+
+export async function textToCron(text: string, userId: string): Promise<TextToCronResult> {
+  const response = await apiClient.post<TextToCronResponse>("/manager/automations/text-to-cron", {
+    text,
+    user_id: userId,
+  })
+  return response.data
 }
 
 /**
  * Resolve schedule_text → cron expression, respecting timezone priority:
  * user's explicit timezone wins over Groq-inferred timezone.
  *
- * Used by both create and update routes to avoid duplicating this logic.
+ * Used by both create and update routes.
  */
 export async function resolveScheduleText(
   scheduleText: string,
   userTimezone: string | null,
+  userId: string,
 ): Promise<{ cron: string; timezone: string | null }> {
-  const result = await textToCron(scheduleText)
-  // User's explicit timezone takes priority over Groq-inferred one
+  const result = await textToCron(scheduleText, userId)
   const timezone = userTimezone ?? result.timezone
   return { cron: result.cron, timezone }
 }

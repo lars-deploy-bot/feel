@@ -432,8 +432,7 @@ if [[ $SMOKE_ISSUES -gt 0 ]]; then
 fi
 
 if [[ "$SKIP_E2E" == "1" ]]; then
-    log_step "Skipping E2E tests"
-    phase_end ok "Skipped E2E"
+    log_step "Skipping mocked E2E tests"
 else
     log_step "Running E2E suite against $ENVIRONMENT"
     cd "$PROJECT_ROOT/apps/web"
@@ -445,15 +444,26 @@ else
         exit 1
     fi
 
-    # Live critical tests: real Claude API, real streaming, real DB persistence.
-    # These run against the already-deployed staging server — no mocks.
-    log_step "Running live critical E2E tests against $ENVIRONMENT"
+    cd "$PROJECT_ROOT"
+fi
+
+# Live critical tests: ALWAYS run, even with --skip-e2e.
+# These send a real message through Claude and verify DB persistence.
+# They caught the ESM import crash that took down production on 2026-03-23.
+# Skipping these is how broken code reaches users. Never skip.
+if [[ "$ENVIRONMENT" == "$DEPLOY_ENV_STAGING" ]]; then
+    log_step "Running live critical E2E tests against $ENVIRONMENT (mandatory)"
+    cd "$PROJECT_ROOT/apps/web"
+
     if ENV_FILE=".env.$ENVIRONMENT" E2E_STRICT_API_GUARD=1 bun run test:e2e:critical:live; then
-        phase_end ok "E2E passed (mocked + live)"
+        phase_end ok "Critical E2E passed"
     else
-        phase_end error "Live critical E2E tests failed"
+        phase_end error "Live critical E2E tests failed — blocking deployment"
         exit 1
     fi
 
     cd "$PROJECT_ROOT"
+else
+    # Production: critical tests already passed on staging with the same release
+    phase_end ok "Critical E2E passed on staging"
 fi

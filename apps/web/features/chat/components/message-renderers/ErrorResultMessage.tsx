@@ -5,8 +5,9 @@ import { trackMessageRetried } from "@/lib/analytics/events"
 import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
 import { toUIMessage } from "@/lib/db/messageAdapters"
 import { getMessageDb } from "@/lib/db/messageDb"
-import type { StructuredError } from "@/lib/error-codes"
-import { ErrorCodes, getErrorHelp, getErrorMessage, isWorkspaceError } from "@/lib/error-codes"
+import type { ErrorCode, StructuredError } from "@/lib/error-codes"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { useDebugVisible } from "@/lib/stores/debug-store"
 import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
 
 /**
@@ -32,32 +33,40 @@ function isNetworkError(errorMessage: string): boolean {
 }
 
 /**
- * Check if an error is retryable (network issues, server errors, timeouts)
+ * Check if an error is NOT retryable (auth, session, workspace config issues).
+ * Default: all errors are retryable. Only exclude errors where retrying
+ * would never help — the user needs to take a different action.
  */
-function isRetryableError(errorMessage: string): boolean {
-  const retryablePatterns = [
-    "Failed to fetch",
-    "NetworkError",
-    "TypeError: fetch",
-    "Connection lost",
-    "No response body",
-    "closed connection",
-    "timeout",
-    "HTTP 500",
-    "HTTP 502",
-    "HTTP 503",
-    "HTTP 504",
-    "Server error",
-    "Service temporarily unavailable",
-    "ECONNREFUSED",
-    "ETIMEDOUT",
-    "ENOTFOUND",
-    "offline",
-    "network",
-  ]
+const NON_RETRYABLE_CODES = new Set<ErrorCode>([
+  // Auth / session — user needs to re-login, not retry
+  ErrorCodes.API_AUTH_FAILED,
+  ErrorCodes.NO_SESSION,
+  ErrorCodes.AUTH_REQUIRED,
+  ErrorCodes.SESSION_CORRUPT,
+  ErrorCodes.UNAUTHORIZED,
+  ErrorCodes.FORBIDDEN,
+  // Credits / billing — retrying won't help
+  ErrorCodes.INSUFFICIENT_CREDITS,
+  ErrorCodes.INSUFFICIENT_TOKENS,
+  ErrorCodes.API_BILLING_ERROR,
+  // Workspace config — retrying won't fix a missing workspace
+  ErrorCodes.WORKSPACE_NOT_FOUND,
+  ErrorCodes.WORKSPACE_INVALID,
+  // Rate limit — separate UX
+  ErrorCodes.TOO_MANY_REQUESTS,
+  // Model errors — user needs to change model
+  ErrorCodes.MODEL_NOT_AVAILABLE,
+  ErrorCodes.MODEL_INVALID,
+])
 
+function isNonRetryableError(errorMessage: string, errorCode?: ErrorCode): boolean {
+  if (errorCode && NON_RETRYABLE_CODES.has(errorCode)) return true
+
+  // Fallback: check message for auth-like patterns
   const lowerMessage = errorMessage.toLowerCase()
-  return retryablePatterns.some(pattern => lowerMessage.includes(pattern.toLowerCase()))
+  if (lowerMessage.includes("session has expired") || lowerMessage.includes("log in")) return true
+
+  return false
 }
 
 interface ErrorResultMessageProps {
@@ -65,6 +74,7 @@ interface ErrorResultMessageProps {
     type: "result"
     is_error: true
     result: string
+    error_code?: ErrorCode
   }
 }
 
@@ -115,16 +125,9 @@ function extractHumanMessage(raw: string): { message: string; isAuth: boolean } 
   return { message: cleaned, isAuth: false }
 }
 
-/** Status dot — small colored circle that conveys severity at a glance */
-function StatusDot({ color }: { color: "red" | "amber" | "blue" }) {
-  const colorClass = color === "amber" ? "bg-amber-500" : color === "blue" ? "bg-blue-500" : "bg-red-500"
-  return <span className={`size-1.5 rounded-full ${colorClass} flex-shrink-0`} />
-}
-
 export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
   const { retryLastMessage } = useRetry()
   const errorMessage = content.result
-  const canRetry = isRetryableError(errorMessage)
   const isOffline = isNetworkError(errorMessage)
   const workspace = useCurrentWorkspace()
 
@@ -138,10 +141,10 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
     // Not structured error, use raw message
   }
 
-  const errorCode = parsedError?.error
-  const isWorkspace = errorCode ? isWorkspaceError(errorCode) : false
-  const isAuthError = errorCode === "API_AUTH_FAILED" || isAuthFromExtract
+  const errorCode = parsedError?.error ?? content.error_code
+  const isAuthError = errorCode === ErrorCodes.API_AUTH_FAILED || isAuthFromExtract
   const isSessionCorrupt = errorCode === ErrorCodes.SESSION_CORRUPT
+  const canRetry = !isNonRetryableError(errorMessage, errorCode)
 
   // Continue in new tab: copy messages from current tab to a new tab
   const handleContinueInNewTab = useCallback(async () => {
@@ -290,106 +293,31 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
     return errorMessage
   }
 
-  const getHelpText = () => {
-    if (errorCode && parsedError?.details) {
-      return getErrorHelp(errorCode, parsedError.details)
-    }
-
-    // Specific help for authentication errors
-    if (isAuthError) {
-      return null // Main message already explains the issue
-    }
-
-    // Helpful context for common errors
-    if (errorMessage.includes("HTTP 401") || errorMessage.includes("session has expired")) {
-      return "You may need to refresh the page to restore your session."
-    }
-    if (errorMessage.includes("Connection lost") || errorMessage.includes("closed connection")) {
-      return "This can happen due to network issues or server maintenance. Your previous messages are safe."
-    }
-
-    return null
-  }
-
-  const details = parsedError?.details ?? null
-  const helpText = getHelpText()
   const friendlyMessage = getFriendlyMessage()
-
-  const dotColor = isOffline ? "amber" : isSessionCorrupt ? "blue" : "red"
-
-  const getTitle = () => {
-    if (isOffline) return "Offline"
-    if (isSessionCorrupt) return "Session lost"
-    if (isAuthError) return "Auth issue"
-    if (isWorkspace) return "Workspace issue"
-    return "Didn't work"
-  }
+  const showDebug = useDebugVisible()
 
   return (
     <div className="py-2">
-      <div className="rounded-lg bg-black/[0.025] dark:bg-white/[0.04] px-4 py-3">
-        {/* Title row — dot + title inline, wifi icon on the right */}
-        <div className="flex items-center gap-2">
-          <StatusDot color={dotColor} />
-          <p className="text-[13px] font-medium text-black/80 dark:text-white/80 flex-1">{getTitle()}</p>
-          {isOffline && (
-            <WifiOff size={14} strokeWidth={1.75} className="text-black/40 dark:text-white/40 flex-shrink-0" />
-          )}
-        </div>
-
-        {/* Body — full width, no indent */}
-        <p className="text-[13px] text-black/45 dark:text-white/45 leading-relaxed mt-1">{friendlyMessage}</p>
-
-        {helpText && <p className="text-[11px] text-black/30 dark:text-white/30 leading-relaxed mt-1.5">{helpText}</p>}
-
-        {details && (details.expectedPath || details.fullPath) && (
-          <div className="mt-2 rounded-lg bg-black/[0.025] dark:bg-white/[0.04] px-3 py-2 text-[11px] font-mono text-black/35 dark:text-white/35">
-            {details.expectedPath && (
-              <div>
-                <span className="text-black/50 dark:text-white/50">Expected:</span> {details.expectedPath}
-              </div>
-            )}
-            {details.fullPath && (
-              <div>
-                <span className="text-black/50 dark:text-white/50">Path:</span> {details.fullPath}
-              </div>
-            )}
-          </div>
+      <div className="flex items-center gap-2">
+        <span className={`size-1.5 rounded-full flex-shrink-0 ${isOffline ? "bg-amber-500" : "bg-red-500"}`} />
+        <p className="text-[13px] text-black/40 dark:text-white/40">{friendlyMessage}</p>
+        {isOffline && (
+          <WifiOff size={13} strokeWidth={1.75} className="text-black/25 dark:text-white/25 flex-shrink-0" />
         )}
+      </div>
 
-        {/* Metadata row — whisper-quiet */}
-        {(errorCode ||
-          (typeof parsedError?.details === "object" &&
-            parsedError.details &&
-            "apiRequestId" in parsedError.details)) && (
-          <div className="flex items-center gap-2 mt-2 text-[10px] font-mono text-black/20 dark:text-white/20">
-            {errorCode && !isSessionCorrupt && <span>{errorCode}</span>}
-            {typeof parsedError?.details === "object" &&
-              parsedError.details &&
-              "apiRequestId" in parsedError.details &&
-              parsedError.details.apiRequestId && (
-                <>
-                  {errorCode && !isSessionCorrupt && (
-                    <span className="size-0.5 rounded-full bg-black/10 dark:bg-white/10" />
-                  )}
-                  <span>{String(parsedError.details.apiRequestId)}</span>
-                </>
-              )}
-          </div>
-        )}
-
-        {/* Action buttons */}
+      {/* Action — inline, minimal */}
+      <div className="flex items-center gap-2 mt-1.5 ml-[14px]">
         {isSessionCorrupt && (
           <button
             type="button"
             onClick={handleContinueInNewTab}
-            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-black/60 dark:text-white/60 bg-black/[0.03] dark:bg-white/[0.06] rounded-lg hover:bg-black/[0.06] dark:hover:bg-white/[0.1] active:scale-95 transition-all duration-150"
+            className="inline-flex items-center gap-1 text-[12px] text-black/35 dark:text-white/35 hover:text-black/60 dark:hover:text-white/60 transition-colors"
           >
-            <ExternalLink size={14} strokeWidth={1.75} />
+            <ExternalLink size={12} strokeWidth={1.75} />
             Continue in new tab
           </button>
         )}
-
         {canRetry && !isSessionCorrupt && (
           <button
             type="button"
@@ -397,13 +325,18 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
               trackMessageRetried()
               retryLastMessage()
             }}
-            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-black/60 dark:text-white/60 bg-black/[0.03] dark:bg-white/[0.06] rounded-lg hover:bg-black/[0.06] dark:hover:bg-white/[0.1] active:scale-95 transition-all duration-150"
+            className="inline-flex items-center gap-1 text-[12px] text-black/35 dark:text-white/35 hover:text-black/60 dark:hover:text-white/60 transition-colors"
           >
-            <RotateCcw size={14} strokeWidth={1.75} />
+            <RotateCcw size={12} strokeWidth={1.75} />
             Retry
           </button>
         )}
       </div>
+
+      {/* Debug info — only with ?debug */}
+      {showDebug && errorCode && (
+        <div className="mt-1 ml-[14px] text-[10px] font-mono text-black/15 dark:text-white/15">{errorCode}</div>
+      )}
     </div>
   )
 }

@@ -199,7 +199,7 @@ export const POST = protectedRoute(async ({ user, req }) => {
   if (parsed.trigger_type === "cron" && parsed.schedule_text) {
     try {
       const { resolveScheduleText } = await import("@/lib/automation/text-to-cron")
-      const result = await resolveScheduleText(parsed.schedule_text, parsed.cron_timezone ?? null)
+      const result = await resolveScheduleText(parsed.schedule_text, parsed.cron_timezone ?? null, user.id)
       resolvedCron = result.cron
       if (result.timezone) {
         resolvedTimezone = result.timezone

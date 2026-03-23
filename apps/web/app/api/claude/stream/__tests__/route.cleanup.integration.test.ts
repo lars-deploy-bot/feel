@@ -2,16 +2,13 @@ import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // Mock Redis-related modules so cancel-intent-registry uses in-memory fallback
+// Also provide `env` stub since oauth-instances imports it transitively
 vi.mock("@webalive/env/server", () => ({
   getRedisUrl: () => null,
+  env: {},
 }))
 
 import { ErrorCodes } from "@/lib/error-codes"
-
-// Force in-memory fallback so tests don't hang waiting for Redis
-vi.mock("@webalive/env/server", () => ({
-  getRedisUrl: () => null,
-}))
 
 const requireSessionUserMock = vi.fn()
 const verifyWorkspaceAccessMock = vi.fn()
@@ -33,11 +30,6 @@ const USER_ID = "user-1"
 const WORKSPACE = "demo.test.example"
 const TAB_GROUP_ID = "tab-group-1"
 const TAB_ID = "tab-1"
-
-// Force cancel-intent-registry to use in-memory fallback (no Redis in tests)
-vi.mock("@webalive/env/server", () => ({
-  getRedisUrl: () => null,
-}))
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
@@ -167,6 +159,10 @@ vi.mock("@/lib/oauth/fetch-oauth-tokens", () => ({
 
 vi.mock("@/lib/oauth/fetch-user-env-keys", () => ({
   fetchUserEnvKeys: (...args: unknown[]) => fetchUserEnvKeysMock(...args),
+}))
+
+vi.mock("@/lib/oauth/oauth-instances", () => ({
+  getUserEnvKeysEnvironment: vi.fn(() => "staging"),
 }))
 
 vi.mock("@/lib/request-id", () => ({

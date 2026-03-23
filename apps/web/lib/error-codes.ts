@@ -67,6 +67,7 @@ export const ErrorCodes = {
   QUERY_FAILED: "QUERY_FAILED",
   ERROR_MAX_TURNS: "ERROR_MAX_TURNS",
   API_AUTH_FAILED: "API_AUTH_FAILED",
+  API_BILLING_ERROR: "API_BILLING_ERROR",
 
   // Tool errors (5.5xxx)
   TOOL_NOT_ALLOWED: "TOOL_NOT_ALLOWED",
@@ -189,527 +190,303 @@ export interface StructuredError {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getErrorMessage(code: ErrorCode, details?: Record<string, any>): string {
   switch (code) {
+    // Workspace
     case ErrorCodes.WORKSPACE_NOT_FOUND:
-      return details?.host
-        ? `I cannot find the workspace directory for '${details.host}'. Please ask your administrator to set up the workspace.`
-        : "I cannot find the workspace directory. Please ask your administrator to set up the workspace."
-
+      return details?.host ? `Workspace '${details.host}' not found.` : "Workspace not found."
     case ErrorCodes.WORKSPACE_INVALID:
-      return "The workspace path is not valid. Please contact your administrator."
-
+      return "Invalid workspace path."
     case ErrorCodes.WORKSPACE_MISSING:
-      return "I need a workspace to work in. Please provide a workspace parameter."
-
+      return "No workspace selected."
     case ErrorCodes.WORKSPACE_NOT_AUTHENTICATED:
-      return "You need to log in to access this workspace. Please enter your passcode."
-
+      return "Log in to access this workspace."
     case ErrorCodes.WORKSPACE_EXISTS:
-      return details?.workspace
-        ? `The workspace '${details.workspace}' already exists. Please choose a different name.`
-        : "This workspace already exists. Please choose a different name."
-
+      return details?.workspace ? `'${details.workspace}' already exists.` : "Workspace already exists."
     case ErrorCodes.PATH_OUTSIDE_WORKSPACE:
-      return details?.attemptedPath
-        ? `I cannot access '${details.attemptedPath}' - it's outside my allowed workspace. I can only access files within your project directory.`
-        : "I cannot access this file - it's outside my allowed workspace. I can only access files within your project directory."
+      return "That path is outside the workspace."
 
+    // Worktree
     case ErrorCodes.WORKTREE_NOT_GIT:
-      return "This workspace does not appear to be a git repository."
-
+      return "Not a git repository."
     case ErrorCodes.WORKTREE_NOT_FOUND:
-      return details?.slug ? `I cannot find the worktree '${details.slug}'.` : "I cannot find that worktree."
-
+      return details?.slug ? `Worktree '${details.slug}' not found.` : "Worktree not found."
     case ErrorCodes.WORKTREE_EXISTS:
-      return details?.slug ? `The worktree '${details.slug}' already exists.` : "That worktree already exists."
-
+      return details?.slug ? `Worktree '${details.slug}' already exists.` : "Worktree already exists."
     case ErrorCodes.WORKTREE_INVALID_SLUG:
-      return "The worktree slug is invalid. Use lowercase letters, numbers, and hyphens."
-
+      return "Invalid slug. Use lowercase letters, numbers, and hyphens."
     case ErrorCodes.WORKTREE_INVALID_BRANCH:
-      return "The branch name is invalid."
-
+      return "Invalid branch name."
     case ErrorCodes.WORKTREE_INVALID_FROM:
-      return "The base ref does not exist."
-
+      return "Base ref does not exist."
     case ErrorCodes.WORKTREE_BASE_INVALID:
-      return "This path is not a git repository root. Use the base workspace."
-
+      return "Not a git repository root."
     case ErrorCodes.WORKTREE_BRANCH_IN_USE:
-      return "That branch is already checked out by another worktree."
-
+      return "Branch already checked out by another worktree."
     case ErrorCodes.WORKTREE_PATH_EXISTS:
-      return "That worktree path already exists on disk."
-
+      return "Worktree path already exists."
     case ErrorCodes.WORKTREE_BRANCH_UNKNOWN:
-      return "Cannot delete the branch for a detached worktree."
-
+      return "Cannot delete branch for a detached worktree."
     case ErrorCodes.WORKTREE_DELETE_BRANCH_BLOCKED:
-      return "Refusing to delete the base workspace branch."
-
+      return "Cannot delete the base branch."
     case ErrorCodes.WORKTREE_LOCKED:
-      return "A worktree operation is already in progress. Please retry in a moment."
-
+      return "Worktree operation in progress, try again in a moment."
     case ErrorCodes.WORKTREE_DIRTY:
-      return "The worktree has uncommitted changes. Commit or clean it before removing."
-
+      return "Uncommitted changes. Commit or clean first."
     case ErrorCodes.WORKTREE_GIT_FAILED:
-      return details?.message
-        ? `A git command failed: ${details.message}`
-        : "A git command failed unexpectedly. Please try again."
+      return details?.message ? `Git failed: ${details.message}` : "Git command failed."
 
+    // Auth
     case ErrorCodes.NO_SESSION:
     case ErrorCodes.AUTH_REQUIRED:
-      return "You need to log in first. Please refresh the page and enter your passcode."
-
+      return "Session expired. Refresh the page to log in."
     case ErrorCodes.UNAUTHORIZED:
-      return "You don't have access to this. Please check with your administrator if you need permission."
-
+      return "No access."
     case ErrorCodes.FORBIDDEN:
-      return "You don't have permission to perform this action."
-
+      return "Not allowed."
     case ErrorCodes.ORG_ACCESS_DENIED:
-      return "You do not have access to this organization. Please check with your administrator if you need permission."
-
+      return "No access to this organization."
     case ErrorCodes.INVALID_CREDENTIALS:
-      return "The passcode is incorrect. Please check your passcode and try again."
-
+      return "Wrong passcode."
     case ErrorCodes.SESSION_NOT_FOUND:
-      return "The session was not found or has already been revoked."
-
+      return "Session not found."
     case ErrorCodes.SESSION_REVOKED:
-      return "Your session has been revoked. Please log in again."
-
+      return "Session revoked. Log in again."
     case ErrorCodes.CANNOT_REVOKE_CURRENT_SESSION:
-      return "You cannot revoke the session you are currently using. Use 'Sign out' instead."
-
+      return "Can't revoke current session. Use Sign out."
     case ErrorCodes.INVALID_SIGNATURE:
-      return "Invalid webhook signature. The request could not be verified."
-
+      return "Invalid signature."
     case ErrorCodes.INSUFFICIENT_TOKENS:
-      return details?.balance !== undefined
-        ? `You don't have enough tokens to make this request (current balance: ${details.balance}). Please contact support to add more tokens.`
-        : "You don't have enough tokens to make this request. Please contact support to add more tokens."
-
+      return details?.balance !== undefined ? `Not enough tokens (${details.balance} remaining).` : "Not enough tokens."
     case ErrorCodes.OAUTH_EXPIRED:
-      return "The server's authentication token has expired and could not be refreshed automatically. Please try again in a moment, or contact support if this persists."
-
+      return "Auth token expired. Try again."
     case ErrorCodes.INSUFFICIENT_CREDITS:
       return details?.balance !== undefined
-        ? `You don't have enough credits to make this request (current balance: ${details.balance}). Please contact support to add more credits.`
-        : "You don't have enough credits to make this request. Please contact support to add more credits."
+        ? `Not enough credits (${details.balance} remaining).`
+        : "Not enough credits."
 
+    // Request
     case ErrorCodes.INVALID_JSON:
-      return "I received malformed data. Please try sending your message again."
-
+      return "Bad request data. Try again."
     case ErrorCodes.INVALID_REQUEST:
-      return details?.field
-        ? `The ${details.field} field is missing or invalid. Please check your input.`
-        : "Something is missing or incorrect in your request. Please check your input and try again."
-
-    case ErrorCodes.MODEL_NOT_AVAILABLE:
-      if (details?.retired) {
-        return `The model "${details.model}" has been retired. Please select a different model in Settings.`
-      }
-      return details?.model
-        ? `You don't have access to the model "${details.model}". Please select a different model in Settings.`
-        : "You don't have access to the requested model. Please select a different model in Settings."
-
-    case ErrorCodes.MODEL_INVALID:
-      return details?.model ? `"${details.model}" is not a recognized model.` : "The requested model is not recognized."
-
-    case ErrorCodes.CONVERSATION_BUSY:
-      return "I'm still working on your previous request. Please wait for me to finish before sending another message."
-
-    case ErrorCodes.SESSION_CORRUPT:
-      return "This conversation's session got interrupted during a tool call and can't be resumed. You can continue in a new tab with your conversation history."
-
-    case ErrorCodes.QUERY_FAILED:
-      return "I encountered an error while processing your request. This might be a temporary issue - please try again."
-
-    case ErrorCodes.ERROR_MAX_TURNS:
-      return "This conversation has become too long. Please start a new conversation to continue."
-
-    case ErrorCodes.TOOL_NOT_ALLOWED: {
-      const tool = details?.tool || "this tool"
-      const allowed = details?.allowed?.join(", ") || "file operation tools"
-      return `I cannot use ${tool} for security reasons. I can only use these tools: ${allowed}`
-    }
-
-    case ErrorCodes.FILE_READ_ERROR:
-      return details?.filePath
-        ? `I cannot read the file '${details.filePath}'. It might not exist, or I might not have permission to read it.`
-        : "I cannot read this file. It might not exist, or I might not have permission to read it."
-
-    case ErrorCodes.FILE_WRITE_ERROR:
-      return details?.filePath
-        ? `I cannot write to '${details.filePath}'. I might not have permission to modify it.`
-        : "I cannot write to this file. I might not have permission to modify it."
-
-    case ErrorCodes.FILE_DELETE_ERROR:
-      return details?.filePath
-        ? `I cannot delete '${details.filePath}'. ${details.error || "I might not have permission."}`
-        : "I cannot delete this file. I might not have permission."
-
-    case ErrorCodes.FILE_PROTECTED:
-      return details?.reason ? `Cannot delete: ${details.reason}` : "This file is protected and cannot be deleted."
-
-    case ErrorCodes.FILE_NOT_FOUND:
-      return details?.filePath ? `The file '${details.filePath}' does not exist.` : "The file does not exist."
-
-    case ErrorCodes.PATH_IS_DIRECTORY:
-      return details?.filePath
-        ? `'${details.filePath}' is a directory, not a file. I can only read files.`
-        : "This path is a directory, not a file. I can only read files."
-
-    case ErrorCodes.BINARY_FILE_NOT_SUPPORTED:
-      return details?.extension
-        ? `I cannot read binary files (.${details.extension}). Please use a different tool for binary files.`
-        : "I cannot read binary files. Please use a different tool for binary files."
-
-    case ErrorCodes.FILE_TOO_LARGE_TO_READ:
-      return details?.size
-        ? `This file is too large to read (${Math.round(details.size / 1024)}KB). Maximum size is 1MB.`
-        : "This file is too large to read. Maximum size is 1MB."
-
-    case ErrorCodes.PACKAGE_INSTALL_FAILED:
-      return details?.package
-        ? `I couldn't install the '${details.package}' package. ${details.reason || "Please try again."}`
-        : "I couldn't install the package. Please try again."
-
-    case ErrorCodes.DEV_SERVER_RESTART_FAILED:
-      return details?.service
-        ? `I installed the package successfully, but couldn't restart the dev server (${details.service}). You may need to restart it manually.`
-        : "I installed the package successfully, but couldn't restart the dev server. You may need to restart it manually."
-
-    case ErrorCodes.DEV_SERVER_START_FAILED:
-      return details?.service
-        ? `The package installed successfully, but the dev server failed to start. There may be an error in your code or a missing dependency. ${details.message || ""}`
-        : "The package installed successfully, but the dev server failed to start. There may be an error in your code or a missing dependency."
-
-    case ErrorCodes.API_AUTH_FAILED:
-      return "API authentication failed. The API key may be expired or invalid."
-
-    case ErrorCodes.TENANT_NOT_CONFIGURED:
-      return "Image uploads are not set up for this workspace yet. Please contact your administrator."
-
-    case ErrorCodes.NO_FILE:
-      return "You didn't select a file. Please choose an image to upload."
-
-    case ErrorCodes.FILE_TOO_SMALL:
-      return details?.minSize
-        ? `This image is too small. Please select an image larger than ${details.minSize}.`
-        : "This image is too small. Please select a larger image."
-
-    case ErrorCodes.FILE_TOO_LARGE:
-      return details?.maxSize
-        ? `This image is too large. Please select an image smaller than ${details.maxSize}.`
-        : "This image is too large. Please select a smaller image (max 10MB)."
-
-    case ErrorCodes.INVALID_FILE_TYPE:
-      return "I can only process image files (PNG, JPG, WebP). Please select a valid image."
-
-    case ErrorCodes.IMAGE_PROCESSING_FAILED:
-      return "I couldn't process this image. The file might be corrupted - please try a different image."
-
-    case ErrorCodes.IMAGE_UPLOAD_FAILED:
-      return "I couldn't upload the image. Please check your connection and try again."
-
-    case ErrorCodes.IMAGE_LIST_FAILED:
-      return "I couldn't load the list of images. Please refresh the page and try again."
-
-    case ErrorCodes.IMAGE_DELETE_FAILED:
-      return "I couldn't delete the image. Please try again or contact support if the problem persists."
-
-    case ErrorCodes.STREAM_ERROR:
-      return "I encountered an error while streaming my response. You might see incomplete messages. Please try asking again."
-
-    case ErrorCodes.STREAM_PARSE_ERROR:
-      return "I had trouble sending my response. Some parts might be missing. Please try again."
-
-    case ErrorCodes.RESPONSE_CREATION_FAILED:
-      return "I couldn't start responding to your message. Please try sending it again."
-
-    case ErrorCodes.WORKSPACE_RESTART_FAILED:
-      return details?.diagnostics
-        ? `I couldn't restart your workspace. The service may have crashed.\n\nDiagnostics:\n${details.diagnostics}`
-        : "I couldn't restart your workspace. Please try again or contact support if the problem continues."
-
+      return details?.field ? `Invalid ${details.field}.` : "Invalid request."
     case ErrorCodes.VALIDATION_ERROR:
-      return details?.message || "Something in your input isn't valid. Please check what you entered and try again."
-
+      return details?.message || "Invalid input."
     case ErrorCodes.TOO_MANY_REQUESTS:
-      return details?.retryAfter
-        ? `Too many requests. Please try again in ${details.retryAfter}.`
-        : "Too many requests. Please try again later."
-
+      return details?.retryAfter ? `Too many requests. Try in ${details.retryAfter}.` : "Too many requests."
     case ErrorCodes.MISSING_SLUG:
-      return "You need to provide a site name (slug). Please enter a site name."
-
+      return "Site name required."
     case ErrorCodes.INVALID_SLUG:
-      return "The site name format is invalid. Please use only letters, numbers, and hyphens."
-
+      return "Invalid site name. Use letters, numbers, and hyphens."
     case ErrorCodes.UNKNOWN_ACTION:
-      return details?.action
-        ? `I don't know how to handle the action '${details.action}'. Please check the available actions.`
-        : "I don't recognize that action. Please check the available actions."
-
+      return details?.action ? `Unknown action '${details.action}'.` : "Unknown action."
     case ErrorCodes.ORG_ID_REQUIRED:
-      return "Organization ID is required. Please select an organization to deploy to."
-
+      return "Select an organization."
     case ErrorCodes.INVALID_DOMAIN:
-      return details?.error || "Invalid domain name. Please provide a valid domain."
-
+      return details?.error || "Invalid domain."
     case ErrorCodes.DOMAIN_ALREADY_EXISTS:
-      return details?.domain
-        ? `The domain '${details.domain}' already exists. Please choose a different domain.`
-        : "This domain already exists. Please choose a different domain."
+      return details?.domain ? `'${details.domain}' already taken.` : "Domain taken."
 
+    // Model
+    case ErrorCodes.MODEL_NOT_AVAILABLE:
+      if (details?.retired) return `"${details.model}" has been retired. Pick another in Settings.`
+      return details?.model ? `No access to "${details.model}". Pick another in Settings.` : "Model not available."
+    case ErrorCodes.MODEL_INVALID:
+      return details?.model ? `"${details.model}" is not recognized.` : "Unknown model."
+
+    // Conversation
+    case ErrorCodes.CONVERSATION_BUSY:
+      return "Still working on your previous message."
+    case ErrorCodes.SESSION_CORRUPT:
+      return "Session interrupted. Continue in a new tab."
+
+    // SDK
+    case ErrorCodes.QUERY_FAILED:
+      return "Something went wrong. Try again."
+    case ErrorCodes.ERROR_MAX_TURNS:
+      return "Conversation too long. Start a new one."
+    case ErrorCodes.API_AUTH_FAILED:
+      return "API authentication failed."
+    case ErrorCodes.API_BILLING_ERROR:
+      return "Backend billing issue. Your credits are not affected."
+    case ErrorCodes.TOOL_NOT_ALLOWED:
+      return "Tool not allowed."
+
+    // File
+    case ErrorCodes.FILE_READ_ERROR:
+      return details?.filePath ? `Can't read '${details.filePath}'.` : "Can't read file."
+    case ErrorCodes.FILE_WRITE_ERROR:
+      return details?.filePath ? `Can't write to '${details.filePath}'.` : "Can't write file."
+    case ErrorCodes.FILE_DELETE_ERROR:
+      return details?.filePath ? `Can't delete '${details.filePath}'.` : "Can't delete file."
+    case ErrorCodes.FILE_PROTECTED:
+      return details?.reason ? `Protected: ${details.reason}` : "File is protected."
+    case ErrorCodes.FILE_NOT_FOUND:
+      return details?.filePath ? `'${details.filePath}' not found.` : "File not found."
+    case ErrorCodes.PATH_IS_DIRECTORY:
+      return "That's a directory, not a file."
+    case ErrorCodes.BINARY_FILE_NOT_SUPPORTED:
+      return "Can't read binary files."
+    case ErrorCodes.FILE_TOO_LARGE_TO_READ:
+      return details?.size ? `File too large (${Math.round(details.size / 1024)}KB, max 1MB).` : "File too large."
+
+    // Package / Dev server
+    case ErrorCodes.PACKAGE_INSTALL_FAILED:
+      return details?.package ? `Failed to install '${details.package}'.` : "Package install failed."
+    case ErrorCodes.DEV_SERVER_RESTART_FAILED:
+      return "Package installed, but dev server didn't restart."
+    case ErrorCodes.DEV_SERVER_START_FAILED:
+      return "Dev server failed to start."
+
+    // Image
+    case ErrorCodes.TENANT_NOT_CONFIGURED:
+      return "Image uploads not set up for this workspace."
+    case ErrorCodes.NO_FILE:
+      return "No file selected."
+    case ErrorCodes.FILE_TOO_SMALL:
+      return details?.minSize ? `Image too small (min ${details.minSize}).` : "Image too small."
+    case ErrorCodes.FILE_TOO_LARGE:
+      return details?.maxSize ? `Image too large (max ${details.maxSize}).` : "Image too large (max 10MB)."
+    case ErrorCodes.INVALID_FILE_TYPE:
+      return "Only PNG, JPG, and WebP images."
+    case ErrorCodes.IMAGE_PROCESSING_FAILED:
+      return "Image processing failed. Try a different image."
+    case ErrorCodes.IMAGE_UPLOAD_FAILED:
+      return "Upload failed."
+    case ErrorCodes.IMAGE_LIST_FAILED:
+      return "Couldn't load images."
+    case ErrorCodes.IMAGE_DELETE_FAILED:
+      return "Couldn't delete image."
+
+    // Stream
+    case ErrorCodes.STREAM_ERROR:
+      return "Something went wrong. Try again."
+    case ErrorCodes.STREAM_PARSE_ERROR:
+      return "Response interrupted. Try again."
+    case ErrorCodes.RESPONSE_CREATION_FAILED:
+      return "Couldn't start response. Try again."
+
+    // Workspace management
+    case ErrorCodes.WORKSPACE_RESTART_FAILED:
+      return "Workspace restart failed."
     case ErrorCodes.SLUG_TAKEN:
-      return details?.slug
-        ? `The site name '${details.slug}' is already in use. Please choose a different name.`
-        : "This site name is already in use. Please choose a different name."
-
+      return details?.slug ? `'${details.slug}' is taken.` : "Name taken."
     case ErrorCodes.SITE_NOT_FOUND:
-      return details?.slug
-        ? `I couldn't find a site named '${details.slug}'. Please check the name and try again.`
-        : "I couldn't find that site. Please check the site name and try again."
-
+      return details?.slug ? `Site '${details.slug}' not found.` : "Site not found."
     case ErrorCodes.DEPLOYMENT_FAILED:
-      return "I couldn't deploy your site. Please check the deployment logs to see what went wrong."
-
+      return "Deployment failed."
     case ErrorCodes.DEPLOYMENT_IN_PROGRESS:
-      return details?.domain
-        ? `A deployment for '${details.domain}' is already in progress. Please wait for it to finish.`
-        : "A deployment is already in progress for this domain. Please wait for it to finish."
-
+      return details?.domain ? `'${details.domain}' is already deploying.` : "Already deploying."
     case ErrorCodes.EMAIL_ALREADY_REGISTERED:
-      return details?.email
-        ? `The email '${details.email}' is already registered in the system. Please use a different email or login with this existing account.`
-        : "This email is already registered. Please use a different email or login with your existing account."
-
+      return details?.email ? `${details.email} already registered.` : "Email already registered."
     case ErrorCodes.INVALID_ACCESS_CODE:
-      return `Invalid access code.${env.NEXT_PUBLIC_CONTACT_EMAIL ? ` Contact ${env.NEXT_PUBLIC_CONTACT_EMAIL} for access.` : ""}`
-
+      return `Invalid access code.${env.NEXT_PUBLIC_CONTACT_EMAIL ? ` Contact ${env.NEXT_PUBLIC_CONTACT_EMAIL}.` : ""}`
     case ErrorCodes.ORG_NOT_FOUND:
-      return details?.orgId
-        ? `The organization '${details.orgId}' was not found or is not accessible.`
-        : "The specified organization was not found or is not accessible."
-
+      return "Organization not found."
     case ErrorCodes.SITE_LIMIT_EXCEEDED:
-      return details?.limit
-        ? `You have reached the maximum limit of ${details.limit} sites. Please delete an existing site to create a new one.`
-        : "You have reached the maximum number of sites. Please delete an existing site to create a new one."
-
+      return details?.limit ? `Site limit reached (${details.limit}). Delete one first.` : "Site limit reached."
     case ErrorCodes.INVALID_TEMPLATE:
-      return details?.templateId
-        ? `Invalid template '${details.templateId}'. Available templates: ${details.available || "blank, gallery, business, saas, event"}.`
-        : `Invalid template. Available templates: ${details?.available || "blank, gallery, business, saas, event"}.`
-
+      return details?.templateId ? `Invalid template '${details.templateId}'.` : "Invalid template."
     case ErrorCodes.TEMPLATE_NOT_FOUND:
-      return details?.templateId
-        ? `Template '${details.templateId}' exists but its source directory is missing at '${details.path || "unknown path"}'. Please contact support.`
-        : "Template source directory is missing. Please contact support."
+      return "Template not found."
+    case ErrorCodes.RENAME_FAILED:
+      return "Rename failed."
 
+    // GitHub
     case ErrorCodes.GITHUB_NOT_CONNECTED:
-      return "You need to connect your GitHub account first. Go to Settings > Integrations to connect GitHub."
-
+      return "Connect GitHub in Settings first."
     case ErrorCodes.GITHUB_REPO_NOT_FOUND:
-      return details?.repoUrl
-        ? `Could not access GitHub repository "${details.repoUrl}". Check that the repo exists and your GitHub account has access.`
-        : "Could not access the GitHub repository. Check that it exists and your account has access."
-
+      return details?.repoUrl ? `Can't access ${details.repoUrl}.` : "Repository not found."
     case ErrorCodes.GITHUB_CLONE_FAILED:
-      return details?.message
-        ? `Failed to clone GitHub repository: ${details.message}`
-        : "Failed to clone the GitHub repository. Please try again."
+      return details?.message ? `Clone failed: ${details.message}` : "Clone failed."
 
+    // Permissions
     case ErrorCodes.PERMISSION_CHECK_FAILED:
-      return details?.domain
-        ? `Failed to check file permissions for ${details.domain}. ${details.reason || "Please try again."}`
-        : "Failed to check file permissions. Please try again."
-
+      return "Permission check failed."
     case ErrorCodes.PERMISSION_FIX_FAILED:
-      return details?.domain
-        ? `Failed to fix file permissions for ${details.domain}. ${details.reason || "Please try again."}`
-        : "Failed to fix file permissions. Please try again."
-
+      return "Permission fix failed."
     case ErrorCodes.SITE_DIRECTORY_NOT_FOUND:
-      return details?.domain
-        ? `Site directory does not exist for ${details.domain}. The site may not be deployed yet.`
-        : "Site directory does not exist. The site may not be deployed yet."
-
+      return details?.domain ? `No directory for ${details.domain}.` : "Site directory missing."
     case ErrorCodes.SITE_USER_NOT_FOUND:
-      return details?.user
-        ? `System user '${details.user}' does not exist. The site may not be properly configured.`
-        : "System user for this site does not exist. The site may not be properly configured."
+      return "Site user missing."
 
+    // OAuth / Integration
     case ErrorCodes.INVALID_PROVIDER:
-      return details?.reason || "Invalid provider name. Please use a supported integration provider."
-
+      return details?.reason || "Invalid provider."
     case ErrorCodes.OAUTH_CONFIG_ERROR:
-      return details?.provider
-        ? `${details.provider} integration is not configured. Please contact your administrator to set up the OAuth credentials.`
-        : "OAuth integration is not configured. Please contact your administrator to set up the OAuth credentials."
-
+      return details?.provider ? `${details.provider} not configured.` : "OAuth not configured."
     case ErrorCodes.OAUTH_STATE_MISMATCH:
-      return "OAuth security verification failed. This may be a security issue or an expired authorization. Please try connecting again."
-
+      return "Authorization expired. Try connecting again."
     case ErrorCodes.OAUTH_ACCESS_DENIED:
-      return "Authorization was cancelled or denied. Please try connecting again."
-
+      return "Authorization denied."
     case ErrorCodes.OAUTH_MISSING_REQUIRED_SCOPES:
-      return "Required permissions were not granted. Please reconnect and approve all requested scopes."
-
+      return "Missing required permissions. Reconnect and approve all scopes."
     case ErrorCodes.OAUTH_PROVIDER_ERROR:
-      return details?.provider
-        ? `${details.provider} returned an authorization error. Please try again.`
-        : "The OAuth provider returned an authorization error. Please try again."
-
+      return details?.provider ? `${details.provider} authorization error.` : "Authorization error."
     case ErrorCodes.OAUTH_ACCOUNT_CONFLICT:
-      return details?.provider
-        ? `This ${details.provider} account is already connected to a different user.`
-        : "This account is already connected to a different user."
-
+      return "Account already connected to another user."
     case ErrorCodes.INTEGRATION_ERROR:
-      return details?.provider
-        ? `Failed to connect to ${details.provider}. ${details.reason || "Please try again."}`
-        : "Failed to connect to the integration. Please try again."
-
+      return details?.provider ? `${details.provider} connection failed.` : "Integration connection failed."
     case ErrorCodes.INTEGRATION_NOT_CONNECTED:
-      return details?.provider
-        ? `You are not connected to ${details.provider}. Please connect your account first in Settings.`
-        : "You are not connected to this integration. Please connect your account first in Settings."
-
+      return details?.provider ? `Connect ${details.provider} in Settings.` : "Integration not connected."
     case ErrorCodes.INTEGRATION_NOT_CONFIGURED:
-      return details?.message || details?.provider
-        ? `${details.provider || "Integration"} is connected but not configured. Please complete the setup in Settings.`
-        : "Integration is connected but not fully configured. Please complete the setup in Settings."
+      return details?.provider ? `${details.provider} needs setup in Settings.` : "Integration needs setup."
 
-    case ErrorCodes.TEST_MODE_BLOCK:
-      return "I'm in test mode right now and can't make real API calls. Please mock this endpoint in your test."
-
+    // Referral
     case ErrorCodes.REFERRAL_INVALID_CODE:
-      return "The invite code is invalid or has expired."
-
+      return "Invalid or expired invite code."
     case ErrorCodes.REFERRAL_ALREADY_INVITED:
-      return details?.email
-        ? `An invitation has already been sent to ${details.email}.`
-        : "An invitation has already been sent to this email."
-
+      return details?.email ? `${details.email} already invited.` : "Already invited."
     case ErrorCodes.REFERRAL_NOT_FOUND:
-      return "No pending referral was found."
-
+      return "No pending referral."
     case ErrorCodes.REFERRAL_CREDIT_FAILED:
-      return "Failed to award referral credits. Please contact support."
-
+      return "Credit award failed."
     case ErrorCodes.USER_NOT_FOUND:
-      return details?.userId ? `User '${details.userId}' was not found.` : "User not found."
-
+      return "User not found."
     case ErrorCodes.MEMBER_ALREADY_EXISTS:
-      return details?.email
-        ? `${details.email} is already a member of this organization.`
-        : "This user is already a member of this organization."
+      return details?.email ? `${details.email} is already a member.` : "Already a member."
 
+    // Automation
     case ErrorCodes.AUTOMATION_JOB_NOT_FOUND:
-      return details?.jobId ? `Automation job '${details.jobId}' was not found.` : "Automation job not found."
-
+      return "Automation not found."
     case ErrorCodes.AUTOMATION_RUN_NOT_FOUND:
-      return details?.runId ? `Automation run '${details.runId}' was not found.` : "Automation run not found."
-
+      return "Run not found."
     case ErrorCodes.SCHEDULED_JOB_NOT_FOUND:
-      return details?.jobId ? `Scheduled job '${details.jobId}' was not found.` : "Scheduled job not found."
-
-    case ErrorCodes.SHELL_SERVER_UNAVAILABLE:
-      return "The terminal server is temporarily unavailable. Please try again in a moment."
-
-    case ErrorCodes.SANDBOX_NOT_READY:
-      return "Sandbox is not running yet. Send a message first to initialize it."
-
-    case ErrorCodes.WATCH_UNSUPPORTED:
-      return "File watching is not available for sandbox workspaces."
-
+      return "Scheduled job not found."
     case ErrorCodes.AUTOMATION_JOB_DISABLED:
-      return "This automation job is disabled and cannot be triggered."
-
+      return "Automation is disabled."
     case ErrorCodes.AUTOMATION_ALREADY_RUNNING:
-      return "This automation is already running. Please wait for it to complete."
+      return "Already running."
 
+    // Shell / Sandbox
+    case ErrorCodes.SHELL_SERVER_UNAVAILABLE:
+      return "Terminal unavailable. Try again."
+    case ErrorCodes.SANDBOX_NOT_READY:
+      return "Sandbox not running. Send a message to start it."
+    case ErrorCodes.WATCH_UNSUPPORTED:
+      return "File watching not available in sandbox."
+
+    // Test
+    case ErrorCodes.TEST_MODE_BLOCK:
+      return "Test mode — no real API calls."
+
+    // General
     case ErrorCodes.INTERNAL_ERROR:
-      return "Something went wrong on my end. This is usually temporary - please try again in a moment."
-
     case ErrorCodes.REQUEST_PROCESSING_FAILED:
-      return "I couldn't process your request. Please try again, and contact support if the problem continues."
+      return "Something went wrong. Try again."
 
     default:
-      return "Something unexpected went wrong. Please try again, and let support know if you keep seeing this."
+      return "Something went wrong. Try again."
   }
 }
 
 /**
- * Get detailed help text for error codes
+ * Get detailed help text for error codes.
+ * Intentionally returns null for all codes — error messages should be
+ * self-contained and light. Secondary help text adds noise.
+ * Kept as a function so callers don't need to change.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getErrorHelp(code: ErrorCode, details?: Record<string, any>): string | null {
-  switch (code) {
-    case ErrorCodes.WORKSPACE_NOT_FOUND:
-      if (details?.suggestion) {
-        return details.suggestion
-      }
-      return "Ask your administrator to create the workspace directory for this domain."
-
-    case ErrorCodes.PATH_OUTSIDE_WORKSPACE:
-      return details?.workspacePath
-        ? `I can only work with files in: ${details.workspacePath}`
-        : "For security, I can only access files within your project workspace."
-
-    case ErrorCodes.WORKTREE_BRANCH_IN_USE:
-      return "Pick a different branch or remove the existing worktree using that branch."
-
-    case ErrorCodes.WORKTREE_PATH_EXISTS:
-      return "Choose a different slug or delete the existing folder under /worktrees."
-
-    case ErrorCodes.WORKTREE_DELETE_BRANCH_BLOCKED:
-      return "Switch the base workspace to another branch before deleting this one."
-
-    case ErrorCodes.WORKTREE_GIT_FAILED:
-      return "This may be a transient issue. Check your network connection and try again. If the problem persists, check the server logs for details."
-
-    case ErrorCodes.ERROR_MAX_TURNS:
-      return "Click 'New Conversation' to start fresh and continue working."
-
-    case ErrorCodes.TOOL_NOT_ALLOWED:
-      return "For security, I'm limited to file operations: Read, Write, Edit, Glob (find files), and Grep (search files)."
-
-    case ErrorCodes.FILE_READ_ERROR:
-      return "Make sure the file exists and hasn't been deleted. Check that the file path is correct."
-
-    case ErrorCodes.FILE_WRITE_ERROR:
-      return "Make sure the file isn't locked by another program and that your workspace has write permissions."
-
-    case ErrorCodes.FILE_DELETE_ERROR:
-      return "Make sure the file isn't locked and you have permission to delete it."
-
-    case ErrorCodes.FILE_PROTECTED:
-      return "Some files like index.ts, package.json, and node_modules are protected to keep your site running."
-
-    case ErrorCodes.FILE_NOT_FOUND:
-      return "The file may have been moved or already deleted. Try refreshing the file list."
-
-    case ErrorCodes.STREAM_PARSE_ERROR:
-      return "This usually happens with network issues. Try refreshing the page or checking your connection."
-
-    case ErrorCodes.CONVERSATION_BUSY:
-      return "Wait a moment for my current response to finish, then you can send your next message."
-
-    case ErrorCodes.INVALID_CREDENTIALS:
-      return "Check your passcode and try again."
-
-    case ErrorCodes.API_AUTH_FAILED:
-      return "Please contact the system administrator to update the API key."
-
-    default:
-      return null
-  }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+export function getErrorHelp(_code: ErrorCode, _details?: Record<string, any>): string | null {
+  return null
 }
 
 /**

@@ -10,6 +10,27 @@ import { getConfig } from "./config"
 import { Security } from "./security"
 import type { SecretNamespace, UserSecret } from "./types"
 
+/** JSON scope object for scoped secrets */
+export type LockboxScope = Record<string, string>
+
+/** Global scope — key is available in all workspaces and environments */
+export const GLOBAL_SCOPE: LockboxScope = {}
+
+/** Build a workspace-only scope */
+export function workspaceScope(workspace: string): LockboxScope {
+  return { workspace }
+}
+
+/** Build an environment-only scope */
+export function environmentScope(environment: string): LockboxScope {
+  return { environment }
+}
+
+/** Build a workspace + environment scope */
+export function workspaceEnvironmentScope(workspace: string, environment: string): LockboxScope {
+  return { environment, workspace }
+}
+
 export interface LockboxAdapterConfig {
   instanceId?: string // Instance identifier for multi-tenant isolation
   defaultTtlSeconds?: number // Default TTL for secrets
@@ -31,21 +52,23 @@ export class LockboxAdapter {
   }
 
   /** Creates common RPC args for key-based operations */
-  private lockboxKey(userId: string, namespace: SecretNamespace, name: string) {
+  private lockboxKey(userId: string, namespace: SecretNamespace, name: string, scope: LockboxScope = GLOBAL_SCOPE) {
     return {
       p_user_id: userId,
       p_instance_id: this.instanceId,
       p_namespace: namespace,
       p_name: name,
+      p_scope: scope,
     }
   }
 
   /** Creates common RPC args for namespace list operations */
-  private lockboxNamespace(userId: string, namespace: SecretNamespace) {
+  private lockboxNamespace(userId: string, namespace: SecretNamespace, scope?: LockboxScope) {
     return {
       p_user_id: userId,
       p_instance_id: this.instanceId,
       p_namespace: namespace,
+      ...(scope !== undefined ? { p_scope: scope } : {}),
     }
   }
 
@@ -57,14 +80,20 @@ export class LockboxAdapter {
   /**
    * Saves an encrypted secret using atomic rotation pattern
    */
-  async save(userId: string, namespace: SecretNamespace, name: string, value: string): Promise<void> {
+  async save(
+    userId: string,
+    namespace: SecretNamespace,
+    name: string,
+    value: string,
+    scope: LockboxScope = GLOBAL_SCOPE,
+  ): Promise<void> {
     const { ciphertext, iv, authTag } = Security.encrypt(value)
     const expiresAt = this.defaultTtlSeconds
       ? new Date(Date.now() + this.defaultTtlSeconds * 1000).toISOString()
       : undefined
 
     const { error } = await this.supabase.rpc("lockbox_save", {
-      ...this.lockboxKey(userId, namespace, name),
+      ...this.lockboxKey(userId, namespace, name, scope),
       p_ciphertext: ciphertext,
       p_iv: iv,
       p_auth_tag: authTag,
@@ -82,8 +111,13 @@ export class LockboxAdapter {
   /**
    * Retrieves and decrypts a secret
    */
-  async get(userId: string, namespace: SecretNamespace, name: string): Promise<string | null> {
-    const { data, error } = await this.supabase.rpc("lockbox_get", this.lockboxKey(userId, namespace, name))
+  async get(
+    userId: string,
+    namespace: SecretNamespace,
+    name: string,
+    scope: LockboxScope = GLOBAL_SCOPE,
+  ): Promise<string | null> {
+    const { data, error } = await this.supabase.rpc("lockbox_get", this.lockboxKey(userId, namespace, name, scope))
 
     if (error) {
       throw new Error(`${this.logTag(name)}: Get failed: ${error.message}`)
@@ -103,8 +137,13 @@ export class LockboxAdapter {
   /**
    * Deletes all versions of a secret
    */
-  async delete(userId: string, namespace: SecretNamespace, name: string): Promise<void> {
-    const { error } = await this.supabase.rpc("lockbox_delete", this.lockboxKey(userId, namespace, name))
+  async delete(
+    userId: string,
+    namespace: SecretNamespace,
+    name: string,
+    scope: LockboxScope = GLOBAL_SCOPE,
+  ): Promise<void> {
+    const { error } = await this.supabase.rpc("lockbox_delete", this.lockboxKey(userId, namespace, name, scope))
 
     if (error) {
       throw new Error(`${this.logTag(name)}: Delete failed: ${error.message}`)
@@ -113,9 +152,10 @@ export class LockboxAdapter {
 
   /**
    * Lists all current secrets for a user in a namespace (metadata only)
+   * Pass scope to filter by specific scope, or omit to get all scopes.
    */
-  async list(userId: string, namespace: SecretNamespace): Promise<UserSecret[]> {
-    const { data, error } = await this.supabase.rpc("lockbox_list", this.lockboxNamespace(userId, namespace))
+  async list(userId: string, namespace: SecretNamespace, scope?: LockboxScope): Promise<UserSecret[]> {
+    const { data, error } = await this.supabase.rpc("lockbox_list", this.lockboxNamespace(userId, namespace, scope))
 
     if (error) {
       throw new Error(`[Lockbox] List failed (instance: ${this.instanceId}): ${error.message}`)
@@ -136,8 +176,13 @@ export class LockboxAdapter {
   /**
    * Checks if a secret exists without decrypting it
    */
-  async exists(userId: string, namespace: SecretNamespace, name: string): Promise<boolean> {
-    const { data, error } = await this.supabase.rpc("lockbox_exists", this.lockboxKey(userId, namespace, name))
+  async exists(
+    userId: string,
+    namespace: SecretNamespace,
+    name: string,
+    scope: LockboxScope = GLOBAL_SCOPE,
+  ): Promise<boolean> {
+    const { data, error } = await this.supabase.rpc("lockbox_exists", this.lockboxKey(userId, namespace, name, scope))
 
     if (error) {
       throw new Error(`${this.logTag(name)}: Exists check failed: ${error.message}`)

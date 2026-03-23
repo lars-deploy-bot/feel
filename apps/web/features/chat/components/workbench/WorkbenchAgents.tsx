@@ -1,6 +1,6 @@
 "use client"
 
-import { Loader2, Plus, RotateCw, TriangleAlert } from "lucide-react"
+import { Loader2, RotateCw, TriangleAlert } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useWorkbenchContext, type WorkbenchViewProps } from "@/features/chat/lib/workbench-context"
 import { useSitesQuery } from "@/lib/hooks/useSettingsQueries"
@@ -57,8 +57,13 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     return { id: match.id, hostname: match.hostname }
   }, [workspace, sitesData])
 
-  /** Open blank create form */
+  /** Show template picker */
   const handleNewAgent = useCallback(() => {
+    setView({ kind: "templates" })
+  }, [])
+
+  /** Open blank create form (from template picker) */
+  const handleBlankCreate = useCallback(() => {
     const site = resolveSite()
     if (!site) return
     startCreate({ sites: [site], defaultSiteId: site.id }, () => {})
@@ -75,6 +80,7 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
           defaultSiteId: site.id,
           defaultName: template.name,
           defaultPrompt: template.prompt,
+          defaultAvatarUrl: template.image,
         },
         () => {},
       )
@@ -128,7 +134,6 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     return (
       <div className="h-full flex flex-col">
         <AgentDetailNav
-          name={selectedJob.name}
           activeTab={view.tab}
           onBack={() => setView({ kind: "list" })}
           onTabChange={tab => setView({ kind: "detail", jobId: selectedJob.id, tab })}
@@ -142,7 +147,9 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
               onChanged={refresh}
             />
           )}
-          {view.tab === "runs" && <AgentRunsView job={selectedJob} onOpenConversation={onOpenConversation} />}
+          {view.tab === "runs" && (
+            <AgentRunsView job={selectedJob} onOpenConversation={onOpenConversation} onChanged={refresh} />
+          )}
           {view.tab === "edit" && (
             <AgentEditView
               job={selectedJob}
@@ -173,10 +180,21 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
     )
   }
 
-  // ── Empty state: template picker (no header — picker has its own) ──
-  if (jobs.length === 0) {
+  // ── Template picker (from + button or empty state) ──
+  if (view.kind === "templates" || (jobs.length === 0 && view.kind === "list")) {
     return (
       <div className="h-full flex flex-col">
+        {jobs.length > 0 && (
+          <div className="shrink-0 px-4 h-11 flex items-center border-b border-zinc-100 dark:border-white/[0.04]">
+            <button
+              type="button"
+              onClick={() => setView({ kind: "list" })}
+              className="text-[13px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+            >
+              Back
+            </button>
+          </div>
+        )}
         {newError && (
           <div className="px-3 py-1.5">
             <p role="alert" className="text-[11px] text-red-500 dark:text-red-400">
@@ -185,7 +203,7 @@ export function WorkbenchAgents({ workspace }: WorkbenchViewProps) {
           </div>
         )}
         <div className="flex-1 overflow-auto">
-          <AgentTemplatePicker onSelect={handleTemplateSelect} onBlank={handleNewAgent} />
+          <AgentTemplatePicker onSelect={handleTemplateSelect} onBlank={handleBlankCreate} />
         </div>
       </div>
     )

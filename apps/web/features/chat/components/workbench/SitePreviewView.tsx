@@ -52,7 +52,7 @@ export function SitePreviewView({ workspace }: WorkbenchViewProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Context bar — device toggle + URL bar */}
-      <div className="h-10 px-2.5 flex items-center justify-center gap-2 border-b border-black/[0.06] dark:border-white/[0.04] shrink-0">
+      <div className="h-10 px-2.5 flex items-center justify-center gap-2 border-b border-b-[3px] border-black/[0.06] dark:border-white/[0.04] shrink-0">
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             type="button"

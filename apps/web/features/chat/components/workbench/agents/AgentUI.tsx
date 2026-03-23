@@ -314,6 +314,35 @@ export function RunRow({
 }) {
   const conversationId = run.chat_conversation_id
   const canOpen = !!conversationId && !!onOpenConversation
+
+  const statusConfig =
+    run.status === "success"
+      ? {
+          icon: <Check size={14} className="text-emerald-500" />,
+          bg: "bg-emerald-50 dark:bg-emerald-500/10",
+          border: "border-emerald-100 dark:border-emerald-500/10",
+          label: "Success",
+          labelColor: "text-emerald-600 dark:text-emerald-400",
+          accentBar: "bg-emerald-400",
+        }
+      : run.status === "failure"
+        ? {
+            icon: <XCircle size={14} className="text-red-500" />,
+            bg: "bg-red-50 dark:bg-red-500/10",
+            border: "border-red-100 dark:border-red-500/10",
+            label: "Failed",
+            labelColor: "text-red-600 dark:text-red-400",
+            accentBar: "bg-red-400",
+          }
+        : {
+            icon: <RotateCw size={14} className="text-blue-500 animate-spin" />,
+            bg: "bg-blue-50 dark:bg-blue-500/10",
+            border: "border-blue-100 dark:border-blue-500/10",
+            label: "Running",
+            labelColor: "text-blue-600 dark:text-blue-400",
+            accentBar: "bg-blue-400",
+          }
+
   return (
     <button
       type="button"
@@ -321,32 +350,43 @@ export function RunRow({
       onClick={() => {
         if (conversationId && onOpenConversation) onOpenConversation(conversationId)
       }}
-      className={`flex items-center gap-3 py-3 w-full text-left ${canOpen ? "hover:bg-zinc-50 dark:hover:bg-white/[0.02] rounded-xl -mx-2 px-2 transition-colors cursor-pointer" : ""}`}
+      className={`w-full text-left rounded-xl border ${statusConfig.border} overflow-hidden transition-all ${
+        canOpen
+          ? "hover:shadow-md hover:border-zinc-300 dark:hover:border-white/[0.1] cursor-pointer active:scale-[0.99]"
+          : ""
+      }`}
     >
-      {run.status === "success" ? (
-        <div className="size-7 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
-          <Check size={14} className="text-emerald-500" />
+      {/* Accent bar */}
+      <div className={`h-[3px] ${statusConfig.accentBar}`} />
+
+      <div className="px-3.5 py-3 flex items-center gap-3">
+        {/* Status icon */}
+        <div className={`size-8 rounded-lg ${statusConfig.bg} flex items-center justify-center shrink-0`}>
+          {statusConfig.icon}
         </div>
-      ) : run.status === "failure" ? (
-        <div className="size-7 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0">
-          <XCircle size={14} className="text-red-500" />
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className={`text-[12px] font-bold ${statusConfig.labelColor}`}>{statusConfig.label}</span>
+            {run.duration_ms != null && (
+              <span className="text-[11px] text-zinc-300 dark:text-zinc-600 tabular-nums">{dur(run.duration_ms)}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] text-zinc-500 dark:text-zinc-400 tabular-nums">{relTime(run.started_at)}</span>
+            {run.triggered_by && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500">
+                {run.triggered_by}
+              </span>
+            )}
+          </div>
+          {run.error && <p className="text-[11px] text-red-500 truncate mt-1">{run.error}</p>}
         </div>
-      ) : (
-        <div className="size-7 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center shrink-0">
-          <RotateCw size={14} className="text-blue-500 animate-spin" />
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">
-            {relTime(run.started_at)}
-          </span>
-          <span className="text-[11px] text-zinc-300 dark:text-zinc-700 tabular-nums">{dur(run.duration_ms)}</span>
-          {run.triggered_by && <span className="text-[11px] text-zinc-400 dark:text-zinc-600">{run.triggered_by}</span>}
-        </div>
-        {run.error && <p className="text-[11px] text-red-500 truncate mt-0.5">{run.error}</p>}
+
+        {/* Open conversation arrow */}
+        {canOpen && <ExternalLink size={13} className="text-zinc-300 dark:text-zinc-600 shrink-0" />}
       </div>
-      {canOpen && <ExternalLink size={12} className="text-zinc-300 dark:text-zinc-700 shrink-0" />}
     </button>
   )
 }
@@ -361,7 +401,7 @@ export function AgentListHeader({
   newAgentLoading?: boolean
 }) {
   return (
-    <div className="shrink-0 pl-5 pr-16 pt-5 pb-2 flex items-center justify-center relative">
+    <div className="shrink-0 pl-5 pr-16 pt-5 pb-3 flex items-center justify-center relative border-b border-b-[3px] border-zinc-100 dark:border-white/[0.04]">
       <h2 className="text-[17px] font-bold text-zinc-900 dark:text-zinc-100">Your Agents</h2>
       <button
         type="button"
@@ -378,12 +418,10 @@ export function AgentListHeader({
 }
 
 export function AgentDetailNav({
-  name,
   activeTab,
   onBack,
   onTabChange,
 }: {
-  name: string
   activeTab: AgentDetailTab
   onBack: () => void
   onTabChange: (tab: AgentDetailTab) => void
@@ -395,13 +433,13 @@ export function AgentDetailNav({
   ]
 
   return (
-    <div className="shrink-0 px-4 pt-4 pb-2">
+    <div className="shrink-0 px-4 pt-4 pb-3 border-b border-b-[3px] border-zinc-100 dark:border-white/[0.04]">
       {/* Nav row: back button + centered tabs */}
       <div className="flex items-center justify-center relative mb-3">
         <button
           type="button"
           onClick={onBack}
-          className="absolute left-0 size-8 flex items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 border-b-2 border-zinc-200 dark:border-zinc-700 active:translate-y-[1px] active:border-b-0 transition-all"
+          className="absolute left-0 size-8 flex items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 border-b-[3px] border-zinc-200 dark:border-zinc-700 active:translate-y-[2px] active:border-b-0 transition-all"
         >
           <ArrowLeft size={15} />
         </button>
@@ -413,8 +451,8 @@ export function AgentDetailNav({
               onClick={() => onTabChange(tab.key)}
               className={`rounded-xl py-1.5 px-4 text-[13px] font-bold transition-all ${
                 activeTab === tab.key
-                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-b-[3px] border-emerald-200 dark:border-emerald-600/30"
+                  : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border-b-[3px] border-transparent"
               }`}
             >
               {tab.label}
@@ -422,10 +460,6 @@ export function AgentDetailNav({
           ))}
         </div>
       </div>
-      {/* Agent name below tabs (hidden on edit to avoid duplication with name input) */}
-      {activeTab !== "edit" && (
-        <h3 className="text-[16px] font-bold text-zinc-900 dark:text-zinc-100 truncate text-center">{name}</h3>
-      )}
     </div>
   )
 }

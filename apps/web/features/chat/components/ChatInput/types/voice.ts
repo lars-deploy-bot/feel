@@ -1,1 +1,1 @@
-export type VoiceState = "idle" | "recording" | "stopping" | "transcribing" | "error"
+export type { VoiceStateTag as VoiceState } from "@webalive/shared"
